@@ -34,7 +34,7 @@ internal class RoomDailyChallengeRepository(
                         )
                     is Command.Save -> {
                         val result = runCatching { saveNow(command.challenge) }
-                        command.reply?.complete(result)
+                        command.reply.complete(result)
                     }
                 }
             }
@@ -54,12 +54,6 @@ internal class RoomDailyChallengeRepository(
         val reply = CompletableDeferred<Result<Unit>>()
         commands.send(Command.Save(challenge, reply))
         reply.await().getOrThrow()
-    }
-
-    override fun saveInBackground(challenge: SavedDailyChallenge) {
-        check(commands.trySend(Command.Save(challenge, reply = null)).isSuccess) {
-            "Daily challenge writer is unavailable."
-        }
     }
 
     private suspend fun saveNow(challenge: SavedDailyChallenge) {
@@ -102,7 +96,7 @@ internal class RoomDailyChallengeRepository(
 
         data class Save(
             val challenge: SavedDailyChallenge,
-            val reply: CompletableDeferred<Result<Unit>>?,
+            val reply: CompletableDeferred<Result<Unit>>,
         ) : Command
     }
 }

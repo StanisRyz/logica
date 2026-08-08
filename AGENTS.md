@@ -25,6 +25,10 @@
 - Catalog and Daily gameplay use separate session scopes, must coexist, and both reuse the existing Balance engine/UI.
 - Room migrations preserve existing saves and never use destructive migration.
 - Daily lifecycle persistence is separate from active gameplay sessions and from future results or statistics.
+- Completed puzzle results are immutable Room records separate from active sessions; completion persistence is atomic and idempotent.
+- Catalog and Daily completion remain isolated by session scope, and `daily_challenges` remains the Daily lifecycle source of truth.
+- Daily streaks are derived from persisted completed Daily dates, never stored as mutable counters.
+- Statistics reads persisted results and lifecycle history, never active sessions; do not add unreliable metrics such as wall-clock solve duration.
 - User-facing rule and hint explanations belong in `:app`; Compose renders structured core state and UX polish must not change deterministic generation or persistence compatibility without a concrete requirement.
 - Balance generator soak verification is opt-in; large seed sweeps never belong in normal tests or builds.
 - Quality failures must report reproducible seeds; use collected metrics for evidence-based tuning, not speculative rewrites.

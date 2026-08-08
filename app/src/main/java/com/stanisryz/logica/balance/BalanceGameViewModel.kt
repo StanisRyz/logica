@@ -3,9 +3,6 @@ package com.stanisryz.logica.balance
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.stanisryz.logica.daily.DailyChallengeRepository
-import com.stanisryz.logica.daily.DailyChallengeStatus
-import com.stanisryz.logica.daily.SavedDailyChallenge
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameEngine
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameState
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
@@ -18,6 +15,8 @@ import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleId
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.result.GameCompletion
+import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.session.DailyGameSessionIdentity
 import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.session.GameSessionScope
@@ -65,24 +64,41 @@ internal sealed interface BalanceGameLaunch {
     ) : BalanceGameLaunch
 }
 
-sealed interface BalanceGameUiState {
+internal sealed interface BalanceGameUiState {
     data object Loading : BalanceGameUiState
 
     data class Ready(
         val puzzle: BalancePuzzle,
         val game: BalanceGameState,
         val isHintLoading: Boolean = false,
+        val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
     ) : BalanceGameUiState
 
     data class Error(
-        val message: String,
+        val reason: BalanceGameError,
     ) : BalanceGameUiState
+}
+
+internal enum class BalanceGameError {
+    MISSING_SAVED_SESSION,
+    INVALID_SAVED_SESSION,
+    GENERATION,
+}
+
+internal sealed interface CompletionPersistence {
+    data object NotRequired : CompletionPersistence
+
+    data object Saving : CompletionPersistence
+
+    data object Saved : CompletionPersistence
+
+    data object Error : CompletionPersistence
 }
 
 internal class BalanceGameViewModel(
     private val launch: BalanceGameLaunch,
     private val sessionRepository: GameSessionRepository,
-    private val dailyChallengeRepository: DailyChallengeRepository,
+    private val completionRepository: GameCompletionRepository,
     private val generator: BalanceGeneratorV1 = BalanceGeneratorV1(),
     private val workDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val sessionIdFactory: () -> String = { UUID.randomUUID().toString() },
@@ -93,6 +109,7 @@ internal class BalanceGameViewModel(
     private var gameEngine: BalanceGameEngine? = null
     private var activeSession: ActiveSession? = null
     private var hintJob: Job? = null
+    private var completionJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -107,11 +124,11 @@ internal class BalanceGameViewModel(
             } catch (exception: CancellationException) {
                 throw exception
             } catch (_: MissingSavedSessionException) {
-                mutableUiState.value = BalanceGameUiState.Error("Сохранённая игра не найдена. Начните новую игру.")
+                mutableUiState.value = BalanceGameUiState.Error(BalanceGameError.MISSING_SAVED_SESSION)
             } catch (_: InvalidSavedSessionException) {
-                mutableUiState.value = BalanceGameUiState.Error("Сохранение повреждено или несовместимо. Начните новую игру.")
+                mutableUiState.value = BalanceGameUiState.Error(BalanceGameError.INVALID_SAVED_SESSION)
             } catch (_: Exception) {
-                mutableUiState.value = BalanceGameUiState.Error("Не удалось создать головоломку.")
+                mutableUiState.value = BalanceGameUiState.Error(BalanceGameError.GENERATION)
             }
         }
     }
@@ -154,6 +171,11 @@ internal class BalanceGameViewModel(
                     if (hintedGame != requestedGame) persist(hintedGame)
                 }
             }
+    }
+
+    fun retryCompletion() {
+        val ready = mutableUiState.value as? BalanceGameUiState.Ready ?: return
+        if (ready.game.status == BalanceGameStatus.SOLVED) persistCompletion(ready.game)
     }
 
     private suspend fun loadSession(): LoadedSession =
@@ -235,16 +257,35 @@ internal class BalanceGameViewModel(
     private fun persist(game: BalanceGameState) {
         val session = activeSession ?: return
         if (game.status == BalanceGameStatus.SOLVED) {
-            sessionRepository.deleteActiveSession(PuzzleType.BALANCE, session.context.sessionScope, session.sessionId)
-            val dailyContext = session.context as? BalanceGameContext.Daily
-            if (dailyContext != null) {
-                dailyChallengeRepository.saveInBackground(
-                    session.puzzle.savedDailyChallenge(dailyContext, DailyChallengeStatus.COMPLETED),
-                )
-            }
+            persistCompletion(game)
         } else {
             sessionRepository.updateActiveSession(session.saved(game))
         }
+    }
+
+    private fun persistCompletion(game: BalanceGameState) {
+        if (completionJob?.isActive == true) return
+        val session = activeSession ?: return
+        val ready = mutableUiState.value as? BalanceGameUiState.Ready ?: return
+        if (ready.completionPersistence == CompletionPersistence.Saved) return
+        mutableUiState.value = ready.copy(completionPersistence = CompletionPersistence.Saving)
+        completionJob =
+            viewModelScope.launch {
+                try {
+                    completionRepository.complete(session.completion(game))
+                    val current = mutableUiState.value
+                    if (current is BalanceGameUiState.Ready && current.game == game) {
+                        mutableUiState.value = current.copy(completionPersistence = CompletionPersistence.Saved)
+                    }
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (_: Exception) {
+                    val current = mutableUiState.value
+                    if (current is BalanceGameUiState.Ready && current.game == game) {
+                        mutableUiState.value = current.copy(completionPersistence = CompletionPersistence.Error)
+                    }
+                }
+            }
     }
 
     private data class LoadedSession(
@@ -280,6 +321,22 @@ internal class BalanceGameViewModel(
                 status = encoded.status,
             )
         }
+
+        fun completion(game: BalanceGameState): GameCompletion {
+            require(game.status == BalanceGameStatus.SOLVED)
+            val dailyContext = context as? BalanceGameContext.Daily
+            return GameCompletion(
+                resultId = sessionId,
+                puzzleType = puzzle.id.type,
+                difficulty = puzzle.id.difficulty,
+                puzzleSeed = puzzle.id.seed,
+                generatorVersion = puzzle.id.generatorVersion,
+                sessionScope = context.sessionScope,
+                hintsUsed = game.hintsUsed,
+                challengeDate = dailyContext?.challengeDate,
+                dailyPolicyVersion = dailyContext?.policyVersion,
+            )
+        }
     }
 
     private class MissingSavedSessionException : Exception()
@@ -292,26 +349,12 @@ internal class BalanceGameViewModel(
             is BalanceGameContext.Daily ->
                 dailyIdentity == DailyGameSessionIdentity(context.challengeDate, context.policyVersion.value)
         }
-
-    private fun BalancePuzzle.savedDailyChallenge(
-        context: BalanceGameContext.Daily,
-        status: DailyChallengeStatus,
-    ): SavedDailyChallenge =
-        SavedDailyChallenge(
-            challengeDate = context.challengeDate,
-            puzzleType = id.type,
-            policyVersion = context.policyVersion,
-            difficulty = id.difficulty,
-            seed = id.seed,
-            generatorVersion = id.generatorVersion,
-            status = status,
-        )
 }
 
 internal class BalanceGameViewModelFactory(
     private val launch: BalanceGameLaunch,
     private val sessionRepository: GameSessionRepository,
-    private val dailyChallengeRepository: DailyChallengeRepository,
+    private val completionRepository: GameCompletionRepository,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(BalanceGameViewModel::class.java)) {
@@ -319,6 +362,6 @@ internal class BalanceGameViewModelFactory(
         }
 
         @Suppress("UNCHECKED_CAST")
-        return BalanceGameViewModel(launch, sessionRepository, dailyChallengeRepository) as T
+        return BalanceGameViewModel(launch, sessionRepository, completionRepository) as T
     }
 }

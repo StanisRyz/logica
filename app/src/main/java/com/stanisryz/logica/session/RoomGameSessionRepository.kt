@@ -4,6 +4,12 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.result.GameCompletion
+import com.stanisryz.logica.result.GameCompletionDao
+import com.stanisryz.logica.result.GameCompletionRepository
+import com.stanisryz.logica.result.GameResult
+import com.stanisryz.logica.result.toEntity
+import com.stanisryz.logica.result.toGameResultOrNull
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,9 +21,11 @@ import java.time.LocalDate
 
 internal class RoomGameSessionRepository(
     private val dao: GameSessionDao,
+    private val completionDao: GameCompletionDao,
     private val currentTimeMillis: () -> Long = System::currentTimeMillis,
     scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
-) : GameSessionRepository {
+) : GameSessionRepository,
+    GameCompletionRepository {
     private val commands = Channel<Command>(Channel.UNLIMITED)
 
     init {
@@ -56,6 +64,12 @@ internal class RoomGameSessionRepository(
         sessionScope: GameSessionScope,
     ): Flow<Boolean> = dao.observeExists(puzzleType.name, sessionScope.name)
 
+    override suspend fun complete(completion: GameCompletion): GameResult {
+        val reply = CompletableDeferred<Result<GameResult>>()
+        commands.send(Command.Complete(completion, reply))
+        return reply.await().getOrThrow()
+    }
+
     private fun CoroutineScope.launchWriter() =
         launch {
             for (command in commands) {
@@ -71,6 +85,7 @@ internal class RoomGameSessionRepository(
                                 command.sessionId,
                             )
                         }
+                    is Command.Complete -> complete(command)
                 }
             }
         }
@@ -84,6 +99,17 @@ internal class RoomGameSessionRepository(
                         dao.delete(command.puzzleType.name, command.sessionScope.name)
                         null
                     }
+            },
+        )
+    }
+
+    private suspend fun complete(command: Command.Complete) {
+        command.reply.complete(
+            runCatching {
+                completionDao
+                    .complete(command.completion.toEntity(currentTimeMillis()))
+                    .toGameResultOrNull()
+                    ?: error("The stored completion result is invalid.")
             },
         )
     }
@@ -169,6 +195,11 @@ internal class RoomGameSessionRepository(
             val puzzleType: PuzzleType,
             val sessionScope: GameSessionScope,
             val sessionId: String,
+        ) : Command
+
+        data class Complete(
+            val completion: GameCompletion,
+            val reply: CompletableDeferred<Result<GameResult>>,
         ) : Command
     }
 }

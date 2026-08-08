@@ -4,9 +4,13 @@ import androidx.room3.Dao
 import androidx.room3.Query
 import androidx.room3.Transaction
 import androidx.room3.Upsert
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 internal interface DailyChallengeDao {
+    @Query("SELECT challenge_date FROM daily_challenges WHERE status = 'COMPLETED'")
+    fun observeCompletedDates(): Flow<List<String>>
+
     @Query("SELECT * FROM daily_challenges WHERE challenge_date = :challengeDate AND puzzle_type = :puzzleType LIMIT 1")
     suspend fun find(
         challengeDate: String,

@@ -29,4 +29,6 @@ Modules:
 
 Balance is playable from the Catalog with optional interactive onboarding, selectable difficulties, undo/reset, conflicts, hints, and improved accessibility cues. The Today screen provides a deterministic, resumable Daily Balance challenge while unfinished Catalog progress remains independent.
 
+Completed games are persisted as durable results. The app reports core gameplay statistics and derives current and best Daily streaks from completed Daily history.
+
 Dependency versions are managed in `gradle/libs.versions.toml`.

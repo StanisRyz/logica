@@ -83,4 +83,21 @@
     <string name="daily_tutorial_recommendation">Перед задачей можно быстро познакомиться с правилами. Обучение не обязательно.</string>
     <string name="to_today">На экран «Сегодня»</string>
     <string name="retry">Повторить</string>
+    <string name="saving">Сохраняем…</string>
+    <string name="saving_completion">Сохраняем результат…</string>
+    <string name="completion_save_error_title">Не удалось сохранить результат</string>
+    <string name="completion_save_error_body">Прогресс не потерян. Повторите сохранение результата.</string>
+    <string name="missing_saved_game">Сохранённая игра не найдена. Начните новую игру.</string>
+    <string name="invalid_saved_game">Сохранение повреждено или несовместимо. Начните новую игру.</string>
+    <string name="puzzle_generation_error">Не удалось создать головоломку.</string>
+    <string name="daily_load_error">Не удалось загрузить задачу дня.</string>
+    <string name="daily_start_error">Не удалось начать задачу дня.</string>
+    <string name="statistics_load_error">Не удалось загрузить статистику.</string>
+    <string name="total_solved">Всего решено</string>
+    <string name="daily_completed_count">Задач дня выполнено</string>
+    <string name="current_daily_streak">Текущая серия</string>
+    <string name="best_daily_streak">Лучшая серия</string>
+    <string name="total_hints_used">Подсказок использовано</string>
+    <string name="current_daily_streak_value">Текущая серия: %1$d</string>
+    <string name="best_daily_streak_value">Лучшая серия: %1$d</string>
 </resources>

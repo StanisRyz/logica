@@ -9,17 +9,24 @@ import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.stanisryz.logica.daily.DailyChallengeDao
 import com.stanisryz.logica.daily.DailyChallengeEntity
+import com.stanisryz.logica.result.GameCompletionDao
+import com.stanisryz.logica.result.GameResultDao
+import com.stanisryz.logica.result.GameResultEntity
 import kotlinx.coroutines.Dispatchers
 
 @Database(
-    entities = [GameSessionEntity::class, DailyChallengeEntity::class],
-    version = 2,
+    entities = [GameSessionEntity::class, DailyChallengeEntity::class, GameResultEntity::class],
+    version = 3,
     exportSchema = true,
 )
 internal abstract class LogicaDatabase : RoomDatabase() {
     abstract fun gameSessionDao(): GameSessionDao
 
     abstract fun dailyChallengeDao(): DailyChallengeDao
+
+    abstract fun gameResultDao(): GameResultDao
+
+    abstract fun gameCompletionDao(): GameCompletionDao
 
     companion object {
         private const val DATABASE_NAME = "logica.db"
@@ -32,7 +39,7 @@ internal abstract class LogicaDatabase : RoomDatabase() {
                     name = applicationContext.getDatabasePath(DATABASE_NAME).absolutePath,
                 ).setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(Dispatchers.IO)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
         }
 
@@ -92,6 +99,29 @@ internal abstract class LogicaDatabase : RoomDatabase() {
                             `created_at_epoch_millis` INTEGER NOT NULL,
                             `updated_at_epoch_millis` INTEGER NOT NULL,
                             PRIMARY KEY(`challenge_date`, `puzzle_type`)
+                        )
+                        """.trimIndent(),
+                    )
+                }
+            }
+
+        internal val MIGRATION_2_3 =
+            object : Migration(2, 3) {
+                override suspend fun migrate(connection: SQLiteConnection) {
+                    connection.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS `game_results` (
+                            `result_id` TEXT NOT NULL,
+                            `puzzle_type` TEXT NOT NULL,
+                            `difficulty` TEXT NOT NULL,
+                            `puzzle_seed` INTEGER NOT NULL,
+                            `generator_version` INTEGER NOT NULL,
+                            `session_scope` TEXT NOT NULL,
+                            `hints_used` INTEGER NOT NULL,
+                            `completed_at_epoch_millis` INTEGER NOT NULL,
+                            `challenge_date` TEXT,
+                            `daily_policy_version` INTEGER,
+                            PRIMARY KEY(`result_id`)
                         )
                         """.trimIndent(),
                     )

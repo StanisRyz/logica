@@ -13,6 +13,7 @@ import com.stanisryz.logica.session.DailyGameSessionIdentity
 import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.session.GameSessionScope
 import com.stanisryz.logica.session.SavedGameSession
+import com.stanisryz.logica.statistics.StatisticsRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -41,16 +43,25 @@ internal sealed interface TodayUiState {
 
     data class Completed(
         override val definition: DailyChallengeDefinition,
+        val hintsUsed: Int?,
+        val currentStreak: Int,
+        val bestStreak: Int,
     ) : WithDefinition
 
     data class Error(
-        val message: String,
+        val reason: TodayError,
     ) : TodayUiState
+}
+
+internal enum class TodayError {
+    LOAD,
+    START,
 }
 
 internal class TodayViewModel(
     private val dailyChallengeRepository: DailyChallengeRepository,
     private val gameSessionRepository: GameSessionRepository,
+    private val statisticsRepository: StatisticsRepository,
     private val dateProvider: () -> LocalDate = LocalDate::now,
     private val definitionProvider: (LocalDate) -> DailyChallengeDefinition =
         DailyChallengePolicyV1::definitionFor,
@@ -81,7 +92,15 @@ internal class TodayViewModel(
                             ?.takeIf { it.matches(definition, entry) }
                     mutableUiState.value =
                         when (lifecycle?.status) {
-                            DailyChallengeStatus.COMPLETED -> TodayUiState.Completed(definition)
+                            DailyChallengeStatus.COMPLETED -> {
+                                val snapshot = statisticsRepository.observe(definition.challengeDate).first()
+                                TodayUiState.Completed(
+                                    definition = definition,
+                                    hintsUsed = snapshot.dailyHintsUsedByDate[definition.challengeDate],
+                                    currentStreak = snapshot.statistics.currentDailyStreak,
+                                    bestStreak = snapshot.statistics.bestDailyStreak,
+                                )
+                            }
                             DailyChallengeStatus.IN_PROGRESS ->
                                 if (matchingDailySession(definition, entry) != null) {
                                     TodayUiState.InProgress(definition)
@@ -93,7 +112,7 @@ internal class TodayViewModel(
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (_: Exception) {
-                    mutableUiState.value = TodayUiState.Error("Не удалось загрузить задачу дня.")
+                    mutableUiState.value = TodayUiState.Error(TodayError.LOAD)
                 }
             }
     }
@@ -118,7 +137,7 @@ internal class TodayViewModel(
             } catch (exception: CancellationException) {
                 throw exception
             } catch (_: Exception) {
-                mutableUiState.value = TodayUiState.Error("Не удалось начать задачу дня.")
+                mutableUiState.value = TodayUiState.Error(TodayError.START)
             }
         }
     }
@@ -172,12 +191,13 @@ internal class TodayViewModel(
 internal class TodayViewModelFactory(
     private val dailyChallengeRepository: DailyChallengeRepository,
     private val gameSessionRepository: GameSessionRepository,
+    private val statisticsRepository: StatisticsRepository,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(TodayViewModel::class.java)) {
             "Unknown ViewModel class: ${modelClass.name}"
         }
         @Suppress("UNCHECKED_CAST")
-        return TodayViewModel(dailyChallengeRepository, gameSessionRepository) as T
+        return TodayViewModel(dailyChallengeRepository, gameSessionRepository, statisticsRepository) as T
     }
 }

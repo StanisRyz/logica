@@ -40,11 +40,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
 import com.stanisryz.logica.balance.BalanceGameContext
+import com.stanisryz.logica.balance.BalanceGameError
 import com.stanisryz.logica.balance.BalanceGameLaunch
 import com.stanisryz.logica.balance.BalanceGameUiState
 import com.stanisryz.logica.balance.BalanceGameViewModel
 import com.stanisryz.logica.balance.BalanceGameViewModelFactory
-import com.stanisryz.logica.daily.DailyChallengeRepository
+import com.stanisryz.logica.balance.CompletionPersistence
 import com.stanisryz.logica.puzzle.core.balance.BalanceCell
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameState
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
@@ -55,6 +56,7 @@ import com.stanisryz.logica.puzzle.core.balance.BalancePosition
 import com.stanisryz.logica.puzzle.core.balance.BalancePuzzle
 import com.stanisryz.logica.puzzle.core.balance.BalanceViolationType
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.ui.balance.BalanceBoard
 
@@ -62,7 +64,7 @@ import com.stanisryz.logica.ui.balance.BalanceBoard
 internal fun BalanceGameRoute(
     launch: BalanceGameLaunch,
     sessionRepository: GameSessionRepository,
-    dailyChallengeRepository: DailyChallengeRepository,
+    completionRepository: GameCompletionRepository,
     hapticsEnabled: Boolean,
     onBack: () -> Unit,
     onNewPuzzle: (Difficulty) -> Unit,
@@ -72,8 +74,8 @@ internal fun BalanceGameRoute(
     modifier: Modifier = Modifier,
 ) {
     val factory =
-        remember(launch, sessionRepository, dailyChallengeRepository) {
-            BalanceGameViewModelFactory(launch, sessionRepository, dailyChallengeRepository)
+        remember(launch, sessionRepository, completionRepository) {
+            BalanceGameViewModelFactory(launch, sessionRepository, completionRepository)
         }
     val gameViewModel: BalanceGameViewModel = viewModel(factory = factory)
     val uiState by gameViewModel.uiState.collectAsStateWithLifecycle()
@@ -83,6 +85,7 @@ internal fun BalanceGameRoute(
         gameViewModel::undo,
         gameViewModel::requestHint,
         gameViewModel::reset,
+        gameViewModel::retryCompletion,
         hapticsEnabled,
         onBack,
         onNewPuzzle,
@@ -101,6 +104,7 @@ private fun BalanceGameScreen(
     onUndo: () -> Unit,
     onHint: () -> Unit,
     onReset: () -> Unit,
+    onRetryCompletion: () -> Unit,
     hapticsEnabled: Boolean,
     onBack: () -> Unit,
     onNewPuzzle: (Difficulty) -> Unit,
@@ -112,17 +116,19 @@ private fun BalanceGameScreen(
 ) {
     when (uiState) {
         BalanceGameUiState.Loading -> LoadingState(modifier)
-        is BalanceGameUiState.Error -> ErrorState(uiState.message, if (isDaily) onToday else onStartNew, onBack, modifier)
+        is BalanceGameUiState.Error -> ErrorState(uiState.reason, if (isDaily) onToday else onStartNew, onBack, modifier)
         is BalanceGameUiState.Ready ->
             ReadyState(
                 uiState.puzzle,
                 uiState.game,
                 uiState.puzzle.id.difficulty,
                 uiState.isHintLoading,
+                uiState.completionPersistence,
                 onCellTapped,
                 onUndo,
                 onHint,
                 onReset,
+                onRetryCompletion,
                 hapticsEnabled,
                 { onNewPuzzle(uiState.puzzle.id.difficulty) },
                 onCatalog,
@@ -145,13 +151,22 @@ private fun LoadingState(modifier: Modifier) {
 
 @Composable
 private fun ErrorState(
-    message: String,
+    reason: BalanceGameError,
     onTryAnother: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier,
 ) {
     Column(modifier.fillMaxSize().padding(24.dp), Arrangement.Center, Alignment.CenterHorizontally) {
-        Text(message, style = MaterialTheme.typography.titleMedium)
+        Text(
+            stringResource(
+                when (reason) {
+                    BalanceGameError.MISSING_SAVED_SESSION -> R.string.missing_saved_game
+                    BalanceGameError.INVALID_SAVED_SESSION -> R.string.invalid_saved_game
+                    BalanceGameError.GENERATION -> R.string.puzzle_generation_error
+                },
+            ),
+            style = MaterialTheme.typography.titleMedium,
+        )
         Button(onClick = onTryAnother, modifier = Modifier.padding(top = 16.dp)) { Text(stringResource(R.string.try_another)) }
         TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
     }
@@ -163,10 +178,12 @@ private fun ReadyState(
     game: BalanceGameState,
     difficulty: Difficulty,
     isHintLoading: Boolean,
+    completionPersistence: CompletionPersistence,
     onCellTapped: (BalancePosition) -> Unit,
     onUndo: () -> Unit,
     onHint: () -> Unit,
     onReset: () -> Unit,
+    onRetryCompletion: () -> Unit,
     hapticsEnabled: Boolean,
     onNewPuzzle: () -> Unit,
     onCatalog: () -> Unit,
@@ -247,17 +264,45 @@ private fun ReadyState(
         AlertDialog(
             onDismissRequest = {},
             icon = { Icon(Icons.Filled.TaskAlt, null, tint = MaterialTheme.colorScheme.primary) },
-            title = { Text(stringResource(R.string.puzzle_solved)) },
-            text = { Text(stringResource(R.string.hints_used, game.hintsUsed)) },
+            title = {
+                Text(
+                    stringResource(
+                        if (completionPersistence == CompletionPersistence.Error) {
+                            R.string.completion_save_error_title
+                        } else {
+                            R.string.puzzle_solved
+                        },
+                    ),
+                )
+            },
+            text = {
+                Text(
+                    when (completionPersistence) {
+                        CompletionPersistence.NotRequired,
+                        CompletionPersistence.Saving,
+                        -> stringResource(R.string.saving_completion)
+                        CompletionPersistence.Saved -> stringResource(R.string.hints_used, game.hintsUsed)
+                        CompletionPersistence.Error -> stringResource(R.string.completion_save_error_body)
+                    },
+                )
+            },
             confirmButton = {
-                if (isDaily) {
-                    TextButton(onClick = onToday) { Text(stringResource(R.string.to_today)) }
-                } else {
-                    TextButton(onClick = onNewPuzzle) { Text(stringResource(R.string.new_puzzle)) }
+                when (completionPersistence) {
+                    CompletionPersistence.NotRequired,
+                    CompletionPersistence.Saving,
+                    -> TextButton(onClick = {}, enabled = false) { Text(stringResource(R.string.saving)) }
+                    CompletionPersistence.Error ->
+                        TextButton(onClick = onRetryCompletion) { Text(stringResource(R.string.retry)) }
+                    CompletionPersistence.Saved ->
+                        if (isDaily) {
+                            TextButton(onClick = onToday) { Text(stringResource(R.string.to_today)) }
+                        } else {
+                            TextButton(onClick = onNewPuzzle) { Text(stringResource(R.string.new_puzzle)) }
+                        }
                 }
             },
             dismissButton = {
-                if (!isDaily) {
+                if (!isDaily && completionPersistence == CompletionPersistence.Saved) {
                     TextButton(onClick = onCatalog) { Text(stringResource(R.string.to_catalog)) }
                 }
             },

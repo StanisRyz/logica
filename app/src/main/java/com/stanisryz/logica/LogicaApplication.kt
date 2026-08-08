@@ -7,11 +7,14 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.RoomDailyChallengeRepository
+import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.session.LogicaDatabase
 import com.stanisryz.logica.session.RoomGameSessionRepository
 import com.stanisryz.logica.settings.DataStoreSettingsRepository
 import com.stanisryz.logica.settings.SettingsRepository
+import com.stanisryz.logica.statistics.RoomStatisticsRepository
+import com.stanisryz.logica.statistics.StatisticsRepository
 
 private val Context.userSettingsDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "user_settings",
@@ -35,11 +38,23 @@ internal class AppContainer(
         LogicaDatabase.create(context)
     }
 
+    private val gamePersistenceRepository: RoomGameSessionRepository by lazy {
+        RoomGameSessionRepository(database.gameSessionDao(), database.gameCompletionDao())
+    }
+
     val gameSessionRepository: GameSessionRepository by lazy {
-        RoomGameSessionRepository(database.gameSessionDao())
+        gamePersistenceRepository
+    }
+
+    val gameCompletionRepository: GameCompletionRepository by lazy {
+        gamePersistenceRepository
     }
 
     val dailyChallengeRepository: DailyChallengeRepository by lazy {
         RoomDailyChallengeRepository(database.dailyChallengeDao())
+    }
+
+    val statisticsRepository: StatisticsRepository by lazy {
+        RoomStatisticsRepository(database.gameResultDao(), database.dailyChallengeDao())
     }
 }

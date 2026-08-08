@@ -31,11 +31,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
 import com.stanisryz.logica.balance.BalanceGameLaunch
 import com.stanisryz.logica.daily.DailyChallengeRepository
+import com.stanisryz.logica.daily.TodayError
 import com.stanisryz.logica.daily.TodayUiState
 import com.stanisryz.logica.daily.TodayViewModel
 import com.stanisryz.logica.daily.TodayViewModelFactory
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengeDefinition
 import com.stanisryz.logica.session.GameSessionRepository
+import com.stanisryz.logica.statistics.StatisticsRepository
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
@@ -43,14 +45,15 @@ import java.time.format.FormatStyle
 internal fun TodayRoute(
     dailyChallengeRepository: DailyChallengeRepository,
     gameSessionRepository: GameSessionRepository,
+    statisticsRepository: StatisticsRepository,
     tutorialCompleted: Boolean,
     onOpenDaily: (BalanceGameLaunch) -> Unit,
     onOpenTutorial: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val factory =
-        remember(dailyChallengeRepository, gameSessionRepository) {
-            TodayViewModelFactory(dailyChallengeRepository, gameSessionRepository)
+        remember(dailyChallengeRepository, gameSessionRepository, statisticsRepository) {
+            TodayViewModelFactory(dailyChallengeRepository, gameSessionRepository, statisticsRepository)
         }
     val todayViewModel: TodayViewModel = viewModel(factory = factory)
     val uiState by todayViewModel.uiState.collectAsStateWithLifecycle()
@@ -98,7 +101,15 @@ private fun TodayScreen(
         is TodayUiState.Error ->
             Box(modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(uiState.message, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(
+                            when (uiState.reason) {
+                                TodayError.LOAD -> R.string.daily_load_error
+                                TodayError.START -> R.string.daily_start_error
+                            },
+                        ),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
                     Button(onClick = onRetry, modifier = Modifier.padding(top = 16.dp)) {
                         Text(stringResource(R.string.retry))
                     }
@@ -158,11 +169,17 @@ private fun TodayContent(
                             Text(stringResource(R.string.continue_game))
                         }
                     }
-                    is TodayUiState.Completed ->
+                    is TodayUiState.Completed -> {
                         Text(
                             stringResource(R.string.daily_completed),
                             color = MaterialTheme.colorScheme.primary,
                         )
+                        uiState.hintsUsed?.let { hintsUsed ->
+                            Text(stringResource(R.string.hints_used, hintsUsed))
+                        }
+                        Text(stringResource(R.string.current_daily_streak_value, uiState.currentStreak))
+                        Text(stringResource(R.string.best_daily_streak_value, uiState.bestStreak))
+                    }
                 }
             }
         }

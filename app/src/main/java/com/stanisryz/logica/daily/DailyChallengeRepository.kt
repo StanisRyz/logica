@@ -42,6 +42,4 @@ internal interface DailyChallengeRepository {
     ): SavedDailyChallenge?
 
     suspend fun save(challenge: SavedDailyChallenge)
-
-    fun saveInBackground(challenge: SavedDailyChallenge)
 }
