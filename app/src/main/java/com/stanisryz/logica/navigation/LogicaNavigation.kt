@@ -22,8 +22,9 @@ import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDe
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
-import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.balance.BalanceGameLaunch
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
+import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.settings.ThemeMode
 import com.stanisryz.logica.settings.UserSettings
 import com.stanisryz.logica.ui.screens.BalanceGameRoute
@@ -46,8 +47,7 @@ private sealed interface AppDestination {
     data object BalanceStart : AppDestination
 
     data class BalanceGame(
-        val difficulty: Difficulty,
-        val seed: Long,
+        val launch: BalanceGameLaunch,
     ) : AppDestination
 }
 
@@ -59,8 +59,10 @@ private val primaryDestinations =
     )
 
 @Composable
-fun LogicaNavigation(
+internal fun LogicaNavigation(
     settings: UserSettings,
+    gameSessionRepository: GameSessionRepository,
+    hasActiveBalanceSession: Boolean,
     onThemeModeChanged: (ThemeMode) -> Unit,
     onSoundEnabledChanged: (Boolean) -> Unit,
     onHapticsEnabledChanged: (Boolean) -> Unit,
@@ -113,7 +115,11 @@ fun LogicaNavigation(
                     }
                     entry<AppDestination.Catalog> {
                         CatalogScreen(
-                            onOpenBalance = { backStack.add(AppDestination.BalanceStart) },
+                            hasActiveBalanceSession = hasActiveBalanceSession,
+                            onContinueBalance = {
+                                backStack.add(AppDestination.BalanceGame(BalanceGameLaunch.Restore))
+                            },
+                            onNewBalance = { backStack.add(AppDestination.BalanceStart) },
                         )
                     }
                     entry<AppDestination.Statistics> {
@@ -129,11 +135,14 @@ fun LogicaNavigation(
                     }
                     entry<AppDestination.BalanceStart> {
                         BalanceStartScreen(
+                            hasActiveSession = hasActiveBalanceSession,
                             onStart = { difficulty ->
                                 backStack.add(
                                     AppDestination.BalanceGame(
-                                        difficulty = difficulty,
-                                        seed = catalogSeedSource.nextSeed().value,
+                                        BalanceGameLaunch.New(
+                                            difficulty = difficulty,
+                                            seed = catalogSeedSource.nextSeed(),
+                                        ),
                                     ),
                                 )
                             },
@@ -141,17 +150,23 @@ fun LogicaNavigation(
                     }
                     entry<AppDestination.BalanceGame> { destination ->
                         BalanceGameRoute(
-                            difficulty = destination.difficulty,
-                            seed = PuzzleSeed(destination.seed),
+                            launch = destination.launch,
+                            sessionRepository = gameSessionRepository,
                             onBack = { backStack.removeLastOrNull() },
-                            onNewPuzzle = {
+                            onNewPuzzle = { difficulty ->
                                 backStack.removeLastOrNull()
                                 backStack.add(
                                     AppDestination.BalanceGame(
-                                        difficulty = destination.difficulty,
-                                        seed = catalogSeedSource.nextSeed().value,
+                                        BalanceGameLaunch.New(
+                                            difficulty = difficulty,
+                                            seed = catalogSeedSource.nextSeed(),
+                                        ),
                                     ),
                                 )
+                            },
+                            onStartNew = {
+                                backStack.removeLastOrNull()
+                                backStack.add(AppDestination.BalanceStart)
                             },
                             onCatalog = {
                                 backStack.clear()

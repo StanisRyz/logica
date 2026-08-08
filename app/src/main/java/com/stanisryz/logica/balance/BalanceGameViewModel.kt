@@ -5,11 +5,15 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameEngine
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameState
+import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
 import com.stanisryz.logica.puzzle.core.balance.BalanceGeneratorV1
 import com.stanisryz.logica.puzzle.core.balance.BalancePosition
 import com.stanisryz.logica.puzzle.core.balance.BalancePuzzle
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.session.GameSessionRepository
+import com.stanisryz.logica.session.SavedGameSession
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -17,9 +21,18 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.UUID
+
+sealed interface BalanceGameLaunch {
+    data class New(
+        val difficulty: Difficulty,
+        val seed: PuzzleSeed,
+    ) : BalanceGameLaunch
+
+    data object Restore : BalanceGameLaunch
+}
 
 sealed interface BalanceGameUiState {
     data object Loading : BalanceGameUiState
@@ -35,31 +48,36 @@ sealed interface BalanceGameUiState {
     ) : BalanceGameUiState
 }
 
-class BalanceGameViewModel(
-    difficulty: Difficulty,
-    seed: PuzzleSeed,
+internal class BalanceGameViewModel(
+    private val launch: BalanceGameLaunch,
+    private val sessionRepository: GameSessionRepository,
     private val generator: BalanceGeneratorV1 = BalanceGeneratorV1(),
     private val workDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val sessionIdFactory: () -> String = { UUID.randomUUID().toString() },
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow<BalanceGameUiState>(BalanceGameUiState.Loading)
     val uiState: StateFlow<BalanceGameUiState> = mutableUiState.asStateFlow()
 
     private var gameEngine: BalanceGameEngine? = null
+    private var activeSession: ActiveSession? = null
     private var hintJob: Job? = null
 
     init {
         viewModelScope.launch {
             try {
-                val session =
-                    withContext(workDispatcher) {
-                        val puzzle = generator.generate(seed, difficulty)
-                        val engine = BalanceGameEngine(puzzle)
-                        GeneratedSession(puzzle, engine, engine.start())
-                    }
+                val session = loadSession()
                 gameEngine = session.engine
+                activeSession = session.activeSession
                 mutableUiState.value = BalanceGameUiState.Ready(session.puzzle, session.game)
+                if (session.isNew) {
+                    sessionRepository.replaceActiveSession(session.activeSession.saved(session.game))
+                }
             } catch (exception: CancellationException) {
                 throw exception
+            } catch (_: MissingSavedSessionException) {
+                mutableUiState.value = BalanceGameUiState.Error("Сохранённая игра не найдена. Начните новую игру.")
+            } catch (_: InvalidSavedSessionException) {
+                mutableUiState.value = BalanceGameUiState.Error("Сохранение повреждено или несовместимо. Начните новую игру.")
             } catch (_: Exception) {
                 mutableUiState.value = BalanceGameUiState.Error("Не удалось создать головоломку.")
             }
@@ -98,41 +116,125 @@ class BalanceGameViewModel(
                         requestedGame
                     }
 
-                mutableUiState.update { current ->
-                    if (current is BalanceGameUiState.Ready && current.game == requestedGame) {
-                        current.copy(game = hintedGame, isHintLoading = false)
-                    } else {
-                        current
-                    }
+                val current = mutableUiState.value
+                if (current is BalanceGameUiState.Ready && current.game == requestedGame) {
+                    mutableUiState.value = current.copy(game = hintedGame, isHintLoading = false)
+                    if (hintedGame != requestedGame) persist(hintedGame)
                 }
             }
+    }
+
+    private suspend fun loadSession(): LoadedSession =
+        when (val requestedLaunch = launch) {
+            is BalanceGameLaunch.New ->
+                withContext(workDispatcher) {
+                    val puzzle = generator.generate(requestedLaunch.seed, requestedLaunch.difficulty)
+                    val engine = BalanceGameEngine(puzzle)
+                    val game = engine.start()
+                    LoadedSession(
+                        puzzle = puzzle,
+                        engine = engine,
+                        game = game,
+                        activeSession = ActiveSession(sessionIdFactory(), puzzle),
+                        isNew = true,
+                    )
+                }
+            BalanceGameLaunch.Restore -> restoreSavedSession()
+        }
+
+    private suspend fun restoreSavedSession(): LoadedSession {
+        val saved = sessionRepository.readActiveSession(PuzzleType.BALANCE) ?: throw MissingSavedSessionException()
+        return try {
+            withContext(workDispatcher) {
+                require(saved.puzzleType == PuzzleType.BALANCE)
+                require(saved.generatorVersion == generator.version)
+                val puzzle = generator.generate(saved.puzzleSeed, saved.difficulty)
+                require(puzzle.id.generatorVersion == saved.generatorVersion)
+                val game =
+                    BalanceSessionCodec.decode(
+                        puzzle = puzzle,
+                        sessionFormatVersion = saved.sessionFormatVersion,
+                        gameplayPayload = saved.gameplayPayload,
+                        moveHistoryPayload = saved.moveHistoryPayload,
+                        hintsUsed = saved.hintsUsed,
+                        status = saved.status,
+                    )
+                require(game.status == BalanceGameStatus.IN_PROGRESS)
+                LoadedSession(
+                    puzzle = puzzle,
+                    engine = BalanceGameEngine(puzzle),
+                    game = game,
+                    activeSession = ActiveSession(saved.sessionId, puzzle),
+                    isNew = false,
+                )
+            }
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (_: Exception) {
+            sessionRepository.deleteActiveSession(PuzzleType.BALANCE, saved.sessionId)
+            throw InvalidSavedSessionException()
+        }
     }
 
     private fun updateGame(update: (BalanceGameEngine, BalanceGameState) -> BalanceGameState) {
         val engine = gameEngine ?: return
         hintJob?.cancel()
-        mutableUiState.update { current ->
-            if (current is BalanceGameUiState.Ready) {
-                current.copy(
-                    game = update(engine, current.game),
-                    isHintLoading = false,
-                )
-            } else {
-                current
-            }
+        val current = mutableUiState.value as? BalanceGameUiState.Ready ?: return
+        val updatedGame = update(engine, current.game)
+        if (updatedGame == current.game) {
+            if (current.isHintLoading) mutableUiState.value = current.copy(isHintLoading = false)
+            return
+        }
+        mutableUiState.value = current.copy(game = updatedGame, isHintLoading = false)
+        persist(updatedGame)
+    }
+
+    private fun persist(game: BalanceGameState) {
+        val session = activeSession ?: return
+        if (game.status == BalanceGameStatus.SOLVED) {
+            sessionRepository.deleteActiveSession(PuzzleType.BALANCE, session.sessionId)
+        } else {
+            sessionRepository.updateActiveSession(session.saved(game))
         }
     }
 
-    private data class GeneratedSession(
+    private data class LoadedSession(
         val puzzle: BalancePuzzle,
         val engine: BalanceGameEngine,
         val game: BalanceGameState,
+        val activeSession: ActiveSession,
+        val isNew: Boolean,
     )
+
+    private data class ActiveSession(
+        val sessionId: String,
+        val puzzle: BalancePuzzle,
+    ) {
+        fun saved(game: BalanceGameState): SavedGameSession {
+            val encoded = BalanceSessionCodec.encode(game)
+            return SavedGameSession(
+                sessionId = sessionId,
+                puzzleType = puzzle.id.type,
+                difficulty = puzzle.id.difficulty,
+                puzzleSeed = puzzle.id.seed,
+                generatorVersion = puzzle.id.generatorVersion,
+                sessionFormatVersion = BalanceSessionCodec.SESSION_FORMAT_VERSION,
+                gameplayPayload = encoded.gameplayPayload,
+                moveHistoryPayload = encoded.moveHistoryPayload,
+                hintsUsed = encoded.hintsUsed,
+                status = encoded.status,
+            )
+        }
+    }
+
+    private class MissingSavedSessionException : Exception()
+
+    private class InvalidSavedSessionException : Exception()
 }
 
-class BalanceGameViewModelFactory(
-    private val difficulty: Difficulty,
-    private val seed: PuzzleSeed,
+internal class BalanceGameViewModelFactory(
+    private val launch: BalanceGameLaunch,
+    private val sessionRepository: GameSessionRepository,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(BalanceGameViewModel::class.java)) {
@@ -140,6 +242,6 @@ class BalanceGameViewModelFactory(
         }
 
         @Suppress("UNCHECKED_CAST")
-        return BalanceGameViewModel(difficulty, seed) as T
+        return BalanceGameViewModel(launch, sessionRepository) as T
     }
 }

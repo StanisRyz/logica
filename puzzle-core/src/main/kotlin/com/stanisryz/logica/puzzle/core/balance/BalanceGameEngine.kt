@@ -73,6 +73,40 @@ class BalanceGameEngine(
         )
     }
 
+    fun restore(
+        board: BalanceState,
+        moveHistory: List<BalanceMove>,
+        hintsUsed: Int,
+        currentHint: BalanceHint?,
+    ): BalanceGameState {
+        require(board.size == puzzle.size) { "Saved board size does not match the puzzle." }
+        require(hintsUsed >= 0) { "Hints used must not be negative." }
+
+        var replayedBoard = BalanceState.fromPuzzle(puzzle)
+        moveHistory.forEach { move ->
+            require(move.position !in puzzle.fixedClues) { "Move history changes a fixed clue." }
+            require(replayedBoard.cellAt(move.position) == move.previousValue) {
+                "Move history is not compatible with the saved board."
+            }
+            replayedBoard = replayedBoard.withCell(move.position, move.newValue)
+        }
+        require(replayedBoard == board) { "Move history does not reconstruct the saved board." }
+        puzzle.fixedClues.forEach { (position, value) ->
+            require(board.cellAt(position) == value) { "Saved board changes a fixed clue." }
+        }
+        require(currentHint == null || hintsUsed > 0) { "A current hint requires positive hint usage." }
+        require(currentHint == null || hintProvider.hint(puzzle, board) == currentHint) {
+            "Saved hint is not compatible with the saved board."
+        }
+
+        return createState(
+            board = board,
+            moveHistory = moveHistory,
+            hintsUsed = hintsUsed,
+            currentHint = currentHint,
+        )
+    }
+
     fun requestHint(state: BalanceGameState): BalanceGameState {
         requireCompatible(state)
         val hint = hintProvider.hint(puzzle, state.board) ?: return state

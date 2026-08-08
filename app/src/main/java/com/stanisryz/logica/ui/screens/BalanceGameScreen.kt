@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.stanisryz.logica.balance.BalanceGameLaunch
 import com.stanisryz.logica.balance.BalanceGameUiState
 import com.stanisryz.logica.balance.BalanceGameViewModel
 import com.stanisryz.logica.balance.BalanceGameViewModelFactory
@@ -39,31 +40,32 @@ import com.stanisryz.logica.puzzle.core.balance.BalanceLogicTechnique
 import com.stanisryz.logica.puzzle.core.balance.BalancePosition
 import com.stanisryz.logica.puzzle.core.balance.BalancePuzzle
 import com.stanisryz.logica.puzzle.core.model.Difficulty
-import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
+import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.ui.balance.BalanceBoard
 
 @Composable
-fun BalanceGameRoute(
-    difficulty: Difficulty,
-    seed: PuzzleSeed,
+internal fun BalanceGameRoute(
+    launch: BalanceGameLaunch,
+    sessionRepository: GameSessionRepository,
     onBack: () -> Unit,
-    onNewPuzzle: () -> Unit,
+    onNewPuzzle: (Difficulty) -> Unit,
+    onStartNew: () -> Unit,
     onCatalog: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val factory = remember(difficulty, seed) { BalanceGameViewModelFactory(difficulty, seed) }
+    val factory = remember(launch, sessionRepository) { BalanceGameViewModelFactory(launch, sessionRepository) }
     val gameViewModel: BalanceGameViewModel = viewModel(factory = factory)
     val uiState by gameViewModel.uiState.collectAsStateWithLifecycle()
 
     BalanceGameScreen(
         uiState = uiState,
-        difficulty = difficulty,
         onCellTapped = gameViewModel::onCellTapped,
         onUndo = gameViewModel::undo,
         onHint = gameViewModel::requestHint,
         onReset = gameViewModel::reset,
         onBack = onBack,
         onNewPuzzle = onNewPuzzle,
+        onStartNew = onStartNew,
         onCatalog = onCatalog,
         modifier = modifier,
     )
@@ -72,13 +74,13 @@ fun BalanceGameRoute(
 @Composable
 private fun BalanceGameScreen(
     uiState: BalanceGameUiState,
-    difficulty: Difficulty,
     onCellTapped: (BalancePosition) -> Unit,
     onUndo: () -> Unit,
     onHint: () -> Unit,
     onReset: () -> Unit,
     onBack: () -> Unit,
-    onNewPuzzle: () -> Unit,
+    onNewPuzzle: (Difficulty) -> Unit,
+    onStartNew: () -> Unit,
     onCatalog: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -87,7 +89,7 @@ private fun BalanceGameScreen(
         is BalanceGameUiState.Error ->
             ErrorState(
                 message = uiState.message,
-                onTryAnother = onNewPuzzle,
+                onTryAnother = onStartNew,
                 onBack = onBack,
                 modifier = modifier,
             )
@@ -95,13 +97,13 @@ private fun BalanceGameScreen(
             ReadyState(
                 puzzle = uiState.puzzle,
                 game = uiState.game,
-                difficulty = difficulty,
+                difficulty = uiState.puzzle.id.difficulty,
                 isHintLoading = uiState.isHintLoading,
                 onCellTapped = onCellTapped,
                 onUndo = onUndo,
                 onHint = onHint,
                 onReset = onReset,
-                onNewPuzzle = onNewPuzzle,
+                onNewPuzzle = { onNewPuzzle(uiState.puzzle.id.difficulty) },
                 onCatalog = onCatalog,
                 modifier = modifier,
             )

@@ -1,6 +1,6 @@
 # Логика дня
 
-Native Android application shell with bottom navigation, Material 3 theme modes, and persistent user settings. The stack is Kotlin, Jetpack Compose, Navigation 3, DataStore, and Gradle Kotlin DSL.
+Native Android application with a playable Balance puzzle. The stack is Kotlin, Jetpack Compose, Navigation 3, DataStore, Room, and Gradle Kotlin DSL.
 
 Requires JDK 17 and Android SDK Platform 36.
 
@@ -27,6 +27,6 @@ Modules:
 - `app/` — Android/Compose application shell, navigation, theme, and settings.
 - `puzzle-core/` — deterministic Balance generation/solving plus pure-Kotlin gameplay and diagnostics.
 
-Balance is playable from the Catalog with difficulty selection, undo/reset, conflicts, and hints.
+Balance is playable from the Catalog with difficulty selection, undo/reset, conflicts, and hints. Unfinished catalog games persist locally and can be continued after restarting the app.
 
 Dependency versions are managed in `gradle/libs.versions.toml`.

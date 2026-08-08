@@ -3,9 +3,10 @@
 - Stack: Kotlin, Jetpack Compose, Material 3, AGP, and Gradle Kotlin DSL.
 - Work VS Code/CLI-first; the Gradle Wrapper is the build source of truth.
 - Dependency versions are managed in `gradle/libs.versions.toml`; keep dependencies minimal.
-- `:app` owns Android UI, Navigation 3, settings, and platform infrastructure; it may depend on `:puzzle-core`.
+- `:app` owns Android UI, Navigation 3, DataStore preferences, and Room game-session persistence; it may depend on `:puzzle-core`.
 - `:puzzle-core` contains platform-independent puzzle domain and algorithms; it must never depend on Android, Compose, or `:app`.
-- Settings use DataStore behind `SettingsRepository`; UI must not access persistence implementations directly.
+- DataStore stores user preferences; Room stores game sessions, and ViewModels use `GameSessionRepository` rather than Room DAOs.
+- Saved puzzles are rebuilt from deterministic identity; `generatorVersion` and `sessionFormatVersion` are separate compatibility concepts.
 - Puzzle identity is type + difficulty + seed + `generatorVersion`; concrete generators own their version.
 - Generators use project-owned random infrastructure and never system time, platform randomness, or Android APIs.
 - Daily seed derivation is deterministic and receives dates explicitly; concrete engines implement the shared `:puzzle-core` contracts.
@@ -17,7 +18,7 @@
 - Balance gameplay is immutable and separate from `BalanceState`; fixed clues cannot change, while editable cells may be invalid.
 - UI renders gameplay state and dispatches actions; diagnostics and hints reuse core rules/logic, and reset preserves hint usage.
 - Balance is the first playable Android slice; generation and solver-backed hints run off the main thread.
-- Localized hint text belongs in `:app`; gameplay persistence is not implemented yet.
+- Localized hint text belongs in `:app`; active Balance progress preserves moves, Undo history, and hint usage across restarts.
 - Balance generator soak verification is opt-in; large seed sweeps never belong in normal tests or builds.
 - Quality failures must report reproducible seeds; use collected metrics for evidence-based tuning, not speculative rewrites.
 - Invalid, non-unique, non-deterministic, misclassified, or branching gameplay puzzles are hard generator failures.

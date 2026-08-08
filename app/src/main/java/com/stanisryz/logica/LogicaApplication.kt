@@ -5,6 +5,9 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.stanisryz.logica.session.GameSessionRepository
+import com.stanisryz.logica.session.LogicaDatabase
+import com.stanisryz.logica.session.RoomGameSessionRepository
 import com.stanisryz.logica.settings.DataStoreSettingsRepository
 import com.stanisryz.logica.settings.SettingsRepository
 
@@ -25,4 +28,12 @@ internal class AppContainer(
         DataStoreSettingsRepository(
             dataStore = context.userSettingsDataStore,
         )
+
+    private val database: LogicaDatabase by lazy {
+        LogicaDatabase.create(context)
+    }
+
+    val gameSessionRepository: GameSessionRepository by lazy {
+        RoomGameSessionRepository(database.gameSessionDao())
+    }
 }

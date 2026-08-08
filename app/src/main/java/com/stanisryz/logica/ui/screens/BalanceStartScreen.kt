@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,10 +26,12 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 
 @Composable
 fun BalanceStartScreen(
+    hasActiveSession: Boolean,
     onStart: (Difficulty) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var selectedDifficulty by rememberSaveable { mutableStateOf(Difficulty.EASY) }
+    var showReplaceConfirmation by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier =
@@ -62,7 +66,13 @@ fun BalanceStartScreen(
             }
         }
         Button(
-            onClick = { onStart(selectedDifficulty) },
+            onClick = {
+                if (hasActiveSession) {
+                    showReplaceConfirmation = true
+                } else {
+                    onStart(selectedDifficulty)
+                }
+            },
             modifier =
                 Modifier
                     .fillMaxWidth()
@@ -70,6 +80,29 @@ fun BalanceStartScreen(
         ) {
             Text("Начать")
         }
+    }
+
+    if (showReplaceConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showReplaceConfirmation = false },
+            title = { Text("Начать новую игру?") },
+            text = { Text("Текущий прогресс будет заменён.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showReplaceConfirmation = false
+                        onStart(selectedDifficulty)
+                    },
+                ) {
+                    Text("Начать")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showReplaceConfirmation = false }) {
+                    Text("Отмена")
+                }
+            },
+        )
     }
 }
 
