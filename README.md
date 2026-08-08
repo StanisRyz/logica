@@ -16,6 +16,8 @@ adb install -r app\build\outputs\apk\debug\app-debug.apk
 Modules:
 
 - `app/` — Android/Compose application shell, navigation, theme, and settings.
-- `puzzle-core/` — deterministic Balance generation/solving plus pure-Kotlin gameplay, diagnostics, undo/reset, and hints.
+- `puzzle-core/` — deterministic Balance generation/solving plus pure-Kotlin gameplay and diagnostics.
+
+Balance is playable from the Catalog with difficulty selection, undo/reset, conflicts, and hints.
 
 Dependency versions are managed in `gradle/libs.versions.toml`.

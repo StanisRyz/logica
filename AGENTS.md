@@ -16,4 +16,6 @@
 - Balance difficulty uses solve characteristics rather than board size alone; rules and solver remain the validation source of truth.
 - Balance gameplay is immutable and separate from `BalanceState`; fixed clues cannot change, while editable cells may be invalid.
 - UI renders gameplay state and dispatches actions; diagnostics and hints reuse core rules/logic, and reset preserves hint usage.
+- Balance is the first playable Android slice; generation and solver-backed hints run off the main thread.
+- Localized hint text belongs in `:app`; gameplay persistence is not implemented yet.
 - Avoid unrelated refactors, speculative abstractions, excessive tests, and large documentation changes.

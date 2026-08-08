@@ -18,14 +18,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.settings.ThemeMode
 import com.stanisryz.logica.settings.UserSettings
+import com.stanisryz.logica.ui.screens.BalanceGameRoute
+import com.stanisryz.logica.ui.screens.BalanceStartScreen
 import com.stanisryz.logica.ui.screens.CatalogScreen
 import com.stanisryz.logica.ui.screens.SettingsScreen
 import com.stanisryz.logica.ui.screens.StatisticsScreen
 import com.stanisryz.logica.ui.screens.TodayScreen
+import java.security.SecureRandom
 
 private sealed interface AppDestination {
     data object Today : AppDestination
@@ -35,6 +42,13 @@ private sealed interface AppDestination {
     data object Statistics : AppDestination
 
     data object Settings : AppDestination
+
+    data object BalanceStart : AppDestination
+
+    data class BalanceGame(
+        val difficulty: Difficulty,
+        val seed: Long,
+    ) : AppDestination
 }
 
 private val primaryDestinations =
@@ -55,8 +69,9 @@ fun LogicaNavigation(
         remember {
             mutableStateListOf<AppDestination>(AppDestination.Today)
         }
+    val catalogSeedSource = remember { CatalogSeedSource() }
     val currentDestination = backStack.last()
-    val isSettings = currentDestination == AppDestination.Settings
+    val isPrimaryDestination = currentDestination in primaryDestinations
 
     Scaffold(
         topBar = {
@@ -64,14 +79,14 @@ fun LogicaNavigation(
                 destination = currentDestination,
                 onBack = { backStack.removeLastOrNull() },
                 onOpenSettings = {
-                    if (!isSettings) {
+                    if (isPrimaryDestination) {
                         backStack.add(AppDestination.Settings)
                     }
                 },
             )
         },
         bottomBar = {
-            if (!isSettings) {
+            if (isPrimaryDestination) {
                 AppBottomBar(
                     selectedDestination = currentDestination,
                     onDestinationSelected = { destination ->
@@ -86,13 +101,20 @@ fun LogicaNavigation(
             backStack = backStack,
             modifier = Modifier.padding(contentPadding),
             onBack = { backStack.removeLastOrNull() },
+            entryDecorators =
+                listOf(
+                    rememberSaveableStateHolderNavEntryDecorator(),
+                    rememberViewModelStoreNavEntryDecorator(),
+                ),
             entryProvider =
                 entryProvider {
                     entry<AppDestination.Today> {
                         TodayScreen()
                     }
                     entry<AppDestination.Catalog> {
-                        CatalogScreen()
+                        CatalogScreen(
+                            onOpenBalance = { backStack.add(AppDestination.BalanceStart) },
+                        )
                     }
                     entry<AppDestination.Statistics> {
                         StatisticsScreen()
@@ -103,6 +125,38 @@ fun LogicaNavigation(
                             onThemeModeChanged = onThemeModeChanged,
                             onSoundEnabledChanged = onSoundEnabledChanged,
                             onHapticsEnabledChanged = onHapticsEnabledChanged,
+                        )
+                    }
+                    entry<AppDestination.BalanceStart> {
+                        BalanceStartScreen(
+                            onStart = { difficulty ->
+                                backStack.add(
+                                    AppDestination.BalanceGame(
+                                        difficulty = difficulty,
+                                        seed = catalogSeedSource.nextSeed().value,
+                                    ),
+                                )
+                            },
+                        )
+                    }
+                    entry<AppDestination.BalanceGame> { destination ->
+                        BalanceGameRoute(
+                            difficulty = destination.difficulty,
+                            seed = PuzzleSeed(destination.seed),
+                            onBack = { backStack.removeLastOrNull() },
+                            onNewPuzzle = {
+                                backStack.removeLastOrNull()
+                                backStack.add(
+                                    AppDestination.BalanceGame(
+                                        difficulty = destination.difficulty,
+                                        seed = catalogSeedSource.nextSeed().value,
+                                    ),
+                                )
+                            },
+                            onCatalog = {
+                                backStack.clear()
+                                backStack.add(AppDestination.Catalog)
+                            },
                         )
                     }
                 },
@@ -126,7 +180,7 @@ private fun AppTopBar(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (destination == AppDestination.Settings) {
+            if (destination !in primaryDestinations) {
                 TextButton(onClick = onBack) {
                     Text("Назад")
                 }
@@ -136,7 +190,7 @@ private fun AppTopBar(
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleLarge,
             )
-            if (destination != AppDestination.Settings) {
+            if (destination in primaryDestinations) {
                 TextButton(onClick = onOpenSettings) {
                     Text("Настройки")
                 }
@@ -169,6 +223,8 @@ private val AppDestination.title: String
             AppDestination.Catalog -> "Каталог"
             AppDestination.Statistics -> "Статистика"
             AppDestination.Settings -> "Настройки"
+            AppDestination.BalanceStart -> "Баланс"
+            is AppDestination.BalanceGame -> "Баланс"
         }
 
 private val AppDestination.symbol: String
@@ -178,4 +234,12 @@ private val AppDestination.symbol: String
             AppDestination.Catalog -> "▦"
             AppDestination.Statistics -> "≡"
             AppDestination.Settings -> ""
+            AppDestination.BalanceStart -> ""
+            is AppDestination.BalanceGame -> ""
         }
+
+private class CatalogSeedSource {
+    private val random = SecureRandom()
+
+    fun nextSeed(): PuzzleSeed = PuzzleSeed(random.nextLong())
+}
