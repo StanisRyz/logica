@@ -12,7 +12,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.stanisryz.logica.R
 
 @Composable
 fun CatalogScreen(
@@ -21,38 +23,23 @@ fun CatalogScreen(
     onNewBalance: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .padding(24.dp),
-    ) {
-        Text(
-            text = "Головоломки",
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(bottom = 16.dp),
-        )
+    Column(modifier.fillMaxSize().padding(24.dp)) {
+        Text(stringResource(R.string.puzzles), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(bottom = 16.dp))
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(20.dp)) {
-                Text("Баланс", style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.balance), style = MaterialTheme.typography.titleLarge)
                 Text(
-                    text = "Заполните поле нулями и единицами, соблюдая баланс и уникальность линий.",
+                    stringResource(R.string.balance_catalog_description),
                     modifier = Modifier.padding(vertical = 12.dp),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 if (hasActiveBalanceSession) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = onContinueBalance) {
-                            Text("Продолжить")
-                        }
-                        Button(onClick = onNewBalance) {
-                            Text("Новая игра")
-                        }
+                        Button(onClick = onContinueBalance) { Text(stringResource(R.string.continue_game)) }
+                        Button(onClick = onNewBalance) { Text(stringResource(R.string.new_game)) }
                     }
                 } else {
-                    Button(onClick = onNewBalance) {
-                        Text("Играть")
-                    }
+                    Button(onClick = onNewBalance) { Text(stringResource(R.string.play)) }
                 }
             }
         }

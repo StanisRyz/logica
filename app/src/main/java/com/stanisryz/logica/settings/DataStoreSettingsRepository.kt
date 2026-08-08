@@ -31,6 +31,7 @@ class DataStoreSettingsRepository(
                             } ?: ThemeMode.SYSTEM,
                     soundEnabled = preferences[SOUND_ENABLED] ?: true,
                     hapticsEnabled = preferences[HAPTICS_ENABLED] ?: true,
+                    balanceTutorialCompleted = preferences[BALANCE_TUTORIAL_COMPLETED] ?: false,
                 )
             }
 
@@ -52,9 +53,16 @@ class DataStoreSettingsRepository(
         }
     }
 
+    override suspend fun setBalanceTutorialCompleted(completed: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[BALANCE_TUTORIAL_COMPLETED] = completed
+        }
+    }
+
     private companion object {
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
+        val BALANCE_TUTORIAL_COMPLETED = booleanPreferencesKey("balance_tutorial_completed")
     }
 }

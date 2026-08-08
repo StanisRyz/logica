@@ -35,6 +35,12 @@ class SettingsViewModel(
             repository.setHapticsEnabled(enabled)
         }
     }
+
+    fun setBalanceTutorialCompleted(completed: Boolean) {
+        viewModelScope.launch {
+            repository.setBalanceTutorialCompleted(completed)
+        }
+    }
 }
 
 class SettingsViewModelFactory(

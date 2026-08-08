@@ -19,6 +19,8 @@
 - UI renders gameplay state and dispatches actions; diagnostics and hints reuse core rules/logic, and reset preserves hint usage.
 - Balance is the first playable Android slice; generation and solver-backed hints run off the main thread.
 - Localized hint text belongs in `:app`; active Balance progress preserves moves, Undo history, and hint usage across restarts.
+- Balance tutorial is application onboarding: it reuses core Balance gameplay but stays separate from Room-backed catalog sessions; completion is a DataStore preference.
+- User-facing rule and hint explanations belong in `:app`; Compose renders structured core state and UX polish must not change deterministic generation or persistence compatibility without a concrete requirement.
 - Balance generator soak verification is opt-in; large seed sweeps never belong in normal tests or builds.
 - Quality failures must report reproducible seeds; use collected metrics for evidence-based tuning, not speculative rewrites.
 - Invalid, non-unique, non-deterministic, misclassified, or branching gameplay puzzles are hard generator failures.

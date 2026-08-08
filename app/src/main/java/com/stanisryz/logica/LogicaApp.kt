@@ -34,6 +34,7 @@ fun LogicaApp() {
     LogicaTheme(themeMode = settings.themeMode) {
         LogicaNavigation(
             settings = settings,
+            settingsRepository = settingsRepository,
             gameSessionRepository = gameSessionRepository,
             hasActiveBalanceSession = hasActiveBalanceSession,
             onThemeModeChanged = settingsViewModel::setThemeMode,

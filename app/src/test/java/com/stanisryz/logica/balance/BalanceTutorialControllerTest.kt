@@ -1,0 +1,48 @@
+package com.stanisryz.logica.balance
+
+import com.stanisryz.logica.puzzle.core.balance.BalanceCell
+import com.stanisryz.logica.puzzle.core.balance.BalancePosition
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class BalanceTutorialControllerTest {
+    @Test
+    fun progressesOnlyAfterCorrectMovesAndCompletesIndependentPuzzle() {
+        val controller = BalanceTutorialController()
+        val firstTarget = BalancePosition(0, 2)
+
+        controller.onCellTapped(firstTarget)
+
+        assertEquals(BalanceTutorialStage.PREVENT_THREE, controller.state.stage)
+        assertEquals(BalanceTutorialFeedback.TRY_AGAIN, controller.state.feedback)
+
+        controller.onCellTapped(firstTarget)
+        controller.onCellTapped(BalancePosition(0, 3))
+        controller.onCellTapped(BalancePosition(0, 3))
+        controller.onCellTapped(BalancePosition(1, 3))
+
+        assertEquals(BalanceTutorialStage.INDEPENDENT_PUZZLE, controller.state.stage)
+        assertFalse(controller.state.completed)
+
+        listOf(
+            BalancePosition(0, 1) to BalanceCell.ZERO,
+            BalancePosition(0, 2) to BalanceCell.ONE,
+            BalancePosition(1, 0) to BalanceCell.ZERO,
+            BalancePosition(1, 2) to BalanceCell.ZERO,
+            BalancePosition(2, 1) to BalanceCell.ZERO,
+            BalancePosition(2, 3) to BalanceCell.ZERO,
+            BalancePosition(3, 1) to BalanceCell.ONE,
+            BalancePosition(3, 2) to BalanceCell.ZERO,
+        ).forEach { (position, value) ->
+            while (controller.state.game.board
+                    .cellAt(position) != value
+            ) {
+                controller.onCellTapped(position)
+            }
+        }
+
+        assertTrue(controller.state.completed)
+    }
+}
