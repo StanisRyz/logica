@@ -30,7 +30,7 @@ object PuzzleGeneratorContract {
 
         val solution = solver.solve(first)
         assertNotNull("Generated puzzle must have a solution.", solution)
-        assertEquals(ValidationResult.Valid, validator.validate(first, requireNotNull(solution)))
+        assertEquals(ValidationResult.ValidComplete, validator.validate(first, requireNotNull(solution)))
         assertEquals("Generated puzzle must have exactly one solution.", 1, solver.countSolutions(first))
     }
 }

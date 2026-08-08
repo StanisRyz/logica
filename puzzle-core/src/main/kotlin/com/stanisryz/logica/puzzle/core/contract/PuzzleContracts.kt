@@ -55,7 +55,9 @@ interface PuzzleDifficultyEvaluator<in D : PuzzleDefinition> {
 }
 
 sealed interface ValidationResult {
-    data object Valid : ValidationResult
+    data object ValidPartial : ValidationResult
+
+    data object ValidComplete : ValidationResult
 
     data class Invalid(
         val reason: String? = null,

@@ -9,4 +9,6 @@
 - Puzzle identity is type + difficulty + seed + `generatorVersion`; concrete generators own their version.
 - Generators use project-owned random infrastructure and never system time, platform randomness, or Android APIs.
 - Daily seed derivation is deterministic and receives dates explicitly; concrete engines implement the shared `:puzzle-core` contracts.
+- Balance is the first concrete puzzle; its immutable definition, separate player state, and reusable rules live entirely in `:puzzle-core`.
+- Puzzle rules stay independent from UI and must be reused by future solver, generator, and gameplay layers.
 - Avoid unrelated refactors, speculative abstractions, excessive tests, and large documentation changes.
