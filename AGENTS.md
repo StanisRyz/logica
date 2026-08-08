@@ -12,4 +12,6 @@
 - Balance is the first concrete puzzle; its immutable definition, separate player state, and reusable rules live entirely in `:puzzle-core`.
 - Balance solving is deterministic and reuses the validator rules; logical steps are data-driven for future hints and difficulty analysis.
 - Partial `BalanceState` and completed `BalanceSolution` are distinct; puzzle rules stay UI-independent and reusable.
+- `BalanceGeneratorV1` owns version 1 and uses bounded project-RNG generation; returned puzzles are valid, unique, and logic-only solvable.
+- Balance difficulty uses solve characteristics rather than board size alone; rules and solver remain the validation source of truth.
 - Avoid unrelated refactors, speculative abstractions, excessive tests, and large documentation changes.

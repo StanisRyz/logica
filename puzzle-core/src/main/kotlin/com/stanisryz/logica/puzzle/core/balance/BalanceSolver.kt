@@ -7,6 +7,13 @@ data class BalanceSolveAnalysis(
     val logicalSteps: Int,
     val branchDecisions: Int,
     val maximumSearchDepth: Int,
+    val techniqueCounts: BalanceTechniqueCounts,
+)
+
+data class BalanceTechniqueCounts(
+    val preventThree: Int,
+    val completeQuota: Int,
+    val preserveUniqueness: Int,
 )
 
 data class BalanceSolveResult(
@@ -72,7 +79,7 @@ class BalanceSolver(
 
             val step = logicEngine.nextStep(puzzle, state) ?: break
             state = step.applyTo(state)
-            outcome.metrics.logicalSteps++
+            outcome.metrics.record(step.technique)
         }
 
         val choice = selectCell(puzzle, state) ?: return
@@ -136,12 +143,30 @@ class BalanceSolver(
         var logicalSteps: Int = 0,
         var branchDecisions: Int = 0,
         var maximumSearchDepth: Int = 0,
+        var preventThree: Int = 0,
+        var completeQuota: Int = 0,
+        var preserveUniqueness: Int = 0,
     ) {
+        fun record(technique: BalanceLogicTechnique) {
+            logicalSteps++
+            when (technique) {
+                BalanceLogicTechnique.PREVENT_THREE -> preventThree++
+                BalanceLogicTechnique.COMPLETE_QUOTA -> completeQuota++
+                BalanceLogicTechnique.PRESERVE_UNIQUENESS -> preserveUniqueness++
+            }
+        }
+
         fun toAnalysis() =
             BalanceSolveAnalysis(
                 logicalSteps = logicalSteps,
                 branchDecisions = branchDecisions,
                 maximumSearchDepth = maximumSearchDepth,
+                techniqueCounts =
+                    BalanceTechniqueCounts(
+                        preventThree = preventThree,
+                        completeQuota = completeQuota,
+                        preserveUniqueness = preserveUniqueness,
+                    ),
             )
     }
 }

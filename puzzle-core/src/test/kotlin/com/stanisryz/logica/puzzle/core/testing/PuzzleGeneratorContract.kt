@@ -4,6 +4,7 @@ import com.stanisryz.logica.puzzle.core.contract.PuzzleDefinition
 import com.stanisryz.logica.puzzle.core.contract.PuzzleGenerator
 import com.stanisryz.logica.puzzle.core.contract.PuzzleSolution
 import com.stanisryz.logica.puzzle.core.contract.PuzzleSolver
+import com.stanisryz.logica.puzzle.core.contract.PuzzleState
 import com.stanisryz.logica.puzzle.core.contract.PuzzleValidator
 import com.stanisryz.logica.puzzle.core.contract.ValidationResult
 import com.stanisryz.logica.puzzle.core.model.Difficulty
@@ -12,13 +13,14 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 
 object PuzzleGeneratorContract {
-    fun <D : PuzzleDefinition, S : PuzzleSolution> verify(
+    fun <D : PuzzleDefinition, S : PuzzleSolution, P : PuzzleState> verify(
         generator: PuzzleGenerator<D>,
         solver: PuzzleSolver<D, S>,
-        validator: PuzzleValidator<D, S>,
+        validator: PuzzleValidator<D, P>,
+        solutionToState: (S) -> P,
         seed: PuzzleSeed,
         difficulty: Difficulty,
-    ) {
+    ): D {
         val first = generator.generate(seed, difficulty)
         val second = generator.generate(seed, difficulty)
 
@@ -30,7 +32,11 @@ object PuzzleGeneratorContract {
 
         val solution = solver.solve(first)
         assertNotNull("Generated puzzle must have a solution.", solution)
-        assertEquals(ValidationResult.ValidComplete, validator.validate(first, requireNotNull(solution)))
+        assertEquals(
+            ValidationResult.ValidComplete,
+            validator.validate(first, solutionToState(requireNotNull(solution))),
+        )
         assertEquals("Generated puzzle must have exactly one solution.", 1, solver.countSolutions(first))
+        return first
     }
 }

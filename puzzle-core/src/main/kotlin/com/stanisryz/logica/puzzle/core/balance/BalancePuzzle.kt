@@ -25,4 +25,20 @@ class BalancePuzzle(
         }
         this.fixedClues = cluesByPosition.toMap()
     }
+
+    override fun equals(other: Any?): Boolean =
+        this === other ||
+            other is BalancePuzzle &&
+            id == other.id &&
+            size == other.size &&
+            fixedClues == other.fixedClues
+
+    override fun hashCode(): Int {
+        var result = id.hashCode()
+        result = 31 * result + size
+        result = 31 * result + fixedClues.hashCode()
+        return result
+    }
+
+    override fun toString(): String = "BalancePuzzle(id=$id, size=$size, fixedClues=$fixedClues)"
 }
