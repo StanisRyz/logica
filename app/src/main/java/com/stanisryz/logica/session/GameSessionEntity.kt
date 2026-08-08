@@ -2,13 +2,16 @@ package com.stanisryz.logica.session
 
 import androidx.room3.ColumnInfo
 import androidx.room3.Entity
-import androidx.room3.PrimaryKey
 
-@Entity(tableName = "game_sessions")
+@Entity(
+    tableName = "game_sessions",
+    primaryKeys = ["puzzle_type", "session_scope"],
+)
 internal data class GameSessionEntity(
-    @PrimaryKey
     @ColumnInfo(name = "puzzle_type")
     val puzzleType: String,
+    @ColumnInfo(name = "session_scope")
+    val sessionScope: String,
     @ColumnInfo(name = "session_id")
     val sessionId: String,
     val difficulty: String,
@@ -16,6 +19,10 @@ internal data class GameSessionEntity(
     val puzzleSeed: Long,
     @ColumnInfo(name = "generator_version")
     val generatorVersion: Int,
+    @ColumnInfo(name = "challenge_date")
+    val challengeDate: String?,
+    @ColumnInfo(name = "daily_policy_version")
+    val dailyPolicyVersion: Int?,
     @ColumnInfo(name = "session_format_version")
     val sessionFormatVersion: Int,
     @ColumnInfo(name = "gameplay_payload")

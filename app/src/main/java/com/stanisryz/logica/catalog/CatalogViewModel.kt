@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.session.GameSessionRepository
+import com.stanisryz.logica.session.GameSessionScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -13,7 +14,7 @@ internal class CatalogViewModel(
     sessionRepository: GameSessionRepository,
 ) : ViewModel() {
     val hasActiveBalanceSession: StateFlow<Boolean> =
-        sessionRepository.observeHasActiveSession(PuzzleType.BALANCE).stateIn(
+        sessionRepository.observeHasActiveSession(PuzzleType.BALANCE, GameSessionScope.CATALOG).stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = false,

@@ -49,7 +49,11 @@ internal class BalanceTutorialController {
         val expectedMove = BalanceTutorialScenarios.expectedMove(state.stage)
         if (expectedMove != null) {
             state =
-                if (position == expectedMove.position && updated.board.cellAt(position) == expectedMove.value) {
+                if (
+                    position == expectedMove.position &&
+                    updated.board.cellAt(position) == expectedMove.value &&
+                    updated.violations.isEmpty()
+                ) {
                     advance()
                 } else {
                     state.copy(game = updated, feedback = BalanceTutorialFeedback.TRY_AGAIN)
@@ -74,15 +78,15 @@ internal class BalanceTutorialController {
     }
 }
 
-private data class ExpectedTutorialMove(
+internal data class ExpectedTutorialMove(
     val position: BalancePosition,
     val value: BalanceCell,
 )
 
-private object BalanceTutorialScenarios {
+internal object BalanceTutorialScenarios {
     private val firstTarget = BalancePosition(0, 2)
     private val secondTarget = BalancePosition(0, 3)
-    private val thirdTarget = BalancePosition(1, 3)
+    private val thirdTarget = BalancePosition(1, 0)
 
     fun nextStage(stage: BalanceTutorialStage): BalanceTutorialStage? =
         when (stage) {
@@ -96,7 +100,7 @@ private object BalanceTutorialScenarios {
         when (stage) {
             BalanceTutorialStage.PREVENT_THREE -> ExpectedTutorialMove(firstTarget, BalanceCell.ONE)
             BalanceTutorialStage.COMPLETE_QUOTA -> ExpectedTutorialMove(secondTarget, BalanceCell.ONE)
-            BalanceTutorialStage.PRESERVE_UNIQUENESS -> ExpectedTutorialMove(thirdTarget, BalanceCell.ZERO)
+            BalanceTutorialStage.PRESERVE_UNIQUENESS -> ExpectedTutorialMove(thirdTarget, BalanceCell.ONE)
             BalanceTutorialStage.INDEPENDENT_PUZZLE -> null
         }
 
@@ -145,7 +149,7 @@ private object BalanceTutorialScenarios {
             BalanceTutorialStage.PRESERVE_UNIQUENESS ->
                 clues(
                     "0011",
-                    "001.",
+                    ".01.",
                     "....",
                     "....",
                 )

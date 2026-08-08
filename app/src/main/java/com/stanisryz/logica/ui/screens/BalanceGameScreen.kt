@@ -39,10 +39,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
+import com.stanisryz.logica.balance.BalanceGameContext
 import com.stanisryz.logica.balance.BalanceGameLaunch
 import com.stanisryz.logica.balance.BalanceGameUiState
 import com.stanisryz.logica.balance.BalanceGameViewModel
 import com.stanisryz.logica.balance.BalanceGameViewModelFactory
+import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.puzzle.core.balance.BalanceCell
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameState
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
@@ -60,14 +62,19 @@ import com.stanisryz.logica.ui.balance.BalanceBoard
 internal fun BalanceGameRoute(
     launch: BalanceGameLaunch,
     sessionRepository: GameSessionRepository,
+    dailyChallengeRepository: DailyChallengeRepository,
     hapticsEnabled: Boolean,
     onBack: () -> Unit,
     onNewPuzzle: (Difficulty) -> Unit,
     onStartNew: () -> Unit,
     onCatalog: () -> Unit,
+    onToday: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val factory = remember(launch, sessionRepository) { BalanceGameViewModelFactory(launch, sessionRepository) }
+    val factory =
+        remember(launch, sessionRepository, dailyChallengeRepository) {
+            BalanceGameViewModelFactory(launch, sessionRepository, dailyChallengeRepository)
+        }
     val gameViewModel: BalanceGameViewModel = viewModel(factory = factory)
     val uiState by gameViewModel.uiState.collectAsStateWithLifecycle()
     BalanceGameScreen(
@@ -81,6 +88,8 @@ internal fun BalanceGameRoute(
         onNewPuzzle,
         onStartNew,
         onCatalog,
+        onToday,
+        launch.context is BalanceGameContext.Daily,
         modifier,
     )
 }
@@ -97,11 +106,13 @@ private fun BalanceGameScreen(
     onNewPuzzle: (Difficulty) -> Unit,
     onStartNew: () -> Unit,
     onCatalog: () -> Unit,
+    onToday: () -> Unit,
+    isDaily: Boolean,
     modifier: Modifier = Modifier,
 ) {
     when (uiState) {
         BalanceGameUiState.Loading -> LoadingState(modifier)
-        is BalanceGameUiState.Error -> ErrorState(uiState.message, onStartNew, onBack, modifier)
+        is BalanceGameUiState.Error -> ErrorState(uiState.message, if (isDaily) onToday else onStartNew, onBack, modifier)
         is BalanceGameUiState.Ready ->
             ReadyState(
                 uiState.puzzle,
@@ -115,6 +126,8 @@ private fun BalanceGameScreen(
                 hapticsEnabled,
                 { onNewPuzzle(uiState.puzzle.id.difficulty) },
                 onCatalog,
+                onToday,
+                isDaily,
                 modifier,
             )
     }
@@ -157,6 +170,8 @@ private fun ReadyState(
     hapticsEnabled: Boolean,
     onNewPuzzle: () -> Unit,
     onCatalog: () -> Unit,
+    onToday: () -> Unit,
+    isDaily: Boolean,
     modifier: Modifier,
 ) {
     var showResetConfirmation by remember { mutableStateOf(false) }
@@ -234,8 +249,18 @@ private fun ReadyState(
             icon = { Icon(Icons.Filled.TaskAlt, null, tint = MaterialTheme.colorScheme.primary) },
             title = { Text(stringResource(R.string.puzzle_solved)) },
             text = { Text(stringResource(R.string.hints_used, game.hintsUsed)) },
-            confirmButton = { TextButton(onClick = onNewPuzzle) { Text(stringResource(R.string.new_puzzle)) } },
-            dismissButton = { TextButton(onClick = onCatalog) { Text(stringResource(R.string.to_catalog)) } },
+            confirmButton = {
+                if (isDaily) {
+                    TextButton(onClick = onToday) { Text(stringResource(R.string.to_today)) }
+                } else {
+                    TextButton(onClick = onNewPuzzle) { Text(stringResource(R.string.new_puzzle)) }
+                }
+            },
+            dismissButton = {
+                if (!isDaily) {
+                    TextButton(onClick = onCatalog) { Text(stringResource(R.string.to_catalog)) }
+                }
+            },
         )
     }
 }

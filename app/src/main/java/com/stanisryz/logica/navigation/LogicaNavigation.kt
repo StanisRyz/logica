@@ -27,6 +27,7 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.stanisryz.logica.R
 import com.stanisryz.logica.balance.BalanceGameLaunch
+import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.settings.SettingsRepository
@@ -38,7 +39,7 @@ import com.stanisryz.logica.ui.screens.BalanceTutorialRoute
 import com.stanisryz.logica.ui.screens.CatalogScreen
 import com.stanisryz.logica.ui.screens.SettingsScreen
 import com.stanisryz.logica.ui.screens.StatisticsScreen
-import com.stanisryz.logica.ui.screens.TodayScreen
+import com.stanisryz.logica.ui.screens.TodayRoute
 import java.security.SecureRandom
 
 private sealed interface AppDestination {
@@ -66,6 +67,7 @@ internal fun LogicaNavigation(
     settings: UserSettings,
     settingsRepository: SettingsRepository,
     gameSessionRepository: GameSessionRepository,
+    dailyChallengeRepository: DailyChallengeRepository,
     hasActiveBalanceSession: Boolean,
     onThemeModeChanged: (ThemeMode) -> Unit,
     onSoundEnabledChanged: (Boolean) -> Unit,
@@ -100,11 +102,19 @@ internal fun LogicaNavigation(
             entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
             entryProvider =
                 entryProvider {
-                    entry<AppDestination.Today> { TodayScreen() }
+                    entry<AppDestination.Today> {
+                        TodayRoute(
+                            dailyChallengeRepository = dailyChallengeRepository,
+                            gameSessionRepository = gameSessionRepository,
+                            tutorialCompleted = settings.balanceTutorialCompleted,
+                            onOpenDaily = { launch -> backStack.add(AppDestination.BalanceGame(launch)) },
+                            onOpenTutorial = { backStack.add(AppDestination.BalanceTutorial) },
+                        )
+                    }
                     entry<AppDestination.Catalog> {
                         CatalogScreen(
                             hasActiveBalanceSession = hasActiveBalanceSession,
-                            onContinueBalance = { backStack.add(AppDestination.BalanceGame(BalanceGameLaunch.Restore)) },
+                            onContinueBalance = { backStack.add(AppDestination.BalanceGame(BalanceGameLaunch.Restore())) },
                             onNewBalance = { backStack.add(AppDestination.BalanceStart) },
                         )
                     }
@@ -129,6 +139,7 @@ internal fun LogicaNavigation(
                         BalanceGameRoute(
                             launch = destination.launch,
                             sessionRepository = gameSessionRepository,
+                            dailyChallengeRepository = dailyChallengeRepository,
                             hapticsEnabled = settings.hapticsEnabled,
                             onBack = { backStack.removeLastOrNull() },
                             onNewPuzzle = { difficulty ->
@@ -142,6 +153,10 @@ internal fun LogicaNavigation(
                             onCatalog = {
                                 backStack.clear()
                                 backStack.add(AppDestination.Catalog)
+                            },
+                            onToday = {
+                                backStack.clear()
+                                backStack.add(AppDestination.Today)
                             },
                         )
                     }

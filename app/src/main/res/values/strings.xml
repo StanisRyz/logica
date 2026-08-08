@@ -76,4 +76,11 @@
     <string name="continue_game">Продолжить</string>
     <string name="new_game">Новая игра</string>
     <string name="play">Играть</string>
+    <string name="daily_challenge">Задача дня</string>
+    <string name="daily_available">Сегодняшняя задача готова.</string>
+    <string name="daily_in_progress">Задача начата — прогресс сохранён.</string>
+    <string name="daily_completed">Задача дня выполнена.</string>
+    <string name="daily_tutorial_recommendation">Перед задачей можно быстро познакомиться с правилами. Обучение не обязательно.</string>
+    <string name="to_today">На экран «Сегодня»</string>
+    <string name="retry">Повторить</string>
 </resources>

@@ -18,6 +18,7 @@ fun LogicaApp() {
     val application = LocalContext.current.applicationContext as LogicaApplication
     val settingsRepository = application.container.settingsRepository
     val gameSessionRepository = application.container.gameSessionRepository
+    val dailyChallengeRepository = application.container.dailyChallengeRepository
     val viewModelFactory =
         remember(settingsRepository) {
             SettingsViewModelFactory(settingsRepository)
@@ -36,6 +37,7 @@ fun LogicaApp() {
             settings = settings,
             settingsRepository = settingsRepository,
             gameSessionRepository = gameSessionRepository,
+            dailyChallengeRepository = dailyChallengeRepository,
             hasActiveBalanceSession = hasActiveBalanceSession,
             onThemeModeChanged = settingsViewModel::setThemeMode,
             onSoundEnabledChanged = settingsViewModel::setSoundEnabled,

@@ -27,6 +27,6 @@ Modules:
 - `app/` — Android/Compose application shell, navigation, theme, and settings.
 - `puzzle-core/` — deterministic Balance generation/solving plus pure-Kotlin gameplay and diagnostics.
 
-Balance is playable from the Catalog with optional interactive onboarding, selectable difficulties, undo/reset, conflicts, hints, and improved accessibility cues. Unfinished catalog games persist locally and can be continued after restarting the app.
+Balance is playable from the Catalog with optional interactive onboarding, selectable difficulties, undo/reset, conflicts, hints, and improved accessibility cues. The Today screen provides a deterministic, resumable Daily Balance challenge while unfinished Catalog progress remains independent.
 
 Dependency versions are managed in `gradle/libs.versions.toml`.

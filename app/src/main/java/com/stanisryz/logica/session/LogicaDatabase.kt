@@ -4,16 +4,22 @@ import android.content.Context
 import androidx.room3.Database
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
+import androidx.room3.migration.Migration
+import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import com.stanisryz.logica.daily.DailyChallengeDao
+import com.stanisryz.logica.daily.DailyChallengeEntity
 import kotlinx.coroutines.Dispatchers
 
 @Database(
-    entities = [GameSessionEntity::class],
-    version = 1,
+    entities = [GameSessionEntity::class, DailyChallengeEntity::class],
+    version = 2,
     exportSchema = true,
 )
 internal abstract class LogicaDatabase : RoomDatabase() {
     abstract fun gameSessionDao(): GameSessionDao
+
+    abstract fun dailyChallengeDao(): DailyChallengeDao
 
     companion object {
         private const val DATABASE_NAME = "logica.db"
@@ -26,7 +32,74 @@ internal abstract class LogicaDatabase : RoomDatabase() {
                     name = applicationContext.getDatabasePath(DATABASE_NAME).absolutePath,
                 ).setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(Dispatchers.IO)
+                .addMigrations(MIGRATION_1_2)
                 .build()
+        }
+
+        internal val MIGRATION_1_2 =
+            object : Migration(1, 2) {
+                override suspend fun migrate(connection: SQLiteConnection) {
+                    connection.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS `game_sessions_new` (
+                            `puzzle_type` TEXT NOT NULL,
+                            `session_scope` TEXT NOT NULL,
+                            `session_id` TEXT NOT NULL,
+                            `difficulty` TEXT NOT NULL,
+                            `puzzle_seed` INTEGER NOT NULL,
+                            `generator_version` INTEGER NOT NULL,
+                            `challenge_date` TEXT,
+                            `daily_policy_version` INTEGER,
+                            `session_format_version` INTEGER NOT NULL,
+                            `gameplay_payload` TEXT NOT NULL,
+                            `move_history_payload` TEXT NOT NULL,
+                            `hints_used` INTEGER NOT NULL,
+                            `status` TEXT NOT NULL,
+                            `created_at_epoch_millis` INTEGER NOT NULL,
+                            `updated_at_epoch_millis` INTEGER NOT NULL,
+                            PRIMARY KEY(`puzzle_type`, `session_scope`)
+                        )
+                        """.trimIndent(),
+                    )
+                    connection.execute(
+                        """
+                        INSERT INTO `game_sessions_new` (
+                            `puzzle_type`, `session_scope`, `session_id`, `difficulty`, `puzzle_seed`,
+                            `generator_version`, `challenge_date`, `daily_policy_version`,
+                            `session_format_version`, `gameplay_payload`, `move_history_payload`,
+                            `hints_used`, `status`, `created_at_epoch_millis`, `updated_at_epoch_millis`
+                        )
+                        SELECT
+                            `puzzle_type`, 'CATALOG', `session_id`, `difficulty`, `puzzle_seed`,
+                            `generator_version`, NULL, NULL, `session_format_version`, `gameplay_payload`,
+                            `move_history_payload`, `hints_used`, `status`, `created_at_epoch_millis`,
+                            `updated_at_epoch_millis`
+                        FROM `game_sessions`
+                        """.trimIndent(),
+                    )
+                    connection.execute("DROP TABLE `game_sessions`")
+                    connection.execute("ALTER TABLE `game_sessions_new` RENAME TO `game_sessions`")
+                    connection.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS `daily_challenges` (
+                            `challenge_date` TEXT NOT NULL,
+                            `puzzle_type` TEXT NOT NULL,
+                            `daily_policy_version` INTEGER NOT NULL,
+                            `difficulty` TEXT NOT NULL,
+                            `puzzle_seed` INTEGER NOT NULL,
+                            `generator_version` INTEGER NOT NULL,
+                            `status` TEXT NOT NULL,
+                            `created_at_epoch_millis` INTEGER NOT NULL,
+                            `updated_at_epoch_millis` INTEGER NOT NULL,
+                            PRIMARY KEY(`challenge_date`, `puzzle_type`)
+                        )
+                        """.trimIndent(),
+                    )
+                }
+            }
+
+        private fun SQLiteConnection.execute(sql: String) {
+            prepare(sql).use { statement -> statement.step() }
         }
     }
 }

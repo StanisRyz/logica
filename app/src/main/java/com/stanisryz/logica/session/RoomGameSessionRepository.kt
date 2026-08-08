@@ -11,6 +11,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 internal class RoomGameSessionRepository(
     private val dao: GameSessionDao,
@@ -23,9 +24,12 @@ internal class RoomGameSessionRepository(
         scope.launchWriter()
     }
 
-    override suspend fun readActiveSession(puzzleType: PuzzleType): SavedGameSession? {
+    override suspend fun readActiveSession(
+        puzzleType: PuzzleType,
+        sessionScope: GameSessionScope,
+    ): SavedGameSession? {
         val reply = CompletableDeferred<Result<SavedGameSession?>>()
-        commands.send(Command.Read(puzzleType, reply))
+        commands.send(Command.Read(puzzleType, sessionScope, reply))
         return reply.await().getOrThrow()
     }
 
@@ -39,12 +43,18 @@ internal class RoomGameSessionRepository(
 
     override fun deleteActiveSession(
         puzzleType: PuzzleType,
+        sessionScope: GameSessionScope,
         sessionId: String,
     ) {
-        check(commands.trySend(Command.Delete(puzzleType, sessionId)).isSuccess) { "Session writer is unavailable." }
+        check(commands.trySend(Command.Delete(puzzleType, sessionScope, sessionId)).isSuccess) {
+            "Session writer is unavailable."
+        }
     }
 
-    override fun observeHasActiveSession(puzzleType: PuzzleType): Flow<Boolean> = dao.observeExists(puzzleType.name)
+    override fun observeHasActiveSession(
+        puzzleType: PuzzleType,
+        sessionScope: GameSessionScope,
+    ): Flow<Boolean> = dao.observeExists(puzzleType.name, sessionScope.name)
 
     private fun CoroutineScope.launchWriter() =
         launch {
@@ -55,7 +65,11 @@ internal class RoomGameSessionRepository(
                     is Command.Update -> runCatching { update(command.session) }
                     is Command.Delete ->
                         runCatching {
-                            dao.deleteIfCurrent(command.puzzleType.name, command.sessionId)
+                            dao.deleteIfCurrent(
+                                command.puzzleType.name,
+                                command.sessionScope.name,
+                                command.sessionId,
+                            )
                         }
                 }
             }
@@ -64,10 +78,10 @@ internal class RoomGameSessionRepository(
     private suspend fun read(command: Command.Read) {
         command.reply.complete(
             runCatching {
-                val entity = dao.find(command.puzzleType.name) ?: return@runCatching null
+                val entity = dao.find(command.puzzleType.name, command.sessionScope.name) ?: return@runCatching null
                 entity.toSavedGameSessionOrNull()
                     ?: run {
-                        dao.delete(command.puzzleType.name)
+                        dao.delete(command.puzzleType.name, command.sessionScope.name)
                         null
                     }
             },
@@ -93,10 +107,13 @@ internal class RoomGameSessionRepository(
     ): GameSessionEntity =
         GameSessionEntity(
             puzzleType = puzzleType.name,
+            sessionScope = sessionScope.name,
             sessionId = sessionId,
             difficulty = difficulty.name,
             puzzleSeed = puzzleSeed.value,
             generatorVersion = generatorVersion.value,
+            challengeDate = dailyIdentity?.challengeDate?.toString(),
+            dailyPolicyVersion = dailyIdentity?.policyVersion,
             sessionFormatVersion = sessionFormatVersion,
             gameplayPayload = gameplayPayload,
             moveHistoryPayload = moveHistoryPayload,
@@ -111,9 +128,20 @@ internal class RoomGameSessionRepository(
             SavedGameSession(
                 sessionId = sessionId.also { require(it.isNotBlank()) },
                 puzzleType = PuzzleType.valueOf(puzzleType),
+                sessionScope = GameSessionScope.valueOf(sessionScope),
                 difficulty = Difficulty.valueOf(difficulty),
                 puzzleSeed = PuzzleSeed(puzzleSeed),
                 generatorVersion = GeneratorVersion(generatorVersion),
+                dailyIdentity =
+                    challengeDate
+                        ?.let { date ->
+                            DailyGameSessionIdentity(
+                                challengeDate = LocalDate.parse(date),
+                                policyVersion = requireNotNull(dailyPolicyVersion),
+                            )
+                        }.also { identity ->
+                            require((sessionScope == GameSessionScope.DAILY.name) == (identity != null))
+                        },
                 sessionFormatVersion = sessionFormatVersion.also { require(it > 0) },
                 gameplayPayload = gameplayPayload,
                 moveHistoryPayload = moveHistoryPayload,
@@ -125,6 +153,7 @@ internal class RoomGameSessionRepository(
     private sealed interface Command {
         data class Read(
             val puzzleType: PuzzleType,
+            val sessionScope: GameSessionScope,
             val reply: CompletableDeferred<Result<SavedGameSession?>>,
         ) : Command
 
@@ -138,6 +167,7 @@ internal class RoomGameSessionRepository(
 
         data class Delete(
             val puzzleType: PuzzleType,
+            val sessionScope: GameSessionScope,
             val sessionId: String,
         ) : Command
     }

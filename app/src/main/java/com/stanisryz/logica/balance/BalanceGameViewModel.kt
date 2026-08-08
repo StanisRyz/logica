@@ -3,16 +3,24 @@ package com.stanisryz.logica.balance
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.stanisryz.logica.daily.DailyChallengeRepository
+import com.stanisryz.logica.daily.DailyChallengeStatus
+import com.stanisryz.logica.daily.SavedDailyChallenge
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameEngine
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameState
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
 import com.stanisryz.logica.puzzle.core.balance.BalanceGeneratorV1
 import com.stanisryz.logica.puzzle.core.balance.BalancePosition
 import com.stanisryz.logica.puzzle.core.balance.BalancePuzzle
+import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
+import com.stanisryz.logica.puzzle.core.model.PuzzleId
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.session.DailyGameSessionIdentity
 import com.stanisryz.logica.session.GameSessionRepository
+import com.stanisryz.logica.session.GameSessionScope
 import com.stanisryz.logica.session.SavedGameSession
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -23,15 +31,38 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
 import java.util.UUID
 
-sealed interface BalanceGameLaunch {
+internal sealed interface BalanceGameContext {
+    val sessionScope: GameSessionScope
+
+    data object Catalog : BalanceGameContext {
+        override val sessionScope = GameSessionScope.CATALOG
+    }
+
+    data class Daily(
+        val challengeDate: LocalDate,
+        val policyVersion: DailyPolicyVersion,
+    ) : BalanceGameContext {
+        override val sessionScope = GameSessionScope.DAILY
+    }
+}
+
+internal sealed interface BalanceGameLaunch {
+    val context: BalanceGameContext
+
     data class New(
         val difficulty: Difficulty,
         val seed: PuzzleSeed,
+        val generatorVersion: GeneratorVersion = GeneratorVersion(1),
+        override val context: BalanceGameContext = BalanceGameContext.Catalog,
     ) : BalanceGameLaunch
 
-    data object Restore : BalanceGameLaunch
+    data class Restore(
+        override val context: BalanceGameContext = BalanceGameContext.Catalog,
+        val expectedPuzzleId: PuzzleId? = null,
+    ) : BalanceGameLaunch
 }
 
 sealed interface BalanceGameUiState {
@@ -51,6 +82,7 @@ sealed interface BalanceGameUiState {
 internal class BalanceGameViewModel(
     private val launch: BalanceGameLaunch,
     private val sessionRepository: GameSessionRepository,
+    private val dailyChallengeRepository: DailyChallengeRepository,
     private val generator: BalanceGeneratorV1 = BalanceGeneratorV1(),
     private val workDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val sessionIdFactory: () -> String = { UUID.randomUUID().toString() },
@@ -128,28 +160,35 @@ internal class BalanceGameViewModel(
         when (val requestedLaunch = launch) {
             is BalanceGameLaunch.New ->
                 withContext(workDispatcher) {
+                    require(requestedLaunch.generatorVersion == generator.version)
                     val puzzle = generator.generate(requestedLaunch.seed, requestedLaunch.difficulty)
+                    require(puzzle.id.generatorVersion == requestedLaunch.generatorVersion)
                     val engine = BalanceGameEngine(puzzle)
                     val game = engine.start()
                     LoadedSession(
                         puzzle = puzzle,
                         engine = engine,
                         game = game,
-                        activeSession = ActiveSession(sessionIdFactory(), puzzle),
+                        activeSession = ActiveSession(sessionIdFactory(), puzzle, requestedLaunch.context),
                         isNew = true,
                     )
                 }
-            BalanceGameLaunch.Restore -> restoreSavedSession()
+            is BalanceGameLaunch.Restore -> restoreSavedSession(requestedLaunch)
         }
 
-    private suspend fun restoreSavedSession(): LoadedSession {
-        val saved = sessionRepository.readActiveSession(PuzzleType.BALANCE) ?: throw MissingSavedSessionException()
+    private suspend fun restoreSavedSession(requestedLaunch: BalanceGameLaunch.Restore): LoadedSession {
+        val saved =
+            sessionRepository.readActiveSession(PuzzleType.BALANCE, requestedLaunch.context.sessionScope)
+                ?: throw MissingSavedSessionException()
         return try {
             withContext(workDispatcher) {
                 require(saved.puzzleType == PuzzleType.BALANCE)
+                require(saved.sessionScope == requestedLaunch.context.sessionScope)
                 require(saved.generatorVersion == generator.version)
+                require(saved.matches(requestedLaunch.context))
                 val puzzle = generator.generate(saved.puzzleSeed, saved.difficulty)
                 require(puzzle.id.generatorVersion == saved.generatorVersion)
+                require(requestedLaunch.expectedPuzzleId == null || puzzle.id == requestedLaunch.expectedPuzzleId)
                 val game =
                     BalanceSessionCodec.decode(
                         puzzle = puzzle,
@@ -164,14 +203,18 @@ internal class BalanceGameViewModel(
                     puzzle = puzzle,
                     engine = BalanceGameEngine(puzzle),
                     game = game,
-                    activeSession = ActiveSession(saved.sessionId, puzzle),
+                    activeSession = ActiveSession(saved.sessionId, puzzle, requestedLaunch.context),
                     isNew = false,
                 )
             }
         } catch (exception: CancellationException) {
             throw exception
         } catch (_: Exception) {
-            sessionRepository.deleteActiveSession(PuzzleType.BALANCE, saved.sessionId)
+            sessionRepository.deleteActiveSession(
+                PuzzleType.BALANCE,
+                requestedLaunch.context.sessionScope,
+                saved.sessionId,
+            )
             throw InvalidSavedSessionException()
         }
     }
@@ -192,7 +235,13 @@ internal class BalanceGameViewModel(
     private fun persist(game: BalanceGameState) {
         val session = activeSession ?: return
         if (game.status == BalanceGameStatus.SOLVED) {
-            sessionRepository.deleteActiveSession(PuzzleType.BALANCE, session.sessionId)
+            sessionRepository.deleteActiveSession(PuzzleType.BALANCE, session.context.sessionScope, session.sessionId)
+            val dailyContext = session.context as? BalanceGameContext.Daily
+            if (dailyContext != null) {
+                dailyChallengeRepository.saveInBackground(
+                    session.puzzle.savedDailyChallenge(dailyContext, DailyChallengeStatus.COMPLETED),
+                )
+            }
         } else {
             sessionRepository.updateActiveSession(session.saved(game))
         }
@@ -209,15 +258,21 @@ internal class BalanceGameViewModel(
     private data class ActiveSession(
         val sessionId: String,
         val puzzle: BalancePuzzle,
+        val context: BalanceGameContext,
     ) {
         fun saved(game: BalanceGameState): SavedGameSession {
             val encoded = BalanceSessionCodec.encode(game)
             return SavedGameSession(
                 sessionId = sessionId,
                 puzzleType = puzzle.id.type,
+                sessionScope = context.sessionScope,
                 difficulty = puzzle.id.difficulty,
                 puzzleSeed = puzzle.id.seed,
                 generatorVersion = puzzle.id.generatorVersion,
+                dailyIdentity =
+                    (context as? BalanceGameContext.Daily)?.let {
+                        DailyGameSessionIdentity(it.challengeDate, it.policyVersion.value)
+                    },
                 sessionFormatVersion = BalanceSessionCodec.SESSION_FORMAT_VERSION,
                 gameplayPayload = encoded.gameplayPayload,
                 moveHistoryPayload = encoded.moveHistoryPayload,
@@ -230,11 +285,33 @@ internal class BalanceGameViewModel(
     private class MissingSavedSessionException : Exception()
 
     private class InvalidSavedSessionException : Exception()
+
+    private fun SavedGameSession.matches(context: BalanceGameContext): Boolean =
+        when (context) {
+            BalanceGameContext.Catalog -> dailyIdentity == null
+            is BalanceGameContext.Daily ->
+                dailyIdentity == DailyGameSessionIdentity(context.challengeDate, context.policyVersion.value)
+        }
+
+    private fun BalancePuzzle.savedDailyChallenge(
+        context: BalanceGameContext.Daily,
+        status: DailyChallengeStatus,
+    ): SavedDailyChallenge =
+        SavedDailyChallenge(
+            challengeDate = context.challengeDate,
+            puzzleType = id.type,
+            policyVersion = context.policyVersion,
+            difficulty = id.difficulty,
+            seed = id.seed,
+            generatorVersion = id.generatorVersion,
+            status = status,
+        )
 }
 
 internal class BalanceGameViewModelFactory(
     private val launch: BalanceGameLaunch,
     private val sessionRepository: GameSessionRepository,
+    private val dailyChallengeRepository: DailyChallengeRepository,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(BalanceGameViewModel::class.java)) {
@@ -242,6 +319,6 @@ internal class BalanceGameViewModelFactory(
         }
 
         @Suppress("UNCHECKED_CAST")
-        return BalanceGameViewModel(launch, sessionRepository) as T
+        return BalanceGameViewModel(launch, sessionRepository, dailyChallengeRepository) as T
     }
 }
