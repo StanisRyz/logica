@@ -9,29 +9,43 @@ internal object BalanceRules {
         puzzle: BalancePuzzle,
         state: BalanceState,
     ): ValidationResult {
+        val analysis = analyze(puzzle, state)
+        analysis.violations.firstOrNull()?.let { violation ->
+            return ValidationResult.Invalid(violation.validationReason())
+        }
+        return if (analysis.isComplete) ValidationResult.ValidComplete else ValidationResult.ValidPartial
+    }
+
+    fun analyze(
+        puzzle: BalancePuzzle,
+        state: BalanceState,
+    ): BalanceRuleAnalysis {
         if (state.size != puzzle.size) {
-            return ValidationResult.Invalid("State board size does not match the puzzle.")
+            return BalanceRuleAnalysis(
+                isComplete = false,
+                violations = listOf(BalanceViolation(BalanceViolationType.BOARD_SIZE_MISMATCH, emptyList())),
+            )
         }
 
+        val violations = mutableListOf<BalanceViolation>()
         puzzle.fixedClues.forEach { (position, value) ->
             if (state.cellAt(position) != value) {
-                return ValidationResult.Invalid("Fixed clue at $position was changed.")
+                violations += BalanceViolation(BalanceViolationType.FIXED_CLUE_CONFLICT, listOf(position))
             }
         }
 
         val rows = List(puzzle.size, state::row)
         val columns = List(puzzle.size, state::column)
 
-        validateLines(rows, "Row")?.let { return it }
-        validateLines(columns, "Column")?.let { return it }
-        findDuplicateCompleteLine(rows, "rows")?.let { return it }
-        findDuplicateCompleteLine(columns, "columns")?.let { return it }
+        collectLineViolations(rows, LineOrientation.ROW, violations)
+        collectLineViolations(columns, LineOrientation.COLUMN, violations)
+        collectDuplicateLineViolations(rows, LineOrientation.ROW, violations)
+        collectDuplicateLineViolations(columns, LineOrientation.COLUMN, violations)
 
-        return if (state.isComplete()) {
-            ValidationResult.ValidComplete
-        } else {
-            ValidationResult.ValidPartial
-        }
+        return BalanceRuleAnalysis(
+            isComplete = state.isComplete(),
+            violations = violations.toList(),
+        )
     }
 
     fun validCandidates(
@@ -102,49 +116,102 @@ internal object BalanceRules {
         return requiredValues.singleOrNull()
     }
 
-    private fun validateLines(
+    private fun collectLineViolations(
         lines: List<List<BalanceCell>>,
-        label: String,
-    ): ValidationResult.Invalid? {
+        orientation: LineOrientation,
+        violations: MutableList<BalanceViolation>,
+    ) {
         lines.forEachIndexed { index, line ->
             val halfSize = line.size / 2
             val zeroCount = line.count { it == BalanceCell.ZERO }
             val oneCount = line.count { it == BalanceCell.ONE }
 
             if (zeroCount > halfSize || oneCount > halfSize) {
-                return ValidationResult.Invalid("$label ${index + 1} is unbalanced.")
+                violations +=
+                    BalanceViolation(
+                        type = orientation.unbalancedType,
+                        affectedPositions = line.indices.map { orientation.position(index, it) },
+                    )
             }
-            if (hasThreeConsecutiveEqualValues(line)) {
-                return ValidationResult.Invalid("$label ${index + 1} contains three equal values in a row.")
-            }
-            if (BalanceCell.EMPTY !in line && (zeroCount != halfSize || oneCount != halfSize)) {
-                return ValidationResult.Invalid("$label ${index + 1} is not evenly balanced.")
+
+            for (start in 0..(line.size - 3)) {
+                val value = line[start]
+                if (value != BalanceCell.EMPTY && value == line[start + 1] && value == line[start + 2]) {
+                    violations +=
+                        BalanceViolation(
+                            type = orientation.tripleType,
+                            affectedPositions = (start..start + 2).map { orientation.position(index, it) },
+                        )
+                }
             }
         }
-        return null
     }
 
-    private fun hasThreeConsecutiveEqualValues(line: List<BalanceCell>): Boolean {
-        for (index in 0..line.size - 3) {
-            val value = line[index]
-            if (value != BalanceCell.EMPTY && value == line[index + 1] && value == line[index + 2]) {
-                return true
-            }
-        }
-        return false
-    }
-
-    private fun findDuplicateCompleteLine(
+    private fun collectDuplicateLineViolations(
         lines: List<List<BalanceCell>>,
-        label: String,
-    ): ValidationResult.Invalid? {
-        val completedLines = mutableSetOf<List<BalanceCell>>()
-        lines.filter { BalanceCell.EMPTY !in it }.forEach { line ->
-            if (!completedLines.add(line)) {
-                return ValidationResult.Invalid("Completed $label must be unique.")
+        orientation: LineOrientation,
+        violations: MutableList<BalanceViolation>,
+    ) {
+        for (firstIndex in lines.indices) {
+            if (BalanceCell.EMPTY in lines[firstIndex]) continue
+            for (secondIndex in firstIndex + 1 until lines.size) {
+                if (lines[firstIndex] == lines[secondIndex]) {
+                    violations +=
+                        BalanceViolation(
+                            type = orientation.duplicateType,
+                            affectedPositions =
+                                lines[firstIndex].indices.map { cellIndex -> orientation.position(firstIndex, cellIndex) } +
+                                    lines[secondIndex].indices.map { cellIndex ->
+                                        orientation.position(secondIndex, cellIndex)
+                                    },
+                        )
+                }
             }
         }
-        return null
+    }
+
+    private fun BalanceViolation.validationReason(): String =
+        when (type) {
+            BalanceViolationType.BOARD_SIZE_MISMATCH -> "State board size does not match the puzzle."
+            BalanceViolationType.FIXED_CLUE_CONFLICT ->
+                "Fixed clue at ${affectedPositions.first()} was changed."
+            BalanceViolationType.UNBALANCED_ROW ->
+                "Row ${affectedPositions.first().row + 1} is unbalanced."
+            BalanceViolationType.UNBALANCED_COLUMN ->
+                "Column ${affectedPositions.first().column + 1} is unbalanced."
+            BalanceViolationType.THREE_EQUAL_HORIZONTAL ->
+                "Row ${affectedPositions.first().row + 1} contains three equal values in a row."
+            BalanceViolationType.THREE_EQUAL_VERTICAL ->
+                "Column ${affectedPositions.first().column + 1} contains three equal values in a row."
+            BalanceViolationType.DUPLICATE_ROWS -> "Completed rows must be unique."
+            BalanceViolationType.DUPLICATE_COLUMNS -> "Completed columns must be unique."
+        }
+
+    private enum class LineOrientation(
+        val unbalancedType: BalanceViolationType,
+        val tripleType: BalanceViolationType,
+        val duplicateType: BalanceViolationType,
+    ) {
+        ROW(
+            BalanceViolationType.UNBALANCED_ROW,
+            BalanceViolationType.THREE_EQUAL_HORIZONTAL,
+            BalanceViolationType.DUPLICATE_ROWS,
+        ),
+        COLUMN(
+            BalanceViolationType.UNBALANCED_COLUMN,
+            BalanceViolationType.THREE_EQUAL_VERTICAL,
+            BalanceViolationType.DUPLICATE_COLUMNS,
+        ),
+        ;
+
+        fun position(
+            lineIndex: Int,
+            cellIndex: Int,
+        ): BalancePosition =
+            when (this) {
+                ROW -> BalancePosition(row = lineIndex, column = cellIndex)
+                COLUMN -> BalancePosition(row = cellIndex, column = lineIndex)
+            }
     }
 
     private fun BalanceCell.opposite(): BalanceCell =

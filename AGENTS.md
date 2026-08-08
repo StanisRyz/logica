@@ -14,4 +14,6 @@
 - Partial `BalanceState` and completed `BalanceSolution` are distinct; puzzle rules stay UI-independent and reusable.
 - `BalanceGeneratorV1` owns version 1 and uses bounded project-RNG generation; returned puzzles are valid, unique, and logic-only solvable.
 - Balance difficulty uses solve characteristics rather than board size alone; rules and solver remain the validation source of truth.
+- Balance gameplay is immutable and separate from `BalanceState`; fixed clues cannot change, while editable cells may be invalid.
+- UI renders gameplay state and dispatches actions; diagnostics and hints reuse core rules/logic, and reset preserves hint usage.
 - Avoid unrelated refactors, speculative abstractions, excessive tests, and large documentation changes.
