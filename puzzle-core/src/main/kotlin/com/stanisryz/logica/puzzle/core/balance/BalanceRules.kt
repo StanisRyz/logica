@@ -3,6 +3,8 @@ package com.stanisryz.logica.puzzle.core.balance
 import com.stanisryz.logica.puzzle.core.contract.ValidationResult
 
 internal object BalanceRules {
+    private val candidateOrder = listOf(BalanceCell.ZERO, BalanceCell.ONE)
+
     fun validate(
         puzzle: BalancePuzzle,
         state: BalanceState,
@@ -30,6 +32,74 @@ internal object BalanceRules {
         } else {
             ValidationResult.ValidPartial
         }
+    }
+
+    fun validCandidates(
+        puzzle: BalancePuzzle,
+        state: BalanceState,
+        position: BalancePosition,
+    ): List<BalanceCell> {
+        if (state.size != puzzle.size || state.cellAt(position) != BalanceCell.EMPTY) {
+            return emptyList()
+        }
+
+        return candidateOrder.filter { candidate ->
+            validate(puzzle, state.withCell(position, candidate)) !is ValidationResult.Invalid
+        }
+    }
+
+    fun requiredByTriple(
+        line: List<BalanceCell>,
+        emptyIndex: Int,
+    ): BalanceCell? {
+        if (line[emptyIndex] != BalanceCell.EMPTY) return null
+
+        val windowStarts =
+            (emptyIndex - 2..emptyIndex)
+                .filter { start -> start >= 0 && start + 2 < line.size }
+
+        return windowStarts.firstNotNullOfOrNull { start ->
+            val otherValues =
+                (start..start + 2)
+                    .filter { it != emptyIndex }
+                    .map(line::get)
+            otherValues
+                .takeIf { values -> values[0] != BalanceCell.EMPTY && values[0] == values[1] }
+                ?.first()
+                ?.opposite()
+        }
+    }
+
+    fun requiredByQuota(line: List<BalanceCell>): BalanceCell? {
+        val halfSize = line.size / 2
+        return when {
+            line.count { it == BalanceCell.ZERO } == halfSize -> BalanceCell.ONE
+            line.count { it == BalanceCell.ONE } == halfSize -> BalanceCell.ZERO
+            else -> null
+        }
+    }
+
+    fun requiredByUniqueness(
+        line: List<BalanceCell>,
+        emptyIndex: Int,
+        peerLines: List<List<BalanceCell>>,
+    ): BalanceCell? {
+        val emptyIndexes = line.indices.filter { line[it] == BalanceCell.EMPTY }
+        if (emptyIndexes.size != 2 || emptyIndex !in emptyIndexes) return null
+
+        val requiredValues =
+            peerLines
+                .asSequence()
+                .filter { BalanceCell.EMPTY !in it }
+                .filter { completed ->
+                    line.indices.all { index ->
+                        line[index] == BalanceCell.EMPTY || line[index] == completed[index]
+                    }
+                }.map { completed -> completed[emptyIndex].opposite() }
+                .distinct()
+                .toList()
+
+        return requiredValues.singleOrNull()
     }
 
     private fun validateLines(
@@ -76,4 +146,11 @@ internal object BalanceRules {
         }
         return null
     }
+
+    private fun BalanceCell.opposite(): BalanceCell =
+        when (this) {
+            BalanceCell.ZERO -> BalanceCell.ONE
+            BalanceCell.ONE -> BalanceCell.ZERO
+            BalanceCell.EMPTY -> error("EMPTY has no opposite value.")
+        }
 }
