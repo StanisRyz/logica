@@ -13,4 +13,9 @@ Requires JDK 17 and Android SDK Platform 36.
 adb install -r app\build\outputs\apk\debug\app-debug.apk
 ```
 
-`app/` contains the Android application; `gradle/libs.versions.toml` manages dependency versions.
+Modules:
+
+- `app/` — Android/Compose application.
+- `puzzle-core/` — platform-independent puzzle domain and algorithms.
+
+Dependency versions are managed in `gradle/libs.versions.toml`.

@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Logica"
 include(":app")
+include(":puzzle-core")
