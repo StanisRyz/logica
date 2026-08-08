@@ -13,6 +13,15 @@ Requires JDK 17 and Android SDK Platform 36.
 adb install -r app\build\outputs\apk\debug\app-debug.apk
 ```
 
+Developer-only Balance generator verification:
+
+```powershell
+.\gradlew.bat :puzzle-core:balanceQualityCheck
+.\gradlew.bat :puzzle-core:balanceQualityCheck -PbalanceSeeds=100
+```
+
+The optional `balanceSeeds` property controls the sequential seed count checked per difficulty.
+
 Modules:
 
 - `app/` — Android/Compose application shell, navigation, theme, and settings.
