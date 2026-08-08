@@ -16,6 +16,6 @@ adb install -r app\build\outputs\apk\debug\app-debug.apk
 Modules:
 
 - `app/` — Android/Compose application shell, navigation, theme, and settings.
-- `puzzle-core/` — platform-independent puzzle domain and algorithms.
+- `puzzle-core/` — deterministic puzzle contracts, identity/seed versions, random generation, and generator registry.
 
 Dependency versions are managed in `gradle/libs.versions.toml`.

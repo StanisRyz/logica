@@ -6,5 +6,7 @@
 - `:app` owns Android UI, Navigation 3, settings, and platform infrastructure; it may depend on `:puzzle-core`.
 - `:puzzle-core` contains platform-independent puzzle domain and algorithms; it must never depend on Android, Compose, or `:app`.
 - Settings use DataStore behind `SettingsRepository`; UI must not access persistence implementations directly.
-- Puzzle engines must be deterministic and expose a `generatorVersion`.
+- Puzzle identity is type + difficulty + seed + `generatorVersion`; concrete generators own their version.
+- Generators use project-owned random infrastructure and never system time, platform randomness, or Android APIs.
+- Daily seed derivation is deterministic and receives dates explicitly; concrete engines implement the shared `:puzzle-core` contracts.
 - Avoid unrelated refactors, speculative abstractions, excessive tests, and large documentation changes.

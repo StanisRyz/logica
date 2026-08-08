@@ -1,4 +1,4 @@
-package com.stanisryz.logica.puzzle.core
+package com.stanisryz.logica.puzzle.core.model
 
 enum class PuzzleType {
     BALANCE,
