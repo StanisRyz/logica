@@ -59,7 +59,7 @@ tasks.register<JavaExec>("crownsQualityCheck") {
 
 tasks.register<JavaExec>("wordQualityCheck") {
     group = "verification"
-    description = "Runs the opt-in Word lexicon and deterministic generator quality gate."
+    description = "Runs the opt-in Word V1 compatibility and V2 lexicon/generator quality gate."
     dependsOn(qualitySourceSet.classesTaskName)
     classpath = qualitySourceSet.runtimeClasspath
     mainClass.set("com.stanisryz.logica.puzzle.core.word.quality.WordQualityRunner")

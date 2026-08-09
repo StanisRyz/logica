@@ -2,15 +2,17 @@ package com.stanisryz.logica.puzzle.core.word.quality
 
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
-import com.stanisryz.logica.puzzle.core.word.RussianWordNormalizer
+import com.stanisryz.logica.puzzle.core.word.WordAllowedGuesses
 import com.stanisryz.logica.puzzle.core.word.WordDifficultyEvaluator
 import com.stanisryz.logica.puzzle.core.word.WordGeneratorV1
+import com.stanisryz.logica.puzzle.core.word.WordGeneratorV2
 import com.stanisryz.logica.puzzle.core.word.WordLexiconV1
+import com.stanisryz.logica.puzzle.core.word.WordLexiconV2
+import com.stanisryz.logica.puzzle.core.word.WordPossibleAnswers
 import com.stanisryz.logica.puzzle.core.word.WordRules
-import java.util.Locale
 import kotlin.system.exitProcess
 
-/** Opt-in whole-lexicon and Generator V1 verification. Prints a summary, never full word lists. */
+/** Opt-in whole-lexicon and deterministic V1/V2 generation gate. Prints counts, never word dumps. */
 object WordQualityRunner {
     @JvmStatic
     fun main(args: Array<String>) {
@@ -18,16 +20,9 @@ object WordQualityRunner {
         require(seedCount != null && seedCount > 0) { "Expected one positive seed-count argument." }
 
         val failures = mutableListOf<String>()
-        val allowedGuesses = WordLexiconV1.allowedGuesses.all()
-        val answers = WordLexiconV1.possibleAnswers.all()
-
-        verifyWords("allowed guess", allowedGuesses, failures)
-        verifyWords("answer", answers, failures)
-        verifyAnswerMembership(answers, failures)
-        verifyDifficultyBuckets(answers, failures)
-        verifyDeterminism(seedCount, failures)
-
-        printSummary(allowedGuesses, answers, seedCount)
+        verifyV1(failures)
+        verifyV2(seedCount, failures)
+        printSummary(seedCount)
 
         if (failures.isNotEmpty()) {
             System.err.println("Word quality check FAILED with ${failures.size} problem(s):")
@@ -37,101 +32,121 @@ object WordQualityRunner {
             }
             exitProcess(1)
         }
-        println("Word quality check PASSED: no lexicon or determinism problems.")
+        println("Word quality check PASSED: V1 compatibility and V2 lexical/generator invariants hold.")
+    }
+
+    private fun verifyV1(failures: MutableList<String>) {
+        val allowed = WordLexiconV1.allowedGuesses.all()
+        val answers = WordLexiconV1.possibleAnswers.all()
+        verifyWords("V1 allowed guess", allowed, failures) { it == WordRules.V1_WORD_LENGTH }
+        verifyWords("V1 answer", answers, failures) { it == WordRules.V1_WORD_LENGTH }
+        verifyMembership("V1", WordLexiconV1.allowedGuesses, WordLexiconV1.possibleAnswers, failures)
+
+        val evaluator = WordDifficultyEvaluator()
+        answers.forEach { answer ->
+            val bundled = WordLexiconV1.possibleAnswers.difficultyOf(answer)
+            if (bundled != evaluator.evaluateWord(answer)) {
+                failures += "V1 answer '$answer' no longer matches its frozen rarity bucket"
+            }
+        }
+        val representative =
+            mapOf(
+                Difficulty.EASY to "верба",
+                Difficulty.MEDIUM to "гряда",
+                Difficulty.HARD to "холод",
+                Difficulty.EXPERT to "хомяк",
+            )
+        representative.forEach { (difficulty, expected) ->
+            val actual = WordGeneratorV1().generate(PuzzleSeed(1), difficulty).answer
+            if (actual != expected) failures += "V1 seed 1 / ${difficulty.name} changed from '$expected' to '$actual'"
+        }
+    }
+
+    private fun verifyV2(
+        seedCount: Int,
+        failures: MutableList<String>,
+    ) {
+        val allowed = WordLexiconV2.allowedGuesses.all()
+        val answers = WordLexiconV2.possibleAnswers.all()
+        verifyWords("V2 allowed guess", allowed, failures, WordRules::isSupportedLength)
+        verifyWords("V2 answer", answers, failures, WordRules::isSupportedLength)
+        verifyMembership("V2", WordLexiconV2.allowedGuesses, WordLexiconV2.possibleAnswers, failures)
+
+        Difficulty.entries.forEach { difficulty ->
+            val expectedLength = WordRules.wordLengthForV2(difficulty)
+            val pool = WordLexiconV2.possibleAnswers.answers(difficulty)
+            if (pool.size < MINIMUM_V2_ANSWERS_PER_DIFFICULTY) {
+                failures +=
+                    "V2 ${difficulty.name} answer pool has ${pool.size} entries; " +
+                    "expected at least $MINIMUM_V2_ANSWERS_PER_DIFFICULTY"
+            }
+            pool.forEach { answer ->
+                if (answer.length != expectedLength) {
+                    failures += "V2 ${difficulty.name} contains wrong-length answer '$answer'"
+                }
+            }
+            repeat(seedCount) { index ->
+                val seed = PuzzleSeed(FIRST_SEED + index)
+                val first = WordGeneratorV2().generate(seed, difficulty)
+                val second = WordGeneratorV2().generate(seed, difficulty)
+                if (first != second) failures += "V2 seed ${seed.value} / ${difficulty.name} is not deterministic"
+                if (first.answer.length != expectedLength) {
+                    failures += "V2 seed ${seed.value} / ${difficulty.name} generated wrong-length '${first.answer}'"
+                }
+            }
+        }
     }
 
     private fun verifyWords(
         label: String,
         words: List<String>,
         failures: MutableList<String>,
+        acceptsLength: (Int) -> Boolean,
     ) {
+        if (words != words.sorted()) failures += "$label data is not in stable ascending order"
         val seen = mutableSetOf<String>()
         words.forEach { word ->
-            if (!WordRules.isNormalized(word)) {
-                failures += "$label '$word' is not a normalized ${WordRules.WORD_LENGTH}-letter Cyrillic word"
+            if (!acceptsLength(word.length) || !WordRules.isNormalized(word, word.length)) {
+                failures += "$label '$word' is not normalized Cyrillic with a supported length"
             }
-            if (!seen.add(word)) failures += "$label '$word' is duplicated"
+            if (!seen.add(word)) failures += "$label '$word' is duplicated or normalization-colliding"
         }
-        val collisions = words.count { it.any { letter -> !RussianWordNormalizer.isSupportedLetter(letter) } }
-        if (collisions > 0) failures += "$collisions $label entries contain unsupported characters"
     }
 
-    private fun verifyAnswerMembership(
-        answers: List<String>,
+    private fun verifyMembership(
+        version: String,
+        allowed: WordAllowedGuesses,
+        possible: WordPossibleAnswers,
         failures: MutableList<String>,
     ) {
-        answers.forEach { answer ->
-            if (answer !in WordLexiconV1.allowedGuesses) {
-                failures += "answer '$answer' is missing from the allowed guesses"
-            }
-            val buckets = Difficulty.entries.filter { answer in WordLexiconV1.possibleAnswers.answers(it) }
-            if (buckets.size != 1) {
-                failures += "answer '$answer' belongs to ${buckets.size} difficulty buckets instead of exactly one"
-            }
+        possible.all().forEach { answer ->
+            if (answer !in allowed) failures += "$version answer '$answer' is missing from allowed guesses"
+            val buckets = Difficulty.entries.filter { answer in possible.answers(it) }
+            if (buckets.size != 1) failures += "$version answer '$answer' belongs to ${buckets.size} buckets"
         }
-    }
-
-    private fun verifyDifficultyBuckets(
-        answers: List<String>,
-        failures: MutableList<String>,
-    ) {
-        val evaluator = WordDifficultyEvaluator()
         Difficulty.entries.forEach { difficulty ->
-            if (WordLexiconV1.possibleAnswers.answers(difficulty).isEmpty()) {
-                failures += "the ${difficulty.name} answer pool is empty"
-            }
-        }
-        answers.forEach { answer ->
-            val bundled = WordLexiconV1.possibleAnswers.difficultyOf(answer)
-            val evaluated = evaluator.evaluateWord(answer)
-            if (bundled != evaluated) {
-                failures +=
-                    "answer '$answer' is bundled as $bundled but scores as $evaluated; " +
-                    "regenerate the lexicon and bump the generator version if V1 output changes"
-            }
+            if (possible.answers(difficulty).isEmpty()) failures += "$version ${difficulty.name} answer pool is empty"
         }
     }
 
-    private fun verifyDeterminism(
-        seedCount: Int,
-        failures: MutableList<String>,
-    ) {
-        val generator = WordGeneratorV1()
-        Difficulty.entries.forEach { difficulty ->
-            repeat(seedCount) { seedIndex ->
-                val seed = PuzzleSeed(FIRST_SEED + seedIndex)
-                val first = generator.generate(seed, difficulty)
-                val second = WordGeneratorV1().generate(seed, difficulty)
-                if (first != second) {
-                    failures += "seed ${seed.value} / ${difficulty.name} generated '${first.answer}' then '${second.answer}'"
-                }
-                if (WordLexiconV1.possibleAnswers.difficultyOf(first.answer) != difficulty) {
-                    failures += "seed ${seed.value} / ${difficulty.name} generated out-of-bucket answer '${first.answer}'"
-                }
-            }
-        }
-    }
-
-    private fun printSummary(
-        allowedGuesses: List<String>,
-        answers: List<String>,
-        seedCount: Int,
-    ) {
-        println("WordLexiconV1 / WordGeneratorV1 quality check ($seedCount sequential seeds per difficulty)")
-        println("  allowed guesses: ${allowedGuesses.size}")
-        println("  answers: ${answers.size}")
-        Difficulty.entries.forEach { difficulty ->
-            println("  answers ${difficulty.name}: ${WordLexiconV1.possibleAnswers.answers(difficulty).size}")
-        }
-        println("  answers with repeated letters: ${answers.count { it.toSet().size < it.length }.ratio(answers.size)}")
-        println("  Ё folding and rejected collisions are reported by :puzzle-core:wordLexiconPrepare")
-    }
-
-    private fun Int.ratio(total: Int): String {
-        if (total == 0) return "n/a"
-        return "$this/$total (${String.format(Locale.ROOT, "%.1f", this * 100.0 / total)}%)"
+    private fun printSummary(seedCount: Int) {
+        println("Word V1/V2 quality check ($seedCount sequential V2 seeds per difficulty)")
+        println("  V1 allowed=${WordLexiconV1.allowedGuesses.size}, answers=${WordLexiconV1.possibleAnswers.size}")
+        println(
+            "  V2 allowed by length: " +
+                (WordRules.MINIMUM_WORD_LENGTH..WordRules.MAXIMUM_WORD_LENGTH).joinToString { length ->
+                    "$length=${WordLexiconV2.allowedGuesses.all().count { it.length == length }}"
+                },
+        )
+        println(
+            "  V2 answers: " +
+                Difficulty.entries.joinToString { difficulty ->
+                    "${difficulty.name}=${WordLexiconV2.possibleAnswers.answers(difficulty).size}"
+                },
+        )
     }
 
     private const val FIRST_SEED = 1L
+    private const val MINIMUM_V2_ANSWERS_PER_DIFFICULTY = 500
     private const val FAILURE_PRINT_LIMIT = 20
 }

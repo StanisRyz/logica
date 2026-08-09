@@ -5,8 +5,10 @@ import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV1
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV2
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV3
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV4
 import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
+import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.session.DailyGameSessionIdentity
 import com.stanisryz.logica.session.GameSessionRepository
@@ -82,17 +84,23 @@ class TodayViewModelTest {
         }
 
     @Test
-    fun newRunsUseV3WhilePersistedV1AndV2RunsKeepTheirOriginalEntries() =
+    fun newRunsUseV4WhilePersistedV1AndV2RunsKeepTheirOriginalEntries() =
         runBlocking {
             val fresh = viewModel(FakeDailyChallengeRepository(), FakeGameSessionRepository()).awaitContent()
 
-            assertEquals(DailyChallengePolicyV3.VERSION, fresh.definition.policyVersion)
+            assertEquals(DailyChallengePolicyV4.VERSION, fresh.definition.policyVersion)
             assertEquals(
                 listOf(PuzzleType.BALANCE, PuzzleType.CROWNS, PuzzleType.WORD),
                 fresh.entries.map { it.puzzleType },
             )
             assertEquals(0, fresh.completedCount)
             assertEquals(3, fresh.totalCount)
+            assertEquals(
+                GeneratorVersion(2),
+                fresh.definition.entries
+                    .single { it.puzzleType == PuzzleType.WORD }
+                    .generatorVersion,
+            )
 
             val v1Definition = DailyChallengePolicyV1.definitionFor(date)
             val v1Entry = v1Definition.entryFor(PuzzleType.BALANCE)

@@ -30,7 +30,8 @@ class WordAttempt internal constructor(
     val letters: List<WordLetterResult> = letters.toList()
 
     init {
-        WordRules.requireNormalized(word)
+        require(WordRules.isSupportedLength(word.length)) { "Unsupported attempt word length." }
+        WordRules.requireNormalized(word, word.length)
         require(this.letters.size == word.length) { "Feedback must cover every letter of the attempt." }
         require(this.letters.mapIndexed { index, result -> result.letter == word[index] }.all { it }) {
             "Feedback letters must match the attempted word."
@@ -81,6 +82,7 @@ class WordLetterKnowledge internal constructor(
 
 class WordGameState internal constructor(
     val puzzleId: PuzzleId,
+    val wordLength: Int,
     val currentInput: String,
     attempts: Iterable<WordAttempt>,
     val status: WordGameStatus,
@@ -89,7 +91,8 @@ class WordGameState internal constructor(
     val letterKnowledge: WordLetterKnowledge = WordLetterKnowledge.from(this.attempts)
 
     init {
-        require(currentInput.length <= WordRules.WORD_LENGTH) { "Current input is longer than a word." }
+        require(WordRules.isSupportedLength(wordLength)) { "Unsupported Word length $wordLength." }
+        require(currentInput.length <= wordLength) { "Current input is longer than the puzzle word." }
         require(currentInput.all(RussianWordNormalizer::isSupportedLetter)) {
             "Current input must contain supported Russian letters only."
         }
@@ -97,6 +100,9 @@ class WordGameState internal constructor(
             "Current input must already be normalized."
         }
         require(this.attempts.size <= WordRules.MAXIMUM_ATTEMPTS) { "Too many submitted attempts." }
+        require(this.attempts.all { it.word.length == wordLength }) {
+            "Every submitted attempt must match the puzzle word length."
+        }
     }
 
     val remainingAttempts: Int = WordRules.MAXIMUM_ATTEMPTS - this.attempts.size
@@ -106,17 +112,20 @@ class WordGameState internal constructor(
         this === other ||
             other is WordGameState &&
             puzzleId == other.puzzleId &&
+            wordLength == other.wordLength &&
             currentInput == other.currentInput &&
             attempts == other.attempts &&
             status == other.status
 
     override fun hashCode(): Int {
         var result = puzzleId.hashCode()
+        result = 31 * result + wordLength
         result = 31 * result + currentInput.hashCode()
         result = 31 * result + attempts.hashCode()
         result = 31 * result + status.hashCode()
         return result
     }
 
-    override fun toString(): String = "WordGameState(puzzleId=$puzzleId, currentInput=$currentInput, attempts=$attempts, status=$status)"
+    override fun toString(): String =
+        "WordGameState(puzzleId=$puzzleId, wordLength=$wordLength, currentInput=$currentInput, attempts=$attempts, status=$status)"
 }

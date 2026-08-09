@@ -3,6 +3,7 @@ package com.stanisryz.logica.word
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.stanisryz.logica.puzzle.core.contract.PuzzleGenerator
 import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
@@ -14,8 +15,10 @@ import com.stanisryz.logica.puzzle.core.word.WordGameEngine
 import com.stanisryz.logica.puzzle.core.word.WordGameState
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
 import com.stanisryz.logica.puzzle.core.word.WordGeneratorV1
+import com.stanisryz.logica.puzzle.core.word.WordGeneratorV2
 import com.stanisryz.logica.puzzle.core.word.WordGuessRejection
 import com.stanisryz.logica.puzzle.core.word.WordLexiconV1
+import com.stanisryz.logica.puzzle.core.word.WordLexiconV2
 import com.stanisryz.logica.puzzle.core.word.WordPuzzle
 import com.stanisryz.logica.puzzle.core.word.WordSubmitResult
 import com.stanisryz.logica.result.CompletionPersistence
@@ -59,7 +62,7 @@ internal sealed interface WordGameLaunch {
     data class New(
         val difficulty: Difficulty,
         val seed: PuzzleSeed,
-        val generatorVersion: GeneratorVersion = GeneratorVersion(1),
+        val generatorVersion: GeneratorVersion = GeneratorVersion(2),
         override val context: WordGameContext = WordGameContext.Catalog,
     ) : WordGameLaunch
 
@@ -94,8 +97,7 @@ internal class WordGameViewModel(
     private val launch: WordGameLaunch,
     private val sessionRepository: GameSessionRepository,
     private val completionRepository: GameCompletionRepository,
-    private val generator: WordGeneratorV1 = WordGeneratorV1(),
-    private val allowedGuesses: WordAllowedGuesses = WordLexiconV1.allowedGuesses,
+    private val runtimeResolver: (GeneratorVersion) -> WordRuntime = ::resolveWordRuntime,
     private val workDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val sessionIdFactory: () -> String = { UUID.randomUUID().toString() },
 ) : ViewModel() {
@@ -163,12 +165,12 @@ internal class WordGameViewModel(
         when (val requestedLaunch = launch) {
             is WordGameLaunch.New ->
                 withContext(workDispatcher) {
-                    require(requestedLaunch.generatorVersion == generator.version)
-                    val puzzle = generator.generate(requestedLaunch.seed, requestedLaunch.difficulty)
+                    val runtime = runtimeResolver(requestedLaunch.generatorVersion)
+                    val puzzle = runtime.generator.generate(requestedLaunch.seed, requestedLaunch.difficulty)
                     require(puzzle.id.generatorVersion == requestedLaunch.generatorVersion)
                     // Load the bundled guess pool here so the first submit never parses it on the main thread.
-                    allowedGuesses.size
-                    val engine = WordGameEngine(puzzle, allowedGuesses)
+                    runtime.allowedGuesses.size
+                    val engine = WordGameEngine(puzzle, runtime.allowedGuesses)
                     LoadedSession(
                         puzzle,
                         engine,
@@ -189,13 +191,13 @@ internal class WordGameViewModel(
         if (!saved.hasRequestedIdentity(requestedLaunch)) throw InvalidSavedSessionException()
         return try {
             withContext(workDispatcher) {
-                require(saved.generatorVersion == generator.version)
-                val puzzle = generator.generate(saved.puzzleSeed, saved.difficulty)
+                val runtime = runtimeResolver(saved.generatorVersion)
+                val puzzle = runtime.generator.generate(saved.puzzleSeed, saved.difficulty)
                 require(puzzle.id.generatorVersion == saved.generatorVersion)
                 val game =
                     WordSessionCodec.decode(
                         puzzle = puzzle,
-                        allowedGuesses = allowedGuesses,
+                        allowedGuesses = runtime.allowedGuesses,
                         sessionFormatVersion = saved.sessionFormatVersion,
                         gameplayPayload = saved.gameplayPayload,
                         moveHistoryPayload = saved.moveHistoryPayload,
@@ -204,7 +206,7 @@ internal class WordGameViewModel(
                     )
                 LoadedSession(
                     puzzle,
-                    WordGameEngine(puzzle, allowedGuesses),
+                    WordGameEngine(puzzle, runtime.allowedGuesses),
                     game,
                     ActiveSession(saved.sessionId, puzzle, requestedLaunch.context),
                     isNew = false,
@@ -350,6 +352,18 @@ internal class WordGameViewModel(
                 dailyIdentity == DailyGameSessionIdentity(context.challengeDate, context.policyVersion.value)
         }
 }
+
+internal data class WordRuntime(
+    val generator: PuzzleGenerator<WordPuzzle>,
+    val allowedGuesses: WordAllowedGuesses,
+)
+
+private fun resolveWordRuntime(generatorVersion: GeneratorVersion): WordRuntime =
+    when (generatorVersion.value) {
+        1 -> WordRuntime(WordGeneratorV1(), WordLexiconV1.allowedGuesses)
+        2 -> WordRuntime(WordGeneratorV2(), WordLexiconV2.allowedGuesses)
+        else -> error("Unsupported Word generator version ${generatorVersion.value}.")
+    }
 
 internal class WordGameViewModelFactory(
     private val launch: WordGameLaunch,

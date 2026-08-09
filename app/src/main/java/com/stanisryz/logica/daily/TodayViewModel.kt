@@ -9,7 +9,7 @@ import com.stanisryz.logica.crowns.CrownsGameContext
 import com.stanisryz.logica.crowns.CrownsGameLaunch
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengeDefinition
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
-import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV3
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV4
 import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
 import com.stanisryz.logica.puzzle.core.model.Difficulty
@@ -117,9 +117,9 @@ internal class TodayViewModel(
                 try {
                     val challengeDate = dateProvider()
                     val run = dailyChallengeRepository.readRun(challengeDate)
-                    // A persisted run keeps its own policy version forever; only brand-new runs use V3.
+                    // A persisted run keeps its own policy version forever; only brand-new runs use V4.
                     val definition =
-                        definitionProvider(challengeDate, run?.policyVersion ?: DailyChallengePolicyV3.VERSION)
+                        definitionProvider(challengeDate, run?.policyVersion ?: DailyChallengePolicyV4.VERSION)
                     val entries = definition.entries.map { entry -> entryState(definition, entry, run) }
                     mutableUiState.value =
                         TodayUiState.Content(

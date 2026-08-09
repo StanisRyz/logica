@@ -13,7 +13,7 @@ class WordGameEngine(
     ): WordGameState {
         requireCompatible(state)
         require(RussianWordNormalizer.isSupportedLetter(letter)) { "Letter '$letter' is not a supported Russian letter." }
-        if (state.isFinished || state.currentInput.length == WordRules.WORD_LENGTH) return state
+        if (state.isFinished || state.currentInput.length == puzzle.wordLength) return state
         return createState(
             currentInput = state.currentInput + RussianWordNormalizer.normalizeLetter(letter),
             attempts = state.attempts,
@@ -30,12 +30,12 @@ class WordGameEngine(
     fun submit(state: WordGameState): WordSubmitResult {
         requireCompatible(state)
         if (state.isFinished) return WordSubmitResult.Rejected(state, WordGuessRejection.GAME_FINISHED)
-        if (state.currentInput.length != WordRules.WORD_LENGTH) {
+        if (state.currentInput.length != puzzle.wordLength) {
             return WordSubmitResult.Rejected(state, WordGuessRejection.INCOMPLETE_INPUT)
         }
 
         val guess =
-            when (val normalization = WordRules.normalize(state.currentInput)) {
+            when (val normalization = WordRules.normalize(state.currentInput, puzzle.wordLength)) {
                 is WordNormalization.Normalized -> normalization.word
                 is WordNormalization.Rejected ->
                     return WordSubmitResult.Rejected(
@@ -64,7 +64,7 @@ class WordGameEngine(
         require(submittedWords.size <= WordRules.MAXIMUM_ATTEMPTS) { "Too many submitted attempts." }
         val attempts =
             submittedWords.map { submitted ->
-                val guess = WordRules.requireNormalized(submitted)
+                val guess = WordRules.requireNormalized(submitted, puzzle.wordLength)
                 require(guess in allowedGuesses) { "Submitted word '$guess' is not an allowed guess." }
                 WordAttempt(guess, WordRules.evaluate(puzzle.answer, guess))
             }
@@ -81,6 +81,7 @@ class WordGameEngine(
     ): WordGameState =
         WordGameState(
             puzzleId = puzzle.id,
+            wordLength = puzzle.wordLength,
             currentInput = currentInput,
             attempts = attempts,
             status = statusOf(attempts),
@@ -95,5 +96,6 @@ class WordGameEngine(
 
     private fun requireCompatible(state: WordGameState) {
         require(state.puzzleId == puzzle.id) { "Game state belongs to a different puzzle." }
+        require(state.wordLength == puzzle.wordLength) { "Game state word length belongs to a different puzzle." }
     }
 }

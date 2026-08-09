@@ -96,7 +96,11 @@ internal fun WordStartScreen(
                             .semantics { selected = isSelected }
                             .clickable(role = Role.RadioButton) { selectedDifficulty = difficulty },
                 ) {
-                    Text(difficulty.russianLabel(), Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(difficulty.wordDifficultyResource()),
+                        Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
                 }
             }
         }
@@ -125,3 +129,11 @@ internal fun WordStartScreen(
         )
     }
 }
+
+private fun Difficulty.wordDifficultyResource(): Int =
+    when (this) {
+        Difficulty.EASY -> R.string.word_difficulty_easy
+        Difficulty.MEDIUM -> R.string.word_difficulty_medium
+        Difficulty.HARD -> R.string.word_difficulty_hard
+        Difficulty.EXPERT -> R.string.word_difficulty_expert
+    }

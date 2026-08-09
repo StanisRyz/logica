@@ -15,6 +15,13 @@ class WordGeneratorV1Test {
 
     @Test
     fun generationIsDeterministicForTheSameIdentityAndFrozenAnswerPool() {
+        val frozenSeedOneAnswers =
+            mapOf(
+                Difficulty.EASY to "верба",
+                Difficulty.MEDIUM to "гряда",
+                Difficulty.HARD to "холод",
+                Difficulty.EXPERT to "хомяк",
+            )
         Difficulty.entries.forEach { difficulty ->
             val seed = PuzzleSeed(4242)
             val puzzle = generator.generate(seed, difficulty)
@@ -25,6 +32,13 @@ class WordGeneratorV1Test {
             assertEquals(seed, puzzle.id.seed)
             assertEquals(difficulty, puzzle.id.difficulty)
             assertEquals(difficulty, WordLexiconV1.possibleAnswers.difficultyOf(puzzle.answer))
+            assertEquals(frozenSeedOneAnswers.getValue(difficulty), generator.generate(PuzzleSeed(1), difficulty).answer)
+
+            val v2Puzzle = WordGeneratorV2().generate(seed, difficulty)
+            assertEquals(v2Puzzle, WordGeneratorV2().generate(seed, difficulty))
+            assertEquals(GeneratorVersion(2), v2Puzzle.id.generatorVersion)
+            assertEquals(WordRules.wordLengthForV2(difficulty), v2Puzzle.answer.length)
+            assertEquals(difficulty, WordLexiconV2.possibleAnswers.difficultyOf(v2Puzzle.answer))
         }
         assertSame(
             generator,
@@ -51,7 +65,11 @@ class WordGeneratorV1Test {
 
     @Test
     fun normalizationRejectsUnsupportedInputAndFoldsYoIntoYe() {
-        assertEquals("ковер", WordRules.normalizeOrNull(" КовЁр "))
+        assertEquals("ковер", WordRules.normalizeOrNull("КовЁр"))
+        assertEquals(
+            WordNormalization.Rejected(WordNormalizationRejection.UNSUPPORTED_CHARACTER, ' '),
+            WordRules.normalize(" ковер"),
+        )
         assertEquals(
             WordNormalization.Rejected(WordNormalizationRejection.UNSUPPORTED_CHARACTER, 'a'),
             WordRules.normalize("aовер"),
@@ -61,6 +79,6 @@ class WordGeneratorV1Test {
             WordRules.normalize("ко-вер"),
         )
         assertEquals(WordNormalization.Rejected(WordNormalizationRejection.WRONG_LENGTH), WordRules.normalize("коврик"))
-        assertEquals(WordNormalization.Rejected(WordNormalizationRejection.EMPTY), WordRules.normalize("   "))
+        assertEquals(WordNormalization.Rejected(WordNormalizationRejection.EMPTY), WordRules.normalize(""))
     }
 }

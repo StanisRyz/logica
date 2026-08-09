@@ -28,11 +28,10 @@ object RussianWordNormalizer {
         expectedLength: Int,
     ): WordNormalization {
         require(expectedLength > 0) { "Expected length must be positive." }
-        val trimmed = raw.trim()
-        if (trimmed.isEmpty()) return WordNormalization.Rejected(WordNormalizationRejection.EMPTY)
+        if (raw.isEmpty()) return WordNormalization.Rejected(WordNormalizationRejection.EMPTY)
 
-        val normalized = StringBuilder(trimmed.length)
-        trimmed.forEach { character ->
+        val normalized = StringBuilder(raw.length)
+        raw.forEach { character ->
             val letter = normalizeLetter(character)
             if (letter !in supportedLetters) {
                 return WordNormalization.Rejected(WordNormalizationRejection.UNSUPPORTED_CHARACTER, character)

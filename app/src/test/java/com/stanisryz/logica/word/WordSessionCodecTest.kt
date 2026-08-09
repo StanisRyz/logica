@@ -8,8 +8,10 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordGameEngine
 import com.stanisryz.logica.puzzle.core.word.WordGameState
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
+import com.stanisryz.logica.puzzle.core.word.WordGeneratorV2
 import com.stanisryz.logica.puzzle.core.word.WordLetterFeedback
 import com.stanisryz.logica.puzzle.core.word.WordLexiconV1
+import com.stanisryz.logica.puzzle.core.word.WordLexiconV2
 import com.stanisryz.logica.puzzle.core.word.WordPuzzle
 import com.stanisryz.logica.puzzle.core.word.WordSubmitResult
 import org.junit.Assert.assertEquals
@@ -72,6 +74,38 @@ class WordSessionCodecTest {
         }
         assertThrows(IllegalStateException::class.java) {
             decode(encoded.gameplayPayload, encoded.moveHistoryPayload, "NOT_A_STATUS")
+        }
+    }
+
+    @Test
+    fun v2EasyAndExpertSessionsRoundTripWithTheirPuzzleSpecificLengths() {
+        listOf(Difficulty.EASY, Difficulty.EXPERT).forEach { difficulty ->
+            val variablePuzzle = WordGeneratorV2().generate(PuzzleSeed(9000L + difficulty.ordinal), difficulty)
+            val variableEngine = WordGameEngine(variablePuzzle, WordLexiconV2.allowedGuesses)
+            val wrongGuess =
+                WordLexiconV2.allowedGuesses.all().first {
+                    it.length == variablePuzzle.wordLength && it != variablePuzzle.answer
+                }
+            val accepted =
+                variableEngine.submit(wrongGuess.fold(variableEngine.start(), variableEngine::appendLetter))
+                    as WordSubmitResult.Accepted
+            val partial = variablePuzzle.answer.take(variablePuzzle.wordLength - 1)
+            val played = partial.fold(accepted.state, variableEngine::appendLetter)
+            val encoded = WordSessionCodec.encode(variablePuzzle, played)
+
+            val restored =
+                WordSessionCodec.decode(
+                    puzzle = variablePuzzle,
+                    allowedGuesses = WordLexiconV2.allowedGuesses,
+                    sessionFormatVersion = WordSessionCodec.SESSION_FORMAT_VERSION,
+                    gameplayPayload = encoded.gameplayPayload,
+                    moveHistoryPayload = encoded.moveHistoryPayload,
+                    hintsUsed = 0,
+                    status = encoded.status,
+                )
+
+            assertEquals(variablePuzzle.wordLength, restored.wordLength)
+            assertEquals(played, restored)
         }
     }
 

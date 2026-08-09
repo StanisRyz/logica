@@ -41,20 +41,21 @@
 - Active saves are isolated by puzzle type plus session scope; each puzzle owns its explicit session codec version.
 - Android ViewModels regenerate definitions from puzzle identity and restore gameplay through the corresponding core engine.
 - Word is the third playable puzzle: core in `:puzzle-core`, Android gameplay, Catalog, Daily, results, statistics, and onboarding in `:app`.
-- Word V1 is five normalized Russian letters and six valid attempts at every difficulty; submitted attempts are final, so Word has no Undo, no Reset, and no hint mechanic.
-- `RussianWordNormalizer` is the single normalization contract for corpus preparation, lexicon lookup, gameplay submission, and tests: lower case, `Ё -> Е`, and rejection of spaces, hyphens, mixed alphabets, and wrong lengths.
+- Word V1 stays frozen at five normalized Russian letters for every difficulty; Word V2 maps EASY/MEDIUM/HARD/EXPERT to 4/5/6/7 letters, and both versions keep six attempts with no Undo, Reset, or hints.
+- `RussianWordNormalizer` is the single normalization contract for corpus preparation, lexicon lookup, gameplay submission, and tests: lower case, `Ё -> Е`, Russian Cyrillic only, and explicit puzzle-specific length validation.
 - Incomplete input, failed normalization, and unknown words consume no attempt and are reported as structured rejections; localized Word text belongs in `:app`.
 - Repeated-letter feedback is two-pass: exact positions are marked first and consume their answer letters, and the remaining guess letters match only the still unused counts.
 - `WordAllowedGuesses` and `WordPossibleAnswers` are separate concepts; every answer is also an allowed guess, and the answer pool stays substantially more curated than the guess pool.
 - `WordLexiconV1` is bundled generated project data produced offline by `:puzzle-core:wordLexiconPrepare`; runtime never uses the network, and generated resources are never edited by hand.
 - `WordLexiconV1` is FROZEN: its answer contents and ordering fix the `(difficulty, seed, generatorVersion = 1)` mapping, so any change to that mapping requires a new generator version rather than a V1 edit.
-- Word difficulty measures guessing challenge through letter rarity, repeated letters, and vowel scarcity, never obscurity; EXPERT stays common-but-hard rather than unfair.
+- `WordLexiconV2` is generated offline from pinned local `pymorphy3`/`pymorphy3-dicts-ru` dictionary entries, pinned Russian `wordfreq` ranking, and project allow/block files; Android bundles generated data and has no Python or runtime morphology dependency.
+- Word V2 difficulty is word-length-only; morphology provides broad noun guesses, `wordfreq` ranks answer commonness without misusing pymorphy parse confidence, and every difficulty keeps at least 500 possible answers.
 - `WordSessionCodecV1` persists only the current input and submitted words; feedback is always recomputed from the regenerated answer, which stays the single source of truth.
 - A Word game is terminal on `SOLVED` and on `FAILED`; both produce exactly one durable `GameResult` and both complete the Word Daily entry.
 - Results carry typed `GameOutcome` plus nullable `attemptsUsed`; Balance/Crowns are always `SOLVED` with a null attempt count, and Word records `1..6`.
 - Room v5 adds `outcome` and `attempts_used` to `game_results`; `MIGRATION_4_5` backfills historical results to `SOLVED` with a null attempt count and preserves everything else.
 - Daily lifecycle tracks participation, not success: a `FAILED` Word entry completes like a solved one, so a Daily run still reaches `3/3` and the streak stays valid.
-- Daily policies are immutable: V1 is Balance, V2 is Balance + Crowns, V3 is Balance + Crowns + Word at Medium/Generator V1; new runs use V3 and a persisted run always keeps its own version.
+- Daily policies are immutable: V1 is Balance, V2 adds Crowns, V3 adds Word Medium/Generator V1, and V4 changes only Word to Medium/Generator V2; new runs use V4 and persisted runs keep their original version.
 - All six `BALANCE|CROWNS|WORD` × `CATALOG|DAILY` sessions coexist independently; creating, restoring, corrupting, or completing one never touches another.
 - Change shared puzzle abstractions only when multiple concrete puzzle implementations prove the need.
 - Balance solving is deterministic and reuses the validator rules; logical steps are data-driven for future hints and difficulty analysis.

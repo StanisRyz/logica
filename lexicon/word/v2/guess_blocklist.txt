@@ -1,0 +1,17 @@
+# Final override for inappropriate or erroneous morphology entries in AllowedGuessesV2.
+блядь
+говно
+дерьмо
+задница
+жопа
+залупа
+манда
+мудак
+мудила
+педик
+пидор
+пизда
+сука
+сволочь
+ублюдок
+шлюха

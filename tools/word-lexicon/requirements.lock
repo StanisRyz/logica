@@ -1,0 +1,5 @@
+# Offline Word V2 extraction environment. Install with:
+#   python -m pip install -r tools/word-lexicon/requirements.lock
+pymorphy3==2.0.6
+pymorphy3-dicts-ru==2.4.417150.4580142
+wordfreq==3.1.1

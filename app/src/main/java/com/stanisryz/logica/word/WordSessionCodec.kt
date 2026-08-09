@@ -6,7 +6,6 @@ import com.stanisryz.logica.puzzle.core.word.WordGameEngine
 import com.stanisryz.logica.puzzle.core.word.WordGameState
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
 import com.stanisryz.logica.puzzle.core.word.WordPuzzle
-import com.stanisryz.logica.puzzle.core.word.WordRules
 
 internal data class EncodedWordSession(
     val gameplayPayload: String,
@@ -28,9 +27,10 @@ internal object WordSessionCodec {
         game: WordGameState,
     ): EncodedWordSession {
         require(game.puzzleId == puzzle.id) { "Word game belongs to a different puzzle." }
+        require(game.wordLength == puzzle.wordLength) { "Word game length does not match its puzzle." }
         val gameplayPayload =
             buildString {
-                appendLine("length=${WordRules.WORD_LENGTH}")
+                appendLine("length=${puzzle.wordLength}")
                 append("input=${game.currentInput.ifEmpty { EMPTY_MARKER }}")
             }
         return EncodedWordSession(
@@ -58,11 +58,11 @@ internal object WordSessionCodec {
 
         val gameplay = gameplayPayload.parseGameplayPayload()
         val length = gameplay.getValue("length").toIntOrNull() ?: error("Invalid saved word length.")
-        require(length == WordRules.WORD_LENGTH) { "Saved word length does not match the regenerated puzzle." }
+        require(length == puzzle.wordLength) { "Saved word length does not match the regenerated puzzle." }
 
         val savedInput = gameplay.getValue("input")
-        val currentInput = if (savedInput == EMPTY_MARKER) "" else savedInput.requireInputPrefix()
-        val submittedWords = moveHistoryPayload.decodeSubmittedWords()
+        val currentInput = if (savedInput == EMPTY_MARKER) "" else savedInput.requireInputPrefix(puzzle.wordLength)
+        val submittedWords = moveHistoryPayload.decodeSubmittedWords(puzzle.wordLength)
 
         val game = WordGameEngine(puzzle, allowedGuesses).restore(currentInput, submittedWords)
         val savedStatus =
@@ -88,19 +88,19 @@ internal object WordSessionCodec {
     }
 
     /** A partial guess is any normalized prefix shorter than a full word. */
-    private fun String.requireInputPrefix(): String {
-        require(length in 1 until WordRules.WORD_LENGTH) { "Saved current input has an invalid length." }
+    private fun String.requireInputPrefix(expectedLength: Int): String {
+        require(length in 1 until expectedLength) { "Saved current input has an invalid length." }
         require(all { RussianWordNormalizer.isSupportedLetter(it) && RussianWordNormalizer.normalizeLetter(it) == it }) {
             "Saved current input is not normalized."
         }
         return this
     }
 
-    private fun String.decodeSubmittedWords(): List<String> {
+    private fun String.decodeSubmittedWords(expectedLength: Int): List<String> {
         if (isBlank()) return emptyList()
         return lineSequence()
             .map { line ->
-                require(WordRules.isNormalized(line)) { "Invalid saved submitted word." }
+                require(RussianWordNormalizer.isNormalized(line, expectedLength)) { "Invalid saved submitted word." }
                 line
             }.toList()
     }

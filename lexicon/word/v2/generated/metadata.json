@@ -1,0 +1,69 @@
+{
+  "counts": {
+    "accepted_noun_lemmas_before_manual_block": 19495,
+    "allowed_guesses_by_length": {
+      "4": 1919,
+      "5": 4070,
+      "6": 5884,
+      "7": 7609
+    },
+    "answer_candidates_requiring_review": 1500,
+    "dictionary_entries": 5140211,
+    "dictionary_lemmas": 182305,
+    "frequency_ranked_answers": 1426,
+    "manual_guess_blocks_applied": 13,
+    "minimum_answer_zipf_frequency_by_difficulty": {
+      "EASY": 3.25,
+      "EXPERT": 3.17,
+      "HARD": 3.22,
+      "MEDIUM": 1.94
+    },
+    "normalization_collisions": 6,
+    "plural_only_accepted": 269,
+    "possible_answers_by_difficulty": {
+      "EASY": 500,
+      "EXPERT": 500,
+      "HARD": 500,
+      "MEDIUM": 505
+    },
+    "rejected_abbreviation": 52,
+    "rejected_invalid_characters": 3873,
+    "rejected_not_noun": 6504,
+    "rejected_proper_name": 16708,
+    "rejected_unsupported_length": 135667,
+    "rejection_diagnostic_rows": 23330,
+    "v1_trusted_candidates_not_compatible_with_v2_morphology": 1,
+    "wordfreq_selection_floor_by_difficulty": {
+      "EASY": 3.25,
+      "EXPERT": 3.46,
+      "HARD": 3.54
+    }
+  },
+  "dictionary": {
+    "compiled_at": "2022-01-08T22:09:24.565962",
+    "corpus_revision": "4580142",
+    "format_version": "2.4",
+    "language_code": "ru",
+    "source": "opencorpora.org",
+    "source_lexemes_count": 391778,
+    "source_links_count": 258607,
+    "source_revision": "417150",
+    "source_version": "0.92",
+    "words_dawg_length": 5140211
+  },
+  "frequency_data_license": "wordfreq data: Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0)",
+  "lexical_data_license": "Creative Commons Attribution-ShareAlike 3.0 (CC BY-SA 3.0)",
+  "package_code_licenses": "pymorphy3/pymorphy3-dicts package code: MIT; wordfreq code: Apache-2.0",
+  "pymorphy3_dicts_ru_version": "2.4.417150.4580142",
+  "pymorphy3_version": "2.0.6",
+  "transformations": [
+    "dictionary-known entry enumeration",
+    "NOUN-only normal-form extraction",
+    "proper-name and abbreviation filtering",
+    "lower-case normalization and Ё -> Е folding",
+    "4/5/6/7-letter filtering",
+    "wordfreq Russian Zipf-frequency ranking for answer candidates",
+    "manual answer/guess allow/block curation"
+  ],
+  "wordfreq_version": "3.1.1"
+}

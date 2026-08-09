@@ -4,7 +4,7 @@ import com.stanisryz.logica.puzzle.core.contract.PuzzleDifficultyEvaluator
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 
 /**
- * Transparent, deterministic guessing-challenge score. Every difficulty keeps five letters and six
+ * Frozen V1 guessing-challenge score. Every V1 difficulty keeps five letters and six
  * attempts; only how hard the answer is to deduce changes.
  *
  * The signals are letter rarity, repeated letters, and vowel scarcity. Obscurity is deliberately not

@@ -40,12 +40,18 @@ internal fun WordBoard(
     modifier: Modifier = Modifier,
 ) {
     val rows = buildRows(game)
+    val cellSpacing = if (game.wordLength == WordRules.MAXIMUM_WORD_LENGTH) COMPACT_CELL_SPACING else CELL_SPACING
     Column(
-        modifier = modifier.fillMaxWidth().widthIn(max = BOARD_MAX_WIDTH),
-        verticalArrangement = Arrangement.spacedBy(CELL_SPACING),
+        modifier = modifier.widthIn(max = BOARD_MAX_WIDTH).fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(cellSpacing),
     ) {
         rows.forEachIndexed { rowIndex, row ->
-            WordBoardRow(row = row, rowIndex = rowIndex, isSubmitted = rowIndex < game.attempts.size)
+            WordBoardRow(
+                row = row,
+                rowIndex = rowIndex,
+                isSubmitted = rowIndex < game.attempts.size,
+                cellSpacing = cellSpacing,
+            )
         }
     }
 }
@@ -55,6 +61,7 @@ private fun WordBoardRow(
     row: List<WordCell>,
     rowIndex: Int,
     isSubmitted: Boolean,
+    cellSpacing: androidx.compose.ui.unit.Dp,
 ) {
     // Feedback labels are resolved up front: `joinToString` runs outside a composable context.
     val correctLabel = stringResource(R.string.word_feedback_correct)
@@ -84,7 +91,7 @@ private fun WordBoardRow(
                         Modifier.clearAndSetSemantics { contentDescription = rowDescription }
                     },
                 ),
-        horizontalArrangement = Arrangement.spacedBy(CELL_SPACING),
+        horizontalArrangement = Arrangement.spacedBy(cellSpacing),
     ) {
         row.forEach { cell ->
             WordBoardCell(cell, Modifier.weight(1f))
@@ -163,13 +170,13 @@ private fun buildRows(game: WordGameState): List<List<WordCell>> =
         }
         if (size < WordRules.MAXIMUM_ATTEMPTS) {
             add(
-                List(WordRules.WORD_LENGTH) { index ->
+                List(game.wordLength) { index ->
                     WordCell(game.currentInput.getOrNull(index), null)
                 },
             )
         }
         while (size < WordRules.MAXIMUM_ATTEMPTS) {
-            add(List(WordRules.WORD_LENGTH) { WordCell(null, null) })
+            add(List(game.wordLength) { WordCell(null, null) })
         }
     }
 
@@ -183,6 +190,7 @@ internal fun WordLetterFeedback?.descriptionResource(): Int =
 
 private val BOARD_MAX_WIDTH = 340.dp
 private val CELL_SPACING = 6.dp
+private val COMPACT_CELL_SPACING = 4.dp
 private val CELL_CORNER = 6.dp
 private val CORRECT_CORNER = 12.dp
 private val PRESENT_BORDER_WIDTH = 3.dp

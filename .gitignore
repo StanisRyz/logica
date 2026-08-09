@@ -9,3 +9,5 @@ build/
 .externalNativeBuild/
 .cxx/
 captures/
+__pycache__/
+*.py[cod]
