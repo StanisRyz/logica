@@ -10,6 +10,7 @@ import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.result.GameResult
 import com.stanisryz.logica.session.DailyGameSessionIdentity
 import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.session.GameSessionScope
@@ -178,6 +179,7 @@ class TodayViewModelTest {
             dailyChallengeRepository = dailyChallengeRepository,
             gameSessionRepository = gameSessionRepository,
             statisticsRepository = EmptyStatisticsRepository,
+            dailyResultRepository = EmptyDailyResultRepository,
             dateProvider = { date },
             definitionProvider = DailyChallengePolicyResolver::definitionFor,
         )
@@ -276,5 +278,12 @@ class TodayViewModelTest {
                     dailyHintsUsedByDate = emptyMap(),
                 ),
             )
+    }
+
+    private object EmptyDailyResultRepository : DailyResultRepository {
+        override suspend fun readResults(
+            challengeDate: LocalDate,
+            policyVersion: DailyPolicyVersion,
+        ): List<GameResult> = emptyList()
     }
 }

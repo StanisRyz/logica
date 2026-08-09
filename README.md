@@ -64,7 +64,7 @@ on-screen Russian keyboard, accessible non-color feedback, independent version-a
 and a short onboarding. Unlike the other puzzles a Word game is terminal on both outcomes — solved,
 or failed after six attempts — and both are recorded.
 
-Completed games are persisted as durable results with a typed outcome and, for Word, the attempts used. The app reports core gameplay statistics and derives current and best Daily streaks from completed Daily history.
+Completed games are persisted as durable results with a typed outcome and, for Word, the attempts used. The app reports core gameplay statistics and derives current and best Daily streaks from completed Daily history. Once a Daily run is fully completed, the Today screen offers a spoiler-free plain-text share of that run's per-puzzle results (solved/attempts-used/not-guessed, never the Word answer), progress, and current streak through the standard Android Sharesheet.
 
 All three puzzles share one calm Material 3 shell: a single Light/Dark colour scheme, one spacing and text hierarchy, one difficulty selector, and one loading/error/completion presentation, while each board keeps its own specialised gameplay. Puzzle states are always readable without colour, and the shared UI pieces live in `app/src/main/java/com/stanisryz/logica/ui/components/` and `.../ui/theme/`.
 

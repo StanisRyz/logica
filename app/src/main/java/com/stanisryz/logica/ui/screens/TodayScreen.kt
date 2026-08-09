@@ -1,5 +1,7 @@
 package com.stanisryz.logica.ui.screens
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -25,9 +27,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -38,6 +42,10 @@ import com.stanisryz.logica.R
 import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.DailyEntryState
 import com.stanisryz.logica.daily.DailyGameLaunch
+import com.stanisryz.logica.daily.DailyPuzzleResultSummary
+import com.stanisryz.logica.daily.DailyResultRepository
+import com.stanisryz.logica.daily.DailyResultSummary
+import com.stanisryz.logica.daily.DailyShareFormatter
 import com.stanisryz.logica.daily.TodayCompletionUiState
 import com.stanisryz.logica.daily.TodayEntryUiState
 import com.stanisryz.logica.daily.TodayError
@@ -45,8 +53,11 @@ import com.stanisryz.logica.daily.TodayUiState
 import com.stanisryz.logica.daily.TodayViewModel
 import com.stanisryz.logica.daily.TodayViewModelFactory
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.puzzle.core.word.WordRules
+import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.statistics.StatisticsRepository
+import com.stanisryz.logica.ui.components.CompletionActions
 import com.stanisryz.logica.ui.components.CompletionCard
 import com.stanisryz.logica.ui.components.LabelledValue
 import com.stanisryz.logica.ui.components.LoadingState
@@ -71,6 +82,7 @@ internal fun TodayRoute(
     dailyChallengeRepository: DailyChallengeRepository,
     gameSessionRepository: GameSessionRepository,
     statisticsRepository: StatisticsRepository,
+    dailyResultRepository: DailyResultRepository,
     balanceTutorialCompleted: Boolean,
     crownsTutorialCompleted: Boolean,
     wordTutorialCompleted: Boolean,
@@ -79,8 +91,13 @@ internal fun TodayRoute(
     modifier: Modifier = Modifier,
 ) {
     val factory =
-        remember(dailyChallengeRepository, gameSessionRepository, statisticsRepository) {
-            TodayViewModelFactory(dailyChallengeRepository, gameSessionRepository, statisticsRepository)
+        remember(dailyChallengeRepository, gameSessionRepository, statisticsRepository, dailyResultRepository) {
+            TodayViewModelFactory(
+                dailyChallengeRepository,
+                gameSessionRepository,
+                statisticsRepository,
+                dailyResultRepository,
+            )
         }
     val todayViewModel: TodayViewModel = viewModel(factory = factory)
     val uiState by todayViewModel.uiState.collectAsStateWithLifecycle()
@@ -305,22 +322,69 @@ private fun EntryStatusChip(
     )
 }
 
-/**
- * The completed Daily is deliberately unlike an entry card. [CompletionActions] is the slot a later
- * stage can add a Share action to without touching this layout.
- */
+/** The completed Daily is deliberately unlike an entry card, reusing [CompletionActions] for Share. */
 @Composable
 private fun DailyCompletionCard(completion: TodayCompletionUiState) {
+    val context = LocalContext.current
     CompletionCard(
         icon = Icons.Filled.CheckCircle,
         title = stringResource(R.string.daily_completed),
     ) {
+        completion.resultSummary?.entries?.forEach { entry -> DailyResultRow(entry) }
         LabelledValue(stringResource(R.string.current_daily_streak), completion.currentStreak.toString())
         LabelledValue(stringResource(R.string.best_daily_streak), completion.bestStreak.toString())
         completion.hintsUsed?.let { hintsUsed ->
             LabelledValue(stringResource(R.string.total_hints_used), hintsUsed.toString())
         }
+        // Sharing is only offered once a full, policy-matched result set is confirmed available;
+        // a completed run with a missing/mismatched result keeps the rest of this card as-is.
+        completion.resultSummary?.let { summary ->
+            val shareDescription = stringResource(R.string.share_daily_result_description)
+            CompletionActions {
+                Button(
+                    onClick = { context.shareDailyResult(summary) },
+                    modifier = Modifier.semantics { contentDescription = shareDescription },
+                ) {
+                    Text(stringResource(R.string.share_daily_result))
+                }
+            }
+        }
     }
+}
+
+@Composable
+private fun DailyResultRow(entry: DailyPuzzleResultSummary) {
+    val label = stringResource(entry.puzzleType.titleResource())
+    val valueText: String
+    val description: String
+    if (entry.puzzleType == PuzzleType.WORD) {
+        if (entry.outcome == GameOutcome.SOLVED) {
+            val attemptsUsed = entry.attemptsUsed ?: 0
+            valueText = stringResource(R.string.daily_result_word_attempts, attemptsUsed, WordRules.MAXIMUM_ATTEMPTS)
+            description = stringResource(R.string.daily_result_word_solved_description, label, attemptsUsed)
+        } else {
+            valueText = stringResource(R.string.daily_result_word_failed)
+            description = stringResource(R.string.daily_result_word_failed_description, label)
+        }
+    } else {
+        valueText = stringResource(R.string.daily_result_solved)
+        description = stringResource(R.string.daily_result_solved_description, label)
+    }
+    LabelledValue(
+        label = label,
+        value = valueText,
+        modifier = Modifier.clearAndSetSemantics { contentDescription = description },
+    )
+}
+
+/** The only place an Android [Intent] gets built; [DailyShareFormatter] itself stays plain Kotlin. */
+private fun Context.shareDailyResult(summary: DailyResultSummary) {
+    val sendIntent =
+        Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, DailyShareFormatter.format(summary))
+        }
+    startActivity(Intent.createChooser(sendIntent, null))
 }
 
 private val PROGRESS_HEIGHT = 8.dp

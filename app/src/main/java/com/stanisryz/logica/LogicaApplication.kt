@@ -6,7 +6,9 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.stanisryz.logica.daily.DailyChallengeRepository
+import com.stanisryz.logica.daily.DailyResultRepository
 import com.stanisryz.logica.daily.RoomDailyChallengeRepository
+import com.stanisryz.logica.daily.RoomDailyResultRepository
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.session.LogicaDatabase
@@ -56,5 +58,9 @@ internal class AppContainer(
 
     val statisticsRepository: StatisticsRepository by lazy {
         RoomStatisticsRepository(database.gameResultDao(), database.dailyRunDao())
+    }
+
+    val dailyResultRepository: DailyResultRepository by lazy {
+        RoomDailyResultRepository(database.gameResultDao())
     }
 }

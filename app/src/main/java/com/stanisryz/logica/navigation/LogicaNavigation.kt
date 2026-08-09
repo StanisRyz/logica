@@ -30,6 +30,7 @@ import com.stanisryz.logica.balance.BalanceGameLaunch
 import com.stanisryz.logica.crowns.CrownsGameLaunch
 import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.DailyGameLaunch
+import com.stanisryz.logica.daily.DailyResultRepository
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.GameCompletionRepository
@@ -99,6 +100,7 @@ internal fun LogicaNavigation(
     gameCompletionRepository: GameCompletionRepository,
     dailyChallengeRepository: DailyChallengeRepository,
     statisticsRepository: StatisticsRepository,
+    dailyResultRepository: DailyResultRepository,
     hasActiveBalanceSession: Boolean,
     hasActiveCrownsSession: Boolean,
     hasActiveWordSession: Boolean,
@@ -142,6 +144,7 @@ internal fun LogicaNavigation(
                             dailyChallengeRepository = dailyChallengeRepository,
                             gameSessionRepository = gameSessionRepository,
                             statisticsRepository = statisticsRepository,
+                            dailyResultRepository = dailyResultRepository,
                             balanceTutorialCompleted = settings.balanceTutorialCompleted,
                             crownsTutorialCompleted = settings.crownsTutorialCompleted,
                             wordTutorialCompleted = settings.wordTutorialCompleted,

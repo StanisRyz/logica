@@ -97,6 +97,14 @@
     <string name="current_daily_streak">Текущая серия</string>
     <string name="best_daily_streak">Лучшая серия</string>
     <string name="total_hints_used">Подсказок использовано</string>
+    <string name="daily_result_solved">Решено</string>
+    <string name="daily_result_solved_description">%1$s — решено</string>
+    <string name="daily_result_word_attempts">%1$d/%2$d</string>
+    <string name="daily_result_word_solved_description">%1$s — отгадано, использовано попыток: %2$d</string>
+    <string name="daily_result_word_failed">Не угадано</string>
+    <string name="daily_result_word_failed_description">%1$s — не угадано</string>
+    <string name="share_daily_result">Поделиться</string>
+    <string name="share_daily_result_description">Поделиться результатом испытания дня</string>
     <string name="statistics_overall">Всего</string>
     <string name="statistics_empty_title">Пока нет завершённых игр</string>
     <string name="statistics_empty_body">Сыграйте задачу дня или головоломку из каталога — здесь появится статистика.</string>

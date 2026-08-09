@@ -64,6 +64,7 @@ internal data class TodayCompletionUiState(
     val hintsUsed: Int?,
     val currentStreak: Int,
     val bestStreak: Int,
+    val resultSummary: DailyResultSummary?,
 )
 
 internal sealed interface TodayUiState {
@@ -93,6 +94,7 @@ internal class TodayViewModel(
     private val dailyChallengeRepository: DailyChallengeRepository,
     private val gameSessionRepository: GameSessionRepository,
     private val statisticsRepository: StatisticsRepository,
+    private val dailyResultRepository: DailyResultRepository,
     private val dateProvider: () -> LocalDate = LocalDate::now,
     private val definitionProvider: (LocalDate, DailyPolicyVersion) -> DailyChallengeDefinition =
         DailyChallengePolicyResolver::definitionFor,
@@ -126,17 +128,7 @@ internal class TodayViewModel(
                             definition = definition,
                             runStatus = run?.status,
                             entries = entries,
-                            completion =
-                                if (run?.status == DailyRunStatus.COMPLETED) {
-                                    val snapshot = statisticsRepository.observe(challengeDate).first()
-                                    TodayCompletionUiState(
-                                        hintsUsed = snapshot.dailyHintsUsedByDate[challengeDate],
-                                        currentStreak = snapshot.statistics.currentDailyStreak,
-                                        bestStreak = snapshot.statistics.bestDailyStreak,
-                                    )
-                                } else {
-                                    null
-                                },
+                            completion = run?.let { completionFor(definition, it, challengeDate) },
                         )
                 } catch (exception: CancellationException) {
                     throw exception
@@ -144,6 +136,24 @@ internal class TodayViewModel(
                     mutableUiState.value = TodayUiState.Error(TodayError.LOAD)
                 }
             }
+    }
+
+    private suspend fun completionFor(
+        definition: DailyChallengeDefinition,
+        run: SavedDailyRun,
+        challengeDate: LocalDate,
+    ): TodayCompletionUiState? {
+        if (run.status != DailyRunStatus.COMPLETED) return null
+        val snapshot = statisticsRepository.observe(challengeDate).first()
+        val currentStreak = snapshot.statistics.currentDailyStreak
+        val bestStreak = snapshot.statistics.bestDailyStreak
+        val results = dailyResultRepository.readResults(challengeDate, run.policyVersion)
+        return TodayCompletionUiState(
+            hintsUsed = snapshot.dailyHintsUsedByDate[challengeDate],
+            currentStreak = currentStreak,
+            bestStreak = bestStreak,
+            resultSummary = DailyResultSummaryBuilder.build(definition, run, results, currentStreak, bestStreak),
+        )
     }
 
     fun start(puzzleType: PuzzleType) {
@@ -277,12 +287,18 @@ internal class TodayViewModelFactory(
     private val dailyChallengeRepository: DailyChallengeRepository,
     private val gameSessionRepository: GameSessionRepository,
     private val statisticsRepository: StatisticsRepository,
+    private val dailyResultRepository: DailyResultRepository,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(TodayViewModel::class.java)) {
             "Unknown ViewModel class: ${modelClass.name}"
         }
         @Suppress("UNCHECKED_CAST")
-        return TodayViewModel(dailyChallengeRepository, gameSessionRepository, statisticsRepository) as T
+        return TodayViewModel(
+            dailyChallengeRepository,
+            gameSessionRepository,
+            statisticsRepository,
+            dailyResultRepository,
+        ) as T
     }
 }

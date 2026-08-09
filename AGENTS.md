@@ -91,3 +91,4 @@
 - Quality failures must report reproducible seeds; use collected metrics for evidence-based tuning, not speculative rewrites.
 - Invalid, non-unique, non-deterministic, misclassified, or branching gameplay puzzles are hard generator failures.
 - Avoid unrelated refactors, speculative abstractions, excessive tests, and large documentation changes.
+- Daily sharing is generated only from the persisted Daily definition (resolved via its saved policy version) plus terminal Daily `GameResult`s matched by challenge date and policy; a completed run with a missing/mismatched result disables sharing rather than producing an incomplete summary. The share text/model must stay spoiler-free: no Word answer, guesses, letter feedback, board/solution, seed, or `PuzzleId`.

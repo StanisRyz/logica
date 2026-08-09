@@ -11,4 +11,13 @@ internal interface GameResultDao {
 
     @Query("SELECT * FROM game_results WHERE result_id = :resultId LIMIT 1")
     suspend fun find(resultId: String): GameResultEntity?
+
+    @Query(
+        "SELECT * FROM game_results WHERE session_scope = 'DAILY' " +
+            "AND challenge_date = :challengeDate AND daily_policy_version = :dailyPolicyVersion",
+    )
+    suspend fun findDailyResults(
+        challengeDate: String,
+        dailyPolicyVersion: Int,
+    ): List<GameResultEntity>
 }
