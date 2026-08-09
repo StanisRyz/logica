@@ -13,6 +13,11 @@
 - Daily definitions receive dates explicitly; Daily Policy V1 is versioned and defines Balance/Medium/Generator V1.
 - Daily generation must never fall back to a random seed.
 - Balance is the first concrete puzzle; its immutable definition, separate player state, and reusable rules live entirely in `:puzzle-core`.
+- Crowns is the second concrete puzzle in `:puzzle-core`; definitions use logical region IDs only, never UI colors or resources.
+- Mathematical Crowns state contains crown placement only; user marks belong to the later gameplay layer.
+- Crowns rules and structured diagnostics are centralized for reuse by future solver, generator, and gameplay layers.
+- Partial Crowns states may be incomplete but cannot contain row, column, region, or diagonal crown conflicts.
+- Change shared puzzle abstractions only when multiple concrete puzzle implementations prove the need.
 - Balance solving is deterministic and reuses the validator rules; logical steps are data-driven for future hints and difficulty analysis.
 - Partial `BalanceState` and completed `BalanceSolution` are distinct; puzzle rules stay UI-independent and reusable.
 - `BalanceGeneratorV1` owns version 1 and uses bounded project-RNG generation; returned puzzles are valid, unique, and logic-only solvable.
