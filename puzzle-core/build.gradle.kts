@@ -22,6 +22,7 @@ dependencies {
 }
 
 val balanceSeedCount = providers.gradleProperty("balanceSeeds").orElse("10")
+val crownsSeedCount = providers.gradleProperty("crownsSeeds").orElse("10")
 
 tasks.register<JavaExec>("balanceQualityCheck") {
     group = "verification"
@@ -34,6 +35,22 @@ tasks.register<JavaExec>("balanceQualityCheck") {
         val requestedSeedCount = balanceSeedCount.get()
         require(requestedSeedCount.toIntOrNull()?.let { it > 0 } == true) {
             "-PbalanceSeeds must be a positive integer."
+        }
+        args(requestedSeedCount)
+    }
+}
+
+tasks.register<JavaExec>("crownsQualityCheck") {
+    group = "verification"
+    description = "Runs the opt-in deterministic Crowns generator quality sweep."
+    dependsOn(qualitySourceSet.classesTaskName)
+    classpath = qualitySourceSet.runtimeClasspath
+    mainClass.set("com.stanisryz.logica.puzzle.core.crowns.quality.CrownsQualityRunner")
+
+    doFirst {
+        val requestedSeedCount = crownsSeedCount.get()
+        require(requestedSeedCount.toIntOrNull()?.let { it > 0 } == true) {
+            "-PcrownsSeeds must be a positive integer."
         }
         args(requestedSeedCount)
     }

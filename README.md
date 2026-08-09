@@ -4,7 +4,7 @@ Native Android application with a playable Balance puzzle. The stack is Kotlin, 
 
 Requires JDK 17 and Android SDK Platform 36.
 
-Crowns, the second puzzle type, now has a pure-Kotlin domain model, formal rules, deterministic explainable solving, and unique/multiple-solution detection in `puzzle-core/`.
+Crowns, the second puzzle type, now has a pure-Kotlin domain model, deterministic solving and generation, solve-based difficulty evaluation, and unique/multiple-solution detection in `puzzle-core/`.
 
 ```powershell
 .\gradlew.bat assembleDebug
@@ -23,6 +23,15 @@ Developer-only Balance generator verification:
 ```
 
 The optional `balanceSeeds` property controls the sequential seed count checked per difficulty.
+
+Developer-only Crowns generator verification:
+
+```powershell
+.\gradlew.bat :puzzle-core:crownsQualityCheck
+.\gradlew.bat :puzzle-core:crownsQualityCheck -PcrownsSeeds=100
+```
+
+The optional `crownsSeeds` property controls the sequential seed count checked per difficulty.
 
 Modules:
 

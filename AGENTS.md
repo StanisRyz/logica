@@ -22,6 +22,11 @@
 - Confirmed crown consequences reuse centralized Crowns rules rather than defining separate solver constraints.
 - Crowns search combines deterministic propagation with most-constrained-group branching.
 - `CrownsState` and validated `CrownsSolution` remain semantically separate.
+- `CrownsGeneratorV1` owns version 1 and uses bounded project-RNG placement and connected-region growth.
+- Generated Crowns regions cover the board, are orthogonally connected, and contain one intended solution crown.
+- Generated Crowns puzzles must be unique, logic-only solvable, and accepted by the existing solver and rules.
+- Crowns difficulty is solve-based rather than board-size-only; generation never falls back to another seed.
+- Crowns generator seed sweeps are explicit opt-in developer checks and never part of normal builds.
 - Change shared puzzle abstractions only when multiple concrete puzzle implementations prove the need.
 - Balance solving is deterministic and reuses the validator rules; logical steps are data-driven for future hints and difficulty analysis.
 - Partial `BalanceState` and completed `BalanceSolution` are distinct; puzzle rules stay UI-independent and reusable.

@@ -26,6 +26,12 @@ class CrownsPuzzle(
         require(distinctRegions.size == size) {
             "Expected $size distinct regions, but found ${distinctRegions.size}."
         }
+        distinctRegions.forEach { regionId ->
+            val positions = regionAssignments.filterValues { it == regionId }.keys
+            require(CrownsRegionConnectivity.isConnected(size, positions)) {
+                "Region $regionId must be orthogonally connected."
+            }
+        }
 
         this.regionAssignments = regionAssignments.toMap()
     }

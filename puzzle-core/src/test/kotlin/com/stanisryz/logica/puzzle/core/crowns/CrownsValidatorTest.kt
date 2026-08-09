@@ -31,6 +31,16 @@ class CrownsValidatorTest {
         assertThrows(IllegalArgumentException::class.java) {
             CrownsPuzzle(balanceId(), 4, assignments)
         }
+        assertThrows(IllegalArgumentException::class.java) {
+            CrownsPuzzle(
+                crownsId(),
+                4,
+                assignments.toMutableMap().apply {
+                    this[CrownsPosition(0, 0)] = RegionId(1)
+                    this[CrownsPosition(1, 0)] = RegionId(0)
+                },
+            )
+        }
     }
 
     @Test
