@@ -10,7 +10,7 @@
 - Puzzle identity is type + difficulty + seed + `generatorVersion`; concrete generators own their version.
 - Generators use project-owned random infrastructure and never system time, platform randomness, or Android APIs.
 - Daily seed derivation is deterministic and receives dates explicitly; concrete engines implement the shared `:puzzle-core` contracts.
-- Daily definitions receive dates explicitly; Daily Policy V1 is versioned and defines Balance/Medium/Generator V1.
+- Daily definitions receive dates explicitly; version-aware resolution preserves Policy V1 and Policy V2 defines Balance plus Crowns at Medium/Generator V1.
 - Daily generation must never fall back to a random seed.
 - Balance is the first concrete puzzle; its immutable definition, separate player state, and reusable rules live entirely in `:puzzle-core`.
 - Crowns is the second concrete puzzle in `:puzzle-core`; definitions use logical region IDs only, never UI colors or resources.
@@ -50,10 +50,10 @@
 - Crowns tutorial is Crowns-only application onboarding: its fixed state never touches Catalog sessions, results, statistics, Daily state, or gameplay hint counters; its prompt state is a DataStore preference.
 - Catalog and Daily gameplay use separate session scopes, must coexist, and both reuse the existing Balance engine/UI.
 - Room migrations preserve existing saves and never use destructive migration.
-- Daily lifecycle persistence is separate from active gameplay sessions and from future results or statistics.
+- Room v4 stores one aggregate `daily_runs` lifecycle per date separately from policy-defined `daily_challenges` entries, active sessions, and results.
 - Completed puzzle results are immutable Room records separate from active sessions; completion persistence is atomic and idempotent.
-- Catalog and Daily completion remain isolated by session scope, and `daily_challenges` remains the Daily lifecycle source of truth.
-- Daily streaks are derived from persisted completed Daily dates, never stored as mutable counters.
+- Catalog and Daily completion remain isolated by session scope; a Daily run completes atomically only after all of its entries complete.
+- Daily counts and streaks are derived from completed `daily_runs`, never individual entries or mutable counters.
 - Statistics reads persisted results and lifecycle history, never active sessions; do not add unreliable metrics such as wall-clock solve duration.
 - User-facing rule and hint explanations belong in `:app`; Compose renders structured core state and UX polish must not change deterministic generation or persistence compatibility without a concrete requirement.
 - Balance generator soak verification is opt-in; large seed sweeps never belong in normal tests or builds.

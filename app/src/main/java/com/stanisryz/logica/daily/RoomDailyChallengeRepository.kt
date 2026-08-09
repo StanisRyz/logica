@@ -1,5 +1,6 @@
 package com.stanisryz.logica.daily
 
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengeDefinition
 import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
@@ -11,10 +12,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.LocalDate
 
 internal class RoomDailyChallengeRepository(
     private val dao: DailyChallengeDao,
+    private val runDao: DailyRunDao,
     private val currentTimeMillis: () -> Long = System::currentTimeMillis,
     scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
 ) : DailyChallengeRepository {
@@ -32,10 +35,14 @@ internal class RoomDailyChallengeRepository(
                                     ?.toSavedDailyChallengeOrNull()
                             },
                         )
-                    is Command.Save -> {
-                        val result = runCatching { saveNow(command.challenge) }
-                        command.reply.complete(result)
-                    }
+                    is Command.ReadRun ->
+                        command.reply.complete(
+                            runCatching {
+                                runDao.find(command.challengeDate.toString())?.toSavedDailyRunOrNull()
+                            },
+                        )
+                    is Command.CreateRun ->
+                        command.reply.complete(runCatching { createRunNow(command.definition) })
                 }
             }
         }
@@ -50,29 +57,47 @@ internal class RoomDailyChallengeRepository(
         return reply.await().getOrThrow()
     }
 
-    override suspend fun save(challenge: SavedDailyChallenge) {
-        val reply = CompletableDeferred<Result<Unit>>()
-        commands.send(Command.Save(challenge, reply))
-        reply.await().getOrThrow()
+    override suspend fun readRun(challengeDate: LocalDate): SavedDailyRun? {
+        val reply = CompletableDeferred<Result<SavedDailyRun?>>()
+        commands.send(Command.ReadRun(challengeDate, reply))
+        return reply.await().getOrThrow()
     }
 
-    private suspend fun saveNow(challenge: SavedDailyChallenge) {
+    override suspend fun createRun(definition: DailyChallengeDefinition): SavedDailyRun {
+        val reply = CompletableDeferred<Result<SavedDailyRun>>()
+        commands.send(Command.CreateRun(definition, reply))
+        return reply.await().getOrThrow()
+    }
+
+    private suspend fun createRunNow(definition: DailyChallengeDefinition): SavedDailyRun {
         val now = currentTimeMillis()
-        dao.upsertKeepingCreated(challenge.toEntity(now))
+        val run =
+            DailyRunEntity(
+                challengeDate = definition.challengeDate.toString(),
+                dailyPolicyVersion = definition.policyVersion.value,
+                status = DailyRunStatus.IN_PROGRESS.name,
+                createdAtEpochMillis = now,
+                updatedAtEpochMillis = now,
+                completedAtEpochMillis = null,
+            )
+        val entries =
+            definition.entries.map { entry ->
+                DailyChallengeEntity(
+                    challengeDate = definition.challengeDate.toString(),
+                    puzzleType = entry.puzzleType.name,
+                    dailyPolicyVersion = definition.policyVersion.value,
+                    difficulty = entry.difficulty.name,
+                    puzzleSeed = entry.seed.value,
+                    generatorVersion = entry.generatorVersion.value,
+                    status = DailyChallengeStatus.IN_PROGRESS.name,
+                    createdAtEpochMillis = now,
+                    updatedAtEpochMillis = now,
+                )
+            }
+        return checkNotNull(runDao.createWithEntries(run, entries).toSavedDailyRunOrNull()) {
+            "The stored Daily run is invalid."
+        }
     }
-
-    private fun SavedDailyChallenge.toEntity(now: Long): DailyChallengeEntity =
-        DailyChallengeEntity(
-            challengeDate = challengeDate.toString(),
-            puzzleType = puzzleType.name,
-            dailyPolicyVersion = policyVersion.value,
-            difficulty = difficulty.name,
-            puzzleSeed = seed.value,
-            generatorVersion = generatorVersion.value,
-            status = status.name,
-            createdAtEpochMillis = now,
-            updatedAtEpochMillis = now,
-        )
 
     private fun DailyChallengeEntity.toSavedDailyChallengeOrNull(): SavedDailyChallenge? =
         runCatching {
@@ -87,6 +112,18 @@ internal class RoomDailyChallengeRepository(
             )
         }.getOrNull()
 
+    private fun DailyRunEntity.toSavedDailyRunOrNull(): SavedDailyRun? =
+        runCatching {
+            SavedDailyRun(
+                challengeDate = LocalDate.parse(challengeDate),
+                policyVersion = DailyPolicyVersion(dailyPolicyVersion),
+                status = DailyRunStatus.valueOf(status),
+                createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
+                updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+                completedAt = completedAtEpochMillis?.let(Instant::ofEpochMilli),
+            )
+        }.getOrNull()
+
     private sealed interface Command {
         data class Read(
             val challengeDate: LocalDate,
@@ -94,9 +131,14 @@ internal class RoomDailyChallengeRepository(
             val reply: CompletableDeferred<Result<SavedDailyChallenge?>>,
         ) : Command
 
-        data class Save(
-            val challenge: SavedDailyChallenge,
-            val reply: CompletableDeferred<Result<Unit>>,
+        data class ReadRun(
+            val challengeDate: LocalDate,
+            val reply: CompletableDeferred<Result<SavedDailyRun?>>,
+        ) : Command
+
+        data class CreateRun(
+            val definition: DailyChallengeDefinition,
+            val reply: CompletableDeferred<Result<SavedDailyRun>>,
         ) : Command
     }
 }

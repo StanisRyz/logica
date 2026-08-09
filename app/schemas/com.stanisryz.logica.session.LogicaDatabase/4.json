@@ -1,0 +1,298 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 4,
+    "identityHash": "9caa1cd5937c26b7d42cc9ecca36f0ab",
+    "entities": [
+      {
+        "tableName": "game_sessions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`puzzle_type` TEXT NOT NULL, `session_scope` TEXT NOT NULL, `session_id` TEXT NOT NULL, `difficulty` TEXT NOT NULL, `puzzle_seed` INTEGER NOT NULL, `generator_version` INTEGER NOT NULL, `challenge_date` TEXT, `daily_policy_version` INTEGER, `session_format_version` INTEGER NOT NULL, `gameplay_payload` TEXT NOT NULL, `move_history_payload` TEXT NOT NULL, `hints_used` INTEGER NOT NULL, `status` TEXT NOT NULL, `created_at_epoch_millis` INTEGER NOT NULL, `updated_at_epoch_millis` INTEGER NOT NULL, PRIMARY KEY(`puzzle_type`, `session_scope`))",
+        "fields": [
+          {
+            "fieldPath": "puzzleType",
+            "columnName": "puzzle_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionScope",
+            "columnName": "session_scope",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "session_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "difficulty",
+            "columnName": "difficulty",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "puzzleSeed",
+            "columnName": "puzzle_seed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "generatorVersion",
+            "columnName": "generator_version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "challengeDate",
+            "columnName": "challenge_date",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dailyPolicyVersion",
+            "columnName": "daily_policy_version",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sessionFormatVersion",
+            "columnName": "session_format_version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gameplayPayload",
+            "columnName": "gameplay_payload",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "moveHistoryPayload",
+            "columnName": "move_history_payload",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hintsUsed",
+            "columnName": "hints_used",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtEpochMillis",
+            "columnName": "created_at_epoch_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochMillis",
+            "columnName": "updated_at_epoch_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "puzzle_type",
+            "session_scope"
+          ]
+        }
+      },
+      {
+        "tableName": "daily_challenges",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`challenge_date` TEXT NOT NULL, `puzzle_type` TEXT NOT NULL, `daily_policy_version` INTEGER NOT NULL, `difficulty` TEXT NOT NULL, `puzzle_seed` INTEGER NOT NULL, `generator_version` INTEGER NOT NULL, `status` TEXT NOT NULL, `created_at_epoch_millis` INTEGER NOT NULL, `updated_at_epoch_millis` INTEGER NOT NULL, PRIMARY KEY(`challenge_date`, `puzzle_type`))",
+        "fields": [
+          {
+            "fieldPath": "challengeDate",
+            "columnName": "challenge_date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "puzzleType",
+            "columnName": "puzzle_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dailyPolicyVersion",
+            "columnName": "daily_policy_version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "difficulty",
+            "columnName": "difficulty",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "puzzleSeed",
+            "columnName": "puzzle_seed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "generatorVersion",
+            "columnName": "generator_version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtEpochMillis",
+            "columnName": "created_at_epoch_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochMillis",
+            "columnName": "updated_at_epoch_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "challenge_date",
+            "puzzle_type"
+          ]
+        }
+      },
+      {
+        "tableName": "daily_runs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`challenge_date` TEXT NOT NULL, `daily_policy_version` INTEGER NOT NULL, `status` TEXT NOT NULL, `created_at_epoch_millis` INTEGER NOT NULL, `updated_at_epoch_millis` INTEGER NOT NULL, `completed_at_epoch_millis` INTEGER, PRIMARY KEY(`challenge_date`))",
+        "fields": [
+          {
+            "fieldPath": "challengeDate",
+            "columnName": "challenge_date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dailyPolicyVersion",
+            "columnName": "daily_policy_version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtEpochMillis",
+            "columnName": "created_at_epoch_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochMillis",
+            "columnName": "updated_at_epoch_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completedAtEpochMillis",
+            "columnName": "completed_at_epoch_millis",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "challenge_date"
+          ]
+        }
+      },
+      {
+        "tableName": "game_results",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`result_id` TEXT NOT NULL, `puzzle_type` TEXT NOT NULL, `difficulty` TEXT NOT NULL, `puzzle_seed` INTEGER NOT NULL, `generator_version` INTEGER NOT NULL, `session_scope` TEXT NOT NULL, `hints_used` INTEGER NOT NULL, `completed_at_epoch_millis` INTEGER NOT NULL, `challenge_date` TEXT, `daily_policy_version` INTEGER, PRIMARY KEY(`result_id`))",
+        "fields": [
+          {
+            "fieldPath": "resultId",
+            "columnName": "result_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "puzzleType",
+            "columnName": "puzzle_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "difficulty",
+            "columnName": "difficulty",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "puzzleSeed",
+            "columnName": "puzzle_seed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "generatorVersion",
+            "columnName": "generator_version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionScope",
+            "columnName": "session_scope",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hintsUsed",
+            "columnName": "hints_used",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completedAtEpochMillis",
+            "columnName": "completed_at_epoch_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "challengeDate",
+            "columnName": "challenge_date",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dailyPolicyVersion",
+            "columnName": "daily_policy_version",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "result_id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '9caa1cd5937c26b7d42cc9ecca36f0ab')"
+    ]
+  }
+}

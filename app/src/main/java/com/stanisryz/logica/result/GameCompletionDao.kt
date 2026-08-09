@@ -6,6 +6,8 @@ import androidx.room3.OnConflictStrategy
 import androidx.room3.Query
 import androidx.room3.Transaction
 import com.stanisryz.logica.daily.DailyChallengeEntity
+import com.stanisryz.logica.daily.DailyRunEntity
+import com.stanisryz.logica.daily.DailyRunStatus
 import com.stanisryz.logica.session.GameSessionEntity
 import com.stanisryz.logica.session.GameSessionScope
 
@@ -55,6 +57,29 @@ internal interface GameCompletionDao {
         completedAt: Long,
     ): Int
 
+    @Query("SELECT * FROM daily_runs WHERE challenge_date = :challengeDate LIMIT 1")
+    suspend fun findDailyRun(challengeDate: String): DailyRunEntity?
+
+    @Query(
+        "SELECT COUNT(*) FROM daily_challenges WHERE challenge_date = :challengeDate " +
+            "AND daily_policy_version = :policyVersion AND status != 'COMPLETED'",
+    )
+    suspend fun countIncompleteDailyChallenges(
+        challengeDate: String,
+        policyVersion: Int,
+    ): Int
+
+    @Query(
+        "UPDATE daily_runs SET status = 'COMPLETED', updated_at_epoch_millis = :completedAt, " +
+            "completed_at_epoch_millis = :completedAt WHERE challenge_date = :challengeDate " +
+            "AND daily_policy_version = :policyVersion AND status = 'IN_PROGRESS'",
+    )
+    suspend fun completeDailyRun(
+        challengeDate: String,
+        policyVersion: Int,
+        completedAt: Long,
+    ): Int
+
     @Transaction
     suspend fun complete(result: GameResultEntity): GameResultEntity {
         val existing = findResult(result.resultId)
@@ -74,6 +99,13 @@ internal interface GameCompletionDao {
         if (result.sessionScope == GameSessionScope.DAILY.name) {
             val challengeDate = requireNotNull(result.challengeDate)
             val policyVersion = requireNotNull(result.dailyPolicyVersion)
+            val run =
+                requireNotNull(findDailyRun(challengeDate)) {
+                    "The matching Daily run was not found."
+                }
+            require(run.dailyPolicyVersion == policyVersion) {
+                "The Daily run policy version does not match the result."
+            }
             val daily =
                 requireNotNull(findDailyChallenge(challengeDate, result.puzzleType)) {
                     "The matching Daily lifecycle record was not found."
@@ -90,6 +122,12 @@ internal interface GameCompletionDao {
                     completedAt = result.completedAtEpochMillis,
                 ) == 1,
             ) { "The Daily lifecycle record could not be completed." }
+            if (countIncompleteDailyChallenges(challengeDate, policyVersion) == 0) {
+                completeDailyRun(challengeDate, policyVersion, result.completedAtEpochMillis)
+                require(findDailyRun(challengeDate)?.status == DailyRunStatus.COMPLETED.name) {
+                    "The completed Daily run could not be persisted."
+                }
+            }
         }
 
         val deleted = deleteSession(result.puzzleType, result.sessionScope, result.resultId)

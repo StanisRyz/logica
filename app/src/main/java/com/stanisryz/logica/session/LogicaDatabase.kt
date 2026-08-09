@@ -9,20 +9,24 @@ import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.stanisryz.logica.daily.DailyChallengeDao
 import com.stanisryz.logica.daily.DailyChallengeEntity
+import com.stanisryz.logica.daily.DailyRunDao
+import com.stanisryz.logica.daily.DailyRunEntity
 import com.stanisryz.logica.result.GameCompletionDao
 import com.stanisryz.logica.result.GameResultDao
 import com.stanisryz.logica.result.GameResultEntity
 import kotlinx.coroutines.Dispatchers
 
 @Database(
-    entities = [GameSessionEntity::class, DailyChallengeEntity::class, GameResultEntity::class],
-    version = 3,
+    entities = [GameSessionEntity::class, DailyChallengeEntity::class, DailyRunEntity::class, GameResultEntity::class],
+    version = 4,
     exportSchema = true,
 )
 internal abstract class LogicaDatabase : RoomDatabase() {
     abstract fun gameSessionDao(): GameSessionDao
 
     abstract fun dailyChallengeDao(): DailyChallengeDao
+
+    abstract fun dailyRunDao(): DailyRunDao
 
     abstract fun gameResultDao(): GameResultDao
 
@@ -39,7 +43,7 @@ internal abstract class LogicaDatabase : RoomDatabase() {
                     name = applicationContext.getDatabasePath(DATABASE_NAME).absolutePath,
                 ).setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(Dispatchers.IO)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
         }
 
@@ -123,6 +127,49 @@ internal abstract class LogicaDatabase : RoomDatabase() {
                             `daily_policy_version` INTEGER,
                             PRIMARY KEY(`result_id`)
                         )
+                        """.trimIndent(),
+                    )
+                }
+            }
+
+        internal val MIGRATION_3_4 =
+            object : Migration(3, 4) {
+                override suspend fun migrate(connection: SQLiteConnection) {
+                    connection.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS `daily_runs` (
+                            `challenge_date` TEXT NOT NULL,
+                            `daily_policy_version` INTEGER NOT NULL,
+                            `status` TEXT NOT NULL,
+                            `created_at_epoch_millis` INTEGER NOT NULL,
+                            `updated_at_epoch_millis` INTEGER NOT NULL,
+                            `completed_at_epoch_millis` INTEGER,
+                            PRIMARY KEY(`challenge_date`)
+                        )
+                        """.trimIndent(),
+                    )
+                    connection.execute(
+                        """
+                        INSERT INTO `daily_runs` (
+                            `challenge_date`, `daily_policy_version`, `status`,
+                            `created_at_epoch_millis`, `updated_at_epoch_millis`,
+                            `completed_at_epoch_millis`
+                        )
+                        SELECT
+                            `challenge_date`, `daily_policy_version`,
+                            CASE
+                                WHEN SUM(CASE WHEN `status` != 'COMPLETED' THEN 1 ELSE 0 END) = 0
+                                THEN 'COMPLETED'
+                                ELSE 'IN_PROGRESS'
+                            END,
+                            MIN(`created_at_epoch_millis`), MAX(`updated_at_epoch_millis`),
+                            CASE
+                                WHEN SUM(CASE WHEN `status` != 'COMPLETED' THEN 1 ELSE 0 END) = 0
+                                THEN MAX(`updated_at_epoch_millis`)
+                                ELSE NULL
+                            END
+                        FROM `daily_challenges`
+                        GROUP BY `challenge_date`, `daily_policy_version`
                         """.trimIndent(),
                     )
                 }

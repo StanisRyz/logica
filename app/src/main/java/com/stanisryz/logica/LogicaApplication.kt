@@ -51,10 +51,10 @@ internal class AppContainer(
     }
 
     val dailyChallengeRepository: DailyChallengeRepository by lazy {
-        RoomDailyChallengeRepository(database.dailyChallengeDao())
+        RoomDailyChallengeRepository(database.dailyChallengeDao(), database.dailyRunDao())
     }
 
     val statisticsRepository: StatisticsRepository by lazy {
-        RoomStatisticsRepository(database.gameResultDao(), database.dailyChallengeDao())
+        RoomStatisticsRepository(database.gameResultDao(), database.dailyRunDao())
     }
 }

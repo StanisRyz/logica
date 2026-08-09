@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.stanisryz.logica.balance.BalanceGameContext
 import com.stanisryz.logica.balance.BalanceGameLaunch
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengeDefinition
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV1
+import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.session.DailyGameSessionIdentity
@@ -63,8 +65,8 @@ internal class TodayViewModel(
     private val gameSessionRepository: GameSessionRepository,
     private val statisticsRepository: StatisticsRepository,
     private val dateProvider: () -> LocalDate = LocalDate::now,
-    private val definitionProvider: (LocalDate) -> DailyChallengeDefinition =
-        DailyChallengePolicyV1::definitionFor,
+    private val definitionProvider: (LocalDate, DailyPolicyVersion) -> DailyChallengeDefinition =
+        DailyChallengePolicyResolver::definitionFor,
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow<TodayUiState>(TodayUiState.Loading)
     val uiState: StateFlow<TodayUiState> = mutableUiState.asStateFlow()
@@ -84,15 +86,25 @@ internal class TodayViewModel(
             viewModelScope.launch {
                 mutableUiState.value = TodayUiState.Loading
                 try {
-                    val definition = definitionProvider(dateProvider())
+                    val challengeDate = dateProvider()
+                    val run = dailyChallengeRepository.readRun(challengeDate)
+                    val definition =
+                        definitionProvider(
+                            challengeDate,
+                            run?.policyVersion ?: DailyChallengePolicyV1.VERSION,
+                        )
+                    require(definition.policyVersion == DailyChallengePolicyV1.VERSION) {
+                        "The current Today UI supports Daily Policy V1 only."
+                    }
                     val entry = definition.balanceEntry()
                     val lifecycle =
                         dailyChallengeRepository
                             .read(definition.challengeDate, entry.puzzleType)
                             ?.takeIf { it.matches(definition, entry) }
+                    if (run != null) requireNotNull(lifecycle) { "The Daily run is missing its Balance entry." }
                     mutableUiState.value =
-                        when (lifecycle?.status) {
-                            DailyChallengeStatus.COMPLETED -> {
+                        when (run?.status) {
+                            DailyRunStatus.COMPLETED -> {
                                 val snapshot = statisticsRepository.observe(definition.challengeDate).first()
                                 TodayUiState.Completed(
                                     definition = definition,
@@ -101,13 +113,16 @@ internal class TodayViewModel(
                                     bestStreak = snapshot.statistics.bestDailyStreak,
                                 )
                             }
-                            DailyChallengeStatus.IN_PROGRESS ->
+                            DailyRunStatus.IN_PROGRESS ->
                                 if (matchingDailySession(definition, entry) != null) {
                                     TodayUiState.InProgress(definition)
                                 } else {
                                     TodayUiState.Available(definition)
                                 }
-                            null -> TodayUiState.Available(definition)
+                            null -> {
+                                require(lifecycle == null) { "A Daily entry exists without its aggregate run." }
+                                TodayUiState.Available(definition)
+                            }
                         }
                 } catch (exception: CancellationException) {
                     throw exception
@@ -123,9 +138,7 @@ internal class TodayViewModel(
         viewModelScope.launch {
             try {
                 val entry = definition.balanceEntry()
-                dailyChallengeRepository.save(
-                    entry.savedChallenge(definition, DailyChallengeStatus.IN_PROGRESS),
-                )
+                dailyChallengeRepository.createRun(definition)
                 mutableLaunches.emit(
                     BalanceGameLaunch.New(
                         difficulty = entry.difficulty,
@@ -168,24 +181,9 @@ internal class TodayViewModel(
                     session.generatorVersion == entry.generatorVersion
             }
 
-    private fun DailyChallengeDefinition.balanceEntry(): DailyPuzzleEntry =
-        entries.single().also { require(it.puzzleType == PuzzleType.BALANCE) }
+    private fun DailyChallengeDefinition.balanceEntry(): DailyPuzzleEntry = entries.single { it.puzzleType == PuzzleType.BALANCE }
 
     private fun DailyChallengeDefinition.gameContext(): BalanceGameContext.Daily = BalanceGameContext.Daily(challengeDate, policyVersion)
-
-    private fun DailyPuzzleEntry.savedChallenge(
-        definition: DailyChallengeDefinition,
-        status: DailyChallengeStatus,
-    ): SavedDailyChallenge =
-        SavedDailyChallenge(
-            challengeDate = definition.challengeDate,
-            puzzleType = puzzleType,
-            policyVersion = definition.policyVersion,
-            difficulty = difficulty,
-            seed = seed,
-            generatorVersion = generatorVersion,
-            status = status,
-        )
 }
 
 internal class TodayViewModelFactory(

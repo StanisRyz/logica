@@ -50,7 +50,8 @@ internal object StatisticsAggregator {
                 .asSequence()
                 .filter { it.sessionScope == GameSessionScope.DAILY }
                 .mapNotNull { result -> result.challengeDate?.let { it to result.hintsUsed } }
-                .toMap()
+                .groupBy({ it.first }, { it.second })
+                .mapValues { (_, hints) -> hints.sum() }
         return StatisticsSnapshot(
             statistics =
                 GameStatistics(

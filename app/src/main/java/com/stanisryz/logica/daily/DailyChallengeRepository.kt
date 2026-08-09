@@ -41,5 +41,7 @@ internal interface DailyChallengeRepository {
         puzzleType: PuzzleType,
     ): SavedDailyChallenge?
 
-    suspend fun save(challenge: SavedDailyChallenge)
+    suspend fun readRun(challengeDate: LocalDate): SavedDailyRun?
+
+    suspend fun createRun(definition: DailyChallengeDefinition): SavedDailyRun
 }

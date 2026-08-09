@@ -1,6 +1,6 @@
 package com.stanisryz.logica.statistics
 
-import com.stanisryz.logica.daily.DailyChallengeDao
+import com.stanisryz.logica.daily.DailyRunDao
 import com.stanisryz.logica.result.GameResultDao
 import com.stanisryz.logica.result.GameResultEntity
 import com.stanisryz.logica.result.toGameResultOrNull
@@ -15,12 +15,12 @@ internal interface StatisticsRepository {
 
 internal class RoomStatisticsRepository(
     private val gameResultDao: GameResultDao,
-    private val dailyChallengeDao: DailyChallengeDao,
+    private val dailyRunDao: DailyRunDao,
 ) : StatisticsRepository {
     override fun observe(currentDate: LocalDate): Flow<StatisticsSnapshot> =
         combine(
             gameResultDao.observeAll().map { entities -> entities.mapNotNull(GameResultEntity::toGameResultOrNull) },
-            dailyChallengeDao.observeCompletedDates().map { dates -> dates.mapNotNull(::parseDateOrNull) },
+            dailyRunDao.observeCompletedDates().map { dates -> dates.mapNotNull(::parseDateOrNull) },
         ) { results, completedDailyDates ->
             StatisticsAggregator.aggregate(currentDate, results, completedDailyDates)
         }
