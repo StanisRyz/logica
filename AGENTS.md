@@ -17,6 +17,11 @@
 - Mathematical Crowns state contains crown placement only; user marks belong to the later gameplay layer.
 - Crowns rules and structured diagnostics are centralized for reuse by future solver, generator, and gameplay layers.
 - Partial Crowns states may be incomplete but cannot contain row, column, region, or diagonal crown conflicts.
+- Crowns candidate and exclusion state is solver-specific, separate from mathematical `CrownsState` and future user marks.
+- Crowns logical deductions are deterministic structured data reusable by future generator, difficulty, and hint systems.
+- Confirmed crown consequences reuse centralized Crowns rules rather than defining separate solver constraints.
+- Crowns search combines deterministic propagation with most-constrained-group branching.
+- `CrownsState` and validated `CrownsSolution` remain semantically separate.
 - Change shared puzzle abstractions only when multiple concrete puzzle implementations prove the need.
 - Balance solving is deterministic and reuses the validator rules; logical steps are data-driven for future hints and difficulty analysis.
 - Partial `BalanceState` and completed `BalanceSolution` are distinct; puzzle rules stay UI-independent and reusable.

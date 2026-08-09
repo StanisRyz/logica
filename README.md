@@ -4,7 +4,7 @@ Native Android application with a playable Balance puzzle. The stack is Kotlin, 
 
 Requires JDK 17 and Android SDK Platform 36.
 
-Crowns, the second puzzle type, now has a pure-Kotlin domain model and formal validation rules in `puzzle-core/`.
+Crowns, the second puzzle type, now has a pure-Kotlin domain model, formal rules, deterministic explainable solving, and unique/multiple-solution detection in `puzzle-core/`.
 
 ```powershell
 .\gradlew.bat assembleDebug

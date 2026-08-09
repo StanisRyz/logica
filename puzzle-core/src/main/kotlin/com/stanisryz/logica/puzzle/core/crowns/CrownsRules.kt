@@ -65,7 +65,7 @@ object CrownsRules {
             for (secondIndex in firstIndex + 1 until positions.size) {
                 val first = positions[firstIndex]
                 val second = positions[secondIndex]
-                if (abs(first.row - second.row) == 1 && abs(first.column - second.column) == 1) {
+                if (areDiagonallyAdjacent(first, second)) {
                     violations +=
                         CrownsViolation(
                             CrownsViolationType.DIAGONAL_ADJACENCY_CONFLICT,
@@ -75,4 +75,22 @@ object CrownsRules {
             }
         }
     }
+
+    internal fun positionsConflict(
+        puzzle: CrownsPuzzle,
+        first: CrownsPosition,
+        second: CrownsPosition,
+    ): Boolean =
+        first != second &&
+            (
+                first.row == second.row ||
+                    first.column == second.column ||
+                    puzzle.regionAt(first) == puzzle.regionAt(second) ||
+                    areDiagonallyAdjacent(first, second)
+            )
+
+    private fun areDiagonallyAdjacent(
+        first: CrownsPosition,
+        second: CrownsPosition,
+    ): Boolean = abs(first.row - second.row) == 1 && abs(first.column - second.column) == 1
 }
