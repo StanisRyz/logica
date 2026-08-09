@@ -226,12 +226,15 @@ private fun ReadyState(
             },
         )
         game.currentHint?.let { hint -> HintCard(hint) }
-        AnimatedVisibility(game.violations.isNotEmpty()) {
-            Text(
-                violationText(game.violations.first().type),
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-            )
+        val firstViolation = game.violations.firstOrNull()
+        AnimatedVisibility(firstViolation != null) {
+            firstViolation?.let { violation ->
+                Text(
+                    violationText(violation.type),
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                )
+            }
         }
         Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
             IconButton(onClick = onUndo, enabled = game.moveHistory.isNotEmpty()) {
