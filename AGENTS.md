@@ -11,6 +11,7 @@
 - Generators use project-owned random infrastructure and never system time, platform randomness, or Android APIs.
 - Daily seed derivation is deterministic and receives dates explicitly; concrete engines implement the shared `:puzzle-core` contracts.
 - Daily definitions receive dates explicitly; version-aware resolution preserves Policy V1 and Policy V2 defines Balance plus Crowns at Medium/Generator V1.
+- New Daily runs use Policy V2; an existing run is always resolved from its persisted `policyVersion`, so stored V1 runs stay single-puzzle Balance Daily.
 - Daily generation must never fall back to a random seed.
 - Balance is the first concrete puzzle; its immutable definition, separate player state, and reusable rules live entirely in `:puzzle-core`.
 - Crowns is the second concrete puzzle in `:puzzle-core`; definitions use logical region IDs only, never UI colors or resources.
@@ -33,7 +34,8 @@
 - Incorrect player crowns are allowed and reported through centralized structured violations.
 - User marks are annotations checked only for hint/error reasoning, never Crowns domain violations.
 - Crowns hints reuse deterministic logic and a confirmed unique solution; reset preserves session-level hint usage.
-- Crowns is playable from Catalog only; Daily remains Balance-only until a versioned Daily policy explicitly changes.
+- Crowns gameplay is context-aware like Balance: `Catalog` is the default, and `Daily(challengeDate, policyVersion)` drives session scope, Daily identity, completion metadata, and return-to-Today navigation.
+- `BALANCE/CATALOG`, `CROWNS/CATALOG`, `BALANCE/DAILY`, and `CROWNS/DAILY` saves coexist; restore reads only the requested scope, and invalid persistence deletes only that one session.
 - Balance and Crowns keep separate UI/gameplay adapters while sharing session, completion, and result infrastructure.
 - Active saves are isolated by puzzle type plus session scope; each puzzle owns its explicit session codec version.
 - Android ViewModels regenerate definitions from puzzle identity and restore gameplay through the corresponding core engine.
@@ -48,7 +50,9 @@
 - Localized hint text belongs in `:app`; active Balance progress preserves moves, Undo history, and hint usage across restarts.
 - Balance tutorial is application onboarding: it reuses core Balance gameplay but stays separate from Room-backed catalog sessions; completion is a DataStore preference.
 - Crowns tutorial is Crowns-only application onboarding: its fixed state never touches Catalog sessions, results, statistics, Daily state, or gameplay hint counters; its prompt state is a DataStore preference.
-- Catalog and Daily gameplay use separate session scopes, must coexist, and both reuse the existing Balance engine/UI.
+- Catalog and Daily gameplay use separate session scopes, must coexist, and reuse the existing per-puzzle engines/UI rather than generic gameplay screens.
+- Today derives one state per policy entry: completed from the persisted Daily entry, in progress from a matching active `DAILY` session, otherwise available; entry status alone is not enough because all entries are materialized with the run.
+- Today operates on the current date only, targets puzzles individually, and recommends each puzzle's own tutorial without blocking the start.
 - Room migrations preserve existing saves and never use destructive migration.
 - Room v4 stores one aggregate `daily_runs` lifecycle per date separately from policy-defined `daily_challenges` entries, active sessions, and results.
 - Completed puzzle results are immutable Room records separate from active sessions; completion persistence is atomic and idempotent.

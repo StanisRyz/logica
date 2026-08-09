@@ -29,7 +29,9 @@ import com.stanisryz.logica.R
 import com.stanisryz.logica.balance.BalanceGameLaunch
 import com.stanisryz.logica.crowns.CrownsGameLaunch
 import com.stanisryz.logica.daily.DailyChallengeRepository
+import com.stanisryz.logica.daily.DailyGameLaunch
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.settings.SettingsRepository
@@ -126,9 +128,26 @@ internal fun LogicaNavigation(
                             dailyChallengeRepository = dailyChallengeRepository,
                             gameSessionRepository = gameSessionRepository,
                             statisticsRepository = statisticsRepository,
-                            tutorialCompleted = settings.balanceTutorialCompleted,
-                            onOpenDaily = { launch -> backStack.add(AppDestination.BalanceGame(launch)) },
-                            onOpenTutorial = { backStack.add(AppDestination.BalanceTutorial) },
+                            balanceTutorialCompleted = settings.balanceTutorialCompleted,
+                            crownsTutorialCompleted = settings.crownsTutorialCompleted,
+                            onOpenDaily = { dailyLaunch ->
+                                backStack.add(
+                                    when (dailyLaunch) {
+                                        is DailyGameLaunch.Balance -> AppDestination.BalanceGame(dailyLaunch.launch)
+                                        is DailyGameLaunch.Crowns -> AppDestination.CrownsGame(dailyLaunch.launch)
+                                    },
+                                )
+                            },
+                            onOpenTutorial = { puzzleType ->
+                                when (puzzleType) {
+                                    PuzzleType.BALANCE -> backStack.add(AppDestination.BalanceTutorial)
+                                    PuzzleType.CROWNS -> {
+                                        onCrownsTutorialCompleted(true)
+                                        backStack.add(AppDestination.CrownsTutorial)
+                                    }
+                                    else -> Unit
+                                }
+                            },
                         )
                     }
                     entry<AppDestination.Catalog> {
@@ -146,7 +165,7 @@ internal fun LogicaNavigation(
                                         titleResource = R.string.crowns,
                                         descriptionResource = R.string.crowns_catalog_description,
                                         hasActiveSession = hasActiveCrownsSession,
-                                        onContinue = { backStack.add(AppDestination.CrownsGame(CrownsGameLaunch.Restore)) },
+                                        onContinue = { backStack.add(AppDestination.CrownsGame(CrownsGameLaunch.Restore())) },
                                         onNew = { backStack.add(AppDestination.CrownsStart) },
                                     ),
                                 ),
@@ -241,6 +260,10 @@ internal fun LogicaNavigation(
                             onCatalog = {
                                 backStack.clear()
                                 backStack.add(AppDestination.Catalog)
+                            },
+                            onToday = {
+                                backStack.clear()
+                                backStack.add(AppDestination.Today)
                             },
                         )
                     }

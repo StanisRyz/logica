@@ -29,13 +29,15 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
-import com.stanisryz.logica.balance.BalanceGameLaunch
 import com.stanisryz.logica.daily.DailyChallengeRepository
+import com.stanisryz.logica.daily.DailyEntryState
+import com.stanisryz.logica.daily.DailyGameLaunch
+import com.stanisryz.logica.daily.TodayEntryUiState
 import com.stanisryz.logica.daily.TodayError
 import com.stanisryz.logica.daily.TodayUiState
 import com.stanisryz.logica.daily.TodayViewModel
 import com.stanisryz.logica.daily.TodayViewModelFactory
-import com.stanisryz.logica.puzzle.core.daily.DailyChallengeDefinition
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.statistics.StatisticsRepository
 import java.time.format.DateTimeFormatter
@@ -46,9 +48,10 @@ internal fun TodayRoute(
     dailyChallengeRepository: DailyChallengeRepository,
     gameSessionRepository: GameSessionRepository,
     statisticsRepository: StatisticsRepository,
-    tutorialCompleted: Boolean,
-    onOpenDaily: (BalanceGameLaunch) -> Unit,
-    onOpenTutorial: () -> Unit,
+    balanceTutorialCompleted: Boolean,
+    crownsTutorialCompleted: Boolean,
+    onOpenDaily: (DailyGameLaunch) -> Unit,
+    onOpenTutorial: (PuzzleType) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val factory =
@@ -74,7 +77,13 @@ internal fun TodayRoute(
 
     TodayScreen(
         uiState = uiState,
-        tutorialCompleted = tutorialCompleted,
+        tutorialCompleted = { puzzleType ->
+            when (puzzleType) {
+                PuzzleType.BALANCE -> balanceTutorialCompleted
+                PuzzleType.CROWNS -> crownsTutorialCompleted
+                else -> true
+            }
+        },
         onStart = todayViewModel::start,
         onContinue = todayViewModel::continueGame,
         onRetry = todayViewModel::refresh,
@@ -86,11 +95,11 @@ internal fun TodayRoute(
 @Composable
 private fun TodayScreen(
     uiState: TodayUiState,
-    tutorialCompleted: Boolean,
-    onStart: () -> Unit,
-    onContinue: () -> Unit,
+    tutorialCompleted: (PuzzleType) -> Boolean,
+    onStart: (PuzzleType) -> Unit,
+    onContinue: (PuzzleType) -> Unit,
     onRetry: () -> Unit,
-    onOpenTutorial: () -> Unit,
+    onOpenTutorial: (PuzzleType) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (uiState) {
@@ -115,7 +124,7 @@ private fun TodayScreen(
                     }
                 }
             }
-        is TodayUiState.WithDefinition ->
+        is TodayUiState.Content ->
             TodayContent(
                 uiState = uiState,
                 tutorialCompleted = tutorialCompleted,
@@ -129,71 +138,93 @@ private fun TodayScreen(
 
 @Composable
 private fun TodayContent(
-    uiState: TodayUiState.WithDefinition,
-    tutorialCompleted: Boolean,
-    onStart: () -> Unit,
-    onContinue: () -> Unit,
-    onOpenTutorial: () -> Unit,
+    uiState: TodayUiState.Content,
+    tutorialCompleted: (PuzzleType) -> Boolean,
+    onStart: (PuzzleType) -> Unit,
+    onContinue: (PuzzleType) -> Unit,
+    onOpenTutorial: (PuzzleType) -> Unit,
     modifier: Modifier,
 ) {
-    val definition = uiState.definition
     Column(
         modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(stringResource(R.string.daily_challenge), style = MaterialTheme.typography.headlineMedium)
-        Text(definition.formattedDate(), style = MaterialTheme.typography.titleMedium)
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(stringResource(R.string.balance), style = MaterialTheme.typography.titleLarge)
-                Text(
-                    stringResource(
-                        R.string.difficulty_value,
-                        definition
-                            .entries
-                            .single()
-                            .difficulty
-                            .russianLabel(),
-                    ),
-                )
-                when (uiState) {
-                    is TodayUiState.Available -> {
-                        Text(stringResource(R.string.daily_available))
-                        Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) {
-                            Text(stringResource(R.string.start))
-                        }
-                    }
-                    is TodayUiState.InProgress -> {
-                        Text(stringResource(R.string.daily_in_progress))
-                        Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {
-                            Text(stringResource(R.string.continue_game))
-                        }
-                    }
-                    is TodayUiState.Completed -> {
-                        Text(
-                            stringResource(R.string.daily_completed),
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        uiState.hintsUsed?.let { hintsUsed ->
-                            Text(stringResource(R.string.hints_used, hintsUsed))
-                        }
-                        Text(stringResource(R.string.current_daily_streak_value, uiState.currentStreak))
-                        Text(stringResource(R.string.best_daily_streak_value, uiState.bestStreak))
-                    }
-                }
-            }
+        Text(
+            uiState.definition.challengeDate.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Text(stringResource(R.string.daily_progress, uiState.completedCount, uiState.totalCount))
+
+        uiState.entries.forEach { entry ->
+            TodayEntryCard(
+                entry = entry,
+                tutorialCompleted = tutorialCompleted(entry.puzzleType),
+                onStart = { onStart(entry.puzzleType) },
+                onContinue = { onContinue(entry.puzzleType) },
+                onOpenTutorial = { onOpenTutorial(entry.puzzleType) },
+            )
         }
 
-        if (!tutorialCompleted) {
+        uiState.completion?.let { completion ->
             Card(modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(stringResource(R.string.balance_tutorial_offer_title), style = MaterialTheme.typography.titleMedium)
-                    Text(stringResource(R.string.daily_tutorial_recommendation))
-                    TextButton(onClick = onOpenTutorial) { Text(stringResource(R.string.how_to_play)) }
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        stringResource(R.string.daily_completed),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    completion.hintsUsed?.let { hintsUsed -> Text(stringResource(R.string.hints_used, hintsUsed)) }
+                    Text(stringResource(R.string.current_daily_streak_value, completion.currentStreak))
+                    Text(stringResource(R.string.best_daily_streak_value, completion.bestStreak))
                 }
             }
         }
     }
 }
 
-private fun DailyChallengeDefinition.formattedDate(): String = challengeDate.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG))
+@Composable
+private fun TodayEntryCard(
+    entry: TodayEntryUiState,
+    tutorialCompleted: Boolean,
+    onStart: () -> Unit,
+    onContinue: () -> Unit,
+    onOpenTutorial: () -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(stringResource(entry.puzzleType.titleResource()), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.difficulty_value, entry.difficulty.russianLabel()))
+            when (entry.state) {
+                DailyEntryState.AVAILABLE -> {
+                    Text(stringResource(R.string.daily_available))
+                    Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.start))
+                    }
+                }
+                DailyEntryState.IN_PROGRESS -> {
+                    Text(stringResource(R.string.daily_in_progress))
+                    Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.continue_game))
+                    }
+                }
+                DailyEntryState.COMPLETED ->
+                    Text(stringResource(R.string.puzzle_solved), color = MaterialTheme.colorScheme.primary)
+            }
+            if (!tutorialCompleted && entry.state != DailyEntryState.COMPLETED) {
+                Text(
+                    stringResource(R.string.daily_tutorial_recommendation),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                TextButton(onClick = onOpenTutorial) { Text(stringResource(R.string.how_to_play)) }
+            }
+        }
+    }
+}
+
+private fun PuzzleType.titleResource(): Int =
+    when (this) {
+        PuzzleType.BALANCE -> R.string.balance
+        PuzzleType.CROWNS -> R.string.crowns
+        else -> error("Daily does not support $this yet.")
+    }

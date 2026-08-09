@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
+import com.stanisryz.logica.crowns.CrownsGameContext
 import com.stanisryz.logica.crowns.CrownsGameError
 import com.stanisryz.logica.crowns.CrownsGameLaunch
 import com.stanisryz.logica.crowns.CrownsGameUiState
@@ -68,6 +69,7 @@ internal fun CrownsGameRoute(
     onNewPuzzle: (Difficulty) -> Unit,
     onStartNew: () -> Unit,
     onCatalog: () -> Unit,
+    onToday: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val factory =
@@ -89,6 +91,8 @@ internal fun CrownsGameRoute(
         onNewPuzzle = onNewPuzzle,
         onStartNew = onStartNew,
         onCatalog = onCatalog,
+        onToday = onToday,
+        isDaily = launch.context is CrownsGameContext.Daily,
         modifier = modifier,
     )
 }
@@ -106,11 +110,14 @@ private fun CrownsGameScreen(
     onNewPuzzle: (Difficulty) -> Unit,
     onStartNew: () -> Unit,
     onCatalog: () -> Unit,
+    onToday: () -> Unit,
+    isDaily: Boolean,
     modifier: Modifier,
 ) {
     when (uiState) {
         CrownsGameUiState.Loading -> CrownsLoadingState(modifier)
-        is CrownsGameUiState.Error -> CrownsErrorState(uiState.reason, onStartNew, onBack, modifier)
+        is CrownsGameUiState.Error ->
+            CrownsErrorState(uiState.reason, if (isDaily) onToday else onStartNew, onBack, isDaily, modifier)
         is CrownsGameUiState.Ready ->
             CrownsReadyState(
                 puzzle = uiState.puzzle,
@@ -126,6 +133,8 @@ private fun CrownsGameScreen(
                 hapticsEnabled = hapticsEnabled,
                 onNewPuzzle = { onNewPuzzle(uiState.puzzle.id.difficulty) },
                 onCatalog = onCatalog,
+                onToday = onToday,
+                isDaily = isDaily,
                 modifier = modifier,
             )
     }
@@ -146,6 +155,7 @@ private fun CrownsErrorState(
     reason: CrownsGameError,
     onTryAnother: () -> Unit,
     onBack: () -> Unit,
+    isDaily: Boolean,
     modifier: Modifier,
 ) {
     Column(modifier.fillMaxSize().padding(24.dp), Arrangement.Center, Alignment.CenterHorizontally) {
@@ -160,7 +170,7 @@ private fun CrownsErrorState(
             style = MaterialTheme.typography.titleMedium,
         )
         Button(onClick = onTryAnother, modifier = Modifier.padding(top = 16.dp)) {
-            Text(stringResource(R.string.try_another))
+            Text(stringResource(if (isDaily) R.string.to_today else R.string.try_another))
         }
         TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
     }
@@ -181,6 +191,8 @@ private fun CrownsReadyState(
     hapticsEnabled: Boolean,
     onNewPuzzle: () -> Unit,
     onCatalog: () -> Unit,
+    onToday: () -> Unit,
+    isDaily: Boolean,
     modifier: Modifier,
 ) {
     var showResetConfirmation by remember { mutableStateOf(false) }
@@ -310,11 +322,15 @@ private fun CrownsReadyState(
                     CompletionPersistence.Error ->
                         TextButton(onClick = onRetryCompletion) { Text(stringResource(R.string.retry)) }
                     CompletionPersistence.Saved ->
-                        TextButton(onClick = onNewPuzzle) { Text(stringResource(R.string.new_puzzle)) }
+                        if (isDaily) {
+                            TextButton(onClick = onToday) { Text(stringResource(R.string.to_today)) }
+                        } else {
+                            TextButton(onClick = onNewPuzzle) { Text(stringResource(R.string.new_puzzle)) }
+                        }
                 }
             },
             dismissButton = {
-                if (completionPersistence == CompletionPersistence.Saved) {
+                if (!isDaily && completionPersistence == CompletionPersistence.Saved) {
                     TextButton(onClick = onCatalog) { Text(stringResource(R.string.to_catalog)) }
                 }
             },

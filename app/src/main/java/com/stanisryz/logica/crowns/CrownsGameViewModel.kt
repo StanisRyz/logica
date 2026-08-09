@@ -10,13 +10,16 @@ import com.stanisryz.logica.puzzle.core.crowns.CrownsGeneratorV1
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPosition
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPuzzle
+import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
+import com.stanisryz.logica.puzzle.core.model.PuzzleId
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletion
 import com.stanisryz.logica.result.GameCompletionRepository
+import com.stanisryz.logica.session.DailyGameSessionIdentity
 import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.session.GameSessionScope
 import com.stanisryz.logica.session.SavedGameSession
@@ -29,16 +32,38 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
 import java.util.UUID
 
+internal sealed interface CrownsGameContext {
+    val sessionScope: GameSessionScope
+
+    data object Catalog : CrownsGameContext {
+        override val sessionScope = GameSessionScope.CATALOG
+    }
+
+    data class Daily(
+        val challengeDate: LocalDate,
+        val policyVersion: DailyPolicyVersion,
+    ) : CrownsGameContext {
+        override val sessionScope = GameSessionScope.DAILY
+    }
+}
+
 internal sealed interface CrownsGameLaunch {
+    val context: CrownsGameContext
+
     data class New(
         val difficulty: Difficulty,
         val seed: PuzzleSeed,
         val generatorVersion: GeneratorVersion = GeneratorVersion(1),
+        override val context: CrownsGameContext = CrownsGameContext.Catalog,
     ) : CrownsGameLaunch
 
-    data object Restore : CrownsGameLaunch
+    data class Restore(
+        override val context: CrownsGameContext = CrownsGameContext.Catalog,
+        val expectedPuzzleId: PuzzleId? = null,
+    ) : CrownsGameLaunch
 }
 
 internal sealed interface CrownsGameUiState {
@@ -159,25 +184,26 @@ internal class CrownsGameViewModel(
                         puzzle,
                         engine,
                         game,
-                        ActiveSession(sessionIdFactory(), puzzle),
+                        ActiveSession(sessionIdFactory(), puzzle, requestedLaunch.context),
                         isNew = true,
                     )
                 }
-            CrownsGameLaunch.Restore -> restoreSavedSession()
+            is CrownsGameLaunch.Restore -> restoreSavedSession(requestedLaunch)
         }
 
-    private suspend fun restoreSavedSession(): LoadedSession {
+    private suspend fun restoreSavedSession(requestedLaunch: CrownsGameLaunch.Restore): LoadedSession {
         val saved =
-            sessionRepository.readActiveSession(PuzzleType.CROWNS, GameSessionScope.CATALOG)
+            sessionRepository.readActiveSession(PuzzleType.CROWNS, requestedLaunch.context.sessionScope)
                 ?: throw MissingSavedSessionException()
         return try {
             withContext(workDispatcher) {
                 require(saved.puzzleType == PuzzleType.CROWNS)
-                require(saved.sessionScope == GameSessionScope.CATALOG)
-                require(saved.dailyIdentity == null)
+                require(saved.sessionScope == requestedLaunch.context.sessionScope)
+                require(saved.matches(requestedLaunch.context))
                 require(saved.generatorVersion == generator.version)
                 val puzzle = generator.generate(saved.puzzleSeed, saved.difficulty)
                 require(puzzle.id.generatorVersion == saved.generatorVersion)
+                require(requestedLaunch.expectedPuzzleId == null || puzzle.id == requestedLaunch.expectedPuzzleId)
                 val game =
                     CrownsSessionCodec.decode(
                         puzzle = puzzle,
@@ -192,14 +218,18 @@ internal class CrownsGameViewModel(
                     puzzle,
                     CrownsGameEngine(puzzle),
                     game,
-                    ActiveSession(saved.sessionId, puzzle),
+                    ActiveSession(saved.sessionId, puzzle, requestedLaunch.context),
                     isNew = false,
                 )
             }
         } catch (exception: CancellationException) {
             throw exception
         } catch (_: Exception) {
-            sessionRepository.deleteActiveSession(PuzzleType.CROWNS, GameSessionScope.CATALOG, saved.sessionId)
+            sessionRepository.deleteActiveSession(
+                PuzzleType.CROWNS,
+                requestedLaunch.context.sessionScope,
+                saved.sessionId,
+            )
             throw InvalidSavedSessionException()
         }
     }
@@ -262,16 +292,21 @@ internal class CrownsGameViewModel(
     private data class ActiveSession(
         val sessionId: String,
         val puzzle: CrownsPuzzle,
+        val context: CrownsGameContext,
     ) {
         fun saved(game: CrownsGameState): SavedGameSession {
             val encoded = CrownsSessionCodec.encode(puzzle, game)
             return SavedGameSession(
                 sessionId = sessionId,
                 puzzleType = PuzzleType.CROWNS,
-                sessionScope = GameSessionScope.CATALOG,
+                sessionScope = context.sessionScope,
                 difficulty = puzzle.id.difficulty,
                 puzzleSeed = puzzle.id.seed,
                 generatorVersion = puzzle.id.generatorVersion,
+                dailyIdentity =
+                    (context as? CrownsGameContext.Daily)?.let {
+                        DailyGameSessionIdentity(it.challengeDate, it.policyVersion.value)
+                    },
                 sessionFormatVersion = CrownsSessionCodec.SESSION_FORMAT_VERSION,
                 gameplayPayload = encoded.gameplayPayload,
                 moveHistoryPayload = encoded.moveHistoryPayload,
@@ -282,14 +317,17 @@ internal class CrownsGameViewModel(
 
         fun completion(game: CrownsGameState): GameCompletion {
             require(game.status == CrownsGameStatus.SOLVED)
+            val dailyContext = context as? CrownsGameContext.Daily
             return GameCompletion(
                 resultId = sessionId,
                 puzzleType = PuzzleType.CROWNS,
                 difficulty = puzzle.id.difficulty,
                 puzzleSeed = puzzle.id.seed,
                 generatorVersion = puzzle.id.generatorVersion,
-                sessionScope = GameSessionScope.CATALOG,
+                sessionScope = context.sessionScope,
                 hintsUsed = game.hintsUsed,
+                challengeDate = dailyContext?.challengeDate,
+                dailyPolicyVersion = dailyContext?.policyVersion,
             )
         }
     }
@@ -297,6 +335,13 @@ internal class CrownsGameViewModel(
     private class MissingSavedSessionException : Exception()
 
     private class InvalidSavedSessionException : Exception()
+
+    private fun SavedGameSession.matches(context: CrownsGameContext): Boolean =
+        when (context) {
+            CrownsGameContext.Catalog -> dailyIdentity == null
+            is CrownsGameContext.Daily ->
+                dailyIdentity == DailyGameSessionIdentity(context.challengeDate, context.policyVersion.value)
+        }
 }
 
 internal class CrownsGameViewModelFactory(

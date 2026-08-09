@@ -80,6 +80,7 @@
     <string name="daily_available">Сегодняшняя задача готова.</string>
     <string name="daily_in_progress">Задача начата — прогресс сохранён.</string>
     <string name="daily_completed">Задача дня выполнена.</string>
+    <string name="daily_progress">Прогресс: %1$d / %2$d</string>
     <string name="daily_tutorial_recommendation">Перед задачей можно быстро познакомиться с правилами. Обучение не обязательно.</string>
     <string name="to_today">На экран «Сегодня»</string>
     <string name="retry">Повторить</string>
