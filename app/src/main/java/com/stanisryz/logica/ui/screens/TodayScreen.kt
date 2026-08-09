@@ -1,16 +1,18 @@
 package com.stanisryz.logica.ui.screens
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.height
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.PlayCircleOutline
+import androidx.compose.material.icons.filled.Timelapse
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -21,7 +23,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -32,6 +38,7 @@ import com.stanisryz.logica.R
 import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.DailyEntryState
 import com.stanisryz.logica.daily.DailyGameLaunch
+import com.stanisryz.logica.daily.TodayCompletionUiState
 import com.stanisryz.logica.daily.TodayEntryUiState
 import com.stanisryz.logica.daily.TodayError
 import com.stanisryz.logica.daily.TodayUiState
@@ -40,6 +47,22 @@ import com.stanisryz.logica.daily.TodayViewModelFactory
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.statistics.StatisticsRepository
+import com.stanisryz.logica.ui.components.CompletionCard
+import com.stanisryz.logica.ui.components.LabelledValue
+import com.stanisryz.logica.ui.components.LoadingState
+import com.stanisryz.logica.ui.components.LogicaCard
+import com.stanisryz.logica.ui.components.MetricValue
+import com.stanisryz.logica.ui.components.PuzzleTitle
+import com.stanisryz.logica.ui.components.RetryableErrorState
+import com.stanisryz.logica.ui.components.ScreenColumn
+import com.stanisryz.logica.ui.components.ScreenTitle
+import com.stanisryz.logica.ui.components.StatusChip
+import com.stanisryz.logica.ui.components.SupportingText
+import com.stanisryz.logica.ui.components.difficultyLabel
+import com.stanisryz.logica.ui.components.progressFraction
+import com.stanisryz.logica.ui.components.titleResource
+import com.stanisryz.logica.ui.theme.LocalLogicaPalette
+import com.stanisryz.logica.ui.theme.LogicaSpacing
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
@@ -105,27 +128,20 @@ private fun TodayScreen(
     modifier: Modifier = Modifier,
 ) {
     when (uiState) {
-        TodayUiState.Loading ->
-            Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+        TodayUiState.Loading -> LoadingState(modifier)
         is TodayUiState.Error ->
-            Box(modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        stringResource(
-                            when (uiState.reason) {
-                                TodayError.LOAD -> R.string.daily_load_error
-                                TodayError.START -> R.string.daily_start_error
-                            },
-                        ),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Button(onClick = onRetry, modifier = Modifier.padding(top = 16.dp)) {
-                        Text(stringResource(R.string.retry))
-                    }
-                }
-            }
+            RetryableErrorState(
+                message =
+                    stringResource(
+                        when (uiState.reason) {
+                            TodayError.LOAD -> R.string.daily_load_error
+                            TodayError.START -> R.string.daily_start_error
+                        },
+                    ),
+                retryLabel = stringResource(R.string.retry),
+                onRetry = onRetry,
+                modifier = modifier,
+            )
         is TodayUiState.Content ->
             TodayContent(
                 uiState = uiState,
@@ -147,41 +163,55 @@ private fun TodayContent(
     onOpenTutorial: (PuzzleType) -> Unit,
     modifier: Modifier,
 ) {
-    Column(
-        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text(stringResource(R.string.daily_challenge), style = MaterialTheme.typography.headlineMedium)
-        Text(
-            uiState.definition.challengeDate.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Text(stringResource(R.string.daily_progress, uiState.completedCount, uiState.totalCount))
-
-        uiState.entries.forEach { entry ->
-            TodayEntryCard(
-                entry = entry,
-                tutorialCompleted = tutorialCompleted(entry.puzzleType),
-                onStart = { onStart(entry.puzzleType) },
-                onContinue = { onContinue(entry.puzzleType) },
-                onOpenTutorial = { onOpenTutorial(entry.puzzleType) },
+    ScreenColumn(modifier) {
+        Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
+            ScreenTitle(stringResource(R.string.daily_challenge))
+            SupportingText(
+                uiState.definition.challengeDate.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)),
             )
         }
+        DailyProgress(completed = uiState.completedCount, total = uiState.totalCount)
 
-        uiState.completion?.let { completion ->
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        stringResource(R.string.daily_completed),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    completion.hintsUsed?.let { hintsUsed -> Text(stringResource(R.string.hints_used, hintsUsed)) }
-                    Text(stringResource(R.string.current_daily_streak_value, completion.currentStreak))
-                    Text(stringResource(R.string.best_daily_streak_value, completion.bestStreak))
-                }
+        Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
+            uiState.entries.forEach { entry ->
+                TodayEntryCard(
+                    entry = entry,
+                    tutorialCompleted = tutorialCompleted(entry.puzzleType),
+                    onStart = { onStart(entry.puzzleType) },
+                    onContinue = { onContinue(entry.puzzleType) },
+                    onOpenTutorial = { onOpenTutorial(entry.puzzleType) },
+                )
             }
         }
+
+        uiState.completion?.let { completion -> DailyCompletionCard(completion) }
+    }
+}
+
+/** The numeric count stays the headline; the bar is only a compact reinforcement of it. */
+@Composable
+private fun DailyProgress(
+    completed: Int,
+    total: Int,
+) {
+    val fraction by animateFloatAsState(progressFraction(completed, total), label = "dailyProgress")
+    val description = stringResource(R.string.daily_progress_description, completed, total)
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clearAndSetSemantics { contentDescription = description },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.action),
+    ) {
+        MetricValue(stringResource(R.string.daily_progress_short, completed, total))
+        LinearProgressIndicator(
+            progress = { fraction },
+            modifier = Modifier.weight(1f).height(PROGRESS_HEIGHT),
+            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            gapSize = 0.dp,
+            drawStopIndicator = {},
+        )
     }
 }
 
@@ -193,47 +223,104 @@ private fun TodayEntryCard(
     onContinue: () -> Unit,
     onOpenTutorial: () -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(stringResource(entry.puzzleType.titleResource()), style = MaterialTheme.typography.titleLarge)
-            Text(stringResource(R.string.difficulty_value, entry.difficulty.russianLabel()))
-            when (entry.state) {
-                DailyEntryState.AVAILABLE -> {
-                    Text(stringResource(R.string.daily_available))
-                    Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.start))
-                    }
-                }
-                DailyEntryState.IN_PROGRESS -> {
-                    Text(stringResource(R.string.daily_in_progress))
-                    Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.continue_game))
-                    }
-                }
-                DailyEntryState.COMPLETED ->
-                    // A Word entry completes on SOLVED or FAILED, so its label stays outcome-neutral.
-                    Text(
-                        stringResource(
-                            if (entry.puzzleType == PuzzleType.WORD) R.string.word_daily_entry_done else R.string.puzzle_solved,
-                        ),
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+    val colors = MaterialTheme.colorScheme
+    val palette = LocalLogicaPalette.current
+    val isCompleted = entry.state == DailyEntryState.COMPLETED
+    LogicaCard(
+        containerColor = if (isCompleted) colors.surfaceContainer else colors.surfaceContainerLow,
+        // Non-color cue: an unfinished-but-started entry is the only outlined card, and every
+        // state also carries its own status chip icon and label.
+        border =
+            if (entry.state == DailyEntryState.IN_PROGRESS) BorderStroke(1.dp, colors.primary) else null,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.action),
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text),
+            ) {
+                PuzzleTitle(stringResource(entry.puzzleType.titleResource()), puzzleType = entry.puzzleType)
+                SupportingText(difficultyLabel(entry.puzzleType, entry.difficulty))
             }
-            if (!tutorialCompleted && entry.state != DailyEntryState.COMPLETED) {
-                Text(
-                    stringResource(R.string.daily_tutorial_recommendation),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                TextButton(onClick = onOpenTutorial) { Text(stringResource(R.string.how_to_play)) }
-            }
+            EntryStatusChip(entry.state, isCompleted, palette.successContainer, palette.onSuccessContainer)
+        }
+
+        when (entry.state) {
+            DailyEntryState.AVAILABLE ->
+                Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.start))
+                }
+            DailyEntryState.IN_PROGRESS ->
+                Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.continue_game))
+                }
+            // A Word entry completes on SOLVED or FAILED, so its label stays outcome-neutral.
+            DailyEntryState.COMPLETED ->
+                if (entry.puzzleType == PuzzleType.WORD) {
+                    SupportingText(stringResource(R.string.word_daily_entry_done))
+                }
+        }
+
+        // Compact and per-entry: the tutorial is offered next to the puzzle it belongs to and
+        // disappears for good once it has been completed.
+        if (!tutorialCompleted && !isCompleted) {
+            TextButton(onClick = onOpenTutorial) { Text(stringResource(R.string.how_to_play)) }
         }
     }
 }
 
-private fun PuzzleType.titleResource(): Int =
-    when (this) {
-        PuzzleType.BALANCE -> R.string.balance
-        PuzzleType.CROWNS -> R.string.crowns
-        PuzzleType.WORD -> R.string.word
-        else -> error("Daily does not support $this yet.")
+@Composable
+private fun EntryStatusChip(
+    state: DailyEntryState,
+    isCompleted: Boolean,
+    successContainer: Color,
+    onSuccessContainer: Color,
+) {
+    val icon: ImageVector
+    val labelResource: Int
+    when (state) {
+        DailyEntryState.AVAILABLE -> {
+            icon = Icons.Filled.PlayCircleOutline
+            labelResource = R.string.daily_available
+        }
+        DailyEntryState.IN_PROGRESS -> {
+            icon = Icons.Filled.Timelapse
+            labelResource = R.string.daily_in_progress
+        }
+        DailyEntryState.COMPLETED -> {
+            icon = Icons.Filled.CheckCircle
+            labelResource = R.string.daily_entry_completed
+        }
     }
+    StatusChip(
+        icon = icon,
+        label = stringResource(labelResource),
+        containerColor =
+            if (isCompleted) successContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+        contentColor =
+            if (isCompleted) onSuccessContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+/**
+ * The completed Daily is deliberately unlike an entry card. [CompletionActions] is the slot a later
+ * stage can add a Share action to without touching this layout.
+ */
+@Composable
+private fun DailyCompletionCard(completion: TodayCompletionUiState) {
+    CompletionCard(
+        icon = Icons.Filled.CheckCircle,
+        title = stringResource(R.string.daily_completed),
+    ) {
+        LabelledValue(stringResource(R.string.current_daily_streak), completion.currentStreak.toString())
+        LabelledValue(stringResource(R.string.best_daily_streak), completion.bestStreak.toString())
+        completion.hintsUsed?.let { hintsUsed ->
+            LabelledValue(stringResource(R.string.total_hints_used), hintsUsed.toString())
+        }
+    }
+}
+
+private val PROGRESS_HEIGHT = 8.dp

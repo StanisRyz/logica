@@ -1,16 +1,9 @@
 package com.stanisryz.logica.ui.screens
 
 import android.view.HapticFeedbackConstants
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,7 +14,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
@@ -32,7 +24,10 @@ import com.stanisryz.logica.crowns.CrownsTutorialViewModel
 import com.stanisryz.logica.crowns.CrownsTutorialViewModelFactory
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPosition
 import com.stanisryz.logica.settings.SettingsRepository
+import com.stanisryz.logica.ui.components.LogicaCard
+import com.stanisryz.logica.ui.components.ScreenColumn
 import com.stanisryz.logica.ui.crowns.CrownsBoard
+import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 @Composable
 internal fun CrownsTutorialRoute(
@@ -63,10 +58,10 @@ private fun CrownsTutorialScreen(
         if (hapticsEnabled && state.completed) view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
     }
 
-    Column(
-        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+    ScreenColumn(
+        modifier = modifier,
+        verticalSpacing = LogicaSpacing.item,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
             text = stringResource(R.string.crowns_tutorial_progress, state.stage.ordinal + 1),
@@ -93,12 +88,8 @@ private fun CrownsTutorialScreen(
             modifier = Modifier.fillMaxWidth(),
         )
         state.feedback?.let { feedback ->
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = crownsTutorialFeedbackText(feedback),
-                    modifier = Modifier.padding(16.dp),
-                    color = MaterialTheme.colorScheme.error,
-                )
+            LogicaCard(containerColor = MaterialTheme.colorScheme.errorContainer) {
+                Text(crownsTutorialFeedbackText(feedback))
             }
         }
     }

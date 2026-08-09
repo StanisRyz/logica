@@ -2,13 +2,8 @@ package com.stanisryz.logica.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,7 +11,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.stanisryz.logica.R
@@ -31,6 +25,10 @@ import com.stanisryz.logica.puzzle.core.word.WordLexiconV1
 import com.stanisryz.logica.puzzle.core.word.WordPuzzle
 import com.stanisryz.logica.puzzle.core.word.WordSubmitResult
 import com.stanisryz.logica.settings.SettingsRepository
+import com.stanisryz.logica.ui.components.LogicaCard
+import com.stanisryz.logica.ui.components.ScreenColumn
+import com.stanisryz.logica.ui.components.ScreenTitle
+import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.ui.word.WordBoard
 import kotlinx.coroutines.launch
 
@@ -58,11 +56,8 @@ private fun WordTutorialScreen(
     // A real core game state, so the worked example can never drift from the actual feedback rules.
     val example = remember { exampleGame() }
 
-    Column(
-        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(stringResource(R.string.word_tutorial_title), style = MaterialTheme.typography.headlineMedium)
+    ScreenColumn(modifier = modifier, verticalSpacing = LogicaSpacing.item) {
+        ScreenTitle(stringResource(R.string.word_tutorial_title))
         Text(stringResource(R.string.word_rules_intro), style = MaterialTheme.typography.bodyLarge)
         listOf(
             R.string.word_rule_length,
@@ -73,10 +68,10 @@ private fun WordTutorialScreen(
             R.string.word_rule_repeats,
         ).forEach { rule -> Text(stringResource(rule), style = MaterialTheme.typography.bodyMedium) }
 
-        Card(Modifier.fillMaxWidth()) {
+        LogicaCard {
             Column(
-                Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(stringResource(R.string.word_tutorial_example_title), style = MaterialTheme.typography.titleMedium)
@@ -85,7 +80,7 @@ private fun WordTutorialScreen(
             }
         }
 
-        Button(onClick = onDone, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.done))
         }
     }

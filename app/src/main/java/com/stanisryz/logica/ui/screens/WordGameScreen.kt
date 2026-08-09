@@ -2,17 +2,16 @@ package com.stanisryz.logica.ui.screens
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.HighlightOff
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -27,11 +26,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordGameState
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
 import com.stanisryz.logica.puzzle.core.word.WordGuessRejection
@@ -40,6 +39,15 @@ import com.stanisryz.logica.puzzle.core.word.WordRules
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.session.GameSessionRepository
+import com.stanisryz.logica.ui.components.CompletionActions
+import com.stanisryz.logica.ui.components.CompletionCard
+import com.stanisryz.logica.ui.components.DifficultyBadge
+import com.stanisryz.logica.ui.components.LoadingState
+import com.stanisryz.logica.ui.components.RetryableErrorState
+import com.stanisryz.logica.ui.components.SupportingText
+import com.stanisryz.logica.ui.components.difficultyLabel
+import com.stanisryz.logica.ui.theme.LocalLogicaPalette
+import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.ui.word.WordBoard
 import com.stanisryz.logica.ui.word.WordKeyboard
 import com.stanisryz.logica.word.WordGameContext
@@ -105,15 +113,23 @@ private fun WordGameScreen(
     modifier: Modifier,
 ) {
     when (uiState) {
-        WordGameUiState.Loading ->
-            Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator()
-                    Text(stringResource(R.string.creating_puzzle), Modifier.padding(top = 16.dp))
-                }
-            }
+        WordGameUiState.Loading -> LoadingState(modifier, stringResource(R.string.creating_puzzle))
         is WordGameUiState.Error ->
-            WordErrorState(uiState.reason, if (isDaily) onToday else onStartNew, onBack, isDaily, modifier)
+            RetryableErrorState(
+                message =
+                    stringResource(
+                        when (uiState.reason) {
+                            WordGameError.MISSING_SAVED_SESSION -> R.string.missing_saved_game
+                            WordGameError.INVALID_SAVED_SESSION -> R.string.invalid_saved_game
+                            WordGameError.GENERATION -> R.string.puzzle_generation_error
+                        },
+                    ),
+                retryLabel = stringResource(if (isDaily) R.string.to_today else R.string.try_another),
+                onRetry = if (isDaily) onToday else onStartNew,
+                modifier = modifier,
+                secondaryLabel = stringResource(R.string.back),
+                onSecondary = onBack,
+            )
         is WordGameUiState.Ready ->
             WordReadyState(
                 puzzle = uiState.puzzle,
@@ -135,32 +151,10 @@ private fun WordGameScreen(
     }
 }
 
-@Composable
-private fun WordErrorState(
-    reason: WordGameError,
-    onTryAnother: () -> Unit,
-    onBack: () -> Unit,
-    isDaily: Boolean,
-    modifier: Modifier,
-) {
-    Column(modifier.fillMaxSize().padding(24.dp), Arrangement.Center, Alignment.CenterHorizontally) {
-        Text(
-            stringResource(
-                when (reason) {
-                    WordGameError.MISSING_SAVED_SESSION -> R.string.missing_saved_game
-                    WordGameError.INVALID_SAVED_SESSION -> R.string.invalid_saved_game
-                    WordGameError.GENERATION -> R.string.puzzle_generation_error
-                },
-            ),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Button(onClick = onTryAnother, modifier = Modifier.padding(top = 16.dp)) {
-            Text(stringResource(if (isDaily) R.string.to_today else R.string.try_another))
-        }
-        TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
-    }
-}
-
+/**
+ * The board scrolls while the keyboard stays anchored to the bottom, so a seven-letter EXPERT game
+ * stays playable on a small portrait screen without scrolling the keys out of reach.
+ */
 @Composable
 private fun WordReadyState(
     puzzle: WordPuzzle,
@@ -186,30 +180,57 @@ private fun WordReadyState(
             view.performHapticFeedback(HapticFeedbackConstants.REJECT)
         }
     }
+    // Balance and Crowns already confirm a solve; Word additionally has a terminal failure.
+    LaunchedEffect(game.status) {
+        if (!hapticsEnabled) return@LaunchedEffect
+        when (game.status) {
+            WordGameStatus.SOLVED -> view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+            WordGameStatus.FAILED -> view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+            WordGameStatus.IN_PROGRESS -> Unit
+        }
+    }
 
     Column(
-        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier =
+            modifier
+                .fillMaxSize()
+                .padding(
+                    horizontal = LogicaSpacing.gameplayHorizontal,
+                    vertical = LogicaSpacing.screenVertical,
+                ),
+        verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            stringResource(R.string.difficulty_value, puzzle.id.difficulty.russianLabel()),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Text(
-            stringResource(R.string.word_attempts_left, game.remainingAttempts, WordRules.MAXIMUM_ATTEMPTS),
-            style = MaterialTheme.typography.bodyMedium,
-        )
-
-        WordBoard(game)
-
-        rejection?.let { reason ->
-            Text(
-                stringResource(reason.messageResource()),
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+        Column(
+            modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            DifficultyBadge(difficultyLabel(PuzzleType.WORD, puzzle.id.difficulty))
+            SupportingText(
+                stringResource(R.string.word_attempts_left, game.remainingAttempts, WordRules.MAXIMUM_ATTEMPTS),
             )
+            WordBoard(game)
+            rejection?.let { reason ->
+                Text(
+                    stringResource(reason.messageResource()),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+                )
+            }
+            if (game.status != WordGameStatus.IN_PROGRESS) {
+                WordTerminalCard(
+                    puzzle = puzzle,
+                    game = game,
+                    completionPersistence = completionPersistence,
+                    onRetryCompletion = onRetryCompletion,
+                    onNewPuzzle = onNewPuzzle,
+                    onCatalog = onCatalog,
+                    onToday = onToday,
+                    isDaily = isDaily,
+                )
+            }
         }
 
         if (game.status == WordGameStatus.IN_PROGRESS) {
@@ -217,25 +238,16 @@ private fun WordReadyState(
                 knowledge = game.letterKnowledge,
                 enabled = true,
                 onLetter = { letter ->
+                    if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                     onDismissRejection()
                     onLetter(letter)
                 },
                 onBackspace = {
+                    if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                     onDismissRejection()
                     onBackspace()
                 },
                 onSubmit = onSubmit,
-            )
-        } else {
-            WordTerminalCard(
-                puzzle = puzzle,
-                game = game,
-                completionPersistence = completionPersistence,
-                onRetryCompletion = onRetryCompletion,
-                onNewPuzzle = onNewPuzzle,
-                onCatalog = onCatalog,
-                onToday = onToday,
-                isDaily = isDaily,
             )
         }
     }
@@ -253,45 +265,51 @@ private fun WordTerminalCard(
     isDaily: Boolean,
 ) {
     val isSolved = game.status == WordGameStatus.SOLVED
-    Card(Modifier.fillMaxWidth()) {
-        Column(
-            Modifier.padding(20.dp).semantics { liveRegion = LiveRegionMode.Polite },
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            if (isSolved) {
-                Text(
-                    stringResource(R.string.word_solved),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Text(stringResource(R.string.word_attempts_used, game.attempts.size))
-            } else {
-                Text(
-                    stringResource(R.string.word_failed),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.error,
-                )
-                Text(stringResource(R.string.word_answer_was, puzzle.answer.uppercase()))
-            }
+    val palette = LocalLogicaPalette.current
+    CompletionCard(
+        icon = if (isSolved) Icons.Filled.CheckCircle else Icons.Filled.HighlightOff,
+        title = stringResource(if (isSolved) R.string.word_solved else R.string.word_failed),
+        containerColor = if (isSolved) palette.successContainer else MaterialTheme.colorScheme.errorContainer,
+        contentColor = if (isSolved) palette.onSuccessContainer else MaterialTheme.colorScheme.onErrorContainer,
+    ) {
+        if (isSolved) {
+            Text(
+                stringResource(R.string.word_attempts_used, game.attempts.size),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        } else {
+            Text(
+                stringResource(R.string.word_answer_was, puzzle.answer.uppercase()),
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
 
-            when (completionPersistence) {
-                CompletionPersistence.Error -> {
-                    Text(stringResource(R.string.completion_save_error_body))
-                    TextButton(onClick = onRetryCompletion) { Text(stringResource(R.string.retry)) }
-                }
-                CompletionPersistence.Saving -> Text(stringResource(R.string.saving_completion))
-                else -> Unit
+        when (completionPersistence) {
+            CompletionPersistence.Error -> {
+                Text(
+                    stringResource(R.string.completion_save_error_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                TextButton(onClick = onRetryCompletion) { Text(stringResource(R.string.retry)) }
             }
+            CompletionPersistence.Saving ->
+                Text(
+                    stringResource(R.string.saving_completion),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            else -> Unit
+        }
 
+        CompletionActions {
             if (isDaily) {
-                Button(onClick = onToday, modifier = Modifier.fillMaxWidth()) {
+                Button(onClick = onToday, modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.to_today))
                 }
             } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onNewPuzzle) { Text(stringResource(R.string.new_game)) }
-                    TextButton(onClick = onCatalog) { Text(stringResource(R.string.to_catalog)) }
+                Button(onClick = onNewPuzzle, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.new_puzzle))
                 }
+                TextButton(onClick = onCatalog) { Text(stringResource(R.string.to_catalog)) }
             }
         }
     }

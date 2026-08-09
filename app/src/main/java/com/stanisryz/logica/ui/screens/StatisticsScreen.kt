@@ -1,27 +1,13 @@
 package com.stanisryz.logica.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -36,6 +22,22 @@ import com.stanisryz.logica.statistics.StatisticsUiState
 import com.stanisryz.logica.statistics.StatisticsViewModel
 import com.stanisryz.logica.statistics.StatisticsViewModelFactory
 import com.stanisryz.logica.statistics.WordStatistics
+import com.stanisryz.logica.ui.components.AttemptDistributionBars
+import com.stanisryz.logica.ui.components.EmptyState
+import com.stanisryz.logica.ui.components.LabelledValue
+import com.stanisryz.logica.ui.components.LoadingState
+import com.stanisryz.logica.ui.components.LogicaCard
+import com.stanisryz.logica.ui.components.Metric
+import com.stanisryz.logica.ui.components.MetricGrid
+import com.stanisryz.logica.ui.components.PuzzleTitle
+import com.stanisryz.logica.ui.components.RetryableErrorState
+import com.stanisryz.logica.ui.components.ScreenColumn
+import com.stanisryz.logica.ui.components.ScreenSection
+import com.stanisryz.logica.ui.components.ScreenTitle
+import com.stanisryz.logica.ui.components.SectionTitle
+import com.stanisryz.logica.ui.components.difficultyResource
+import com.stanisryz.logica.ui.components.titleResource
+import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 @Composable
 internal fun StatisticsRoute(
@@ -66,108 +68,86 @@ private fun StatisticsScreen(
     modifier: Modifier,
 ) {
     when (uiState) {
-        StatisticsUiState.Loading ->
-            Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+        StatisticsUiState.Loading -> LoadingState(modifier)
         StatisticsUiState.Error ->
-            Box(modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(stringResource(R.string.statistics_load_error))
-                    Button(onClick = onRetry, modifier = Modifier.padding(top = 16.dp)) {
-                        Text(stringResource(R.string.retry))
-                    }
-                }
+            RetryableErrorState(
+                message = stringResource(R.string.statistics_load_error),
+                retryLabel = stringResource(R.string.retry),
+                onRetry = onRetry,
+                modifier = modifier,
+            )
+        is StatisticsUiState.Ready ->
+            if (uiState.statistics.isEmpty()) {
+                EmptyState(
+                    title = stringResource(R.string.statistics_empty_title),
+                    body = stringResource(R.string.statistics_empty_body),
+                    modifier = modifier,
+                )
+            } else {
+                StatisticsContent(uiState.statistics, modifier)
             }
-        is StatisticsUiState.Ready -> StatisticsContent(uiState.statistics, modifier)
     }
 }
+
+/** Nothing has been completed yet, so every metric would read zero. */
+private fun GameStatistics.isEmpty(): Boolean = totalCompletedResults == 0 && completedDailyCount == 0
 
 @Composable
 private fun StatisticsContent(
     statistics: GameStatistics,
     modifier: Modifier,
 ) {
-    Column(
-        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text(stringResource(R.string.statistics), style = MaterialTheme.typography.headlineMedium)
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatisticRow(R.string.total_solved, statistics.totalCompletedResults)
-                StatisticRow(R.string.daily_completed_count, statistics.completedDailyCount)
-                StatisticRow(R.string.current_daily_streak, statistics.currentDailyStreak)
-                StatisticRow(R.string.best_daily_streak, statistics.bestDailyStreak)
-                StatisticRow(R.string.total_hints_used, statistics.totalHintsUsed)
-            }
+    ScreenColumn(modifier) {
+        ScreenTitle(stringResource(R.string.statistics))
+        ScreenSection(title = stringResource(R.string.statistics_overall)) {
+            MetricGrid(
+                listOf(
+                    Metric(stringResource(R.string.total_solved), statistics.totalCompletedResults.toString()),
+                    Metric(stringResource(R.string.daily_completed_count), statistics.completedDailyCount.toString()),
+                    Metric(stringResource(R.string.current_daily_streak), statistics.currentDailyStreak.toString()),
+                    Metric(stringResource(R.string.best_daily_streak), statistics.bestDailyStreak.toString()),
+                    Metric(stringResource(R.string.total_hints_used), statistics.totalHintsUsed.toString()),
+                ),
+            )
         }
-        PuzzleStatisticsCard(R.string.balance, statistics, PuzzleType.BALANCE)
-        PuzzleStatisticsCard(R.string.crowns, statistics, PuzzleType.CROWNS)
+        PuzzleStatisticsCard(PuzzleType.BALANCE, statistics)
+        PuzzleStatisticsCard(PuzzleType.CROWNS, statistics)
         WordStatisticsCard(statistics.word)
     }
 }
 
 @Composable
-private fun WordStatisticsCard(statistics: WordStatistics) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(stringResource(R.string.word), style = MaterialTheme.typography.titleLarge)
-            StatisticRow(R.string.word_played, statistics.played)
-            StatisticRow(R.string.word_solved_count, statistics.solved)
-            StatisticRow(R.string.word_failed_count, statistics.failed)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(stringResource(R.string.word_win_rate))
-                Text(
-                    stringResource(R.string.word_percent_value, statistics.winRatePercent),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-            }
-            Text(stringResource(R.string.word_attempt_distribution), style = MaterialTheme.typography.titleSmall)
-            statistics.solvedAttemptCounts.forEach { (attempts, count) ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(stringResource(R.string.word_attempt_bucket, attempts))
-                    Text(count.toString(), style = MaterialTheme.typography.titleMedium)
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun PuzzleStatisticsCard(
-    titleResource: Int,
-    statistics: GameStatistics,
     puzzleType: PuzzleType,
+    statistics: GameStatistics,
 ) {
     val puzzleStatistics = requireNotNull(statistics.byPuzzleType[puzzleType])
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(stringResource(titleResource), style = MaterialTheme.typography.titleLarge)
-            StatisticRow(R.string.total_solved, puzzleStatistics.totalCompleted)
-            Difficulty.entries.forEach { difficulty ->
-                StatisticRow(difficulty.stringResourceId, puzzleStatistics.countsByDifficulty.getValue(difficulty))
-            }
+    LogicaCard {
+        PuzzleTitle(stringResource(puzzleType.titleResource()), puzzleType = puzzleType)
+        LabelledValue(stringResource(R.string.total_solved), puzzleStatistics.totalCompleted.toString())
+        Difficulty.entries.forEach { difficulty ->
+            LabelledValue(
+                label = stringResource(difficulty.difficultyResource()),
+                value = puzzleStatistics.countsByDifficulty.getValue(difficulty).toString(),
+            )
         }
     }
 }
 
 @Composable
-private fun StatisticRow(
-    labelResource: Int,
-    value: Int,
-) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(stringResource(labelResource))
-        Text(value.toString(), style = MaterialTheme.typography.titleMedium)
+private fun WordStatisticsCard(statistics: WordStatistics) {
+    LogicaCard {
+        PuzzleTitle(stringResource(PuzzleType.WORD.titleResource()), puzzleType = PuzzleType.WORD)
+        LabelledValue(stringResource(R.string.word_played), statistics.played.toString())
+        LabelledValue(stringResource(R.string.word_solved_count), statistics.solved.toString())
+        LabelledValue(stringResource(R.string.word_failed_count), statistics.failed.toString())
+        LabelledValue(
+            label = stringResource(R.string.word_win_rate),
+            value = stringResource(R.string.word_percent_value, statistics.winRatePercent),
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
+            SectionTitle(stringResource(R.string.word_attempt_distribution))
+            AttemptDistributionBars(statistics.solvedAttemptCounts)
+        }
     }
 }
-
-private val Difficulty.stringResourceId: Int
-    get() =
-        when (this) {
-            Difficulty.EASY -> R.string.difficulty_easy
-            Difficulty.MEDIUM -> R.string.difficulty_medium
-            Difficulty.HARD -> R.string.difficulty_hard
-            Difficulty.EXPERT -> R.string.difficulty_expert
-        }

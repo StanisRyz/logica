@@ -1,27 +1,12 @@
 package com.stanisryz.logica.ui.screens
 
 import android.view.HapticFeedbackConstants
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,7 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
@@ -55,10 +39,24 @@ import com.stanisryz.logica.puzzle.core.balance.BalancePosition
 import com.stanisryz.logica.puzzle.core.balance.BalancePuzzle
 import com.stanisryz.logica.puzzle.core.balance.BalanceViolationType
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.ui.balance.BalanceBoard
+import com.stanisryz.logica.ui.components.BodyText
+import com.stanisryz.logica.ui.components.DifficultyBadge
+import com.stanisryz.logica.ui.components.GameAction
+import com.stanisryz.logica.ui.components.GameActionBar
+import com.stanisryz.logica.ui.components.GameMessage
+import com.stanisryz.logica.ui.components.LoadingState
+import com.stanisryz.logica.ui.components.LogicaCard
+import com.stanisryz.logica.ui.components.PuzzleSolvedDialog
+import com.stanisryz.logica.ui.components.RetryableErrorState
+import com.stanisryz.logica.ui.components.ScreenColumn
+import com.stanisryz.logica.ui.components.SupportingText
+import com.stanisryz.logica.ui.components.difficultyLabel
+import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 @Composable
 internal fun BalanceGameRoute(
@@ -115,8 +113,23 @@ private fun BalanceGameScreen(
     modifier: Modifier = Modifier,
 ) {
     when (uiState) {
-        BalanceGameUiState.Loading -> LoadingState(modifier)
-        is BalanceGameUiState.Error -> ErrorState(uiState.reason, if (isDaily) onToday else onStartNew, onBack, modifier)
+        BalanceGameUiState.Loading -> LoadingState(modifier, stringResource(R.string.creating_puzzle))
+        is BalanceGameUiState.Error ->
+            RetryableErrorState(
+                message =
+                    stringResource(
+                        when (uiState.reason) {
+                            BalanceGameError.MISSING_SAVED_SESSION -> R.string.missing_saved_game
+                            BalanceGameError.INVALID_SAVED_SESSION -> R.string.invalid_saved_game
+                            BalanceGameError.GENERATION -> R.string.puzzle_generation_error
+                        },
+                    ),
+                retryLabel = stringResource(if (isDaily) R.string.to_today else R.string.try_another),
+                onRetry = if (isDaily) onToday else onStartNew,
+                modifier = modifier,
+                secondaryLabel = stringResource(R.string.back),
+                onSecondary = onBack,
+            )
         is BalanceGameUiState.Ready ->
             ReadyState(
                 uiState.puzzle,
@@ -136,39 +149,6 @@ private fun BalanceGameScreen(
                 isDaily,
                 modifier,
             )
-    }
-}
-
-@Composable
-private fun LoadingState(modifier: Modifier) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            CircularProgressIndicator()
-            Text(stringResource(R.string.creating_puzzle), Modifier.padding(top = 16.dp))
-        }
-    }
-}
-
-@Composable
-private fun ErrorState(
-    reason: BalanceGameError,
-    onTryAnother: () -> Unit,
-    onBack: () -> Unit,
-    modifier: Modifier,
-) {
-    Column(modifier.fillMaxSize().padding(24.dp), Arrangement.Center, Alignment.CenterHorizontally) {
-        Text(
-            stringResource(
-                when (reason) {
-                    BalanceGameError.MISSING_SAVED_SESSION -> R.string.missing_saved_game
-                    BalanceGameError.INVALID_SAVED_SESSION -> R.string.invalid_saved_game
-                    BalanceGameError.GENERATION -> R.string.puzzle_generation_error
-                },
-            ),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Button(onClick = onTryAnother, modifier = Modifier.padding(top = 16.dp)) { Text(stringResource(R.string.try_another)) }
-        TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
     }
 }
 
@@ -208,15 +188,12 @@ private fun ReadyState(
         previousStatus = game.status
     }
 
-    Column(
-        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+    ScreenColumn(
+        modifier = modifier,
+        verticalSpacing = LogicaSpacing.item,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            stringResource(R.string.difficulty_value, difficulty.russianLabel()),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(bottom = 12.dp),
-        )
+        DifficultyBadge(difficultyLabel(PuzzleType.BALANCE, difficulty))
         BalanceBoard(
             puzzle = puzzle,
             game = game,
@@ -226,100 +203,76 @@ private fun ReadyState(
             },
         )
         game.currentHint?.let { hint -> HintCard(hint) }
-        val firstViolation = game.violations.firstOrNull()
-        AnimatedVisibility(firstViolation != null) {
-            firstViolation?.let { violation ->
-                Text(
-                    violationText(violation.type),
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                )
-            }
-        }
-        Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-            IconButton(onClick = onUndo, enabled = game.moveHistory.isNotEmpty()) {
-                Icon(Icons.AutoMirrored.Filled.Undo, stringResource(R.string.undo))
-            }
-            IconButton(onClick = onHint, enabled = !isHintLoading && game.status == BalanceGameStatus.IN_PROGRESS) {
-                Icon(Icons.Filled.Lightbulb, stringResource(R.string.hint))
-            }
-            IconButton(onClick = { if (game.moveHistory.isEmpty()) onReset() else showResetConfirmation = true }) {
-                Icon(Icons.Filled.Refresh, stringResource(R.string.reset))
-            }
-        }
-        if (isHintLoading) Text(stringResource(R.string.searching_hint), Modifier.padding(top = 4.dp))
+        GameMessage(game.violations.firstOrNull()?.let { violationText(it.type) })
+        GameActionBar(
+            listOf(
+                GameAction(
+                    icon = Icons.AutoMirrored.Filled.Undo,
+                    label = stringResource(R.string.undo),
+                    enabled = game.moveHistory.isNotEmpty(),
+                    onClick = onUndo,
+                ),
+                GameAction(
+                    icon = Icons.Filled.Lightbulb,
+                    label = stringResource(R.string.hint),
+                    enabled = !isHintLoading && game.status == BalanceGameStatus.IN_PROGRESS,
+                    onClick = onHint,
+                ),
+                GameAction(
+                    icon = Icons.Filled.Refresh,
+                    label = stringResource(R.string.reset),
+                    enabled = true,
+                    onClick = { if (game.moveHistory.isEmpty()) onReset() else showResetConfirmation = true },
+                ),
+            ),
+        )
+        if (isHintLoading) SupportingText(stringResource(R.string.searching_hint))
     }
     if (showResetConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showResetConfirmation = false },
-            title = { Text(stringResource(R.string.reset_title)) },
-            text = { Text(stringResource(R.string.reset_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showResetConfirmation = false
-                    onReset()
-                }) { Text(stringResource(R.string.reset)) }
+        ResetConfirmationDialog(
+            onConfirm = {
+                showResetConfirmation = false
+                onReset()
             },
-            dismissButton = { TextButton(onClick = { showResetConfirmation = false }) { Text(stringResource(R.string.cancel)) } },
+            onDismiss = { showResetConfirmation = false },
         )
     }
     if (game.status == BalanceGameStatus.SOLVED) {
-        AlertDialog(
-            onDismissRequest = {},
-            icon = { Icon(Icons.Filled.TaskAlt, null, tint = MaterialTheme.colorScheme.primary) },
-            title = {
-                Text(
-                    stringResource(
-                        if (completionPersistence == CompletionPersistence.Error) {
-                            R.string.completion_save_error_title
-                        } else {
-                            R.string.puzzle_solved
-                        },
-                    ),
-                )
-            },
-            text = {
-                Text(
-                    when (completionPersistence) {
-                        CompletionPersistence.NotRequired,
-                        CompletionPersistence.Saving,
-                        -> stringResource(R.string.saving_completion)
-                        CompletionPersistence.Saved -> stringResource(R.string.hints_used, game.hintsUsed)
-                        CompletionPersistence.Error -> stringResource(R.string.completion_save_error_body)
-                    },
-                )
-            },
-            confirmButton = {
-                when (completionPersistence) {
-                    CompletionPersistence.NotRequired,
-                    CompletionPersistence.Saving,
-                    -> TextButton(onClick = {}, enabled = false) { Text(stringResource(R.string.saving)) }
-                    CompletionPersistence.Error ->
-                        TextButton(onClick = onRetryCompletion) { Text(stringResource(R.string.retry)) }
-                    CompletionPersistence.Saved ->
-                        if (isDaily) {
-                            TextButton(onClick = onToday) { Text(stringResource(R.string.to_today)) }
-                        } else {
-                            TextButton(onClick = onNewPuzzle) { Text(stringResource(R.string.new_puzzle)) }
-                        }
-                }
-            },
-            dismissButton = {
-                if (!isDaily && completionPersistence == CompletionPersistence.Saved) {
-                    TextButton(onClick = onCatalog) { Text(stringResource(R.string.to_catalog)) }
-                }
-            },
+        PuzzleSolvedDialog(
+            completionPersistence = completionPersistence,
+            hintsUsed = game.hintsUsed,
+            isDaily = isDaily,
+            onRetryCompletion = onRetryCompletion,
+            onNewPuzzle = onNewPuzzle,
+            onCatalog = onCatalog,
+            onToday = onToday,
         )
     }
 }
 
 @Composable
+internal fun ResetConfirmationDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.reset_title)) },
+        text = { Text(stringResource(R.string.reset_body)) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.reset)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+@Composable
 private fun HintCard(hint: BalanceHint) {
-    Card(Modifier.fillMaxWidth().padding(top = 12.dp)) {
-        Column(Modifier.padding(16.dp)) {
-            Text(hint.presentationText(), style = MaterialTheme.typography.bodyLarge)
-            Text(stringResource(R.string.hint_legend), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
-        }
+    LogicaCard(
+        modifier = Modifier.fillMaxWidth(),
+        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+        verticalSpacing = LogicaSpacing.text,
+    ) {
+        BodyText(hint.presentationText())
+        SupportingText(stringResource(R.string.hint_legend))
     }
 }
 

@@ -79,6 +79,14 @@
 - Daily counts and streaks are derived from completed `daily_runs`, never individual entries or mutable counters.
 - Statistics reads persisted results and lifecycle history, never active sessions; do not add unreliable metrics such as wall-clock solve duration.
 - User-facing rule and hint explanations belong in `:app`; Compose renders structured core state and UX polish must not change deterministic generation or persistence compatibility without a concrete requirement.
+- Shared UI lives in `app/src/main/java/com/stanisryz/logica/ui/components/` and `.../ui/theme/`; screens compose those pieces instead of inventing their own paddings, text sizes, cards, or state views.
+- `LogicaSpacing` owns every layout value and `LogicaTheme` owns the complete Light/Dark `ColorScheme` plus shapes; do not leave Material container/surface roles at their baseline defaults.
+- `LogicaPalette` (via `LocalLogicaPalette`) holds only what Material 3 has no role for: the success family and the categorical Crowns region colors; everything else uses `MaterialTheme.colorScheme`.
+- Text hierarchy is `ScreenTitle`, `SectionTitle`, `PuzzleTitle`, `MetricValue`, `BodyText`, `SupportingText`; puzzle accents are subtle scheme colors, never separate per-puzzle themes.
+- `LoadingState`, `RetryableErrorState`, `EmptyState`, `DifficultySelector`, `PuzzleStartScreen`, `CompletionCard`, `PuzzleSolvedDialog`, `GameActionBar`, and `StatusChip` are the shared presentation contracts; extend them rather than re-implementing per screen.
+- Boards stay puzzle-specific: only the surrounding chrome (header, difficulty, actions, errors, completion) is shared.
+- Every state must be readable without color: pair status color with an icon plus a label, and keep the existing non-color Word feedback.
+- All user-facing strings live in `app/src/main/res/values/strings.xml`; Word difficulty is always presented as difficulty plus word length.
 - Balance generator soak verification is opt-in; large seed sweeps never belong in normal tests or builds.
 - Quality failures must report reproducible seeds; use collected metrics for evidence-based tuning, not speculative rewrites.
 - Invalid, non-unique, non-deterministic, misclassified, or branching gameplay puzzles are hard generator failures.

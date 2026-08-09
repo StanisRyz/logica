@@ -1,15 +1,8 @@
 package com.stanisryz.logica.ui.screens
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,7 +10,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
@@ -29,6 +21,9 @@ import com.stanisryz.logica.balance.BalanceTutorialViewModelFactory
 import com.stanisryz.logica.puzzle.core.balance.BalancePosition
 import com.stanisryz.logica.settings.SettingsRepository
 import com.stanisryz.logica.ui.balance.BalanceBoard
+import com.stanisryz.logica.ui.components.LogicaCard
+import com.stanisryz.logica.ui.components.ScreenColumn
+import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 @Composable
 internal fun BalanceTutorialRoute(
@@ -49,14 +44,10 @@ private fun BalanceTutorialScreen(
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+    ScreenColumn(
+        modifier = modifier,
+        verticalSpacing = LogicaSpacing.item,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
             text = stringResource(R.string.balance_tutorial_progress, state.stage.ordinal + 1),
@@ -72,12 +63,8 @@ private fun BalanceTutorialScreen(
             modifier = Modifier.fillMaxWidth(),
         )
         if (state.feedback == BalanceTutorialFeedback.TRY_AGAIN) {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = stringResource(R.string.balance_tutorial_try_again),
-                    modifier = Modifier.padding(16.dp),
-                    color = MaterialTheme.colorScheme.error,
-                )
+            LogicaCard(containerColor = MaterialTheme.colorScheme.errorContainer) {
+                Text(stringResource(R.string.balance_tutorial_try_again))
             }
         }
     }

@@ -9,10 +9,8 @@
     <string name="balance">Баланс</string>
     <string name="balance_rules_summary">В каждой строке и столбце должно быть поровну ○ и ●. Нельзя ставить три одинаковых символа подряд, а завершённые линии не повторяются.</string>
     <string name="balance_tutorial_title">Обучение «Баланс»</string>
-    <string name="balance_tutorial_offer_title">Впервые в «Балансе»?</string>
     <string name="balance_tutorial_offer_body">Короткое обучение покажет правила на маленьких примерах.</string>
     <string name="take_tutorial">Пройти обучение</string>
-    <string name="play_now">Играть сразу</string>
     <string name="how_to_play">Как играть</string>
     <string name="balance_tutorial_progress">Шаг %1$d из 4</string>
     <string name="balance_tutorial_stage_one_title">Не ставьте три одинаковых</string>
@@ -32,7 +30,6 @@
     <string name="difficulty_medium">Средне</string>
     <string name="difficulty_hard">Сложно</string>
     <string name="difficulty_expert">Эксперт</string>
-    <string name="difficulty_value">Сложность: %1$s</string>
     <string name="start">Начать</string>
     <string name="start_new_game_title">Начать новую игру?</string>
     <string name="start_new_game_body">Текущий прогресс будет заменён.</string>
@@ -77,11 +74,12 @@
     <string name="new_game">Новая игра</string>
     <string name="play">Играть</string>
     <string name="daily_challenge">Задача дня</string>
-    <string name="daily_available">Сегодняшняя задача готова.</string>
-    <string name="daily_in_progress">Задача начата — прогресс сохранён.</string>
-    <string name="daily_completed">Задача дня выполнена.</string>
-    <string name="daily_progress">Прогресс: %1$d / %2$d</string>
-    <string name="daily_tutorial_recommendation">Перед задачей можно быстро познакомиться с правилами. Обучение не обязательно.</string>
+    <string name="daily_available">Не начата</string>
+    <string name="daily_in_progress">В процессе</string>
+    <string name="daily_entry_completed">Сыграно</string>
+    <string name="daily_completed">Задача дня выполнена</string>
+    <string name="daily_progress_short">%1$d / %2$d</string>
+    <string name="daily_progress_description">Выполнено %1$d из %2$d головоломок дня.</string>
     <string name="to_today">На экран «Сегодня»</string>
     <string name="retry">Повторить</string>
     <string name="saving">Сохраняем…</string>
@@ -99,8 +97,18 @@
     <string name="current_daily_streak">Текущая серия</string>
     <string name="best_daily_streak">Лучшая серия</string>
     <string name="total_hints_used">Подсказок использовано</string>
-    <string name="current_daily_streak_value">Текущая серия: %1$d</string>
-    <string name="best_daily_streak_value">Лучшая серия: %1$d</string>
+    <string name="statistics_overall">Всего</string>
+    <string name="statistics_empty_title">Пока нет завершённых игр</string>
+    <string name="statistics_empty_body">Сыграйте задачу дня или головоломку из каталога — здесь появится статистика.</string>
+    <string name="catalog_active_session">Есть сохранение</string>
+    <string name="settings_appearance">Оформление</string>
+    <string name="settings_gameplay">Игра</string>
+    <string name="settings_theme">Тема</string>
+    <string name="settings_theme_system">Как в системе</string>
+    <string name="settings_theme_light">Светлая</string>
+    <string name="settings_theme_dark">Тёмная</string>
+    <string name="settings_sound">Звук</string>
+    <string name="settings_haptics">Вибрация</string>
     <string name="crowns">Короны</string>
     <string name="crowns_catalog_description">Расставьте короны: по одной в каждой строке, столбце и цветной области. Короны не должны соприкасаться по диагонали.</string>
     <string name="crowns_rules_intro">Поставьте короны во все подходящие клетки. Для решения действуют четыре правила:</string>
@@ -137,7 +145,6 @@
     <string name="crowns_technique_region_column">Все возможные клетки области лежат в одном столбце, поэтому остальные клетки столбца исключаются.</string>
     <string name="crowns_hint_legend">Выделение показывает цель подсказки; соседний цвет — клетки, на которых основан вывод.</string>
     <string name="crowns_tutorial_title">Обучение «Короны»</string>
-    <string name="crowns_tutorial_offer_title">Впервые в «Коронах»?</string>
     <string name="crowns_tutorial_offer_body">Короткое интерактивное обучение покажет правила и управление на одном поле.</string>
     <string name="crowns_tutorial_progress">Шаг %1$d из 5</string>
     <string name="crowns_tutorial_stage_one_title">Одна корона в строке и столбце</string>
@@ -192,7 +199,6 @@
     <string name="word_enter">Ввод</string>
     <string name="word_backspace">Стереть букву</string>
     <string name="word_tutorial_title">Обучение «Слово»</string>
-    <string name="word_tutorial_offer_title">Впервые в «Слове»?</string>
     <string name="word_tutorial_offer_body">Короткое объяснение покажет правила и разбор одной попытки.</string>
     <string name="word_tutorial_example_title">Разбор попытки</string>
     <string name="word_tutorial_example_body">Загадано слово «ПОЛКА», попытка — «ЛАМПА». Последняя «А» стоит на своём месте, а первая «А» отмечена как отсутствующая: в загаданном слове только одна «А».</string>
@@ -202,5 +208,5 @@
     <string name="word_win_rate">Доля побед</string>
     <string name="word_percent_value">%1$d %%</string>
     <string name="word_attempt_distribution">Отгадано за N попыток</string>
-    <string name="word_attempt_bucket">%1$d попыток</string>
+    <string name="word_attempt_bar_description">Отгадано за %1$d попыток: %2$d</string>
 </resources>

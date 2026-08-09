@@ -175,21 +175,21 @@ internal fun LogicaNavigation(
                             puzzles =
                                 listOf(
                                     CatalogPuzzleCard(
-                                        titleResource = R.string.balance,
+                                        puzzleType = PuzzleType.BALANCE,
                                         descriptionResource = R.string.balance_catalog_description,
                                         hasActiveSession = hasActiveBalanceSession,
                                         onContinue = { backStack.add(AppDestination.BalanceGame(BalanceGameLaunch.Restore())) },
                                         onNew = { backStack.add(AppDestination.BalanceStart) },
                                     ),
                                     CatalogPuzzleCard(
-                                        titleResource = R.string.crowns,
+                                        puzzleType = PuzzleType.CROWNS,
                                         descriptionResource = R.string.crowns_catalog_description,
                                         hasActiveSession = hasActiveCrownsSession,
                                         onContinue = { backStack.add(AppDestination.CrownsGame(CrownsGameLaunch.Restore())) },
                                         onNew = { backStack.add(AppDestination.CrownsStart) },
                                     ),
                                     CatalogPuzzleCard(
-                                        titleResource = R.string.word,
+                                        puzzleType = PuzzleType.WORD,
                                         descriptionResource = R.string.word_catalog_description,
                                         hasActiveSession = hasActiveWordSession,
                                         onContinue = { backStack.add(AppDestination.WordGame(WordGameLaunch.Restore())) },

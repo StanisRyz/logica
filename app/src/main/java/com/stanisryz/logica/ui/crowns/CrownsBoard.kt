@@ -35,6 +35,7 @@ import com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPosition
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPuzzle
 import com.stanisryz.logica.puzzle.core.crowns.RegionId
+import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 
 @Composable
 internal fun CrownsBoard(
@@ -109,17 +110,8 @@ private fun CrownsCellView(
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
-    val regionColors =
-        listOf(
-            colors.primaryContainer,
-            colors.secondaryContainer,
-            colors.tertiaryContainer,
-            colors.surfaceVariant,
-            colors.primaryContainer.copy(alpha = 0.64f),
-            colors.secondaryContainer.copy(alpha = 0.64f),
-            colors.tertiaryContainer.copy(alpha = 0.64f),
-            colors.surfaceVariant.copy(alpha = 0.64f),
-        )
+    val palette = LocalLogicaPalette.current
+    val regionColors = palette.crownsRegions
     val background =
         when {
             isConflict -> colors.errorContainer
@@ -224,14 +216,14 @@ private fun CrownsCellView(
                 Text(
                     text = "×",
                     style = MaterialTheme.typography.titleMedium,
-                    color = if (isConflict) colors.onErrorContainer else colors.onSurfaceVariant,
+                    color = if (isConflict) colors.onErrorContainer else palette.onCrownsRegion,
                 )
             CrownsPlayerCell.CROWN ->
                 Icon(
                     painter = painterResource(R.drawable.ic_crown),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(0.55f),
-                    tint = if (isConflict) colors.onErrorContainer else colors.onSurface,
+                    tint = if (isConflict) colors.onErrorContainer else palette.onCrownsRegion,
                 )
         }
     }

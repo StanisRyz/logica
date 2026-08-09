@@ -1,15 +1,13 @@
 package com.stanisryz.logica.ui.screens
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
@@ -17,46 +15,55 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import com.stanisryz.logica.R
 import com.stanisryz.logica.settings.ThemeMode
 import com.stanisryz.logica.settings.UserSettings
+import com.stanisryz.logica.ui.components.LogicaCard
+import com.stanisryz.logica.ui.components.ScreenColumn
+import com.stanisryz.logica.ui.components.ScreenSection
+import com.stanisryz.logica.ui.components.SectionTitle
+import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 @Composable
-fun SettingsScreen(
+internal fun SettingsScreen(
     settings: UserSettings,
     onThemeModeChanged: (ThemeMode) -> Unit,
     onSoundEnabledChanged: (Boolean) -> Unit,
     onHapticsEnabledChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-    ) {
-        Text("Тема", style = MaterialTheme.typography.titleMedium)
-        ThemeMode.entries.forEach { themeMode ->
-            ThemeModeOption(
-                themeMode = themeMode,
-                selected = settings.themeMode == themeMode,
-                onSelected = { onThemeModeChanged(themeMode) },
-            )
+    ScreenColumn(modifier) {
+        ScreenSection(title = stringResource(R.string.settings_appearance)) {
+            LogicaCard(verticalSpacing = LogicaSpacing.text) {
+                SectionTitle(stringResource(R.string.settings_theme))
+                Column(Modifier.fillMaxWidth().selectableGroup()) {
+                    ThemeMode.entries.forEach { themeMode ->
+                        ThemeModeOption(
+                            themeMode = themeMode,
+                            selected = settings.themeMode == themeMode,
+                            onSelected = { onThemeModeChanged(themeMode) },
+                        )
+                    }
+                }
+            }
         }
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-
-        SettingsSwitch(
-            label = "Звук",
-            checked = settings.soundEnabled,
-            onCheckedChange = onSoundEnabledChanged,
-        )
-        SettingsSwitch(
-            label = "Вибрация",
-            checked = settings.hapticsEnabled,
-            onCheckedChange = onHapticsEnabledChanged,
-        )
+        ScreenSection(title = stringResource(R.string.settings_gameplay)) {
+            LogicaCard(verticalSpacing = LogicaSpacing.text) {
+                SettingsSwitch(
+                    label = stringResource(R.string.settings_sound),
+                    checked = settings.soundEnabled,
+                    onCheckedChange = onSoundEnabledChanged,
+                )
+                SettingsSwitch(
+                    label = stringResource(R.string.settings_haptics),
+                    checked = settings.hapticsEnabled,
+                    onCheckedChange = onHapticsEnabledChanged,
+                )
+            }
+        }
     }
 }
 
@@ -70,18 +77,13 @@ private fun ThemeModeOption(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onSelected)
-                .padding(vertical = 6.dp),
+                .selectable(selected = selected, role = Role.RadioButton, onClick = onSelected)
+                .padding(vertical = LogicaSpacing.text),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.text),
     ) {
-        RadioButton(
-            selected = selected,
-            onClick = onSelected,
-        )
-        Text(
-            text = themeMode.label,
-            modifier = Modifier.padding(start = 8.dp),
-        )
+        RadioButton(selected = selected, onClick = null)
+        Text(stringResource(themeMode.labelResource()), style = MaterialTheme.typography.bodyLarge)
     }
 }
 
@@ -95,23 +97,19 @@ private fun SettingsSwitch(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable { onCheckedChange(!checked) }
-                .padding(vertical = 8.dp),
+                .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+                .padding(vertical = LogicaSpacing.text),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.action),
     ) {
-        Text(text = label)
-        Spacer(modifier = Modifier.weight(1f))
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-        )
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 
-private val ThemeMode.label: String
-    get() =
-        when (this) {
-            ThemeMode.SYSTEM -> "Как в системе"
-            ThemeMode.LIGHT -> "Светлая"
-            ThemeMode.DARK -> "Тёмная"
-        }
+private fun ThemeMode.labelResource(): Int =
+    when (this) {
+        ThemeMode.SYSTEM -> R.string.settings_theme_system
+        ThemeMode.LIGHT -> R.string.settings_theme_light
+        ThemeMode.DARK -> R.string.settings_theme_dark
+    }

@@ -1,30 +1,12 @@
 package com.stanisryz.logica.ui.screens
 
 import android.view.HapticFeedbackConstants
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.TaskAlt
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
@@ -50,14 +31,29 @@ import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
 import com.stanisryz.logica.puzzle.core.crowns.CrownsHint
 import com.stanisryz.logica.puzzle.core.crowns.CrownsHintAction
 import com.stanisryz.logica.puzzle.core.crowns.CrownsLogicTechnique
+import com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPosition
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPuzzle
 import com.stanisryz.logica.puzzle.core.crowns.CrownsViolationType
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.session.GameSessionRepository
+import com.stanisryz.logica.ui.components.BodyText
+import com.stanisryz.logica.ui.components.DifficultyBadge
+import com.stanisryz.logica.ui.components.GameAction
+import com.stanisryz.logica.ui.components.GameActionBar
+import com.stanisryz.logica.ui.components.GameMessage
+import com.stanisryz.logica.ui.components.LoadingState
+import com.stanisryz.logica.ui.components.LogicaCard
+import com.stanisryz.logica.ui.components.PuzzleSolvedDialog
+import com.stanisryz.logica.ui.components.RetryableErrorState
+import com.stanisryz.logica.ui.components.ScreenColumn
+import com.stanisryz.logica.ui.components.SupportingText
+import com.stanisryz.logica.ui.components.difficultyLabel
 import com.stanisryz.logica.ui.crowns.CrownsBoard
+import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 @Composable
 internal fun CrownsGameRoute(
@@ -115,9 +111,23 @@ private fun CrownsGameScreen(
     modifier: Modifier,
 ) {
     when (uiState) {
-        CrownsGameUiState.Loading -> CrownsLoadingState(modifier)
+        CrownsGameUiState.Loading -> LoadingState(modifier, stringResource(R.string.creating_puzzle))
         is CrownsGameUiState.Error ->
-            CrownsErrorState(uiState.reason, if (isDaily) onToday else onStartNew, onBack, isDaily, modifier)
+            RetryableErrorState(
+                message =
+                    stringResource(
+                        when (uiState.reason) {
+                            CrownsGameError.MISSING_SAVED_SESSION -> R.string.missing_saved_game
+                            CrownsGameError.INVALID_SAVED_SESSION -> R.string.invalid_saved_game
+                            CrownsGameError.GENERATION -> R.string.puzzle_generation_error
+                        },
+                    ),
+                retryLabel = stringResource(if (isDaily) R.string.to_today else R.string.try_another),
+                onRetry = if (isDaily) onToday else onStartNew,
+                modifier = modifier,
+                secondaryLabel = stringResource(R.string.back),
+                onSecondary = onBack,
+            )
         is CrownsGameUiState.Ready ->
             CrownsReadyState(
                 puzzle = uiState.puzzle,
@@ -137,42 +147,6 @@ private fun CrownsGameScreen(
                 isDaily = isDaily,
                 modifier = modifier,
             )
-    }
-}
-
-@Composable
-private fun CrownsLoadingState(modifier: Modifier) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            CircularProgressIndicator()
-            Text(stringResource(R.string.creating_puzzle), Modifier.padding(top = 16.dp))
-        }
-    }
-}
-
-@Composable
-private fun CrownsErrorState(
-    reason: CrownsGameError,
-    onTryAnother: () -> Unit,
-    onBack: () -> Unit,
-    isDaily: Boolean,
-    modifier: Modifier,
-) {
-    Column(modifier.fillMaxSize().padding(24.dp), Arrangement.Center, Alignment.CenterHorizontally) {
-        Text(
-            stringResource(
-                when (reason) {
-                    CrownsGameError.MISSING_SAVED_SESSION -> R.string.missing_saved_game
-                    CrownsGameError.INVALID_SAVED_SESSION -> R.string.invalid_saved_game
-                    CrownsGameError.GENERATION -> R.string.puzzle_generation_error
-                },
-            ),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Button(onClick = onTryAnother, modifier = Modifier.padding(top = 16.dp)) {
-            Text(stringResource(if (isDaily) R.string.to_today else R.string.try_another))
-        }
-        TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
     }
 }
 
@@ -213,15 +187,12 @@ private fun CrownsReadyState(
         previousStatus = game.status
     }
 
-    Column(
-        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+    ScreenColumn(
+        modifier = modifier,
+        verticalSpacing = LogicaSpacing.item,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            stringResource(R.string.difficulty_value, difficulty.russianLabel()),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(bottom = 12.dp),
-        )
+        DifficultyBadge(difficultyLabel(PuzzleType.CROWNS, difficulty))
         CrownsBoard(
             puzzle = puzzle,
             game = game,
@@ -229,126 +200,74 @@ private fun CrownsReadyState(
                 if (hapticsEnabled) {
                     val feedback =
                         when (game.cellAt(position)) {
-                            com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell.EMPTY -> HapticFeedbackConstants.KEYBOARD_TAP
-                            com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell.MARKED -> HapticFeedbackConstants.CLOCK_TICK
-                            com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell.CROWN -> HapticFeedbackConstants.KEYBOARD_TAP
+                            CrownsPlayerCell.EMPTY -> HapticFeedbackConstants.KEYBOARD_TAP
+                            CrownsPlayerCell.MARKED -> HapticFeedbackConstants.CLOCK_TICK
+                            CrownsPlayerCell.CROWN -> HapticFeedbackConstants.KEYBOARD_TAP
                         }
                     view.performHapticFeedback(feedback)
                 }
                 onCellTapped(position)
             },
         )
-        Text(
-            stringResource(R.string.crowns_tap_policy),
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-        )
+        SupportingText(stringResource(R.string.crowns_tap_policy), modifier = Modifier.fillMaxWidth())
         game.currentHint?.let { hint -> CrownsHintCard(hint) }
-        val firstViolation = game.violations.firstOrNull()
-        AnimatedVisibility(firstViolation != null) {
-            firstViolation?.let { violation ->
-                Text(
-                    crownsViolationText(violation.type),
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                )
-            }
-        }
-        Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-            IconButton(onClick = onUndo, enabled = game.moveHistory.isNotEmpty()) {
-                Icon(Icons.AutoMirrored.Filled.Undo, stringResource(R.string.undo))
-            }
-            IconButton(onClick = onHint, enabled = !isHintLoading && game.status == CrownsGameStatus.IN_PROGRESS) {
-                Icon(Icons.Filled.Lightbulb, stringResource(R.string.hint))
-            }
-            IconButton(onClick = { if (game.moveHistory.isEmpty()) onReset() else showResetConfirmation = true }) {
-                Icon(Icons.Filled.Refresh, stringResource(R.string.reset))
-            }
-        }
-        if (isHintLoading) Text(stringResource(R.string.searching_hint), Modifier.padding(top = 4.dp))
+        GameMessage(game.violations.firstOrNull()?.let { crownsViolationText(it.type) })
+        GameActionBar(
+            listOf(
+                GameAction(
+                    icon = Icons.AutoMirrored.Filled.Undo,
+                    label = stringResource(R.string.undo),
+                    enabled = game.moveHistory.isNotEmpty(),
+                    onClick = onUndo,
+                ),
+                GameAction(
+                    icon = Icons.Filled.Lightbulb,
+                    label = stringResource(R.string.hint),
+                    enabled = !isHintLoading && game.status == CrownsGameStatus.IN_PROGRESS,
+                    onClick = onHint,
+                ),
+                GameAction(
+                    icon = Icons.Filled.Refresh,
+                    label = stringResource(R.string.reset),
+                    enabled = true,
+                    onClick = { if (game.moveHistory.isEmpty()) onReset() else showResetConfirmation = true },
+                ),
+            ),
+        )
+        if (isHintLoading) SupportingText(stringResource(R.string.searching_hint))
     }
 
     if (showResetConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showResetConfirmation = false },
-            title = { Text(stringResource(R.string.reset_title)) },
-            text = { Text(stringResource(R.string.reset_body)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showResetConfirmation = false
-                        onReset()
-                    },
-                ) {
-                    Text(stringResource(R.string.reset))
-                }
+        ResetConfirmationDialog(
+            onConfirm = {
+                showResetConfirmation = false
+                onReset()
             },
-            dismissButton = {
-                TextButton(onClick = { showResetConfirmation = false }) { Text(stringResource(R.string.cancel)) }
-            },
+            onDismiss = { showResetConfirmation = false },
         )
     }
     if (game.status == CrownsGameStatus.SOLVED) {
-        AlertDialog(
-            onDismissRequest = {},
-            icon = { Icon(Icons.Filled.TaskAlt, null, tint = MaterialTheme.colorScheme.primary) },
-            title = {
-                Text(
-                    stringResource(
-                        if (completionPersistence == CompletionPersistence.Error) {
-                            R.string.completion_save_error_title
-                        } else {
-                            R.string.puzzle_solved
-                        },
-                    ),
-                )
-            },
-            text = {
-                Text(
-                    when (completionPersistence) {
-                        CompletionPersistence.NotRequired,
-                        CompletionPersistence.Saving,
-                        -> stringResource(R.string.saving_completion)
-                        CompletionPersistence.Saved -> stringResource(R.string.hints_used, game.hintsUsed)
-                        CompletionPersistence.Error -> stringResource(R.string.completion_save_error_body)
-                    },
-                )
-            },
-            confirmButton = {
-                when (completionPersistence) {
-                    CompletionPersistence.NotRequired,
-                    CompletionPersistence.Saving,
-                    -> TextButton(onClick = {}, enabled = false) { Text(stringResource(R.string.saving)) }
-                    CompletionPersistence.Error ->
-                        TextButton(onClick = onRetryCompletion) { Text(stringResource(R.string.retry)) }
-                    CompletionPersistence.Saved ->
-                        if (isDaily) {
-                            TextButton(onClick = onToday) { Text(stringResource(R.string.to_today)) }
-                        } else {
-                            TextButton(onClick = onNewPuzzle) { Text(stringResource(R.string.new_puzzle)) }
-                        }
-                }
-            },
-            dismissButton = {
-                if (!isDaily && completionPersistence == CompletionPersistence.Saved) {
-                    TextButton(onClick = onCatalog) { Text(stringResource(R.string.to_catalog)) }
-                }
-            },
+        PuzzleSolvedDialog(
+            completionPersistence = completionPersistence,
+            hintsUsed = game.hintsUsed,
+            isDaily = isDaily,
+            onRetryCompletion = onRetryCompletion,
+            onNewPuzzle = onNewPuzzle,
+            onCatalog = onCatalog,
+            onToday = onToday,
         )
     }
 }
 
 @Composable
 private fun CrownsHintCard(hint: CrownsHint) {
-    Card(Modifier.fillMaxWidth().padding(top = 12.dp)) {
-        Column(Modifier.padding(16.dp)) {
-            Text(hint.crownsPresentationText(), style = MaterialTheme.typography.bodyLarge)
-            Text(
-                stringResource(R.string.crowns_hint_legend),
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 6.dp),
-            )
-        }
+    LogicaCard(
+        modifier = Modifier.fillMaxWidth(),
+        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+        verticalSpacing = LogicaSpacing.text,
+    ) {
+        BodyText(hint.crownsPresentationText())
+        SupportingText(stringResource(R.string.crowns_hint_legend))
     }
 }
 
