@@ -214,7 +214,15 @@ private fun CrownsReadyState(
             puzzle = puzzle,
             game = game,
             onCellTapped = { position ->
-                if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                if (hapticsEnabled) {
+                    val feedback =
+                        when (game.cellAt(position)) {
+                            com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell.EMPTY -> HapticFeedbackConstants.KEYBOARD_TAP
+                            com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell.MARKED -> HapticFeedbackConstants.CLOCK_TICK
+                            com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell.CROWN -> HapticFeedbackConstants.KEYBOARD_TAP
+                        }
+                    view.performHapticFeedback(feedback)
+                }
                 onCellTapped(position)
             },
         )

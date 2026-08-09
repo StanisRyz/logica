@@ -46,6 +46,7 @@
 - Balance is the first playable Android slice; generation and solver-backed hints run off the main thread.
 - Localized hint text belongs in `:app`; active Balance progress preserves moves, Undo history, and hint usage across restarts.
 - Balance tutorial is application onboarding: it reuses core Balance gameplay but stays separate from Room-backed catalog sessions; completion is a DataStore preference.
+- Crowns tutorial is Crowns-only application onboarding: its fixed state never touches Catalog sessions, results, statistics, Daily state, or gameplay hint counters; its prompt state is a DataStore preference.
 - Catalog and Daily gameplay use separate session scopes, must coexist, and both reuse the existing Balance engine/UI.
 - Room migrations preserve existing saves and never use destructive migration.
 - Daily lifecycle persistence is separate from active gameplay sessions and from future results or statistics.

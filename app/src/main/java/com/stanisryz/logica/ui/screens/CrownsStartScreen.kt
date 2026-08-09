@@ -33,6 +33,8 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 @Composable
 internal fun CrownsStartScreen(
     hasActiveSession: Boolean,
+    tutorialCompleted: Boolean,
+    onOpenTutorial: () -> Unit,
     onStart: (Difficulty) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -51,6 +53,25 @@ internal fun CrownsStartScreen(
             R.string.crowns_rule_region,
             R.string.crowns_rule_diagonal,
         ).forEach { rule -> Text(stringResource(rule), style = MaterialTheme.typography.bodyMedium) }
+
+        if (!tutorialCompleted) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.crowns_tutorial_offer_title), style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.crowns_tutorial_offer_body))
+                    Button(onClick = onOpenTutorial, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.take_tutorial))
+                    }
+                    TextButton(
+                        onClick = {
+                            if (hasActiveSession) showReplaceConfirmation = true else onStart(selectedDifficulty)
+                        },
+                    ) { Text(stringResource(R.string.play_now)) }
+                }
+            }
+        } else {
+            TextButton(onClick = onOpenTutorial) { Text(stringResource(R.string.how_to_play)) }
+        }
 
         Text(stringResource(R.string.difficulty), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
         Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {

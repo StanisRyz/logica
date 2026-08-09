@@ -19,10 +19,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.R
@@ -38,6 +41,7 @@ internal fun CrownsBoard(
     puzzle: CrownsPuzzle,
     game: CrownsGameState,
     onCellTapped: (CrownsPosition) -> Unit,
+    guidedPositions: Set<CrownsPosition> = emptySet(),
     modifier: Modifier = Modifier,
 ) {
     val conflictPositions = remember(game.violations) { game.violations.flatMapTo(mutableSetOf()) { it.affectedPositions } }
@@ -68,11 +72,12 @@ internal fun CrownsBoard(
                             isHintTarget = position in (hint?.targetPositions ?: emptySet()),
                             isHintEvidence = position in (hint?.evidencePositions ?: emptySet()),
                             isHintConflict = position in (hint?.conflictPositions ?: emptySet()),
+                            isGuided = position in guidedPositions,
                             regionColorIndex = checkNotNull(regionNumbers[region]) - 1,
                             topBoundary = row == 0 || puzzle.regionAt(CrownsPosition(row - 1, column)) != region,
                             leftBoundary = column == 0 || puzzle.regionAt(CrownsPosition(row, column - 1)) != region,
-                            bottomBoundary = row == puzzle.size - 1,
-                            rightBoundary = column == puzzle.size - 1,
+                            bottomBoundary = row == puzzle.size - 1 || puzzle.regionAt(CrownsPosition(row + 1, column)) != region,
+                            rightBoundary = column == puzzle.size - 1 || puzzle.regionAt(CrownsPosition(row, column + 1)) != region,
                             enabled = game.status == CrownsGameStatus.IN_PROGRESS,
                             onClick = { onCellTapped(position) },
                             modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -93,6 +98,7 @@ private fun CrownsCellView(
     isHintTarget: Boolean,
     isHintEvidence: Boolean,
     isHintConflict: Boolean,
+    isGuided: Boolean,
     regionColorIndex: Int,
     topBoundary: Boolean,
     leftBoundary: Boolean,
@@ -125,7 +131,9 @@ private fun CrownsCellView(
     val targetSuffix = if (isHintTarget) stringResource(R.string.hint_target_suffix) else ""
     val evidenceSuffix = if (isHintEvidence) stringResource(R.string.hint_evidence_suffix) else ""
     val hintConflictSuffix = if (isHintConflict) stringResource(R.string.hint_conflict_suffix) else ""
-    val hintSuffix = targetSuffix + evidenceSuffix + hintConflictSuffix
+    val guidedSuffix = if (isGuided) stringResource(R.string.crowns_guided_suffix) else ""
+    val nextAction = stringResource(R.string.crowns_cell_next_action, cell.nextActionLabel())
+    val hintSuffix = targetSuffix + evidenceSuffix + hintConflictSuffix + guidedSuffix
     val description =
         stringResource(
             R.string.crowns_cell_description,
@@ -133,12 +141,13 @@ private fun CrownsCellView(
             position.column + 1,
             regionNumber,
             cell.accessibilityLabel(),
+            nextAction,
             if (isConflict) stringResource(R.string.conflict_suffix) else "",
             hintSuffix,
         )
     val boundaryColor = colors.outline
     val internalColor = colors.outlineVariant
-    val strongWidth = 3.dp
+    val strongWidth = 2.dp
     val thinWidth = 1.dp
 
     Box(
@@ -146,8 +155,10 @@ private fun CrownsCellView(
             modifier
                 .background(background)
                 .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
-                .semantics { contentDescription = description }
-                .drawWithContent {
+                .semantics {
+                    contentDescription = description
+                    role = androidx.compose.ui.semantics.Role.Button
+                }.drawWithContent {
                     drawContent()
                     val strong = strongWidth.toPx()
                     val thin = thinWidth.toPx()
@@ -183,6 +194,27 @@ private fun CrownsCellView(
                             StrokeCap.Square,
                         )
                     }
+                    when {
+                        isConflict || isHintConflict ->
+                            drawRect(
+                                color = colors.error,
+                                style = Stroke(width = strong),
+                            )
+                        isHintTarget || isGuided ->
+                            drawRect(
+                                color = colors.primary,
+                                style = Stroke(width = strong),
+                            )
+                        isHintEvidence ->
+                            drawRect(
+                                color = colors.secondary,
+                                style =
+                                    Stroke(
+                                        width = thin * 2f,
+                                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(thin * 3f, thin * 2f)),
+                                    ),
+                            )
+                    }
                 },
         contentAlignment = Alignment.Center,
     ) {
@@ -212,5 +244,15 @@ private fun CrownsPlayerCell.accessibilityLabel(): String =
             CrownsPlayerCell.EMPTY -> R.string.crowns_cell_empty
             CrownsPlayerCell.MARKED -> R.string.crowns_cell_marked
             CrownsPlayerCell.CROWN -> R.string.crowns_cell_crown
+        },
+    )
+
+@Composable
+private fun CrownsPlayerCell.nextActionLabel(): String =
+    stringResource(
+        when (this) {
+            CrownsPlayerCell.EMPTY -> R.string.crowns_next_mark
+            CrownsPlayerCell.MARKED -> R.string.crowns_next_crown
+            CrownsPlayerCell.CROWN -> R.string.crowns_next_clear
         },
     )

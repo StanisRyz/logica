@@ -12,4 +12,6 @@ interface SettingsRepository {
     suspend fun setHapticsEnabled(enabled: Boolean)
 
     suspend fun setBalanceTutorialCompleted(completed: Boolean)
+
+    suspend fun setCrownsTutorialCompleted(completed: Boolean)
 }

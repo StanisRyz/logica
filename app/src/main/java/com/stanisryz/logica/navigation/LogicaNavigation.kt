@@ -43,6 +43,7 @@ import com.stanisryz.logica.ui.screens.CatalogPuzzleCard
 import com.stanisryz.logica.ui.screens.CatalogScreen
 import com.stanisryz.logica.ui.screens.CrownsGameRoute
 import com.stanisryz.logica.ui.screens.CrownsStartScreen
+import com.stanisryz.logica.ui.screens.CrownsTutorialRoute
 import com.stanisryz.logica.ui.screens.SettingsScreen
 import com.stanisryz.logica.ui.screens.StatisticsRoute
 import com.stanisryz.logica.ui.screens.TodayRoute
@@ -62,6 +63,8 @@ private sealed interface AppDestination {
     data object BalanceTutorial : AppDestination
 
     data object CrownsStart : AppDestination
+
+    data object CrownsTutorial : AppDestination
 
     data class BalanceGame(
         val launch: BalanceGameLaunch,
@@ -87,6 +90,7 @@ internal fun LogicaNavigation(
     onThemeModeChanged: (ThemeMode) -> Unit,
     onSoundEnabledChanged: (Boolean) -> Unit,
     onHapticsEnabledChanged: (Boolean) -> Unit,
+    onCrownsTutorialCompleted: (Boolean) -> Unit,
 ) {
     val backStack = remember { mutableStateListOf<AppDestination>(AppDestination.Today) }
     val catalogSeedSource = remember { CatalogSeedSource() }
@@ -168,13 +172,26 @@ internal fun LogicaNavigation(
                     entry<AppDestination.CrownsStart> {
                         CrownsStartScreen(
                             hasActiveSession = hasActiveCrownsSession,
+                            tutorialCompleted = settings.crownsTutorialCompleted,
+                            onOpenTutorial = {
+                                onCrownsTutorialCompleted(true)
+                                backStack.add(AppDestination.CrownsTutorial)
+                            },
                             onStart = { difficulty ->
+                                onCrownsTutorialCompleted(true)
                                 backStack.add(
                                     AppDestination.CrownsGame(
                                         CrownsGameLaunch.New(difficulty, catalogSeedSource.nextSeed()),
                                     ),
                                 )
                             },
+                        )
+                    }
+                    entry<AppDestination.CrownsTutorial> {
+                        CrownsTutorialRoute(
+                            settingsRepository = settingsRepository,
+                            hapticsEnabled = settings.hapticsEnabled,
+                            onDone = { backStack.removeLastOrNull() },
                         )
                     }
                     entry<AppDestination.BalanceGame> { destination ->
@@ -293,6 +310,7 @@ private fun destinationTitle(destination: AppDestination): String =
             AppDestination.BalanceStart, is AppDestination.BalanceGame -> R.string.balance
             AppDestination.BalanceTutorial -> R.string.balance_tutorial_title
             AppDestination.CrownsStart, is AppDestination.CrownsGame -> R.string.crowns
+            AppDestination.CrownsTutorial -> R.string.crowns_tutorial_title
         },
     )
 

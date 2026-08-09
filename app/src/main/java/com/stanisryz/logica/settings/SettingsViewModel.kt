@@ -41,6 +41,12 @@ class SettingsViewModel(
             repository.setBalanceTutorialCompleted(completed)
         }
     }
+
+    fun setCrownsTutorialCompleted(completed: Boolean) {
+        viewModelScope.launch {
+            repository.setCrownsTutorialCompleted(completed)
+        }
+    }
 }
 
 class SettingsViewModelFactory(
