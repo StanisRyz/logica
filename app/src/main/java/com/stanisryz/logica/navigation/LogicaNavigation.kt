@@ -27,6 +27,7 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.stanisryz.logica.R
 import com.stanisryz.logica.balance.BalanceGameLaunch
+import com.stanisryz.logica.crowns.CrownsGameLaunch
 import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.result.GameCompletionRepository
@@ -38,7 +39,10 @@ import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.ui.screens.BalanceGameRoute
 import com.stanisryz.logica.ui.screens.BalanceStartScreen
 import com.stanisryz.logica.ui.screens.BalanceTutorialRoute
+import com.stanisryz.logica.ui.screens.CatalogPuzzleCard
 import com.stanisryz.logica.ui.screens.CatalogScreen
+import com.stanisryz.logica.ui.screens.CrownsGameRoute
+import com.stanisryz.logica.ui.screens.CrownsStartScreen
 import com.stanisryz.logica.ui.screens.SettingsScreen
 import com.stanisryz.logica.ui.screens.StatisticsRoute
 import com.stanisryz.logica.ui.screens.TodayRoute
@@ -57,8 +61,14 @@ private sealed interface AppDestination {
 
     data object BalanceTutorial : AppDestination
 
+    data object CrownsStart : AppDestination
+
     data class BalanceGame(
         val launch: BalanceGameLaunch,
+    ) : AppDestination
+
+    data class CrownsGame(
+        val launch: CrownsGameLaunch,
     ) : AppDestination
 }
 
@@ -73,6 +83,7 @@ internal fun LogicaNavigation(
     dailyChallengeRepository: DailyChallengeRepository,
     statisticsRepository: StatisticsRepository,
     hasActiveBalanceSession: Boolean,
+    hasActiveCrownsSession: Boolean,
     onThemeModeChanged: (ThemeMode) -> Unit,
     onSoundEnabledChanged: (Boolean) -> Unit,
     onHapticsEnabledChanged: (Boolean) -> Unit,
@@ -118,9 +129,23 @@ internal fun LogicaNavigation(
                     }
                     entry<AppDestination.Catalog> {
                         CatalogScreen(
-                            hasActiveBalanceSession = hasActiveBalanceSession,
-                            onContinueBalance = { backStack.add(AppDestination.BalanceGame(BalanceGameLaunch.Restore())) },
-                            onNewBalance = { backStack.add(AppDestination.BalanceStart) },
+                            puzzles =
+                                listOf(
+                                    CatalogPuzzleCard(
+                                        titleResource = R.string.balance,
+                                        descriptionResource = R.string.balance_catalog_description,
+                                        hasActiveSession = hasActiveBalanceSession,
+                                        onContinue = { backStack.add(AppDestination.BalanceGame(BalanceGameLaunch.Restore())) },
+                                        onNew = { backStack.add(AppDestination.BalanceStart) },
+                                    ),
+                                    CatalogPuzzleCard(
+                                        titleResource = R.string.crowns,
+                                        descriptionResource = R.string.crowns_catalog_description,
+                                        hasActiveSession = hasActiveCrownsSession,
+                                        onContinue = { backStack.add(AppDestination.CrownsGame(CrownsGameLaunch.Restore)) },
+                                        onNew = { backStack.add(AppDestination.CrownsStart) },
+                                    ),
+                                ),
                         )
                     }
                     entry<AppDestination.Statistics> { StatisticsRoute(statisticsRepository) }
@@ -139,6 +164,18 @@ internal fun LogicaNavigation(
                     }
                     entry<AppDestination.BalanceTutorial> {
                         BalanceTutorialRoute(settingsRepository = settingsRepository, onDone = { backStack.removeLastOrNull() })
+                    }
+                    entry<AppDestination.CrownsStart> {
+                        CrownsStartScreen(
+                            hasActiveSession = hasActiveCrownsSession,
+                            onStart = { difficulty ->
+                                backStack.add(
+                                    AppDestination.CrownsGame(
+                                        CrownsGameLaunch.New(difficulty, catalogSeedSource.nextSeed()),
+                                    ),
+                                )
+                            },
+                        )
                     }
                     entry<AppDestination.BalanceGame> { destination ->
                         BalanceGameRoute(
@@ -162,6 +199,31 @@ internal fun LogicaNavigation(
                             onToday = {
                                 backStack.clear()
                                 backStack.add(AppDestination.Today)
+                            },
+                        )
+                    }
+                    entry<AppDestination.CrownsGame> { destination ->
+                        CrownsGameRoute(
+                            launch = destination.launch,
+                            sessionRepository = gameSessionRepository,
+                            completionRepository = gameCompletionRepository,
+                            hapticsEnabled = settings.hapticsEnabled,
+                            onBack = { backStack.removeLastOrNull() },
+                            onNewPuzzle = { difficulty ->
+                                backStack.removeLastOrNull()
+                                backStack.add(
+                                    AppDestination.CrownsGame(
+                                        CrownsGameLaunch.New(difficulty, catalogSeedSource.nextSeed()),
+                                    ),
+                                )
+                            },
+                            onStartNew = {
+                                backStack.removeLastOrNull()
+                                backStack.add(AppDestination.CrownsStart)
+                            },
+                            onCatalog = {
+                                backStack.clear()
+                                backStack.add(AppDestination.Catalog)
                             },
                         )
                     }
@@ -230,6 +292,7 @@ private fun destinationTitle(destination: AppDestination): String =
             AppDestination.Settings -> R.string.settings
             AppDestination.BalanceStart, is AppDestination.BalanceGame -> R.string.balance
             AppDestination.BalanceTutorial -> R.string.balance_tutorial_title
+            AppDestination.CrownsStart, is AppDestination.CrownsGame -> R.string.crowns
         },
     )
 

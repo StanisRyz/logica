@@ -13,12 +13,13 @@ internal data class GameStatistics(
     val totalHintsUsed: Int,
     val currentDailyStreak: Int,
     val bestDailyStreak: Int,
-    val completionCountsByPuzzleType: Map<PuzzleType, Int>,
-    val balanceCountsByDifficulty: Map<Difficulty, Int>,
-) {
-    val totalCompletedBalance: Int
-        get() = completionCountsByPuzzleType[PuzzleType.BALANCE] ?: 0
-}
+    val byPuzzleType: Map<PuzzleType, PuzzleStatistics>,
+)
+
+internal data class PuzzleStatistics(
+    val totalCompleted: Int,
+    val countsByDifficulty: Map<Difficulty, Int>,
+)
 
 internal data class StatisticsSnapshot(
     val statistics: GameStatistics,
@@ -33,11 +34,16 @@ internal object StatisticsAggregator {
     ): StatisticsSnapshot {
         val dailyDates = completedDailyDates.filterNot { it.isAfter(currentDate) }.toSet()
         val streak = DailyStreakCalculator.calculate(currentDate, dailyDates)
-        val puzzleCounts = results.groupingBy(GameResult::puzzleType).eachCount()
-        val balanceResults = results.filter { it.puzzleType == PuzzleType.BALANCE }
-        val difficultyCounts =
-            Difficulty.entries.associateWith { difficulty ->
-                balanceResults.count { it.difficulty == difficulty }
+        val puzzleStatistics =
+            listOf(PuzzleType.BALANCE, PuzzleType.CROWNS).associateWith { puzzleType ->
+                val puzzleResults = results.filter { it.puzzleType == puzzleType }
+                PuzzleStatistics(
+                    totalCompleted = puzzleResults.size,
+                    countsByDifficulty =
+                        Difficulty.entries.associateWith { difficulty ->
+                            puzzleResults.count { it.difficulty == difficulty }
+                        },
+                )
             }
         val dailyHints =
             results
@@ -53,8 +59,7 @@ internal object StatisticsAggregator {
                     totalHintsUsed = results.sumOf(GameResult::hintsUsed),
                     currentDailyStreak = streak.current,
                     bestDailyStreak = streak.best,
-                    completionCountsByPuzzleType = puzzleCounts,
-                    balanceCountsByDifficulty = difficultyCounts,
+                    byPuzzleType = puzzleStatistics,
                 ),
             dailyHintsUsedByDate = dailyHints,
         )

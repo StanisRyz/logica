@@ -39,30 +39,28 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
-import com.stanisryz.logica.balance.BalanceGameContext
-import com.stanisryz.logica.balance.BalanceGameError
-import com.stanisryz.logica.balance.BalanceGameLaunch
-import com.stanisryz.logica.balance.BalanceGameUiState
-import com.stanisryz.logica.balance.BalanceGameViewModel
-import com.stanisryz.logica.balance.BalanceGameViewModelFactory
-import com.stanisryz.logica.puzzle.core.balance.BalanceCell
-import com.stanisryz.logica.puzzle.core.balance.BalanceGameState
-import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
-import com.stanisryz.logica.puzzle.core.balance.BalanceHint
-import com.stanisryz.logica.puzzle.core.balance.BalanceHintKind
-import com.stanisryz.logica.puzzle.core.balance.BalanceLogicTechnique
-import com.stanisryz.logica.puzzle.core.balance.BalancePosition
-import com.stanisryz.logica.puzzle.core.balance.BalancePuzzle
-import com.stanisryz.logica.puzzle.core.balance.BalanceViolationType
+import com.stanisryz.logica.crowns.CrownsGameError
+import com.stanisryz.logica.crowns.CrownsGameLaunch
+import com.stanisryz.logica.crowns.CrownsGameUiState
+import com.stanisryz.logica.crowns.CrownsGameViewModel
+import com.stanisryz.logica.crowns.CrownsGameViewModelFactory
+import com.stanisryz.logica.puzzle.core.crowns.CrownsGameState
+import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
+import com.stanisryz.logica.puzzle.core.crowns.CrownsHint
+import com.stanisryz.logica.puzzle.core.crowns.CrownsHintAction
+import com.stanisryz.logica.puzzle.core.crowns.CrownsLogicTechnique
+import com.stanisryz.logica.puzzle.core.crowns.CrownsPosition
+import com.stanisryz.logica.puzzle.core.crowns.CrownsPuzzle
+import com.stanisryz.logica.puzzle.core.crowns.CrownsViolationType
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.session.GameSessionRepository
-import com.stanisryz.logica.ui.balance.BalanceBoard
+import com.stanisryz.logica.ui.crowns.CrownsBoard
 
 @Composable
-internal fun BalanceGameRoute(
-    launch: BalanceGameLaunch,
+internal fun CrownsGameRoute(
+    launch: CrownsGameLaunch,
     sessionRepository: GameSessionRepository,
     completionRepository: GameCompletionRepository,
     hapticsEnabled: Boolean,
@@ -70,37 +68,35 @@ internal fun BalanceGameRoute(
     onNewPuzzle: (Difficulty) -> Unit,
     onStartNew: () -> Unit,
     onCatalog: () -> Unit,
-    onToday: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val factory =
         remember(launch, sessionRepository, completionRepository) {
-            BalanceGameViewModelFactory(launch, sessionRepository, completionRepository)
+            CrownsGameViewModelFactory(launch, sessionRepository, completionRepository)
         }
-    val gameViewModel: BalanceGameViewModel = viewModel(factory = factory)
+    val gameViewModel: CrownsGameViewModel = viewModel(factory = factory)
     val uiState by gameViewModel.uiState.collectAsStateWithLifecycle()
-    BalanceGameScreen(
-        uiState,
-        gameViewModel::onCellTapped,
-        gameViewModel::undo,
-        gameViewModel::requestHint,
-        gameViewModel::reset,
-        gameViewModel::retryCompletion,
-        hapticsEnabled,
-        onBack,
-        onNewPuzzle,
-        onStartNew,
-        onCatalog,
-        onToday,
-        launch.context is BalanceGameContext.Daily,
-        modifier,
+
+    CrownsGameScreen(
+        uiState = uiState,
+        onCellTapped = gameViewModel::onCellTapped,
+        onUndo = gameViewModel::undo,
+        onHint = gameViewModel::requestHint,
+        onReset = gameViewModel::reset,
+        onRetryCompletion = gameViewModel::retryCompletion,
+        hapticsEnabled = hapticsEnabled,
+        onBack = onBack,
+        onNewPuzzle = onNewPuzzle,
+        onStartNew = onStartNew,
+        onCatalog = onCatalog,
+        modifier = modifier,
     )
 }
 
 @Composable
-private fun BalanceGameScreen(
-    uiState: BalanceGameUiState,
-    onCellTapped: (BalancePosition) -> Unit,
+private fun CrownsGameScreen(
+    uiState: CrownsGameUiState,
+    onCellTapped: (CrownsPosition) -> Unit,
     onUndo: () -> Unit,
     onHint: () -> Unit,
     onReset: () -> Unit,
@@ -110,37 +106,33 @@ private fun BalanceGameScreen(
     onNewPuzzle: (Difficulty) -> Unit,
     onStartNew: () -> Unit,
     onCatalog: () -> Unit,
-    onToday: () -> Unit,
-    isDaily: Boolean,
-    modifier: Modifier = Modifier,
+    modifier: Modifier,
 ) {
     when (uiState) {
-        BalanceGameUiState.Loading -> LoadingState(modifier)
-        is BalanceGameUiState.Error -> ErrorState(uiState.reason, if (isDaily) onToday else onStartNew, onBack, modifier)
-        is BalanceGameUiState.Ready ->
-            ReadyState(
-                uiState.puzzle,
-                uiState.game,
-                uiState.puzzle.id.difficulty,
-                uiState.isHintLoading,
-                uiState.completionPersistence,
-                onCellTapped,
-                onUndo,
-                onHint,
-                onReset,
-                onRetryCompletion,
-                hapticsEnabled,
-                { onNewPuzzle(uiState.puzzle.id.difficulty) },
-                onCatalog,
-                onToday,
-                isDaily,
-                modifier,
+        CrownsGameUiState.Loading -> CrownsLoadingState(modifier)
+        is CrownsGameUiState.Error -> CrownsErrorState(uiState.reason, onStartNew, onBack, modifier)
+        is CrownsGameUiState.Ready ->
+            CrownsReadyState(
+                puzzle = uiState.puzzle,
+                game = uiState.game,
+                difficulty = uiState.puzzle.id.difficulty,
+                isHintLoading = uiState.isHintLoading,
+                completionPersistence = uiState.completionPersistence,
+                onCellTapped = onCellTapped,
+                onUndo = onUndo,
+                onHint = onHint,
+                onReset = onReset,
+                onRetryCompletion = onRetryCompletion,
+                hapticsEnabled = hapticsEnabled,
+                onNewPuzzle = { onNewPuzzle(uiState.puzzle.id.difficulty) },
+                onCatalog = onCatalog,
+                modifier = modifier,
             )
     }
 }
 
 @Composable
-private fun LoadingState(modifier: Modifier) {
+private fun CrownsLoadingState(modifier: Modifier) {
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CircularProgressIndicator()
@@ -150,8 +142,8 @@ private fun LoadingState(modifier: Modifier) {
 }
 
 @Composable
-private fun ErrorState(
-    reason: BalanceGameError,
+private fun CrownsErrorState(
+    reason: CrownsGameError,
     onTryAnother: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier,
@@ -160,26 +152,28 @@ private fun ErrorState(
         Text(
             stringResource(
                 when (reason) {
-                    BalanceGameError.MISSING_SAVED_SESSION -> R.string.missing_saved_game
-                    BalanceGameError.INVALID_SAVED_SESSION -> R.string.invalid_saved_game
-                    BalanceGameError.GENERATION -> R.string.puzzle_generation_error
+                    CrownsGameError.MISSING_SAVED_SESSION -> R.string.missing_saved_game
+                    CrownsGameError.INVALID_SAVED_SESSION -> R.string.invalid_saved_game
+                    CrownsGameError.GENERATION -> R.string.puzzle_generation_error
                 },
             ),
             style = MaterialTheme.typography.titleMedium,
         )
-        Button(onClick = onTryAnother, modifier = Modifier.padding(top = 16.dp)) { Text(stringResource(R.string.try_another)) }
+        Button(onClick = onTryAnother, modifier = Modifier.padding(top = 16.dp)) {
+            Text(stringResource(R.string.try_another))
+        }
         TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
     }
 }
 
 @Composable
-private fun ReadyState(
-    puzzle: BalancePuzzle,
-    game: BalanceGameState,
+private fun CrownsReadyState(
+    puzzle: CrownsPuzzle,
+    game: CrownsGameState,
     difficulty: Difficulty,
     isHintLoading: Boolean,
     completionPersistence: CompletionPersistence,
-    onCellTapped: (BalancePosition) -> Unit,
+    onCellTapped: (CrownsPosition) -> Unit,
     onUndo: () -> Unit,
     onHint: () -> Unit,
     onReset: () -> Unit,
@@ -187,14 +181,13 @@ private fun ReadyState(
     hapticsEnabled: Boolean,
     onNewPuzzle: () -> Unit,
     onCatalog: () -> Unit,
-    onToday: () -> Unit,
-    isDaily: Boolean,
     modifier: Modifier,
 ) {
     var showResetConfirmation by remember { mutableStateOf(false) }
     val view = LocalView.current
     var previouslyConflicted by remember { mutableStateOf(game.violations.isNotEmpty()) }
     var previousStatus by remember { mutableStateOf(game.status) }
+
     LaunchedEffect(game.violations) {
         if (hapticsEnabled && !previouslyConflicted && game.violations.isNotEmpty()) {
             view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
@@ -202,7 +195,7 @@ private fun ReadyState(
         previouslyConflicted = game.violations.isNotEmpty()
     }
     LaunchedEffect(game.status) {
-        if (hapticsEnabled && previousStatus != BalanceGameStatus.SOLVED && game.status == BalanceGameStatus.SOLVED) {
+        if (hapticsEnabled && previousStatus != CrownsGameStatus.SOLVED && game.status == CrownsGameStatus.SOLVED) {
             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
         }
         previousStatus = game.status
@@ -217,18 +210,23 @@ private fun ReadyState(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(bottom = 12.dp),
         )
-        BalanceBoard(
+        CrownsBoard(
             puzzle = puzzle,
             game = game,
-            onCellTapped = {
+            onCellTapped = { position ->
                 if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                onCellTapped(it)
+                onCellTapped(position)
             },
         )
-        game.currentHint?.let { hint -> HintCard(hint) }
+        Text(
+            stringResource(R.string.crowns_tap_policy),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        )
+        game.currentHint?.let { hint -> CrownsHintCard(hint) }
         AnimatedVisibility(game.violations.isNotEmpty()) {
             Text(
-                violationText(game.violations.first().type),
+                crownsViolationText(game.violations.first().type),
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
             )
@@ -237,7 +235,7 @@ private fun ReadyState(
             IconButton(onClick = onUndo, enabled = game.moveHistory.isNotEmpty()) {
                 Icon(Icons.AutoMirrored.Filled.Undo, stringResource(R.string.undo))
             }
-            IconButton(onClick = onHint, enabled = !isHintLoading && game.status == BalanceGameStatus.IN_PROGRESS) {
+            IconButton(onClick = onHint, enabled = !isHintLoading && game.status == CrownsGameStatus.IN_PROGRESS) {
                 Icon(Icons.Filled.Lightbulb, stringResource(R.string.hint))
             }
             IconButton(onClick = { if (game.moveHistory.isEmpty()) onReset() else showResetConfirmation = true }) {
@@ -246,21 +244,28 @@ private fun ReadyState(
         }
         if (isHintLoading) Text(stringResource(R.string.searching_hint), Modifier.padding(top = 4.dp))
     }
+
     if (showResetConfirmation) {
         AlertDialog(
             onDismissRequest = { showResetConfirmation = false },
             title = { Text(stringResource(R.string.reset_title)) },
             text = { Text(stringResource(R.string.reset_body)) },
             confirmButton = {
-                TextButton(onClick = {
-                    showResetConfirmation = false
-                    onReset()
-                }) { Text(stringResource(R.string.reset)) }
+                TextButton(
+                    onClick = {
+                        showResetConfirmation = false
+                        onReset()
+                    },
+                ) {
+                    Text(stringResource(R.string.reset))
+                }
             },
-            dismissButton = { TextButton(onClick = { showResetConfirmation = false }) { Text(stringResource(R.string.cancel)) } },
+            dismissButton = {
+                TextButton(onClick = { showResetConfirmation = false }) { Text(stringResource(R.string.cancel)) }
+            },
         )
     }
-    if (game.status == BalanceGameStatus.SOLVED) {
+    if (game.status == CrownsGameStatus.SOLVED) {
         AlertDialog(
             onDismissRequest = {},
             icon = { Icon(Icons.Filled.TaskAlt, null, tint = MaterialTheme.colorScheme.primary) },
@@ -294,15 +299,11 @@ private fun ReadyState(
                     CompletionPersistence.Error ->
                         TextButton(onClick = onRetryCompletion) { Text(stringResource(R.string.retry)) }
                     CompletionPersistence.Saved ->
-                        if (isDaily) {
-                            TextButton(onClick = onToday) { Text(stringResource(R.string.to_today)) }
-                        } else {
-                            TextButton(onClick = onNewPuzzle) { Text(stringResource(R.string.new_puzzle)) }
-                        }
+                        TextButton(onClick = onNewPuzzle) { Text(stringResource(R.string.new_puzzle)) }
                 }
             },
             dismissButton = {
-                if (!isDaily && completionPersistence == CompletionPersistence.Saved) {
+                if (completionPersistence == CompletionPersistence.Saved) {
                     TextButton(onClick = onCatalog) { Text(stringResource(R.string.to_catalog)) }
                 }
             },
@@ -311,64 +312,64 @@ private fun ReadyState(
 }
 
 @Composable
-private fun HintCard(hint: BalanceHint) {
+private fun CrownsHintCard(hint: CrownsHint) {
     Card(Modifier.fillMaxWidth().padding(top = 12.dp)) {
         Column(Modifier.padding(16.dp)) {
-            Text(hint.presentationText(), style = MaterialTheme.typography.bodyLarge)
-            Text(stringResource(R.string.hint_legend), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
+            Text(hint.crownsPresentationText(), style = MaterialTheme.typography.bodyLarge)
+            Text(
+                stringResource(R.string.crowns_hint_legend),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 6.dp),
+            )
         }
     }
 }
 
 @Composable
-private fun BalanceHint.presentationText(): String =
-    when (kind) {
-        BalanceHintKind.INCORRECT_VALUE ->
+private fun CrownsHint.crownsPresentationText(): String {
+    val firstTarget = targetPositions.sortedWith(compareBy(CrownsPosition::row, CrownsPosition::column)).first()
+    return when (action) {
+        CrownsHintAction.CLEAR_CROWN ->
+            stringResource(R.string.crowns_hint_incorrect_crown, firstTarget.row + 1, firstTarget.column + 1)
+        CrownsHintAction.CLEAR_MARK ->
+            stringResource(R.string.crowns_hint_incorrect_mark, firstTarget.row + 1, firstTarget.column + 1)
+        CrownsHintAction.PLACE_CROWN ->
             stringResource(
-                R.string.hint_incorrect_value,
-                position.row + 1,
-                position.column + 1,
-                suggestedValue.symbol(),
+                R.string.crowns_hint_place,
+                firstTarget.row + 1,
+                firstTarget.column + 1,
+                technique.crownsPresentationText(),
             )
-        BalanceHintKind.LOGICAL_DEDUCTION ->
+        CrownsHintAction.MARK_POSITIONS ->
             stringResource(
-                R.string.hint_logical_deduction,
-                position.row + 1,
-                position.column + 1,
-                suggestedValue.symbol(),
-                technique.presentationText(),
+                R.string.crowns_hint_mark,
+                targetPositions.size,
+                technique.crownsPresentationText(),
             )
     }
+}
 
 @Composable
-private fun BalanceLogicTechnique?.presentationText(): String =
+private fun CrownsLogicTechnique?.crownsPresentationText(): String =
     stringResource(
         when (this) {
-            BalanceLogicTechnique.PREVENT_THREE -> R.string.rule_prevent_three
-            BalanceLogicTechnique.COMPLETE_QUOTA -> R.string.rule_complete_quota
-            BalanceLogicTechnique.PRESERVE_UNIQUENESS -> R.string.rule_preserve_uniqueness
+            CrownsLogicTechnique.SINGLE_CANDIDATE_ROW -> R.string.crowns_technique_single_row
+            CrownsLogicTechnique.SINGLE_CANDIDATE_COLUMN -> R.string.crowns_technique_single_column
+            CrownsLogicTechnique.SINGLE_CANDIDATE_REGION -> R.string.crowns_technique_single_region
+            CrownsLogicTechnique.REGION_LOCKED_TO_ROW -> R.string.crowns_technique_region_row
+            CrownsLogicTechnique.REGION_LOCKED_TO_COLUMN -> R.string.crowns_technique_region_column
             null -> R.string.empty
         },
     )
 
 @Composable
-private fun violationText(type: BalanceViolationType): String =
+private fun crownsViolationText(type: CrownsViolationType): String =
     stringResource(
         when (type) {
-            BalanceViolationType.UNBALANCED_ROW -> R.string.violation_unbalanced_row
-            BalanceViolationType.UNBALANCED_COLUMN -> R.string.violation_unbalanced_column
-            BalanceViolationType.THREE_EQUAL_HORIZONTAL -> R.string.violation_three_horizontal
-            BalanceViolationType.THREE_EQUAL_VERTICAL -> R.string.violation_three_vertical
-            BalanceViolationType.DUPLICATE_ROWS -> R.string.violation_duplicate_rows
-            BalanceViolationType.DUPLICATE_COLUMNS -> R.string.violation_duplicate_columns
-            BalanceViolationType.FIXED_CLUE_CONFLICT -> R.string.violation_fixed_clue
-            BalanceViolationType.BOARD_SIZE_MISMATCH -> R.string.violation_board_size
+            CrownsViolationType.POSITION_OUTSIDE_BOARD -> R.string.crowns_violation_position
+            CrownsViolationType.ROW_CONFLICT -> R.string.crowns_violation_row
+            CrownsViolationType.COLUMN_CONFLICT -> R.string.crowns_violation_column
+            CrownsViolationType.REGION_CONFLICT -> R.string.crowns_violation_region
+            CrownsViolationType.DIAGONAL_ADJACENCY_CONFLICT -> R.string.crowns_violation_diagonal
         },
     )
-
-private fun BalanceCell.symbol(): String =
-    when (this) {
-        BalanceCell.EMPTY -> ""
-        BalanceCell.ZERO -> "○"
-        BalanceCell.ONE -> "●"
-    }

@@ -33,6 +33,7 @@ fun LogicaApp() {
         }
     val catalogViewModel: CatalogViewModel = viewModel(factory = catalogViewModelFactory)
     val hasActiveBalanceSession by catalogViewModel.hasActiveBalanceSession.collectAsStateWithLifecycle()
+    val hasActiveCrownsSession by catalogViewModel.hasActiveCrownsSession.collectAsStateWithLifecycle()
 
     LogicaTheme(themeMode = settings.themeMode) {
         LogicaNavigation(
@@ -43,6 +44,7 @@ fun LogicaApp() {
             dailyChallengeRepository = dailyChallengeRepository,
             statisticsRepository = statisticsRepository,
             hasActiveBalanceSession = hasActiveBalanceSession,
+            hasActiveCrownsSession = hasActiveCrownsSession,
             onThemeModeChanged = settingsViewModel::setThemeMode,
             onSoundEnabledChanged = settingsViewModel::setSoundEnabled,
             onHapticsEnabledChanged = settingsViewModel::setHapticsEnabled,

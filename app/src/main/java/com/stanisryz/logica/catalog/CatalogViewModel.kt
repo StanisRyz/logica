@@ -19,6 +19,13 @@ internal class CatalogViewModel(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = false,
         )
+
+    val hasActiveCrownsSession: StateFlow<Boolean> =
+        sessionRepository.observeHasActiveSession(PuzzleType.CROWNS, GameSessionScope.CATALOG).stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = false,
+        )
 }
 
 internal class CatalogViewModelFactory(

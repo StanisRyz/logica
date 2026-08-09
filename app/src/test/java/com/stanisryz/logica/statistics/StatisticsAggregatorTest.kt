@@ -14,7 +14,7 @@ import java.time.LocalDate
 
 class StatisticsAggregatorTest {
     @Test
-    fun aggregatesCatalogDailyHintsStreaksAndBalanceDifficulties() {
+    fun aggregatesBalanceAndCrownsWithoutChangingDailyStreaks() {
         val today = LocalDate.of(2026, 8, 8)
         val results =
             listOf(
@@ -27,6 +27,13 @@ class StatisticsAggregatorTest {
                     challengeDate = today.minusDays(1),
                 ),
                 result("hard", Difficulty.HARD, GameSessionScope.CATALOG, hintsUsed = 0),
+                result(
+                    "crowns",
+                    Difficulty.EXPERT,
+                    GameSessionScope.CATALOG,
+                    hintsUsed = 3,
+                    puzzleType = PuzzleType.CROWNS,
+                ),
             )
         val completedDailyDates =
             listOf(
@@ -41,12 +48,12 @@ class StatisticsAggregatorTest {
         val snapshot = StatisticsAggregator.aggregate(today, results, completedDailyDates)
         val statistics = snapshot.statistics
 
-        assertEquals(3, statistics.totalCompletedResults)
+        assertEquals(4, statistics.totalCompletedResults)
         assertEquals(5, statistics.completedDailyCount)
-        assertEquals(3, statistics.totalHintsUsed)
+        assertEquals(6, statistics.totalHintsUsed)
         assertEquals(2, statistics.currentDailyStreak)
         assertEquals(3, statistics.bestDailyStreak)
-        assertEquals(3, statistics.totalCompletedBalance)
+        assertEquals(3, statistics.byPuzzleType.getValue(PuzzleType.BALANCE).totalCompleted)
         assertEquals(
             mapOf(
                 Difficulty.EASY to 1,
@@ -54,7 +61,15 @@ class StatisticsAggregatorTest {
                 Difficulty.HARD to 1,
                 Difficulty.EXPERT to 0,
             ),
-            statistics.balanceCountsByDifficulty,
+            statistics.byPuzzleType.getValue(PuzzleType.BALANCE).countsByDifficulty,
+        )
+        assertEquals(1, statistics.byPuzzleType.getValue(PuzzleType.CROWNS).totalCompleted)
+        assertEquals(
+            1,
+            statistics.byPuzzleType
+                .getValue(PuzzleType.CROWNS)
+                .countsByDifficulty
+                .getValue(Difficulty.EXPERT),
         )
         assertEquals(2, snapshot.dailyHintsUsedByDate[today.minusDays(1)])
     }
@@ -65,10 +80,11 @@ class StatisticsAggregatorTest {
         scope: GameSessionScope,
         hintsUsed: Int,
         challengeDate: LocalDate? = null,
+        puzzleType: PuzzleType = PuzzleType.BALANCE,
     ): GameResult =
         GameResult(
             resultId = id,
-            puzzleType = PuzzleType.BALANCE,
+            puzzleType = puzzleType,
             difficulty = difficulty,
             puzzleSeed = PuzzleSeed(id.hashCode().toLong()),
             generatorVersion = GeneratorVersion(1),

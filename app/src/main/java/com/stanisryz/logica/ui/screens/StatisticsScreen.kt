@@ -29,6 +29,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.statistics.GameStatistics
 import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.statistics.StatisticsUiState
@@ -100,16 +101,24 @@ private fun StatisticsContent(
                 StatisticRow(R.string.total_hints_used, statistics.totalHintsUsed)
             }
         }
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(stringResource(R.string.balance), style = MaterialTheme.typography.titleLarge)
-                StatisticRow(R.string.total_solved, statistics.totalCompletedBalance)
-                Difficulty.entries.forEach { difficulty ->
-                    StatisticRow(
-                        difficulty.stringResourceId,
-                        statistics.balanceCountsByDifficulty.getValue(difficulty),
-                    )
-                }
+        PuzzleStatisticsCard(R.string.balance, statistics, PuzzleType.BALANCE)
+        PuzzleStatisticsCard(R.string.crowns, statistics, PuzzleType.CROWNS)
+    }
+}
+
+@Composable
+private fun PuzzleStatisticsCard(
+    titleResource: Int,
+    statistics: GameStatistics,
+    puzzleType: PuzzleType,
+) {
+    val puzzleStatistics = requireNotNull(statistics.byPuzzleType[puzzleType])
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(stringResource(titleResource), style = MaterialTheme.typography.titleLarge)
+            StatisticRow(R.string.total_solved, puzzleStatistics.totalCompleted)
+            Difficulty.entries.forEach { difficulty ->
+                StatisticRow(difficulty.stringResourceId, puzzleStatistics.countsByDifficulty.getValue(difficulty))
             }
         }
     }

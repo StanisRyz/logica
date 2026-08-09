@@ -32,6 +32,10 @@
 - Incorrect player crowns are allowed and reported through centralized structured violations.
 - User marks are annotations checked only for hint/error reasoning, never Crowns domain violations.
 - Crowns hints reuse deterministic logic and a confirmed unique solution; reset preserves session-level hint usage.
+- Crowns is playable from Catalog only; Daily remains Balance-only until a versioned Daily policy explicitly changes.
+- Balance and Crowns keep separate UI/gameplay adapters while sharing session, completion, and result infrastructure.
+- Active saves are isolated by puzzle type plus session scope; each puzzle owns its explicit session codec version.
+- Android ViewModels regenerate definitions from puzzle identity and restore gameplay through the corresponding core engine.
 - Change shared puzzle abstractions only when multiple concrete puzzle implementations prove the need.
 - Balance solving is deterministic and reuses the validator rules; logical steps are data-driven for future hints and difficulty analysis.
 - Partial `BalanceState` and completed `BalanceSolution` are distinct; puzzle rules stay UI-independent and reusable.

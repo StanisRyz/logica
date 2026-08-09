@@ -1,24 +1,22 @@
-package com.stanisryz.logica.balance
+package com.stanisryz.logica.crowns
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.stanisryz.logica.puzzle.core.balance.BalanceGameEngine
-import com.stanisryz.logica.puzzle.core.balance.BalanceGameState
-import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
-import com.stanisryz.logica.puzzle.core.balance.BalanceGeneratorV1
-import com.stanisryz.logica.puzzle.core.balance.BalancePosition
-import com.stanisryz.logica.puzzle.core.balance.BalancePuzzle
-import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
+import com.stanisryz.logica.puzzle.core.crowns.CrownsGameEngine
+import com.stanisryz.logica.puzzle.core.crowns.CrownsGameState
+import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
+import com.stanisryz.logica.puzzle.core.crowns.CrownsGeneratorV1
+import com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell
+import com.stanisryz.logica.puzzle.core.crowns.CrownsPosition
+import com.stanisryz.logica.puzzle.core.crowns.CrownsPuzzle
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
-import com.stanisryz.logica.puzzle.core.model.PuzzleId
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletion
 import com.stanisryz.logica.result.GameCompletionRepository
-import com.stanisryz.logica.session.DailyGameSessionIdentity
 import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.session.GameSessionScope
 import com.stanisryz.logica.session.SavedGameSession
@@ -31,73 +29,51 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.LocalDate
 import java.util.UUID
 
-internal sealed interface BalanceGameContext {
-    val sessionScope: GameSessionScope
-
-    data object Catalog : BalanceGameContext {
-        override val sessionScope = GameSessionScope.CATALOG
-    }
-
-    data class Daily(
-        val challengeDate: LocalDate,
-        val policyVersion: DailyPolicyVersion,
-    ) : BalanceGameContext {
-        override val sessionScope = GameSessionScope.DAILY
-    }
-}
-
-internal sealed interface BalanceGameLaunch {
-    val context: BalanceGameContext
-
+internal sealed interface CrownsGameLaunch {
     data class New(
         val difficulty: Difficulty,
         val seed: PuzzleSeed,
         val generatorVersion: GeneratorVersion = GeneratorVersion(1),
-        override val context: BalanceGameContext = BalanceGameContext.Catalog,
-    ) : BalanceGameLaunch
+    ) : CrownsGameLaunch
 
-    data class Restore(
-        override val context: BalanceGameContext = BalanceGameContext.Catalog,
-        val expectedPuzzleId: PuzzleId? = null,
-    ) : BalanceGameLaunch
+    data object Restore : CrownsGameLaunch
 }
 
-internal sealed interface BalanceGameUiState {
-    data object Loading : BalanceGameUiState
+internal sealed interface CrownsGameUiState {
+    data object Loading : CrownsGameUiState
 
     data class Ready(
-        val puzzle: BalancePuzzle,
-        val game: BalanceGameState,
+        val puzzle: CrownsPuzzle,
+        val game: CrownsGameState,
         val isHintLoading: Boolean = false,
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
-    ) : BalanceGameUiState
+    ) : CrownsGameUiState
 
     data class Error(
-        val reason: BalanceGameError,
-    ) : BalanceGameUiState
+        val reason: CrownsGameError,
+    ) : CrownsGameUiState
 }
 
-internal enum class BalanceGameError {
+internal enum class CrownsGameError {
     MISSING_SAVED_SESSION,
     INVALID_SAVED_SESSION,
     GENERATION,
 }
 
-internal class BalanceGameViewModel(
-    private val launch: BalanceGameLaunch,
+internal class CrownsGameViewModel(
+    private val launch: CrownsGameLaunch,
     private val sessionRepository: GameSessionRepository,
     private val completionRepository: GameCompletionRepository,
-    private val generator: BalanceGeneratorV1 = BalanceGeneratorV1(),
+    private val generator: CrownsGeneratorV1 = CrownsGeneratorV1(),
     private val workDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val sessionIdFactory: () -> String = { UUID.randomUUID().toString() },
 ) : ViewModel() {
-    private val mutableUiState = MutableStateFlow<BalanceGameUiState>(BalanceGameUiState.Loading)
-    val uiState: StateFlow<BalanceGameUiState> = mutableUiState.asStateFlow()
+    private val mutableUiState = MutableStateFlow<CrownsGameUiState>(CrownsGameUiState.Loading)
+    val uiState: StateFlow<CrownsGameUiState> = mutableUiState.asStateFlow()
 
-    private var gameEngine: BalanceGameEngine? = null
+    private var gameEngine: CrownsGameEngine? = null
     private var activeSession: ActiveSession? = null
     private var hintJob: Job? = null
     private var completionJob: Job? = null
@@ -108,24 +84,28 @@ internal class BalanceGameViewModel(
                 val session = loadSession()
                 gameEngine = session.engine
                 activeSession = session.activeSession
-                mutableUiState.value = BalanceGameUiState.Ready(session.puzzle, session.game)
-                if (session.isNew) {
-                    sessionRepository.replaceActiveSession(session.activeSession.saved(session.game))
-                }
+                mutableUiState.value = CrownsGameUiState.Ready(session.puzzle, session.game)
+                if (session.isNew) sessionRepository.replaceActiveSession(session.activeSession.saved(session.game))
             } catch (exception: CancellationException) {
                 throw exception
             } catch (_: MissingSavedSessionException) {
-                mutableUiState.value = BalanceGameUiState.Error(BalanceGameError.MISSING_SAVED_SESSION)
+                mutableUiState.value = CrownsGameUiState.Error(CrownsGameError.MISSING_SAVED_SESSION)
             } catch (_: InvalidSavedSessionException) {
-                mutableUiState.value = BalanceGameUiState.Error(BalanceGameError.INVALID_SAVED_SESSION)
+                mutableUiState.value = CrownsGameUiState.Error(CrownsGameError.INVALID_SAVED_SESSION)
             } catch (_: Exception) {
-                mutableUiState.value = BalanceGameUiState.Error(BalanceGameError.GENERATION)
+                mutableUiState.value = CrownsGameUiState.Error(CrownsGameError.GENERATION)
             }
         }
     }
 
-    fun onCellTapped(position: BalancePosition) {
-        updateGame { engine, game -> engine.cycleValue(game, position) }
+    fun onCellTapped(position: CrownsPosition) {
+        updateGame { engine, game ->
+            when (game.cellAt(position)) {
+                CrownsPlayerCell.EMPTY -> engine.placeMark(game, position)
+                CrownsPlayerCell.MARKED -> engine.placeCrown(game, position)
+                CrownsPlayerCell.CROWN -> engine.clearCell(game, position)
+            }
+        }
     }
 
     fun undo() {
@@ -139,7 +119,7 @@ internal class BalanceGameViewModel(
     fun requestHint() {
         if (hintJob?.isActive == true) return
         val engine = gameEngine ?: return
-        val ready = mutableUiState.value as? BalanceGameUiState.Ready ?: return
+        val ready = mutableUiState.value as? CrownsGameUiState.Ready ?: return
         val requestedGame = ready.game
         mutableUiState.value = ready.copy(isHintLoading = true)
 
@@ -147,17 +127,14 @@ internal class BalanceGameViewModel(
             viewModelScope.launch {
                 val hintedGame =
                     try {
-                        withContext(workDispatcher) {
-                            engine.requestHint(requestedGame)
-                        }
+                        withContext(workDispatcher) { engine.requestHint(requestedGame) }
                     } catch (exception: CancellationException) {
                         throw exception
                     } catch (_: Exception) {
                         requestedGame
                     }
-
                 val current = mutableUiState.value
-                if (current is BalanceGameUiState.Ready && current.game == requestedGame) {
+                if (current is CrownsGameUiState.Ready && current.game == requestedGame) {
                     mutableUiState.value = current.copy(game = hintedGame, isHintLoading = false)
                     if (hintedGame != requestedGame) persist(hintedGame)
                 }
@@ -165,45 +142,44 @@ internal class BalanceGameViewModel(
     }
 
     fun retryCompletion() {
-        val ready = mutableUiState.value as? BalanceGameUiState.Ready ?: return
-        if (ready.game.status == BalanceGameStatus.SOLVED) persistCompletion(ready.game)
+        val ready = mutableUiState.value as? CrownsGameUiState.Ready ?: return
+        if (ready.game.status == CrownsGameStatus.SOLVED) persistCompletion(ready.game)
     }
 
     private suspend fun loadSession(): LoadedSession =
         when (val requestedLaunch = launch) {
-            is BalanceGameLaunch.New ->
+            is CrownsGameLaunch.New ->
                 withContext(workDispatcher) {
                     require(requestedLaunch.generatorVersion == generator.version)
                     val puzzle = generator.generate(requestedLaunch.seed, requestedLaunch.difficulty)
                     require(puzzle.id.generatorVersion == requestedLaunch.generatorVersion)
-                    val engine = BalanceGameEngine(puzzle)
+                    val engine = CrownsGameEngine(puzzle)
                     val game = engine.start()
                     LoadedSession(
-                        puzzle = puzzle,
-                        engine = engine,
-                        game = game,
-                        activeSession = ActiveSession(sessionIdFactory(), puzzle, requestedLaunch.context),
+                        puzzle,
+                        engine,
+                        game,
+                        ActiveSession(sessionIdFactory(), puzzle),
                         isNew = true,
                     )
                 }
-            is BalanceGameLaunch.Restore -> restoreSavedSession(requestedLaunch)
+            CrownsGameLaunch.Restore -> restoreSavedSession()
         }
 
-    private suspend fun restoreSavedSession(requestedLaunch: BalanceGameLaunch.Restore): LoadedSession {
+    private suspend fun restoreSavedSession(): LoadedSession {
         val saved =
-            sessionRepository.readActiveSession(PuzzleType.BALANCE, requestedLaunch.context.sessionScope)
+            sessionRepository.readActiveSession(PuzzleType.CROWNS, GameSessionScope.CATALOG)
                 ?: throw MissingSavedSessionException()
         return try {
             withContext(workDispatcher) {
-                require(saved.puzzleType == PuzzleType.BALANCE)
-                require(saved.sessionScope == requestedLaunch.context.sessionScope)
+                require(saved.puzzleType == PuzzleType.CROWNS)
+                require(saved.sessionScope == GameSessionScope.CATALOG)
+                require(saved.dailyIdentity == null)
                 require(saved.generatorVersion == generator.version)
-                require(saved.matches(requestedLaunch.context))
                 val puzzle = generator.generate(saved.puzzleSeed, saved.difficulty)
                 require(puzzle.id.generatorVersion == saved.generatorVersion)
-                require(requestedLaunch.expectedPuzzleId == null || puzzle.id == requestedLaunch.expectedPuzzleId)
                 val game =
-                    BalanceSessionCodec.decode(
+                    CrownsSessionCodec.decode(
                         puzzle = puzzle,
                         sessionFormatVersion = saved.sessionFormatVersion,
                         gameplayPayload = saved.gameplayPayload,
@@ -211,31 +187,27 @@ internal class BalanceGameViewModel(
                         hintsUsed = saved.hintsUsed,
                         status = saved.status,
                     )
-                require(game.status == BalanceGameStatus.IN_PROGRESS)
+                require(game.status == CrownsGameStatus.IN_PROGRESS)
                 LoadedSession(
-                    puzzle = puzzle,
-                    engine = BalanceGameEngine(puzzle),
-                    game = game,
-                    activeSession = ActiveSession(saved.sessionId, puzzle, requestedLaunch.context),
+                    puzzle,
+                    CrownsGameEngine(puzzle),
+                    game,
+                    ActiveSession(saved.sessionId, puzzle),
                     isNew = false,
                 )
             }
         } catch (exception: CancellationException) {
             throw exception
         } catch (_: Exception) {
-            sessionRepository.deleteActiveSession(
-                PuzzleType.BALANCE,
-                requestedLaunch.context.sessionScope,
-                saved.sessionId,
-            )
+            sessionRepository.deleteActiveSession(PuzzleType.CROWNS, GameSessionScope.CATALOG, saved.sessionId)
             throw InvalidSavedSessionException()
         }
     }
 
-    private fun updateGame(update: (BalanceGameEngine, BalanceGameState) -> BalanceGameState) {
+    private fun updateGame(update: (CrownsGameEngine, CrownsGameState) -> CrownsGameState) {
         val engine = gameEngine ?: return
         hintJob?.cancel()
-        val current = mutableUiState.value as? BalanceGameUiState.Ready ?: return
+        val current = mutableUiState.value as? CrownsGameUiState.Ready ?: return
         val updatedGame = update(engine, current.game)
         if (updatedGame == current.game) {
             if (current.isHintLoading) mutableUiState.value = current.copy(isHintLoading = false)
@@ -245,19 +217,19 @@ internal class BalanceGameViewModel(
         persist(updatedGame)
     }
 
-    private fun persist(game: BalanceGameState) {
+    private fun persist(game: CrownsGameState) {
         val session = activeSession ?: return
-        if (game.status == BalanceGameStatus.SOLVED) {
+        if (game.status == CrownsGameStatus.SOLVED) {
             persistCompletion(game)
         } else {
             sessionRepository.updateActiveSession(session.saved(game))
         }
     }
 
-    private fun persistCompletion(game: BalanceGameState) {
+    private fun persistCompletion(game: CrownsGameState) {
         if (completionJob?.isActive == true) return
         val session = activeSession ?: return
-        val ready = mutableUiState.value as? BalanceGameUiState.Ready ?: return
+        val ready = mutableUiState.value as? CrownsGameUiState.Ready ?: return
         if (ready.completionPersistence == CompletionPersistence.Saved) return
         mutableUiState.value = ready.copy(completionPersistence = CompletionPersistence.Saving)
         completionJob =
@@ -265,14 +237,14 @@ internal class BalanceGameViewModel(
                 try {
                     completionRepository.complete(session.completion(game))
                     val current = mutableUiState.value
-                    if (current is BalanceGameUiState.Ready && current.game == game) {
+                    if (current is CrownsGameUiState.Ready && current.game == game) {
                         mutableUiState.value = current.copy(completionPersistence = CompletionPersistence.Saved)
                     }
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (_: Exception) {
                     val current = mutableUiState.value
-                    if (current is BalanceGameUiState.Ready && current.game == game) {
+                    if (current is CrownsGameUiState.Ready && current.game == game) {
                         mutableUiState.value = current.copy(completionPersistence = CompletionPersistence.Error)
                     }
                 }
@@ -280,32 +252,27 @@ internal class BalanceGameViewModel(
     }
 
     private data class LoadedSession(
-        val puzzle: BalancePuzzle,
-        val engine: BalanceGameEngine,
-        val game: BalanceGameState,
+        val puzzle: CrownsPuzzle,
+        val engine: CrownsGameEngine,
+        val game: CrownsGameState,
         val activeSession: ActiveSession,
         val isNew: Boolean,
     )
 
     private data class ActiveSession(
         val sessionId: String,
-        val puzzle: BalancePuzzle,
-        val context: BalanceGameContext,
+        val puzzle: CrownsPuzzle,
     ) {
-        fun saved(game: BalanceGameState): SavedGameSession {
-            val encoded = BalanceSessionCodec.encode(game)
+        fun saved(game: CrownsGameState): SavedGameSession {
+            val encoded = CrownsSessionCodec.encode(puzzle, game)
             return SavedGameSession(
                 sessionId = sessionId,
-                puzzleType = puzzle.id.type,
-                sessionScope = context.sessionScope,
+                puzzleType = PuzzleType.CROWNS,
+                sessionScope = GameSessionScope.CATALOG,
                 difficulty = puzzle.id.difficulty,
                 puzzleSeed = puzzle.id.seed,
                 generatorVersion = puzzle.id.generatorVersion,
-                dailyIdentity =
-                    (context as? BalanceGameContext.Daily)?.let {
-                        DailyGameSessionIdentity(it.challengeDate, it.policyVersion.value)
-                    },
-                sessionFormatVersion = BalanceSessionCodec.SESSION_FORMAT_VERSION,
+                sessionFormatVersion = CrownsSessionCodec.SESSION_FORMAT_VERSION,
                 gameplayPayload = encoded.gameplayPayload,
                 moveHistoryPayload = encoded.moveHistoryPayload,
                 hintsUsed = encoded.hintsUsed,
@@ -313,19 +280,16 @@ internal class BalanceGameViewModel(
             )
         }
 
-        fun completion(game: BalanceGameState): GameCompletion {
-            require(game.status == BalanceGameStatus.SOLVED)
-            val dailyContext = context as? BalanceGameContext.Daily
+        fun completion(game: CrownsGameState): GameCompletion {
+            require(game.status == CrownsGameStatus.SOLVED)
             return GameCompletion(
                 resultId = sessionId,
-                puzzleType = puzzle.id.type,
+                puzzleType = PuzzleType.CROWNS,
                 difficulty = puzzle.id.difficulty,
                 puzzleSeed = puzzle.id.seed,
                 generatorVersion = puzzle.id.generatorVersion,
-                sessionScope = context.sessionScope,
+                sessionScope = GameSessionScope.CATALOG,
                 hintsUsed = game.hintsUsed,
-                challengeDate = dailyContext?.challengeDate,
-                dailyPolicyVersion = dailyContext?.policyVersion,
             )
         }
     }
@@ -333,26 +297,18 @@ internal class BalanceGameViewModel(
     private class MissingSavedSessionException : Exception()
 
     private class InvalidSavedSessionException : Exception()
-
-    private fun SavedGameSession.matches(context: BalanceGameContext): Boolean =
-        when (context) {
-            BalanceGameContext.Catalog -> dailyIdentity == null
-            is BalanceGameContext.Daily ->
-                dailyIdentity == DailyGameSessionIdentity(context.challengeDate, context.policyVersion.value)
-        }
 }
 
-internal class BalanceGameViewModelFactory(
-    private val launch: BalanceGameLaunch,
+internal class CrownsGameViewModelFactory(
+    private val launch: CrownsGameLaunch,
     private val sessionRepository: GameSessionRepository,
     private val completionRepository: GameCompletionRepository,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        require(modelClass.isAssignableFrom(BalanceGameViewModel::class.java)) {
+        require(modelClass.isAssignableFrom(CrownsGameViewModel::class.java)) {
             "Unknown ViewModel class: ${modelClass.name}"
         }
-
         @Suppress("UNCHECKED_CAST")
-        return BalanceGameViewModel(launch, sessionRepository, completionRepository) as T
+        return CrownsGameViewModel(launch, sessionRepository, completionRepository) as T
     }
 }
