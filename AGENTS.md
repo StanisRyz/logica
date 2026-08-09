@@ -35,7 +35,8 @@
 - User marks are annotations checked only for hint/error reasoning, never Crowns domain violations.
 - Crowns hints reuse deterministic logic and a confirmed unique solution; reset preserves session-level hint usage.
 - Crowns gameplay is context-aware like Balance: `Catalog` is the default, and `Daily(challengeDate, policyVersion)` drives session scope, Daily identity, completion metadata, and return-to-Today navigation.
-- `BALANCE/CATALOG`, `CROWNS/CATALOG`, `BALANCE/DAILY`, and `CROWNS/DAILY` saves coexist; restore reads only the requested scope, and invalid persistence deletes only that one session.
+- `BALANCE/CATALOG`, `CROWNS/CATALOG`, `BALANCE/DAILY`, and `CROWNS/DAILY` saves coexist and are keyed by puzzle type plus scope; every read, write, and delete targets exactly one of them.
+- Restore separates identity from payload: a save belonging to another scope or Daily definition is reported as inconsistent and kept, while only undecodable gameplay of the requested identity is discarded.
 - Balance and Crowns keep separate UI/gameplay adapters while sharing session, completion, and result infrastructure.
 - Active saves are isolated by puzzle type plus session scope; each puzzle owns its explicit session codec version.
 - Android ViewModels regenerate definitions from puzzle identity and restore gameplay through the corresponding core engine.
@@ -57,6 +58,7 @@
 - Room v4 stores one aggregate `daily_runs` lifecycle per date separately from policy-defined `daily_challenges` entries, active sessions, and results.
 - Completed puzzle results are immutable Room records separate from active sessions; completion persistence is atomic and idempotent.
 - Catalog and Daily completion remain isolated by session scope; a Daily run completes atomically only after all of its entries complete.
+- Completion is keyed by session ID: it removes only its own session, produces exactly one immutable result, and a retry never inserts a duplicate or completes a Daily run twice.
 - Daily counts and streaks are derived from completed `daily_runs`, never individual entries or mutable counters.
 - Statistics reads persisted results and lifecycle history, never active sessions; do not add unreliable metrics such as wall-clock solve duration.
 - User-facing rule and hint explanations belong in `:app`; Compose renders structured core state and UX polish must not change deterministic generation or persistence compatibility without a concrete requirement.

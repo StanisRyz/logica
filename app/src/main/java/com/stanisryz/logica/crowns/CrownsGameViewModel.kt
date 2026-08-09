@@ -195,15 +195,14 @@ internal class CrownsGameViewModel(
         val saved =
             sessionRepository.readActiveSession(PuzzleType.CROWNS, requestedLaunch.context.sessionScope)
                 ?: throw MissingSavedSessionException()
+        // A save that belongs to another Daily definition is a persistence inconsistency rather than
+        // damaged gameplay, so it is reported without discarding the stored progress.
+        if (!saved.hasRequestedIdentity(requestedLaunch)) throw InvalidSavedSessionException()
         return try {
             withContext(workDispatcher) {
-                require(saved.puzzleType == PuzzleType.CROWNS)
-                require(saved.sessionScope == requestedLaunch.context.sessionScope)
-                require(saved.matches(requestedLaunch.context))
                 require(saved.generatorVersion == generator.version)
                 val puzzle = generator.generate(saved.puzzleSeed, saved.difficulty)
                 require(puzzle.id.generatorVersion == saved.generatorVersion)
-                require(requestedLaunch.expectedPuzzleId == null || puzzle.id == requestedLaunch.expectedPuzzleId)
                 val game =
                     CrownsSessionCodec.decode(
                         puzzle = puzzle,
@@ -225,6 +224,7 @@ internal class CrownsGameViewModel(
         } catch (exception: CancellationException) {
             throw exception
         } catch (_: Exception) {
+            // The identity is the requested one but its gameplay cannot be restored: drop only this session.
             sessionRepository.deleteActiveSession(
                 PuzzleType.CROWNS,
                 requestedLaunch.context.sessionScope,
@@ -233,6 +233,15 @@ internal class CrownsGameViewModel(
             throw InvalidSavedSessionException()
         }
     }
+
+    private fun SavedGameSession.hasRequestedIdentity(requestedLaunch: CrownsGameLaunch.Restore): Boolean =
+        puzzleType == PuzzleType.CROWNS &&
+            sessionScope == requestedLaunch.context.sessionScope &&
+            matches(requestedLaunch.context) &&
+            (
+                requestedLaunch.expectedPuzzleId == null ||
+                    PuzzleId(puzzleType, difficulty, puzzleSeed, generatorVersion) == requestedLaunch.expectedPuzzleId
+            )
 
     private fun updateGame(update: (CrownsGameEngine, CrownsGameState) -> CrownsGameState) {
         val engine = gameEngine ?: return

@@ -193,15 +193,14 @@ internal class BalanceGameViewModel(
         val saved =
             sessionRepository.readActiveSession(PuzzleType.BALANCE, requestedLaunch.context.sessionScope)
                 ?: throw MissingSavedSessionException()
+        // A save that belongs to another Daily definition is a persistence inconsistency rather than
+        // damaged gameplay, so it is reported without discarding the stored progress.
+        if (!saved.hasRequestedIdentity(requestedLaunch)) throw InvalidSavedSessionException()
         return try {
             withContext(workDispatcher) {
-                require(saved.puzzleType == PuzzleType.BALANCE)
-                require(saved.sessionScope == requestedLaunch.context.sessionScope)
                 require(saved.generatorVersion == generator.version)
-                require(saved.matches(requestedLaunch.context))
                 val puzzle = generator.generate(saved.puzzleSeed, saved.difficulty)
                 require(puzzle.id.generatorVersion == saved.generatorVersion)
-                require(requestedLaunch.expectedPuzzleId == null || puzzle.id == requestedLaunch.expectedPuzzleId)
                 val game =
                     BalanceSessionCodec.decode(
                         puzzle = puzzle,
@@ -223,6 +222,7 @@ internal class BalanceGameViewModel(
         } catch (exception: CancellationException) {
             throw exception
         } catch (_: Exception) {
+            // The identity is the requested one but its gameplay cannot be restored: drop only this session.
             sessionRepository.deleteActiveSession(
                 PuzzleType.BALANCE,
                 requestedLaunch.context.sessionScope,
@@ -231,6 +231,15 @@ internal class BalanceGameViewModel(
             throw InvalidSavedSessionException()
         }
     }
+
+    private fun SavedGameSession.hasRequestedIdentity(requestedLaunch: BalanceGameLaunch.Restore): Boolean =
+        puzzleType == PuzzleType.BALANCE &&
+            sessionScope == requestedLaunch.context.sessionScope &&
+            matches(requestedLaunch.context) &&
+            (
+                requestedLaunch.expectedPuzzleId == null ||
+                    PuzzleId(puzzleType, difficulty, puzzleSeed, generatorVersion) == requestedLaunch.expectedPuzzleId
+            )
 
     private fun updateGame(update: (BalanceGameEngine, BalanceGameState) -> BalanceGameState) {
         val engine = gameEngine ?: return

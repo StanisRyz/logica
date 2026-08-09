@@ -2,6 +2,7 @@ package com.stanisryz.logica.crowns
 
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV2
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleId
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.GameCompletion
@@ -23,6 +24,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import java.time.LocalDate
@@ -78,6 +80,48 @@ class CrownsDailySessionTest {
             assertNotNull(sessions.readActiveSession(PuzzleType.CROWNS, GameSessionScope.DAILY))
         }
 
+    @Test
+    fun mismatchedDailyIdentityIsReportedWhileOnlyUnreadableGameplayIsDiscarded() =
+        runBlocking {
+            val date = LocalDate.of(2026, 8, 9)
+            val definition = DailyChallengePolicyV2.definitionFor(date)
+            val entry = definition.entries.single { it.puzzleType == PuzzleType.CROWNS }
+            val dailyContext = CrownsGameContext.Daily(date, definition.policyVersion)
+            val sessions = FakeGameSessionRepository()
+
+            viewModel(CrownsGameLaunch.New(Difficulty.EASY, PuzzleSeed(4242)), sessions).awaitReady()
+            viewModel(
+                CrownsGameLaunch.New(entry.difficulty, entry.seed, entry.generatorVersion, dailyContext),
+                sessions,
+            ).awaitReady()
+
+            // Another date's Daily definition must never consume today's save.
+            val otherDate =
+                viewModel(CrownsGameLaunch.Restore(CrownsGameContext.Daily(date.minusDays(1), definition.policyVersion)), sessions)
+            assertEquals(CrownsGameError.INVALID_SAVED_SESSION, otherDate.awaitError().reason)
+            assertNotNull(sessions.readActiveSession(PuzzleType.CROWNS, GameSessionScope.DAILY))
+
+            // A seed that does not belong to the Daily entry is an inconsistency, not damaged gameplay.
+            val wrongPuzzle =
+                viewModel(
+                    CrownsGameLaunch.Restore(
+                        dailyContext,
+                        PuzzleId(PuzzleType.CROWNS, entry.difficulty, PuzzleSeed(7), entry.generatorVersion),
+                    ),
+                    sessions,
+                )
+            assertEquals(CrownsGameError.INVALID_SAVED_SESSION, wrongPuzzle.awaitError().reason)
+            assertNotNull(sessions.readActiveSession(PuzzleType.CROWNS, GameSessionScope.DAILY))
+
+            val saved = requireNotNull(sessions.readActiveSession(PuzzleType.CROWNS, GameSessionScope.DAILY))
+            sessions.replaceActiveSession(saved.copy(gameplayPayload = "size=8"))
+            val corrupted = viewModel(CrownsGameLaunch.Restore(dailyContext, entry.puzzleId), sessions)
+
+            assertEquals(CrownsGameError.INVALID_SAVED_SESSION, corrupted.awaitError().reason)
+            assertNull(sessions.readActiveSession(PuzzleType.CROWNS, GameSessionScope.DAILY))
+            assertNotNull(sessions.readActiveSession(PuzzleType.CROWNS, GameSessionScope.CATALOG))
+        }
+
     private fun viewModel(
         launch: CrownsGameLaunch,
         sessions: GameSessionRepository,
@@ -91,6 +135,9 @@ class CrownsDailySessionTest {
 
     private suspend fun CrownsGameViewModel.awaitReady(): CrownsGameUiState.Ready =
         uiState.first { it !is CrownsGameUiState.Loading } as CrownsGameUiState.Ready
+
+    private suspend fun CrownsGameViewModel.awaitError(): CrownsGameUiState.Error =
+        uiState.first { it !is CrownsGameUiState.Loading } as CrownsGameUiState.Error
 
     private class FakeGameSessionRepository : GameSessionRepository {
         private val sessions = mutableMapOf<Pair<PuzzleType, GameSessionScope>, SavedGameSession>()

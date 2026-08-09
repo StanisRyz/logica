@@ -7,10 +7,15 @@ import com.stanisryz.logica.daily.DailyRunStatus
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengeDefinition
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV2
 import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
+import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
+import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.session.GameSessionEntity
 import com.stanisryz.logica.session.GameSessionScope
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.LocalDate
@@ -39,6 +44,33 @@ class DailyAggregateCompletionTest {
             assertEquals(2, dao.results.size)
             assertNull(dao.findSession(first.puzzleType, first.sessionScope))
             assertNull(dao.findSession(final.puzzleType, final.sessionScope))
+        }
+
+    @Test
+    fun completingOneSessionLeavesTheOtherThreePuzzleScopeSessionsIntact() =
+        runBlocking {
+            val definition = DailyChallengePolicyV2.definitionFor(LocalDate.of(2026, 8, 9))
+            val dao = FakeGameCompletionDao(definition)
+            val catalogCrowns = dao.catalogCompletion(PuzzleType.CROWNS).toEntity(1_000)
+            val dailyBalance = definition.entries[0].completion(definition, "daily-0", hintsUsed = 1).toEntity(2_000)
+
+            dao.complete(catalogCrowns)
+
+            assertNull(dao.findSession(PuzzleType.CROWNS.name, GameSessionScope.CATALOG.name))
+            assertNotNull(dao.findSession(PuzzleType.BALANCE.name, GameSessionScope.CATALOG.name))
+            assertNotNull(dao.findSession(PuzzleType.BALANCE.name, GameSessionScope.DAILY.name))
+            assertNotNull(dao.findSession(PuzzleType.CROWNS.name, GameSessionScope.DAILY.name))
+            // A Catalog completion must not touch any Daily lifecycle state.
+            assertEquals(DailyRunStatus.IN_PROGRESS.name, dao.run.status)
+            assertEquals(DailyChallengeStatus.IN_PROGRESS.name, dao.challenge(dailyBalance).status)
+
+            dao.complete(dailyBalance)
+
+            assertNull(dao.findSession(PuzzleType.BALANCE.name, GameSessionScope.DAILY.name))
+            assertNotNull(dao.findSession(PuzzleType.BALANCE.name, GameSessionScope.CATALOG.name))
+            assertNotNull(dao.findSession(PuzzleType.CROWNS.name, GameSessionScope.DAILY.name))
+            assertEquals(DailyRunStatus.IN_PROGRESS.name, dao.run.status)
+            assertEquals(2, dao.results.size)
         }
 
     private fun DailyPuzzleEntry.completion(
@@ -77,6 +109,26 @@ private class FakeGameCompletionDao(
         private set
 
     init {
+        listOf(PuzzleType.BALANCE, PuzzleType.CROWNS).forEach { puzzleType ->
+            sessions[puzzleType.name to GameSessionScope.CATALOG.name] =
+                GameSessionEntity(
+                    puzzleType = puzzleType.name,
+                    sessionScope = GameSessionScope.CATALOG.name,
+                    sessionId = "catalog-$puzzleType",
+                    difficulty = Difficulty.EASY.name,
+                    puzzleSeed = 4242,
+                    generatorVersion = 1,
+                    challengeDate = null,
+                    dailyPolicyVersion = null,
+                    sessionFormatVersion = 1,
+                    gameplayPayload = "payload",
+                    moveHistoryPayload = "",
+                    hintsUsed = 0,
+                    status = "IN_PROGRESS",
+                    createdAtEpochMillis = 100,
+                    updatedAtEpochMillis = 100,
+                )
+        }
         definition.entries.forEachIndexed { index, entry ->
             val resultId = "daily-$index"
             val key = entry.puzzleType.name to GameSessionScope.DAILY.name
@@ -193,6 +245,17 @@ private class FakeGameCompletionDao(
             )
         return 1
     }
+
+    fun catalogCompletion(puzzleType: PuzzleType): GameCompletion =
+        GameCompletion(
+            resultId = "catalog-$puzzleType",
+            puzzleType = puzzleType,
+            difficulty = Difficulty.EASY,
+            puzzleSeed = PuzzleSeed(4242),
+            generatorVersion = GeneratorVersion(1),
+            sessionScope = GameSessionScope.CATALOG,
+            hintsUsed = 0,
+        )
 
     fun challenge(result: GameResultEntity): DailyChallengeEntity =
         requireNotNull(challenges[requireNotNull(result.challengeDate) to result.puzzleType])
