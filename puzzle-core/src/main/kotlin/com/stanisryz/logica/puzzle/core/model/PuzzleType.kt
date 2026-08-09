@@ -7,4 +7,5 @@ enum class PuzzleType {
     SUDOKU,
     MOSAIC,
     WATER_JUGS,
+    WORD,
 }
