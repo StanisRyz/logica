@@ -9,7 +9,7 @@ import com.stanisryz.logica.crowns.CrownsGameContext
 import com.stanisryz.logica.crowns.CrownsGameLaunch
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengeDefinition
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
-import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV2
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV3
 import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
 import com.stanisryz.logica.puzzle.core.model.Difficulty
@@ -19,6 +19,8 @@ import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.session.GameSessionScope
 import com.stanisryz.logica.session.SavedGameSession
 import com.stanisryz.logica.statistics.StatisticsRepository
+import com.stanisryz.logica.word.WordGameContext
+import com.stanisryz.logica.word.WordGameLaunch
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -39,6 +41,10 @@ internal sealed interface DailyGameLaunch {
 
     data class Crowns(
         val launch: CrownsGameLaunch,
+    ) : DailyGameLaunch
+
+    data class Word(
+        val launch: WordGameLaunch,
     ) : DailyGameLaunch
 }
 
@@ -111,9 +117,9 @@ internal class TodayViewModel(
                 try {
                     val challengeDate = dateProvider()
                     val run = dailyChallengeRepository.readRun(challengeDate)
-                    // A persisted run keeps its own policy version forever; only brand-new runs use V2.
+                    // A persisted run keeps its own policy version forever; only brand-new runs use V3.
                     val definition =
-                        definitionProvider(challengeDate, run?.policyVersion ?: DailyChallengePolicyV2.VERSION)
+                        definitionProvider(challengeDate, run?.policyVersion ?: DailyChallengePolicyV3.VERSION)
                     val entries = definition.entries.map { entry -> entryState(definition, entry, run) }
                     mutableUiState.value =
                         TodayUiState.Content(
@@ -228,6 +234,15 @@ internal class TodayViewModel(
                         context = CrownsGameContext.Daily(challengeDate, policyVersion),
                     ),
                 )
+            PuzzleType.WORD ->
+                DailyGameLaunch.Word(
+                    WordGameLaunch.New(
+                        difficulty = entry.difficulty,
+                        seed = entry.seed,
+                        generatorVersion = entry.generatorVersion,
+                        context = WordGameContext.Daily(challengeDate, policyVersion),
+                    ),
+                )
             else -> error("Daily does not support ${entry.puzzleType} yet.")
         }
 
@@ -244,6 +259,13 @@ internal class TodayViewModel(
                 DailyGameLaunch.Crowns(
                     CrownsGameLaunch.Restore(
                         context = CrownsGameContext.Daily(challengeDate, policyVersion),
+                        expectedPuzzleId = entry.puzzleId,
+                    ),
+                )
+            PuzzleType.WORD ->
+                DailyGameLaunch.Word(
+                    WordGameLaunch.Restore(
+                        context = WordGameContext.Daily(challengeDate, policyVersion),
                         expectedPuzzleId = entry.puzzleId,
                     ),
                 )

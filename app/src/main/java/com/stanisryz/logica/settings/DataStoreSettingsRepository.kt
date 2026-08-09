@@ -33,6 +33,7 @@ class DataStoreSettingsRepository(
                     hapticsEnabled = preferences[HAPTICS_ENABLED] ?: true,
                     balanceTutorialCompleted = preferences[BALANCE_TUTORIAL_COMPLETED] ?: false,
                     crownsTutorialCompleted = preferences[CROWNS_TUTORIAL_COMPLETED] ?: false,
+                    wordTutorialCompleted = preferences[WORD_TUTORIAL_COMPLETED] ?: false,
                 )
             }
 
@@ -66,11 +67,18 @@ class DataStoreSettingsRepository(
         }
     }
 
+    override suspend fun setWordTutorialCompleted(completed: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[WORD_TUTORIAL_COMPLETED] = completed
+        }
+    }
+
     private companion object {
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         val BALANCE_TUTORIAL_COMPLETED = booleanPreferencesKey("balance_tutorial_completed")
         val CROWNS_TUTORIAL_COMPLETED = booleanPreferencesKey("crowns_tutorial_completed")
+        val WORD_TUTORIAL_COMPLETED = booleanPreferencesKey("word_tutorial_completed")
     }
 }

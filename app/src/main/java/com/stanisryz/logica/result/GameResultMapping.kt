@@ -19,6 +19,8 @@ internal fun GameCompletion.toEntity(completedAtEpochMillis: Long): GameResultEn
         sessionScope = sessionScope.name,
         hintsUsed = hintsUsed,
         completedAtEpochMillis = completedAtEpochMillis,
+        outcome = outcome.name,
+        attemptsUsed = attemptsUsed,
         challengeDate = challengeDate?.toString(),
         dailyPolicyVersion = dailyPolicyVersion?.value,
     )
@@ -35,6 +37,8 @@ internal fun GameResultEntity.toGameResultOrNull(): GameResult? =
             sessionScope = scope,
             hintsUsed = hintsUsed.also { require(it >= 0) },
             completedAt = Instant.ofEpochMilli(completedAtEpochMillis),
+            outcome = GameOutcome.valueOf(outcome),
+            attemptsUsed = attemptsUsed,
             challengeDate = challengeDate?.let(LocalDate::parse),
             dailyPolicyVersion = dailyPolicyVersion?.let(::DailyPolicyVersion),
         ).also { result ->

@@ -35,6 +35,7 @@ import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.statistics.StatisticsUiState
 import com.stanisryz.logica.statistics.StatisticsViewModel
 import com.stanisryz.logica.statistics.StatisticsViewModelFactory
+import com.stanisryz.logica.statistics.WordStatistics
 
 @Composable
 internal fun StatisticsRoute(
@@ -103,6 +104,33 @@ private fun StatisticsContent(
         }
         PuzzleStatisticsCard(R.string.balance, statistics, PuzzleType.BALANCE)
         PuzzleStatisticsCard(R.string.crowns, statistics, PuzzleType.CROWNS)
+        WordStatisticsCard(statistics.word)
+    }
+}
+
+@Composable
+private fun WordStatisticsCard(statistics: WordStatistics) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(stringResource(R.string.word), style = MaterialTheme.typography.titleLarge)
+            StatisticRow(R.string.word_played, statistics.played)
+            StatisticRow(R.string.word_solved_count, statistics.solved)
+            StatisticRow(R.string.word_failed_count, statistics.failed)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(stringResource(R.string.word_win_rate))
+                Text(
+                    stringResource(R.string.word_percent_value, statistics.winRatePercent),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+            Text(stringResource(R.string.word_attempt_distribution), style = MaterialTheme.typography.titleSmall)
+            statistics.solvedAttemptCounts.forEach { (attempts, count) ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(stringResource(R.string.word_attempt_bucket, attempts))
+                    Text(count.toString(), style = MaterialTheme.typography.titleMedium)
+                }
+            }
+        }
     }
 }
 

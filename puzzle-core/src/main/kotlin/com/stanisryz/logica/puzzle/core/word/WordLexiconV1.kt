@@ -3,14 +3,16 @@ package com.stanisryz.logica.puzzle.core.word
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 
 /**
- * Frozen Word V1 lexicon, loaded from bundled project data with no network or platform access.
+ * Word V1 lexicon, loaded from bundled project data with no network or platform access.
+ *
+ * FROZEN. The answer pool contents and ordering are part of Generator V1 compatibility: any change
+ * that makes an existing `(difficulty, seed, generatorVersion = 1)` produce a different answer
+ * requires `WordGeneratorV2` plus a new lexicon revision, never an edit to these V1 resources.
+ * Adding allowed guesses alone does not change answers, but it still belongs to a reviewed
+ * regeneration through `:puzzle-core:wordLexiconPrepare`.
  *
  * [allowedGuesses] and [possibleAnswers] stay separate implementations on purpose: the guess pool is
  * deliberately wider than the curated answer pool.
- *
- * The answer ordering is part of Generator V1 compatibility: once V1 is frozen, any change that makes
- * an existing `(difficulty, seed, generatorVersion = 1)` produce a different answer requires a new
- * generator version instead of a silent V1 edit.
  */
 object WordLexiconV1 {
     const val ALLOWED_GUESSES_RESOURCE = "/word/v1/allowed_guesses.txt"

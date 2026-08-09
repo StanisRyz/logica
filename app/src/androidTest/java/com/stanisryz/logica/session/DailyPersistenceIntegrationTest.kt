@@ -8,11 +8,15 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.stanisryz.logica.daily.DailyChallengeStatus
 import com.stanisryz.logica.daily.DailyRunStatus
 import com.stanisryz.logica.daily.RoomDailyChallengeRepository
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengeDefinition
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV1
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV3
 import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.GameCompletion
+import com.stanisryz.logica.result.GameOutcome
+import com.stanisryz.logica.result.toGameResultOrNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -94,6 +98,72 @@ class DailyPersistenceIntegrationTest {
             }
         }
 
+    @Test
+    fun v5MigrationBackfillsOutcomesAndAFailedWordCompletesTheV3DailyRun() =
+        runBlocking {
+            val today = LocalDate.of(2026, 8, 9)
+            val definition = DailyChallengePolicyV3.definitionFor(today)
+            createVersionFourDatabase(today, definition)
+
+            val database = LogicaDatabase.create(context)
+            try {
+                val sessions = sessionRepository(database)
+                val daily = dailyRepository(database)
+
+                // Historical Balance/Crowns results migrate to SOLVED with no attempt count.
+                val migrated =
+                    database
+                        .gameResultDao()
+                        .observeAll()
+                        .first()
+                        .mapNotNull { it.toGameResultOrNull() }
+                assertEquals(2, migrated.size)
+                migrated.forEach { result ->
+                    assertEquals(GameOutcome.SOLVED, result.outcome)
+                    assertNull(result.attemptsUsed)
+                }
+
+                // All six puzzle/scope sessions coexist before anything is completed.
+                listOf(PuzzleType.BALANCE, PuzzleType.CROWNS, PuzzleType.WORD).forEach { puzzleType ->
+                    assertNotNull(sessions.readActiveSession(puzzleType, GameSessionScope.CATALOG))
+                    assertNotNull(sessions.readActiveSession(puzzleType, GameSessionScope.DAILY))
+                }
+
+                val balanceEntry = definition.entries.single { it.puzzleType == PuzzleType.BALANCE }
+                val crownsEntry = definition.entries.single { it.puzzleType == PuzzleType.CROWNS }
+                val wordEntry = definition.entries.single { it.puzzleType == PuzzleType.WORD }
+                sessions.complete(completion(BALANCE_DAILY_SESSION_ID, today, definition.policyVersion, balanceEntry, 0))
+                sessions.complete(completion(CROWNS_DAILY_SESSION_ID, today, definition.policyVersion, crownsEntry, 0))
+                assertEquals(DailyRunStatus.IN_PROGRESS, daily.readRun(today)?.status)
+
+                // A FAILED Word game is terminal: it completes its entry and therefore the whole run.
+                val wordResult =
+                    sessions.complete(
+                        completion(
+                            resultId = WORD_DAILY_SESSION_ID,
+                            date = today,
+                            policyVersion = definition.policyVersion,
+                            entry = wordEntry,
+                            hintsUsed = 0,
+                            outcome = GameOutcome.FAILED,
+                            attemptsUsed = 6,
+                        ),
+                    )
+
+                assertEquals(GameOutcome.FAILED, wordResult.outcome)
+                assertEquals(6, wordResult.attemptsUsed)
+                assertEquals(DailyChallengeStatus.COMPLETED, daily.read(today, PuzzleType.WORD)?.status)
+                assertEquals(DailyRunStatus.COMPLETED, daily.readRun(today)?.status)
+                // Completing the Daily entries never touches the parallel Catalog sessions.
+                assertNull(sessions.readActiveSession(PuzzleType.WORD, GameSessionScope.DAILY))
+                assertNotNull(sessions.readActiveSession(PuzzleType.WORD, GameSessionScope.CATALOG))
+                assertNotNull(sessions.readActiveSession(PuzzleType.BALANCE, GameSessionScope.CATALOG))
+                assertNotNull(sessions.readActiveSession(PuzzleType.CROWNS, GameSessionScope.CATALOG))
+            } finally {
+                database.close()
+            }
+        }
+
     private fun dailyRepository(database: LogicaDatabase): RoomDailyChallengeRepository =
         RoomDailyChallengeRepository(
             dao = database.dailyChallengeDao(),
@@ -114,6 +184,8 @@ class DailyPersistenceIntegrationTest {
         policyVersion: DailyPolicyVersion,
         entry: DailyPuzzleEntry,
         hintsUsed: Int,
+        outcome: GameOutcome = GameOutcome.SOLVED,
+        attemptsUsed: Int? = null,
     ): GameCompletion =
         GameCompletion(
             resultId = resultId,
@@ -123,9 +195,65 @@ class DailyPersistenceIntegrationTest {
             generatorVersion = entry.generatorVersion,
             sessionScope = GameSessionScope.DAILY,
             hintsUsed = hintsUsed,
+            outcome = outcome,
+            attemptsUsed = attemptsUsed,
             challengeDate = date,
             dailyPolicyVersion = policyVersion,
         )
+
+    /** A v4 database holding a V3 Daily run plus all six puzzle/scope sessions. */
+    private fun createVersionFourDatabase(
+        today: LocalDate,
+        definition: DailyChallengeDefinition,
+    ) {
+        context.deleteDatabase(DATABASE_NAME)
+        val databaseFile = context.getDatabasePath(DATABASE_NAME)
+        databaseFile.parentFile?.mkdirs()
+        val policyVersion = definition.policyVersion.value
+        BundledSQLiteDriver().open(databaseFile.absolutePath).use { connection ->
+            connection.execute(CREATE_GAME_SESSIONS)
+            connection.execute(CREATE_DAILY_CHALLENGES)
+            connection.execute(CREATE_DAILY_RUNS)
+            connection.execute(CREATE_GAME_RESULTS)
+            definition.entries.forEach { entry ->
+                val dailySessionId =
+                    when (entry.puzzleType) {
+                        PuzzleType.BALANCE -> BALANCE_DAILY_SESSION_ID
+                        PuzzleType.CROWNS -> CROWNS_DAILY_SESSION_ID
+                        else -> WORD_DAILY_SESSION_ID
+                    }
+                connection.execute(
+                    "INSERT INTO `game_sessions` VALUES ('${entry.puzzleType}', 'CATALOG', " +
+                        "'catalog-${entry.puzzleType}', 'EASY', 7, 1, NULL, NULL, 1, 'payload', '', 0, " +
+                        "'IN_PROGRESS', 100, 200)",
+                )
+                connection.execute(
+                    "INSERT INTO `game_sessions` VALUES ('${entry.puzzleType}', 'DAILY', '$dailySessionId', " +
+                        "'${entry.difficulty}', ${entry.seed.value}, ${entry.generatorVersion.value}, " +
+                        "'$today', $policyVersion, 1, 'payload', '', 0, 'IN_PROGRESS', 300, 400)",
+                )
+                connection.execute(
+                    "INSERT INTO `daily_challenges` VALUES ('$today', '${entry.puzzleType}', $policyVersion, " +
+                        "'${entry.difficulty}', ${entry.seed.value}, ${entry.generatorVersion.value}, " +
+                        "'IN_PROGRESS', 300, 400)",
+                )
+            }
+            connection.execute(
+                "INSERT INTO `daily_runs` VALUES ('$today', $policyVersion, 'IN_PROGRESS', 300, 400, NULL)",
+            )
+            connection.execute(
+                "INSERT INTO `game_results` VALUES " +
+                    "('historical-balance', 'BALANCE', 'EASY', 7, 1, 'CATALOG', 0, 250, NULL, NULL), " +
+                    "('historical-crowns', 'CROWNS', 'HARD', 8, 1, 'CATALOG', 1, 260, NULL, NULL)",
+            )
+            connection.execute("CREATE TABLE room_master_table (id INTEGER PRIMARY KEY, identity_hash TEXT)")
+            connection.execute(
+                "INSERT OR REPLACE INTO room_master_table (id, identity_hash) " +
+                    "VALUES (42, '9caa1cd5937c26b7d42cc9ecca36f0ab')",
+            )
+            connection.execute("PRAGMA user_version = 4")
+        }
+    }
 
     private fun createVersionThreeDatabase(
         today: LocalDate,
@@ -174,6 +302,9 @@ class DailyPersistenceIntegrationTest {
     private companion object {
         const val DATABASE_NAME = "logica.db"
         const val DAILY_SESSION_ID = "daily"
+        const val BALANCE_DAILY_SESSION_ID = "daily-balance"
+        const val CROWNS_DAILY_SESSION_ID = "daily-crowns"
+        const val WORD_DAILY_SESSION_ID = "daily-word"
         const val DAILY_HINTS = 2
         const val CREATED_AT = 1_000L
         const val COMPLETED_AT = 1_234L
@@ -198,6 +329,15 @@ class DailyPersistenceIntegrationTest {
                 `puzzle_seed` INTEGER NOT NULL, `generator_version` INTEGER NOT NULL, `status` TEXT NOT NULL,
                 `created_at_epoch_millis` INTEGER NOT NULL, `updated_at_epoch_millis` INTEGER NOT NULL,
                 PRIMARY KEY(`challenge_date`, `puzzle_type`)
+            )
+            """.trimIndent()
+
+        val CREATE_DAILY_RUNS =
+            """
+            CREATE TABLE IF NOT EXISTS `daily_runs` (
+                `challenge_date` TEXT NOT NULL, `daily_policy_version` INTEGER NOT NULL, `status` TEXT NOT NULL,
+                `created_at_epoch_millis` INTEGER NOT NULL, `updated_at_epoch_millis` INTEGER NOT NULL,
+                `completed_at_epoch_millis` INTEGER, PRIMARY KEY(`challenge_date`)
             )
             """.trimIndent()
 

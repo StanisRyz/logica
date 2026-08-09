@@ -4,6 +4,7 @@ import com.stanisryz.logica.puzzle.core.daily.DailyChallengeDefinition
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV1
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV2
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV3
 import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
@@ -14,6 +15,7 @@ import com.stanisryz.logica.session.SavedGameSession
 import com.stanisryz.logica.statistics.GameStatistics
 import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.statistics.StatisticsSnapshot
+import com.stanisryz.logica.statistics.WordStatistics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -80,17 +82,21 @@ class TodayViewModelTest {
         }
 
     @Test
-    fun newRunUsesPolicyV2WhileAPersistedV1RunStaysASingleBalanceDaily() =
+    fun newRunsUseV3WhilePersistedV1AndV2RunsKeepTheirOriginalEntries() =
         runBlocking {
             val fresh = viewModel(FakeDailyChallengeRepository(), FakeGameSessionRepository()).awaitContent()
 
-            assertEquals(DailyChallengePolicyV2.VERSION, fresh.definition.policyVersion)
-            assertEquals(listOf(PuzzleType.BALANCE, PuzzleType.CROWNS), fresh.entries.map { it.puzzleType })
+            assertEquals(DailyChallengePolicyV3.VERSION, fresh.definition.policyVersion)
+            assertEquals(
+                listOf(PuzzleType.BALANCE, PuzzleType.CROWNS, PuzzleType.WORD),
+                fresh.entries.map { it.puzzleType },
+            )
             assertEquals(0, fresh.completedCount)
+            assertEquals(3, fresh.totalCount)
 
             val v1Definition = DailyChallengePolicyV1.definitionFor(date)
             val v1Entry = v1Definition.entryFor(PuzzleType.BALANCE)
-            val legacy =
+            val legacyV1 =
                 viewModel(
                     FakeDailyChallengeRepository(
                         run = savedRun(DailyChallengePolicyV1.VERSION.value, DailyRunStatus.IN_PROGRESS),
@@ -103,12 +109,57 @@ class TodayViewModelTest {
                     FakeGameSessionRepository(mapOf(PuzzleType.BALANCE to v1Definition.savedSession(v1Entry))),
                 ).awaitContent()
 
-            assertEquals(DailyChallengePolicyV1.VERSION, legacy.definition.policyVersion)
+            assertEquals(DailyChallengePolicyV1.VERSION, legacyV1.definition.policyVersion)
             assertEquals(
                 listOf(TodayEntryUiState(PuzzleType.BALANCE, v1Entry.difficulty, DailyEntryState.IN_PROGRESS)),
-                legacy.entries,
+                legacyV1.entries,
             )
-            assertEquals(1, legacy.totalCount)
+            assertEquals(1, legacyV1.totalCount)
+
+            val v2Definition = DailyChallengePolicyV2.definitionFor(date)
+            val legacyV2 =
+                viewModel(
+                    FakeDailyChallengeRepository(
+                        run = savedRun(DailyChallengePolicyV2.VERSION.value, DailyRunStatus.IN_PROGRESS),
+                        entries =
+                            v2Definition.entries.associate { entry ->
+                                entry.puzzleType to
+                                    v2Definition.savedChallenge(entry, DailyChallengeStatus.IN_PROGRESS)
+                            },
+                    ),
+                    FakeGameSessionRepository(),
+                ).awaitContent()
+
+            assertEquals(DailyChallengePolicyV2.VERSION, legacyV2.definition.policyVersion)
+            assertEquals(2, legacyV2.totalCount)
+            assertEquals(listOf(PuzzleType.BALANCE, PuzzleType.CROWNS), legacyV2.entries.map { it.puzzleType })
+        }
+
+    @Test
+    fun aFailedWordEntryStillCompletesTheV3RunAtThreeOfThree() =
+        runBlocking {
+            val definition = DailyChallengePolicyV3.definitionFor(date)
+            // A Word game that ended FAILED persists a terminal result, so its Daily entry is COMPLETED
+            // exactly like the two solved puzzles: the run must not be stuck at 2/3.
+            val content =
+                viewModel(
+                    FakeDailyChallengeRepository(
+                        run = savedRun(DailyChallengePolicyV3.VERSION.value, DailyRunStatus.COMPLETED),
+                        entries =
+                            definition.entries.associate { entry ->
+                                entry.puzzleType to definition.savedChallenge(entry, DailyChallengeStatus.COMPLETED)
+                            },
+                    ),
+                    FakeGameSessionRepository(),
+                ).awaitContent()
+
+            assertEquals(DailyRunStatus.COMPLETED, content.runStatus)
+            assertEquals(3, content.totalCount)
+            assertEquals(3, content.completedCount)
+            assertEquals(
+                List(3) { DailyEntryState.COMPLETED },
+                content.entries.map { it.state },
+            )
         }
 
     private fun viewModel(
@@ -213,7 +264,7 @@ class TodayViewModelTest {
         override fun observe(currentDate: LocalDate): Flow<StatisticsSnapshot> =
             flowOf(
                 StatisticsSnapshot(
-                    statistics = GameStatistics(0, 0, 0, 0, 0, emptyMap()),
+                    statistics = GameStatistics(0, 0, 0, 0, 0, emptyMap(), WordStatistics(0, 0, 0, emptyMap())),
                     dailyHintsUsedByDate = emptyMap(),
                 ),
             )

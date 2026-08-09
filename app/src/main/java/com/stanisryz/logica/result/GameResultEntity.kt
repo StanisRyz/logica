@@ -22,6 +22,10 @@ internal data class GameResultEntity(
     val hintsUsed: Int,
     @ColumnInfo(name = "completed_at_epoch_millis")
     val completedAtEpochMillis: Long,
+    @ColumnInfo(name = "outcome", defaultValue = "SOLVED")
+    val outcome: String,
+    @ColumnInfo(name = "attempts_used")
+    val attemptsUsed: Int?,
     @ColumnInfo(name = "challenge_date")
     val challengeDate: String?,
     @ColumnInfo(name = "daily_policy_version")

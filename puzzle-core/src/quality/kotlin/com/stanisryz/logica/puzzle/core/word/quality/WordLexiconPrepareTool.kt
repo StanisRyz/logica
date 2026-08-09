@@ -29,6 +29,7 @@ object WordLexiconPrepareTool {
         val registry = NormalizationRegistry()
         val answers = registry.prepare(ANSWERS_SOURCE_FILE, answerSource)
         val extraGuesses = registry.prepare(GUESSES_SOURCE_FILE, guessSource)
+        // Wrong-length forms are filtered out by design; only unusable characters are a hard failure.
         val rejections = answers.rejections + extraGuesses.rejections
         if (rejections.isNotEmpty()) {
             System.err.println("Word lexicon preparation FAILED with ${rejections.size} unusable candidate(s):")
@@ -77,6 +78,7 @@ object WordLexiconPrepareTool {
             println("  answers ${difficulty.name}: ${answerDifficulties.values.count { it == difficulty }}")
         }
         println("  answers with repeated letters: ${repeatedLetterAnswers.ratio(answerDifficulties.size)}")
+        println("  filtered by length: ${answerReport.filteredByLengthCount + guessReport.filteredByLengthCount}")
         println("  normalized Ё forms: ${answerReport.yoNormalizedCount + guessReport.yoNormalizedCount}")
         println("  duplicates removed: ${answerReport.duplicateCount + guessReport.duplicateCount}")
         println("  normalization collisions: ${answerReport.collisionCount + guessReport.collisionCount}")
@@ -118,6 +120,7 @@ object WordLexiconPrepareTool {
 private data class PreparedSource(
     val words: List<String>,
     val rejections: List<String>,
+    val filteredByLengthCount: Int,
     val duplicateCount: Int,
     val collisionCount: Int,
     val yoNormalizedCount: Int,
@@ -133,6 +136,7 @@ private class NormalizationRegistry {
     ): PreparedSource {
         val words = mutableListOf<String>()
         val rejections = mutableListOf<String>()
+        var filteredByLength = 0
         var duplicates = 0
         var collisions = 0
         var yoNormalized = 0
@@ -140,7 +144,11 @@ private class NormalizationRegistry {
         candidates.forEach { raw ->
             when (val normalization = WordRules.normalize(raw)) {
                 is WordNormalization.Rejected -> {
-                    rejections += "$sourceName: '$raw' rejected (${normalization.describe()})"
+                    if (normalization.rejection == WordNormalizationRejection.WRONG_LENGTH) {
+                        filteredByLength++
+                    } else {
+                        rejections += "$sourceName: '$raw' rejected (${normalization.describe()})"
+                    }
                 }
                 is WordNormalization.Normalized -> {
                     val word = normalization.word
@@ -164,6 +172,7 @@ private class NormalizationRegistry {
         return PreparedSource(
             words = words.sorted(),
             rejections = rejections,
+            filteredByLengthCount = filteredByLength,
             duplicateCount = duplicates,
             collisionCount = collisions,
             yoNormalizedCount = yoNormalized,

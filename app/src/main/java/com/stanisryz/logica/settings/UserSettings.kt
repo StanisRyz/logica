@@ -6,4 +6,5 @@ data class UserSettings(
     val hapticsEnabled: Boolean = true,
     val balanceTutorialCompleted: Boolean = false,
     val crownsTutorialCompleted: Boolean = false,
+    val wordTutorialCompleted: Boolean = false,
 )

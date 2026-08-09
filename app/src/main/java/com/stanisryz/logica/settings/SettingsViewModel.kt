@@ -47,6 +47,12 @@ class SettingsViewModel(
             repository.setCrownsTutorialCompleted(completed)
         }
     }
+
+    fun setWordTutorialCompleted(completed: Boolean) {
+        viewModelScope.launch {
+            repository.setWordTutorialCompleted(completed)
+        }
+    }
 }
 
 class SettingsViewModelFactory(

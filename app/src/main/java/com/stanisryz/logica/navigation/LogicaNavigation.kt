@@ -49,6 +49,10 @@ import com.stanisryz.logica.ui.screens.CrownsTutorialRoute
 import com.stanisryz.logica.ui.screens.SettingsScreen
 import com.stanisryz.logica.ui.screens.StatisticsRoute
 import com.stanisryz.logica.ui.screens.TodayRoute
+import com.stanisryz.logica.ui.screens.WordGameRoute
+import com.stanisryz.logica.ui.screens.WordStartScreen
+import com.stanisryz.logica.ui.screens.WordTutorialRoute
+import com.stanisryz.logica.word.WordGameLaunch
 import java.security.SecureRandom
 
 private sealed interface AppDestination {
@@ -68,12 +72,20 @@ private sealed interface AppDestination {
 
     data object CrownsTutorial : AppDestination
 
+    data object WordStart : AppDestination
+
+    data object WordTutorial : AppDestination
+
     data class BalanceGame(
         val launch: BalanceGameLaunch,
     ) : AppDestination
 
     data class CrownsGame(
         val launch: CrownsGameLaunch,
+    ) : AppDestination
+
+    data class WordGame(
+        val launch: WordGameLaunch,
     ) : AppDestination
 }
 
@@ -89,10 +101,12 @@ internal fun LogicaNavigation(
     statisticsRepository: StatisticsRepository,
     hasActiveBalanceSession: Boolean,
     hasActiveCrownsSession: Boolean,
+    hasActiveWordSession: Boolean,
     onThemeModeChanged: (ThemeMode) -> Unit,
     onSoundEnabledChanged: (Boolean) -> Unit,
     onHapticsEnabledChanged: (Boolean) -> Unit,
     onCrownsTutorialCompleted: (Boolean) -> Unit,
+    onWordTutorialCompleted: (Boolean) -> Unit,
 ) {
     val backStack = remember { mutableStateListOf<AppDestination>(AppDestination.Today) }
     val catalogSeedSource = remember { CatalogSeedSource() }
@@ -130,11 +144,13 @@ internal fun LogicaNavigation(
                             statisticsRepository = statisticsRepository,
                             balanceTutorialCompleted = settings.balanceTutorialCompleted,
                             crownsTutorialCompleted = settings.crownsTutorialCompleted,
+                            wordTutorialCompleted = settings.wordTutorialCompleted,
                             onOpenDaily = { dailyLaunch ->
                                 backStack.add(
                                     when (dailyLaunch) {
                                         is DailyGameLaunch.Balance -> AppDestination.BalanceGame(dailyLaunch.launch)
                                         is DailyGameLaunch.Crowns -> AppDestination.CrownsGame(dailyLaunch.launch)
+                                        is DailyGameLaunch.Word -> AppDestination.WordGame(dailyLaunch.launch)
                                     },
                                 )
                             },
@@ -144,6 +160,10 @@ internal fun LogicaNavigation(
                                     PuzzleType.CROWNS -> {
                                         onCrownsTutorialCompleted(true)
                                         backStack.add(AppDestination.CrownsTutorial)
+                                    }
+                                    PuzzleType.WORD -> {
+                                        onWordTutorialCompleted(true)
+                                        backStack.add(AppDestination.WordTutorial)
                                     }
                                     else -> Unit
                                 }
@@ -167,6 +187,13 @@ internal fun LogicaNavigation(
                                         hasActiveSession = hasActiveCrownsSession,
                                         onContinue = { backStack.add(AppDestination.CrownsGame(CrownsGameLaunch.Restore())) },
                                         onNew = { backStack.add(AppDestination.CrownsStart) },
+                                    ),
+                                    CatalogPuzzleCard(
+                                        titleResource = R.string.word,
+                                        descriptionResource = R.string.word_catalog_description,
+                                        hasActiveSession = hasActiveWordSession,
+                                        onContinue = { backStack.add(AppDestination.WordGame(WordGameLaunch.Restore())) },
+                                        onNew = { backStack.add(AppDestination.WordStart) },
                                     ),
                                 ),
                         )
@@ -213,6 +240,27 @@ internal fun LogicaNavigation(
                             onDone = { backStack.removeLastOrNull() },
                         )
                     }
+                    entry<AppDestination.WordStart> {
+                        WordStartScreen(
+                            hasActiveSession = hasActiveWordSession,
+                            tutorialCompleted = settings.wordTutorialCompleted,
+                            onOpenTutorial = {
+                                onWordTutorialCompleted(true)
+                                backStack.add(AppDestination.WordTutorial)
+                            },
+                            onStart = { difficulty ->
+                                onWordTutorialCompleted(true)
+                                backStack.add(
+                                    AppDestination.WordGame(
+                                        WordGameLaunch.New(difficulty, catalogSeedSource.nextSeed()),
+                                    ),
+                                )
+                            },
+                        )
+                    }
+                    entry<AppDestination.WordTutorial> {
+                        WordTutorialRoute(settingsRepository = settingsRepository, onDone = { backStack.removeLastOrNull() })
+                    }
                     entry<AppDestination.BalanceGame> { destination ->
                         BalanceGameRoute(
                             launch = destination.launch,
@@ -256,6 +304,35 @@ internal fun LogicaNavigation(
                             onStartNew = {
                                 backStack.removeLastOrNull()
                                 backStack.add(AppDestination.CrownsStart)
+                            },
+                            onCatalog = {
+                                backStack.clear()
+                                backStack.add(AppDestination.Catalog)
+                            },
+                            onToday = {
+                                backStack.clear()
+                                backStack.add(AppDestination.Today)
+                            },
+                        )
+                    }
+                    entry<AppDestination.WordGame> { destination ->
+                        WordGameRoute(
+                            launch = destination.launch,
+                            sessionRepository = gameSessionRepository,
+                            completionRepository = gameCompletionRepository,
+                            hapticsEnabled = settings.hapticsEnabled,
+                            onBack = { backStack.removeLastOrNull() },
+                            onNewPuzzle = { difficulty ->
+                                backStack.removeLastOrNull()
+                                backStack.add(
+                                    AppDestination.WordGame(
+                                        WordGameLaunch.New(difficulty, catalogSeedSource.nextSeed()),
+                                    ),
+                                )
+                            },
+                            onStartNew = {
+                                backStack.removeLastOrNull()
+                                backStack.add(AppDestination.WordStart)
                             },
                             onCatalog = {
                                 backStack.clear()
@@ -334,6 +411,8 @@ private fun destinationTitle(destination: AppDestination): String =
             AppDestination.BalanceTutorial -> R.string.balance_tutorial_title
             AppDestination.CrownsStart, is AppDestination.CrownsGame -> R.string.crowns
             AppDestination.CrownsTutorial -> R.string.crowns_tutorial_title
+            AppDestination.WordStart, is AppDestination.WordGame -> R.string.word
+            AppDestination.WordTutorial -> R.string.word_tutorial_title
         },
     )
 

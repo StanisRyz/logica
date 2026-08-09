@@ -18,7 +18,7 @@ import kotlinx.coroutines.Dispatchers
 
 @Database(
     entities = [GameSessionEntity::class, DailyChallengeEntity::class, DailyRunEntity::class, GameResultEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 internal abstract class LogicaDatabase : RoomDatabase() {
@@ -43,7 +43,7 @@ internal abstract class LogicaDatabase : RoomDatabase() {
                     name = applicationContext.getDatabasePath(DATABASE_NAME).absolutePath,
                 ).setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(Dispatchers.IO)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build()
         }
 
@@ -172,6 +172,20 @@ internal abstract class LogicaDatabase : RoomDatabase() {
                         GROUP BY `challenge_date`, `daily_policy_version`
                         """.trimIndent(),
                     )
+                }
+            }
+
+        /**
+         * Adds typed terminal-outcome metadata to results. Every historical Balance/Crowns result was
+         * only ever recorded on a solve, so it backfills to SOLVED with no attempt count.
+         */
+        internal val MIGRATION_4_5 =
+            object : Migration(4, 5) {
+                override suspend fun migrate(connection: SQLiteConnection) {
+                    connection.execute(
+                        "ALTER TABLE `game_results` ADD COLUMN `outcome` TEXT NOT NULL DEFAULT 'SOLVED'",
+                    )
+                    connection.execute("ALTER TABLE `game_results` ADD COLUMN `attempts_used` INTEGER")
                 }
             }
 

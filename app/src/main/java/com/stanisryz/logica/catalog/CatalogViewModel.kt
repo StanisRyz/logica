@@ -26,6 +26,13 @@ internal class CatalogViewModel(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = false,
         )
+
+    val hasActiveWordSession: StateFlow<Boolean> =
+        sessionRepository.observeHasActiveSession(PuzzleType.WORD, GameSessionScope.CATALOG).stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = false,
+        )
 }
 
 internal class CatalogViewModelFactory(

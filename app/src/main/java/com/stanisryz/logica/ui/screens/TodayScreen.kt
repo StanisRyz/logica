@@ -50,6 +50,7 @@ internal fun TodayRoute(
     statisticsRepository: StatisticsRepository,
     balanceTutorialCompleted: Boolean,
     crownsTutorialCompleted: Boolean,
+    wordTutorialCompleted: Boolean,
     onOpenDaily: (DailyGameLaunch) -> Unit,
     onOpenTutorial: (PuzzleType) -> Unit,
     modifier: Modifier = Modifier,
@@ -81,6 +82,7 @@ internal fun TodayRoute(
             when (puzzleType) {
                 PuzzleType.BALANCE -> balanceTutorialCompleted
                 PuzzleType.CROWNS -> crownsTutorialCompleted
+                PuzzleType.WORD -> wordTutorialCompleted
                 else -> true
             }
         },
@@ -209,7 +211,13 @@ private fun TodayEntryCard(
                     }
                 }
                 DailyEntryState.COMPLETED ->
-                    Text(stringResource(R.string.puzzle_solved), color = MaterialTheme.colorScheme.primary)
+                    // A Word entry completes on SOLVED or FAILED, so its label stays outcome-neutral.
+                    Text(
+                        stringResource(
+                            if (entry.puzzleType == PuzzleType.WORD) R.string.word_daily_entry_done else R.string.puzzle_solved,
+                        ),
+                        color = MaterialTheme.colorScheme.primary,
+                    )
             }
             if (!tutorialCompleted && entry.state != DailyEntryState.COMPLETED) {
                 Text(
@@ -226,5 +234,6 @@ private fun PuzzleType.titleResource(): Int =
     when (this) {
         PuzzleType.BALANCE -> R.string.balance
         PuzzleType.CROWNS -> R.string.crowns
+        PuzzleType.WORD -> R.string.word
         else -> error("Daily does not support $this yet.")
     }

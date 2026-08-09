@@ -111,6 +111,8 @@ internal interface GameCompletionDao {
                     "The matching Daily lifecycle record was not found."
                 }
             require(daily.matches(result)) { "The Daily lifecycle identity does not match the result." }
+            // Daily lifecycle tracks participation, not success: a terminal FAILED Word result
+            // completes its entry exactly like a SOLVED one, so the run can still reach 3/3.
             require(
                 completeDailyChallenge(
                     challengeDate = challengeDate,
@@ -162,6 +164,8 @@ internal interface GameCompletionDao {
             generatorVersion == other.generatorVersion &&
             sessionScope == other.sessionScope &&
             hintsUsed == other.hintsUsed &&
+            outcome == other.outcome &&
+            attemptsUsed == other.attemptsUsed &&
             challengeDate == other.challengeDate &&
             dailyPolicyVersion == other.dailyPolicyVersion
 }
