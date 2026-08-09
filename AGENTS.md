@@ -27,6 +27,7 @@
 - Generated Crowns puzzles must be unique, logic-only solvable, and accepted by the existing solver and rules.
 - Crowns difficulty is solve-based rather than board-size-only; generation never falls back to another seed.
 - Crowns generator seed sweeps are explicit opt-in developer checks and never part of normal builds.
+- Crowns Generator V1 has a zero-hard-failure baseline for sequential seeds 1–1000 per difficulty; preserve V1 output compatibility and use a new version for any output-changing calibration.
 - Crowns mathematical crowns, solver candidates, and user marks remain separate concepts.
 - Crowns gameplay state is immutable and UI-independent; Android renders state and dispatches actions without owning rules.
 - Incorrect player crowns are allowed and reported through centralized structured violations.

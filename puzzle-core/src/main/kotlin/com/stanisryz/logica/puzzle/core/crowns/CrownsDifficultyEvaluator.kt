@@ -22,7 +22,7 @@ class CrownsDifficultyEvaluator(
         }
     }
 
-    internal fun score(
+    fun score(
         puzzle: CrownsPuzzle,
         analysis: CrownsSolveAnalysis,
     ): Int {

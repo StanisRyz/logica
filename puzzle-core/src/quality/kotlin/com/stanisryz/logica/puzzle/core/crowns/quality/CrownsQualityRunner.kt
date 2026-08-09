@@ -127,7 +127,7 @@ object CrownsQualityRunner {
             }
         }
 
-        recordMetrics(puzzle, analysis, report)
+        recordMetrics(puzzle, seed, analysis, evaluator.score(puzzle, analysis), report)
     }
 
     private fun verifyStructure(puzzle: CrownsPuzzle): String? {
@@ -152,7 +152,9 @@ object CrownsQualityRunner {
 
     private fun recordMetrics(
         puzzle: CrownsPuzzle,
+        seed: PuzzleSeed,
         analysis: CrownsSolveAnalysis,
+        difficultyScore: Int,
         report: DifficultyReport,
     ) {
         val regionSizes =
@@ -161,14 +163,13 @@ object CrownsQualityRunner {
                 .eachCount()
                 .values
         report.regionSizes += regionSizes
-        report.singleCellRegions += regionSizes.count { it == 1 }
+        val singleCellRegionCount = regionSizes.count { it == 1 }
+        report.singleCellRegionsPerPuzzle += singleCellRegionCount
+        report.difficultyScores += difficultyScore
         report.logicalSteps += analysis.logicalSteps
         report.candidateEliminations += analysis.candidateEliminations
-        report.singleCandidateRow += analysis.techniqueCounts.singleCandidateRow
-        report.singleCandidateColumn += analysis.techniqueCounts.singleCandidateColumn
-        report.singleCandidateRegion += analysis.techniqueCounts.singleCandidateRegion
-        report.regionLockedToRow += analysis.techniqueCounts.regionLockedToRow
-        report.regionLockedToColumn += analysis.techniqueCounts.regionLockedToColumn
+        report.techniques.record(analysis)
+        report.recordTopologyExample(seed, singleCellRegionCount, difficultyScore, analysis)
     }
 
     private fun generateTimed(
@@ -193,15 +194,13 @@ object CrownsQualityRunner {
             println("  ${kind.label}: ${report.failureSeedCount(kind)}")
         }
         println("  generation time ms: ${report.generationDurationsMs.summary()}")
-        println("  region sizes: ${report.regionSizes.distributionSummary()}")
-        println("  single-cell regions total: ${report.singleCellRegions}")
+        println("  difficulty scores: ${report.difficultyScores.distributionSummary()}")
         println("  logical steps: ${report.logicalSteps.distributionSummary()}")
         println("  candidate eliminations: ${report.candidateEliminations.distributionSummary()}")
-        println(
-            "  techniques total: row-single=${report.singleCandidateRow}, " +
-                "column-single=${report.singleCandidateColumn}, region-single=${report.singleCandidateRegion}, " +
-                "region-row-lock=${report.regionLockedToRow}, region-column-lock=${report.regionLockedToColumn}",
-        )
+        println("  region sizes: ${report.regionSizes.distributionSummary()}")
+        println("  single-cell regions/puzzle: ${report.singleCellRegionsPerPuzzle.distributionSummary()}")
+        println("  max single-cell example: ${report.topologyExampleSummary()}")
+        println("  technique prevalence: ${report.techniques.summary(report.successfulGenerations)}")
         if (report.failures.isEmpty()) {
             println("  failing seeds: none")
         } else {
@@ -225,10 +224,17 @@ object CrownsQualityRunner {
 
     private fun List<Int>.distributionSummary(): String {
         if (isEmpty()) return "n/a"
-        return "avg=${average().format()}, min=${min()}, max=${max()}"
+        val sorted = sorted()
+        return "avg=${average().format()}, p50=${sorted.percentile(0.50)}, " +
+            "p95=${sorted.percentile(0.95)}, max=${max()}"
     }
 
     private fun List<Double>.percentile(fraction: Double): Double {
+        val rank = ceil(size * fraction).toInt().coerceIn(1, size)
+        return this[rank - 1]
+    }
+
+    private fun List<Int>.percentile(fraction: Double): Int {
         val rank = ceil(size * fraction).toInt().coerceIn(1, size)
         return this[rank - 1]
     }
@@ -278,16 +284,39 @@ private class DifficultyReport(
 ) {
     var successfulGenerations: Int = 0
     val generationDurationsMs = mutableListOf<Double>()
+    val difficultyScores = mutableListOf<Int>()
     val regionSizes = mutableListOf<Int>()
-    var singleCellRegions: Int = 0
+    val singleCellRegionsPerPuzzle = mutableListOf<Int>()
     val logicalSteps = mutableListOf<Int>()
     val candidateEliminations = mutableListOf<Int>()
-    var singleCandidateRow: Int = 0
-    var singleCandidateColumn: Int = 0
-    var singleCandidateRegion: Int = 0
-    var regionLockedToRow: Int = 0
-    var regionLockedToColumn: Int = 0
+    val techniques = TechniqueMetrics()
     val failures = mutableListOf<QualityFailure>()
+    private var topologyExample: TopologyExample? = null
+
+    fun recordTopologyExample(
+        seed: PuzzleSeed,
+        singleCellRegions: Int,
+        difficultyScore: Int,
+        analysis: CrownsSolveAnalysis,
+    ) {
+        if (singleCellRegions <= (topologyExample?.singleCellRegions ?: -1)) return
+        topologyExample =
+            TopologyExample(
+                seed = seed,
+                singleCellRegions = singleCellRegions,
+                difficultyScore = difficultyScore,
+                logicalSteps = analysis.logicalSteps,
+                regionLocks =
+                    analysis.techniqueCounts.regionLockedToRow +
+                        analysis.techniqueCounts.regionLockedToColumn,
+            )
+    }
+
+    fun topologyExampleSummary(): String =
+        topologyExample?.let { example ->
+            "seed=${example.seed.value}, count=${example.singleCellRegions}, " +
+                "score=${example.difficultyScore}, steps=${example.logicalSteps}, locks=${example.regionLocks}"
+        } ?: "n/a"
 
     fun fail(
         seed: PuzzleSeed,
@@ -304,4 +333,42 @@ private class DifficultyReport(
             .map { it.seed }
             .distinct()
             .count()
+}
+
+private data class TopologyExample(
+    val seed: PuzzleSeed,
+    val singleCellRegions: Int,
+    val difficultyScore: Int,
+    val logicalSteps: Int,
+    val regionLocks: Int,
+)
+
+private class TechniqueMetrics {
+    private var rowSinglePuzzles = 0
+    private var columnSinglePuzzles = 0
+    private var regionSinglePuzzles = 0
+    private var regionRowLockPuzzles = 0
+    private var regionColumnLockPuzzles = 0
+
+    fun record(analysis: CrownsSolveAnalysis) {
+        val counts = analysis.techniqueCounts
+        if (counts.singleCandidateRow > 0) rowSinglePuzzles++
+        if (counts.singleCandidateColumn > 0) columnSinglePuzzles++
+        if (counts.singleCandidateRegion > 0) regionSinglePuzzles++
+        if (counts.regionLockedToRow > 0) regionRowLockPuzzles++
+        if (counts.regionLockedToColumn > 0) regionColumnLockPuzzles++
+    }
+
+    fun summary(puzzleCount: Int): String =
+        "row-single=${rowSinglePuzzles.prevalence(puzzleCount)}, " +
+            "column-single=${columnSinglePuzzles.prevalence(puzzleCount)}, " +
+            "region-single=${regionSinglePuzzles.prevalence(puzzleCount)}, " +
+            "region-row-lock=${regionRowLockPuzzles.prevalence(puzzleCount)}, " +
+            "region-column-lock=${regionColumnLockPuzzles.prevalence(puzzleCount)}"
+
+    private fun Int.prevalence(puzzleCount: Int): String {
+        if (puzzleCount == 0) return "n/a"
+        val percent = this * 100.0 / puzzleCount
+        return "$this/$puzzleCount (${String.format(Locale.ROOT, "%.1f", percent)}%)"
+    }
 }
