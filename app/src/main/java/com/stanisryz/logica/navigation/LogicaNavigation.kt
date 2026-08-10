@@ -17,8 +17,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -31,6 +35,8 @@ import com.stanisryz.logica.crowns.CrownsGameLaunch
 import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.DailyGameLaunch
 import com.stanisryz.logica.daily.DailyResultRepository
+import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.GameCompletionRepository
@@ -39,6 +45,8 @@ import com.stanisryz.logica.settings.SettingsRepository
 import com.stanisryz.logica.settings.ThemeMode
 import com.stanisryz.logica.settings.UserSettings
 import com.stanisryz.logica.statistics.StatisticsRepository
+import com.stanisryz.logica.ui.components.EconomyBar
+import com.stanisryz.logica.ui.components.LivesDialog
 import com.stanisryz.logica.ui.screens.BalanceGameRoute
 import com.stanisryz.logica.ui.screens.BalanceStartScreen
 import com.stanisryz.logica.ui.screens.BalanceTutorialRoute
@@ -92,6 +100,24 @@ private sealed interface AppDestination {
 
 private val primaryDestinations = listOf(AppDestination.Today, AppDestination.Catalog, AppDestination.Statistics)
 
+/**
+ * Where the wallet belongs: everywhere a game can be started, resumed, or played. Statistics,
+ * Settings, and the tutorials deliberately stay free of it.
+ */
+private fun AppDestination.showsEconomy(): Boolean =
+    when (this) {
+        AppDestination.Today,
+        AppDestination.Catalog,
+        AppDestination.BalanceStart,
+        AppDestination.CrownsStart,
+        AppDestination.WordStart,
+        is AppDestination.BalanceGame,
+        is AppDestination.CrownsGame,
+        is AppDestination.WordGame,
+        -> true
+        else -> false
+    }
+
 @Composable
 internal fun LogicaNavigation(
     settings: UserSettings,
@@ -101,9 +127,12 @@ internal fun LogicaNavigation(
     dailyChallengeRepository: DailyChallengeRepository,
     statisticsRepository: StatisticsRepository,
     dailyResultRepository: DailyResultRepository,
+    economyRepository: EconomyRepository,
+    economy: PlayerEconomy,
     hasActiveBalanceSession: Boolean,
     hasActiveCrownsSession: Boolean,
     hasActiveWordSession: Boolean,
+    onRestoreLife: () -> Unit,
     onThemeModeChanged: (ThemeMode) -> Unit,
     onSoundEnabledChanged: (Boolean) -> Unit,
     onHapticsEnabledChanged: (Boolean) -> Unit,
@@ -114,13 +143,16 @@ internal fun LogicaNavigation(
     val catalogSeedSource = remember { CatalogSeedSource() }
     val currentDestination = backStack.last()
     val isPrimaryDestination = currentDestination in primaryDestinations
+    var showLivesDialog by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             AppTopBar(
                 destination = currentDestination,
+                economy = economy,
                 onBack = { backStack.removeLastOrNull() },
                 onOpenSettings = { if (isPrimaryDestination) backStack.add(AppDestination.Settings) },
+                onOpenLives = { showLivesDialog = true },
             )
         },
         bottomBar = {
@@ -148,6 +180,8 @@ internal fun LogicaNavigation(
                             balanceTutorialCompleted = settings.balanceTutorialCompleted,
                             crownsTutorialCompleted = settings.crownsTutorialCompleted,
                             wordTutorialCompleted = settings.wordTutorialCompleted,
+                            economy = economy,
+                            onRestoreLife = onRestoreLife,
                             onOpenDaily = { dailyLaunch ->
                                 backStack.add(
                                     when (dailyLaunch) {
@@ -199,6 +233,8 @@ internal fun LogicaNavigation(
                                         onNew = { backStack.add(AppDestination.WordStart) },
                                     ),
                                 ),
+                            economy = economy,
+                            onRestoreLife = onRestoreLife,
                         )
                     }
                     entry<AppDestination.Statistics> { StatisticsRoute(statisticsRepository) }
@@ -209,10 +245,12 @@ internal fun LogicaNavigation(
                         BalanceStartScreen(
                             hasActiveSession = hasActiveBalanceSession,
                             tutorialCompleted = settings.balanceTutorialCompleted,
+                            economy = economy,
                             onOpenTutorial = { backStack.add(AppDestination.BalanceTutorial) },
                             onStart = { difficulty ->
                                 backStack.add(AppDestination.BalanceGame(BalanceGameLaunch.New(difficulty, catalogSeedSource.nextSeed())))
                             },
+                            onRestoreLife = onRestoreLife,
                         )
                     }
                     entry<AppDestination.BalanceTutorial> {
@@ -222,6 +260,7 @@ internal fun LogicaNavigation(
                         CrownsStartScreen(
                             hasActiveSession = hasActiveCrownsSession,
                             tutorialCompleted = settings.crownsTutorialCompleted,
+                            economy = economy,
                             onOpenTutorial = {
                                 onCrownsTutorialCompleted(true)
                                 backStack.add(AppDestination.CrownsTutorial)
@@ -234,6 +273,7 @@ internal fun LogicaNavigation(
                                     ),
                                 )
                             },
+                            onRestoreLife = onRestoreLife,
                         )
                     }
                     entry<AppDestination.CrownsTutorial> {
@@ -247,6 +287,7 @@ internal fun LogicaNavigation(
                         WordStartScreen(
                             hasActiveSession = hasActiveWordSession,
                             tutorialCompleted = settings.wordTutorialCompleted,
+                            economy = economy,
                             onOpenTutorial = {
                                 onWordTutorialCompleted(true)
                                 backStack.add(AppDestination.WordTutorial)
@@ -259,6 +300,7 @@ internal fun LogicaNavigation(
                                     ),
                                 )
                             },
+                            onRestoreLife = onRestoreLife,
                         )
                     }
                     entry<AppDestination.WordTutorial> {
@@ -269,6 +311,7 @@ internal fun LogicaNavigation(
                             launch = destination.launch,
                             sessionRepository = gameSessionRepository,
                             completionRepository = gameCompletionRepository,
+                            economyRepository = economyRepository,
                             hapticsEnabled = settings.hapticsEnabled,
                             onBack = { backStack.removeLastOrNull() },
                             onNewPuzzle = { difficulty ->
@@ -287,6 +330,7 @@ internal fun LogicaNavigation(
                                 backStack.clear()
                                 backStack.add(AppDestination.Today)
                             },
+                            onRestoreLife = onRestoreLife,
                         )
                     }
                     entry<AppDestination.CrownsGame> { destination ->
@@ -294,6 +338,7 @@ internal fun LogicaNavigation(
                             launch = destination.launch,
                             sessionRepository = gameSessionRepository,
                             completionRepository = gameCompletionRepository,
+                            economyRepository = economyRepository,
                             hapticsEnabled = settings.hapticsEnabled,
                             onBack = { backStack.removeLastOrNull() },
                             onNewPuzzle = { difficulty ->
@@ -316,6 +361,7 @@ internal fun LogicaNavigation(
                                 backStack.clear()
                                 backStack.add(AppDestination.Today)
                             },
+                            onRestoreLife = onRestoreLife,
                         )
                     }
                     entry<AppDestination.WordGame> { destination ->
@@ -323,6 +369,7 @@ internal fun LogicaNavigation(
                             launch = destination.launch,
                             sessionRepository = gameSessionRepository,
                             completionRepository = gameCompletionRepository,
+                            economyRepository = economyRepository,
                             hapticsEnabled = settings.hapticsEnabled,
                             onBack = { backStack.removeLastOrNull() },
                             onNewPuzzle = { difficulty ->
@@ -345,9 +392,18 @@ internal fun LogicaNavigation(
                                 backStack.clear()
                                 backStack.add(AppDestination.Today)
                             },
+                            onRestoreLife = onRestoreLife,
                         )
                     }
                 },
+        )
+    }
+
+    if (showLivesDialog) {
+        LivesDialog(
+            economy = economy,
+            onRestoreLife = onRestoreLife,
+            onDismiss = { showLivesDialog = false },
         )
     }
 }
@@ -356,8 +412,10 @@ internal fun LogicaNavigation(
 @OptIn(ExperimentalMaterial3Api::class)
 private fun AppTopBar(
     destination: AppDestination,
+    economy: PlayerEconomy,
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenLives: () -> Unit,
 ) {
     TopAppBar(
         title = { Text(destinationTitle(destination)) },
@@ -369,6 +427,7 @@ private fun AppTopBar(
             }
         },
         actions = {
+            if (destination.showsEconomy()) EconomyBar(economy = economy, onOpenLives = onOpenLives)
             if (destination in primaryDestinations) {
                 IconButton(onClick = onOpenSettings) {
                     Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings))

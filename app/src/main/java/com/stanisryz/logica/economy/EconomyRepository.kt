@@ -1,0 +1,34 @@
+package com.stanisryz.logica.economy
+
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+
+/**
+ * The one way the application reads and changes the wallet outside the terminal-completion
+ * transaction. Reward and penalty are never applied here by scanning old results: they belong to the
+ * Room transaction that persists the result itself.
+ */
+internal interface EconomyRepository {
+    /** The current wallet, with any regeneration that is already due projected onto it. */
+    fun observe(): Flow<PlayerEconomy>
+
+    /** Persists the regeneration that elapsed while the app was closed or idle. */
+    suspend fun refresh(): PlayerEconomy
+
+    suspend fun refillLifeWithGems(actionId: String): EconomyRefill
+}
+
+internal class RoomEconomyRepository(
+    private val dao: EconomyDao,
+    private val clock: EconomyClock = EconomyClock.SYSTEM,
+) : EconomyRepository {
+    override fun observe(): Flow<PlayerEconomy> =
+        dao.observe().map { stored ->
+            val now = clock.nowEpochMillis()
+            stored.toPlayerEconomy(now).regenerated(now)
+        }
+
+    override suspend fun refresh(): PlayerEconomy = dao.refresh(clock.nowEpochMillis())
+
+    override suspend fun refillLifeWithGems(actionId: String): EconomyRefill = dao.refillLifeWithGems(actionId, clock.nowEpochMillis())
+}

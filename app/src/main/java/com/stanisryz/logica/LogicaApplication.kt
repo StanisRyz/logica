@@ -9,6 +9,8 @@ import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.DailyResultRepository
 import com.stanisryz.logica.daily.RoomDailyChallengeRepository
 import com.stanisryz.logica.daily.RoomDailyResultRepository
+import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.economy.RoomEconomyRepository
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.session.LogicaDatabase
@@ -62,5 +64,9 @@ internal class AppContainer(
 
     val dailyResultRepository: DailyResultRepository by lazy {
         RoomDailyResultRepository(database.gameResultDao())
+    }
+
+    val economyRepository: EconomyRepository by lazy {
+        RoomEconomyRepository(database.economyDao())
     }
 }

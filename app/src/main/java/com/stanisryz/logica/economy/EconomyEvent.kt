@@ -1,0 +1,87 @@
+package com.stanisryz.logica.economy
+
+/**
+ * Why the wallet changed. New sources — a rewarded ad life or a purchased gem pack — are added as
+ * further constants later; the ledger and the wallet do not change shape for them.
+ */
+internal enum class EconomyEventType {
+    SOLVED_REWARD,
+    FAILED_PENALTY,
+    GEM_LIFE_REFILL,
+}
+
+/**
+ * One ledger row. [eventId] is derived from the thing that caused it, so the same terminal result or
+ * the same purchase action can never affect the wallet twice, and [sourceId] keeps the trail back to
+ * that cause. The deltas are what the wallet actually moved, never an unbounded intent.
+ */
+internal data class EconomyEvent(
+    val eventId: String,
+    val type: EconomyEventType,
+    val sourceId: String?,
+    val gemDelta: Int,
+    val lifeDelta: Int,
+) {
+    init {
+        require(eventId.isNotBlank()) { "Economy event ID must not be blank." }
+    }
+
+    companion object {
+        /** A terminal attempt pays for itself exactly once, keyed by its durable result ID. */
+        fun resultEventId(resultId: String): String = "result:$resultId"
+
+        /** One intentional purchase gets one action ID, so a repeated callback is a no-op. */
+        fun refillEventId(actionId: String): String = "refill:$actionId"
+    }
+}
+
+/** The wallet after one economy event, together with the ledger row that records it. */
+internal data class EconomyEffect(
+    val economy: PlayerEconomy,
+    val event: EconomyEvent,
+)
+
+internal fun PlayerEconomy.solvedReward(resultId: String): EconomyEffect =
+    effect(
+        updated = withGemsGranted(EconomyRules.SOLVED_GEM_REWARD),
+        eventId = EconomyEvent.resultEventId(resultId),
+        type = EconomyEventType.SOLVED_REWARD,
+        sourceId = resultId,
+    )
+
+internal fun PlayerEconomy.failedPenalty(
+    resultId: String,
+    nowEpochMillis: Long,
+): EconomyEffect =
+    effect(
+        updated = withLifeSpent(nowEpochMillis),
+        eventId = EconomyEvent.resultEventId(resultId),
+        type = EconomyEventType.FAILED_PENALTY,
+        sourceId = resultId,
+    )
+
+internal fun PlayerEconomy.gemLifeRefill(actionId: String): EconomyEffect =
+    effect(
+        updated = withGemsSpent(EconomyRules.LIFE_REFILL_GEM_COST).withLifeRestored(),
+        eventId = EconomyEvent.refillEventId(actionId),
+        type = EconomyEventType.GEM_LIFE_REFILL,
+        sourceId = actionId,
+    )
+
+private fun PlayerEconomy.effect(
+    updated: PlayerEconomy,
+    eventId: String,
+    type: EconomyEventType,
+    sourceId: String,
+): EconomyEffect =
+    EconomyEffect(
+        economy = updated,
+        event =
+            EconomyEvent(
+                eventId = eventId,
+                type = type,
+                sourceId = sourceId,
+                gemDelta = updated.gems - gems,
+                lifeDelta = updated.lives - lives,
+            ),
+    )

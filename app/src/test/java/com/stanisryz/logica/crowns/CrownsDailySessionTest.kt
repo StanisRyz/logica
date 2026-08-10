@@ -1,5 +1,8 @@
 package com.stanisryz.logica.crowns
 
+import com.stanisryz.logica.economy.EconomyRefill
+import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV2
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleId
@@ -130,6 +133,7 @@ class CrownsDailySessionTest {
             launch = launch,
             sessionRepository = sessions,
             completionRepository = UnusedCompletionRepository,
+            economyRepository = FullWalletEconomyRepository,
             workDispatcher = dispatcher,
         )
 
@@ -169,5 +173,14 @@ class CrownsDailySessionTest {
 
     private object UnusedCompletionRepository : GameCompletionRepository {
         override suspend fun complete(completion: GameCompletion): GameResult = error("Unused.")
+    }
+
+    /** Session restore is what this test covers, so the wallet simply never blocks gameplay. */
+    private object FullWalletEconomyRepository : EconomyRepository {
+        override fun observe(): Flow<PlayerEconomy> = MutableStateFlow(PlayerEconomy())
+
+        override suspend fun refresh(): PlayerEconomy = PlayerEconomy()
+
+        override suspend fun refillLifeWithGems(actionId: String): EconomyRefill = error("Unused.")
     }
 }

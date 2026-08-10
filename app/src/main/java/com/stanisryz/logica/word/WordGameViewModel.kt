@@ -3,6 +3,8 @@ package com.stanisryz.logica.word
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.contract.PuzzleGenerator
 import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
@@ -34,8 +36,10 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
@@ -97,12 +101,17 @@ internal class WordGameViewModel(
     private val launch: WordGameLaunch,
     private val sessionRepository: GameSessionRepository,
     private val completionRepository: GameCompletionRepository,
+    economyRepository: EconomyRepository,
     private val runtimeResolver: (GeneratorVersion) -> WordRuntime = ::resolveWordRuntime,
     private val workDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val sessionIdFactory: () -> String = { UUID.randomUUID().toString() },
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow<WordGameUiState>(WordGameUiState.Loading)
     val uiState: StateFlow<WordGameUiState> = mutableUiState.asStateFlow()
+
+    /** The live wallet: gameplay actions need a life, and the finished attempt reports its effect. */
+    val economy: StateFlow<PlayerEconomy> =
+        economyRepository.observe().stateIn(viewModelScope, SharingStarted.Eagerly, PlayerEconomy())
 
     private var gameEngine: WordGameEngine? = null
     private var activeSession: ActiveSession? = null
@@ -129,14 +138,17 @@ internal class WordGameViewModel(
     }
 
     fun appendLetter(letter: Char) {
+        if (!economy.value.isGameplayAllowed) return
         updateGame { engine, game -> engine.appendLetter(game, letter) }
     }
 
     fun removeLastLetter() {
+        if (!economy.value.isGameplayAllowed) return
         updateGame { engine, game -> engine.removeLastLetter(game) }
     }
 
     fun submit() {
+        if (!economy.value.isGameplayAllowed) return
         val engine = gameEngine ?: return
         val current = mutableUiState.value as? WordGameUiState.Ready ?: return
         when (val result = engine.submit(current.game)) {
@@ -167,6 +179,7 @@ internal class WordGameViewModel(
      * one, and the retry waits for the finished attempt's result to be durably stored.
      */
     fun retry() {
+        if (!economy.value.isGameplayAllowed) return
         val ready = mutableUiState.value as? WordGameUiState.Ready ?: return
         if (!ready.game.isFinished) return
         if (ready.completionPersistence != CompletionPersistence.Saved) return
@@ -388,12 +401,13 @@ internal class WordGameViewModelFactory(
     private val launch: WordGameLaunch,
     private val sessionRepository: GameSessionRepository,
     private val completionRepository: GameCompletionRepository,
+    private val economyRepository: EconomyRepository,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(WordGameViewModel::class.java)) {
             "Unknown ViewModel class: ${modelClass.name}"
         }
         @Suppress("UNCHECKED_CAST")
-        return WordGameViewModel(launch, sessionRepository, completionRepository) as T
+        return WordGameViewModel(launch, sessionRepository, completionRepository, economyRepository) as T
     }
 }

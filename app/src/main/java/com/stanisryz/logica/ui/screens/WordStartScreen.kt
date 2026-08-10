@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.stanisryz.logica.R
+import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.ui.components.PuzzleStartScreen
@@ -13,8 +14,10 @@ import com.stanisryz.logica.ui.components.wordDifficultyResource
 internal fun WordStartScreen(
     hasActiveSession: Boolean,
     tutorialCompleted: Boolean,
+    economy: PlayerEconomy,
     onOpenTutorial: () -> Unit,
     onStart: (Difficulty) -> Unit,
+    onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     PuzzleStartScreen(
@@ -23,8 +26,10 @@ internal fun WordStartScreen(
         tutorialOfferBodyResource = R.string.word_tutorial_offer_body,
         tutorialCompleted = tutorialCompleted,
         hasActiveSession = hasActiveSession,
+        economy = economy,
         onOpenTutorial = onOpenTutorial,
         onStart = onStart,
+        onRestoreLife = onRestoreLife,
         modifier = modifier,
         ruleResources =
             listOf(

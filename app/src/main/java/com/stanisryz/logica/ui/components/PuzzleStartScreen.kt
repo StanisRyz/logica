@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.stanisryz.logica.R
+import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.ui.theme.LogicaSpacing
@@ -24,7 +25,8 @@ import com.stanisryz.logica.ui.theme.LogicaSpacing
 /**
  * The shared structure of the three start screens: puzzle title, short explanation, difficulty
  * section, primary Start, and a secondary way into the tutorial. Puzzle-specific rule text and
- * difficulty details are supplied by the caller.
+ * difficulty details are supplied by the caller. Starting an attempt needs a life, so the zero-life
+ * state replaces Start with its own explanation and gem refill.
  */
 @Composable
 internal fun PuzzleStartScreen(
@@ -33,8 +35,10 @@ internal fun PuzzleStartScreen(
     tutorialOfferBodyResource: Int,
     tutorialCompleted: Boolean,
     hasActiveSession: Boolean,
+    economy: PlayerEconomy,
     onOpenTutorial: () -> Unit,
     onStart: (Difficulty) -> Unit,
+    onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
     ruleResources: List<Int> = emptyList(),
     difficultyNoteResource: Int? = null,
@@ -73,12 +77,14 @@ internal fun PuzzleStartScreen(
             )
         }
 
+        ZeroLivesCard(economy, onRestoreLife)
+
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Button(onClick = start, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = start, enabled = economy.isGameplayAllowed, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.start))
             }
             if (tutorialCompleted) {

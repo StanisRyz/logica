@@ -3,6 +3,8 @@ package com.stanisryz.logica.balance
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.balance.BalanceCell
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameEngine
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameState
@@ -29,8 +31,10 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
@@ -95,12 +99,17 @@ internal class BalanceGameViewModel(
     private val launch: BalanceGameLaunch,
     private val sessionRepository: GameSessionRepository,
     private val completionRepository: GameCompletionRepository,
+    economyRepository: EconomyRepository,
     private val generator: BalanceGeneratorV1 = BalanceGeneratorV1(),
     private val workDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val sessionIdFactory: () -> String = { UUID.randomUUID().toString() },
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow<BalanceGameUiState>(BalanceGameUiState.Loading)
     val uiState: StateFlow<BalanceGameUiState> = mutableUiState.asStateFlow()
+
+    /** The live wallet: gameplay actions need a life, and the finished attempt reports its effect. */
+    val economy: StateFlow<PlayerEconomy> =
+        economyRepository.observe().stateIn(viewModelScope, SharingStarted.Eagerly, PlayerEconomy())
 
     private var gameEngine: BalanceGameEngine? = null
     private var activeSession: ActiveSession? = null
@@ -141,6 +150,7 @@ internal class BalanceGameViewModel(
     }
 
     fun onCellTapped(position: BalancePosition) {
+        if (!economy.value.isGameplayAllowed) return
         val ready = mutableUiState.value as? BalanceGameUiState.Ready ?: return
         val value = ready.selectedValue
         if (ready.isPencilMode) {
@@ -156,6 +166,7 @@ internal class BalanceGameViewModel(
      * attempt always maps to exactly one session and at most one terminal result.
      */
     fun retry() {
+        if (!economy.value.isGameplayAllowed) return
         val ready = mutableUiState.value as? BalanceGameUiState.Ready ?: return
         if (!ready.game.status.isTerminal) return
         if (ready.completionPersistence != CompletionPersistence.Saved) return
@@ -175,6 +186,7 @@ internal class BalanceGameViewModel(
     }
 
     fun requestHint() {
+        if (!economy.value.isGameplayAllowed) return
         if (hintJob?.isActive == true) return
         val engine = gameEngine ?: return
         val ready = mutableUiState.value as? BalanceGameUiState.Ready ?: return
@@ -396,6 +408,7 @@ internal class BalanceGameViewModelFactory(
     private val launch: BalanceGameLaunch,
     private val sessionRepository: GameSessionRepository,
     private val completionRepository: GameCompletionRepository,
+    private val economyRepository: EconomyRepository,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(BalanceGameViewModel::class.java)) {
@@ -403,6 +416,6 @@ internal class BalanceGameViewModelFactory(
         }
 
         @Suppress("UNCHECKED_CAST")
-        return BalanceGameViewModel(launch, sessionRepository, completionRepository) as T
+        return BalanceGameViewModel(launch, sessionRepository, completionRepository, economyRepository) as T
     }
 }

@@ -53,6 +53,7 @@ import com.stanisryz.logica.daily.TodayError
 import com.stanisryz.logica.daily.TodayUiState
 import com.stanisryz.logica.daily.TodayViewModel
 import com.stanisryz.logica.daily.TodayViewModelFactory
+import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordRules
 import com.stanisryz.logica.result.GameOutcome
@@ -70,6 +71,7 @@ import com.stanisryz.logica.ui.components.ScreenColumn
 import com.stanisryz.logica.ui.components.ScreenTitle
 import com.stanisryz.logica.ui.components.StatusChip
 import com.stanisryz.logica.ui.components.SupportingText
+import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.components.difficultyLabel
 import com.stanisryz.logica.ui.components.progressFraction
 import com.stanisryz.logica.ui.components.titleResource
@@ -87,8 +89,10 @@ internal fun TodayRoute(
     balanceTutorialCompleted: Boolean,
     crownsTutorialCompleted: Boolean,
     wordTutorialCompleted: Boolean,
+    economy: PlayerEconomy,
     onOpenDaily: (DailyGameLaunch) -> Unit,
     onOpenTutorial: (PuzzleType) -> Unit,
+    onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val factory =
@@ -127,10 +131,12 @@ internal fun TodayRoute(
                 else -> true
             }
         },
+        economy = economy,
         onStart = todayViewModel::start,
         onContinue = todayViewModel::continueGame,
         onRetry = todayViewModel::refresh,
         onOpenTutorial = onOpenTutorial,
+        onRestoreLife = onRestoreLife,
         modifier = modifier,
     )
 }
@@ -139,10 +145,12 @@ internal fun TodayRoute(
 private fun TodayScreen(
     uiState: TodayUiState,
     tutorialCompleted: (PuzzleType) -> Boolean,
+    economy: PlayerEconomy,
     onStart: (PuzzleType) -> Unit,
     onContinue: (PuzzleType) -> Unit,
     onRetry: () -> Unit,
     onOpenTutorial: (PuzzleType) -> Unit,
+    onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (uiState) {
@@ -164,9 +172,11 @@ private fun TodayScreen(
             TodayContent(
                 uiState = uiState,
                 tutorialCompleted = tutorialCompleted,
+                economy = economy,
                 onStart = onStart,
                 onContinue = onContinue,
                 onOpenTutorial = onOpenTutorial,
+                onRestoreLife = onRestoreLife,
                 modifier = modifier,
             )
     }
@@ -176,9 +186,11 @@ private fun TodayScreen(
 private fun TodayContent(
     uiState: TodayUiState.Content,
     tutorialCompleted: (PuzzleType) -> Boolean,
+    economy: PlayerEconomy,
     onStart: (PuzzleType) -> Unit,
     onContinue: (PuzzleType) -> Unit,
     onOpenTutorial: (PuzzleType) -> Unit,
+    onRestoreLife: () -> Unit,
     modifier: Modifier,
 ) {
     ScreenColumn(modifier) {
@@ -189,12 +201,14 @@ private fun TodayContent(
             )
         }
         DailyProgress(completed = uiState.completedCount, total = uiState.totalCount)
+        ZeroLivesCard(economy, onRestoreLife)
 
         Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
             uiState.entries.forEach { entry ->
                 TodayEntryCard(
                     entry = entry,
                     tutorialCompleted = tutorialCompleted(entry.puzzleType),
+                    gameplayAllowed = economy.isGameplayAllowed,
                     onStart = { onStart(entry.puzzleType) },
                     onContinue = { onContinue(entry.puzzleType) },
                     onOpenTutorial = { onOpenTutorial(entry.puzzleType) },
@@ -237,6 +251,7 @@ private fun DailyProgress(
 private fun TodayEntryCard(
     entry: TodayEntryUiState,
     tutorialCompleted: Boolean,
+    gameplayAllowed: Boolean,
     onStart: () -> Unit,
     onContinue: () -> Unit,
     onOpenTutorial: () -> Unit,
@@ -268,16 +283,17 @@ private fun TodayEntryCard(
 
         when (entry.state) {
             DailyEntryState.AVAILABLE ->
-                Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) {
+                Button(onClick = onStart, enabled = gameplayAllowed, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.start))
                 }
+            // Continue still opens the saved puzzle at zero lives; its gameplay actions are disabled.
             DailyEntryState.IN_PROGRESS ->
                 Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.continue_game))
                 }
             // A failed attempt leaves the entry open, so the only way forward is another attempt.
             DailyEntryState.RETRY ->
-                Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) {
+                Button(onClick = onStart, enabled = gameplayAllowed, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.retry_puzzle))
                 }
             DailyEntryState.COMPLETED -> Unit

@@ -3,6 +3,8 @@ package com.stanisryz.logica.crowns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameEngine
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameState
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
@@ -29,8 +31,10 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
@@ -95,12 +99,17 @@ internal class CrownsGameViewModel(
     private val launch: CrownsGameLaunch,
     private val sessionRepository: GameSessionRepository,
     private val completionRepository: GameCompletionRepository,
+    economyRepository: EconomyRepository,
     private val generator: CrownsGeneratorV1 = CrownsGeneratorV1(),
     private val workDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val sessionIdFactory: () -> String = { UUID.randomUUID().toString() },
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow<CrownsGameUiState>(CrownsGameUiState.Loading)
     val uiState: StateFlow<CrownsGameUiState> = mutableUiState.asStateFlow()
+
+    /** The live wallet: gameplay actions need a life, and the finished attempt reports its effect. */
+    val economy: StateFlow<PlayerEconomy> =
+        economyRepository.observe().stateIn(viewModelScope, SharingStarted.Eagerly, PlayerEconomy())
 
     private var gameEngine: CrownsGameEngine? = null
     private var activeSession: ActiveSession? = null
@@ -140,6 +149,7 @@ internal class CrownsGameViewModel(
     }
 
     fun onCellTapped(position: CrownsPosition) {
+        if (!economy.value.isGameplayAllowed) return
         val ready = mutableUiState.value as? CrownsGameUiState.Ready ?: return
         val value = ready.selectedValue
         if (ready.isPencilMode) {
@@ -155,6 +165,7 @@ internal class CrownsGameViewModel(
      * attempt always maps to exactly one session and at most one terminal result.
      */
     fun retry() {
+        if (!economy.value.isGameplayAllowed) return
         val ready = mutableUiState.value as? CrownsGameUiState.Ready ?: return
         if (!ready.game.status.isTerminal) return
         if (ready.completionPersistence != CompletionPersistence.Saved) return
@@ -174,6 +185,7 @@ internal class CrownsGameViewModel(
     }
 
     fun requestHint() {
+        if (!economy.value.isGameplayAllowed) return
         if (hintJob?.isActive == true) return
         val engine = gameEngine ?: return
         val ready = mutableUiState.value as? CrownsGameUiState.Ready ?: return
@@ -392,12 +404,13 @@ internal class CrownsGameViewModelFactory(
     private val launch: CrownsGameLaunch,
     private val sessionRepository: GameSessionRepository,
     private val completionRepository: GameCompletionRepository,
+    private val economyRepository: EconomyRepository,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(CrownsGameViewModel::class.java)) {
             "Unknown ViewModel class: ${modelClass.name}"
         }
         @Suppress("UNCHECKED_CAST")
-        return CrownsGameViewModel(launch, sessionRepository, completionRepository) as T
+        return CrownsGameViewModel(launch, sessionRepository, completionRepository, economyRepository) as T
     }
 }

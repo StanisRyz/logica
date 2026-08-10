@@ -5,9 +5,17 @@ import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy
 import androidx.room3.Query
 import androidx.room3.Transaction
+import androidx.room3.Upsert
 import com.stanisryz.logica.daily.DailyChallengeEntity
 import com.stanisryz.logica.daily.DailyRunEntity
 import com.stanisryz.logica.daily.DailyRunStatus
+import com.stanisryz.logica.economy.EconomyEffect
+import com.stanisryz.logica.economy.EconomyEventEntity
+import com.stanisryz.logica.economy.PlayerEconomyEntity
+import com.stanisryz.logica.economy.failedPenalty
+import com.stanisryz.logica.economy.solvedReward
+import com.stanisryz.logica.economy.toEntity
+import com.stanisryz.logica.economy.toPlayerEconomy
 import com.stanisryz.logica.session.GameSessionEntity
 import com.stanisryz.logica.session.GameSessionScope
 
@@ -80,6 +88,16 @@ internal interface GameCompletionDao {
         completedAt: Long,
     ): Int
 
+    // The wallet is a singleton row; `PlayerEconomyEntity.SINGLETON_ID` is that ID.
+    @Query("SELECT * FROM player_economy WHERE economy_id = 1 LIMIT 1")
+    suspend fun findEconomy(): PlayerEconomyEntity?
+
+    @Upsert
+    suspend fun upsertEconomy(economy: PlayerEconomyEntity)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertEconomyEvent(event: EconomyEventEntity): Long
+
     @Transaction
     suspend fun complete(result: GameResultEntity): GameResultEntity {
         val existing = findResult(result.resultId)
@@ -95,6 +113,10 @@ internal interface GameCompletionDao {
                 "The result ID already belongs to a different completion."
             }
         }
+
+        // The wallet moves in the very same transaction as the result, keyed by that result, so a
+        // crash, a retried save, or a repeated callback can never pay or charge the attempt twice.
+        applyResultEconomy(result)
 
         // Daily lifecycle now tracks success, not participation: a FAILED attempt still produces a
         // durable result and frees the session for a retry, but leaves the entry and run untouched.
@@ -135,6 +157,24 @@ internal interface GameCompletionDao {
         val deleted = deleteSession(result.puzzleType, result.sessionScope, result.resultId)
         require(existing != null || deleted == 1) { "The active session could not be removed." }
         return existing ?: result
+    }
+
+    /**
+     * One result produces exactly zero or one economy effect. Regeneration that is already due is
+     * applied first, so the reward or the penalty always lands on an up-to-date wallet.
+     */
+    private suspend fun applyResultEconomy(result: GameResultEntity) {
+        val now = result.completedAtEpochMillis
+        val current = findEconomy().toPlayerEconomy(now).regenerated(now)
+        val effect: EconomyEffect =
+            when (result.outcome) {
+                GameOutcome.SOLVED.name -> current.solvedReward(result.resultId)
+                GameOutcome.FAILED.name -> current.failedPenalty(result.resultId, now)
+                else -> return
+            }
+        // Losing the insert means this result was already processed: it stays a no-op.
+        if (insertEconomyEvent(effect.event.toEntity(now)) == -1L) return
+        upsertEconomy(effect.economy.toEntity(now))
     }
 
     private fun GameSessionEntity.matches(result: GameResultEntity): Boolean =

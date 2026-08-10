@@ -27,6 +27,8 @@ import com.stanisryz.logica.balance.BalanceGameLaunch
 import com.stanisryz.logica.balance.BalanceGameUiState
 import com.stanisryz.logica.balance.BalanceGameViewModel
 import com.stanisryz.logica.balance.BalanceGameViewModelFactory
+import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.balance.BalanceCell
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameState
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
@@ -58,6 +60,7 @@ import com.stanisryz.logica.ui.components.PuzzleToolBar
 import com.stanisryz.logica.ui.components.RetryableErrorState
 import com.stanisryz.logica.ui.components.ScreenColumn
 import com.stanisryz.logica.ui.components.SupportingText
+import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.components.difficultyLabel
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 
@@ -66,28 +69,33 @@ internal fun BalanceGameRoute(
     launch: BalanceGameLaunch,
     sessionRepository: GameSessionRepository,
     completionRepository: GameCompletionRepository,
+    economyRepository: EconomyRepository,
     hapticsEnabled: Boolean,
     onBack: () -> Unit,
     onNewPuzzle: (Difficulty) -> Unit,
     onStartNew: () -> Unit,
     onCatalog: () -> Unit,
     onToday: () -> Unit,
+    onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val factory =
-        remember(launch, sessionRepository, completionRepository) {
-            BalanceGameViewModelFactory(launch, sessionRepository, completionRepository)
+        remember(launch, sessionRepository, completionRepository, economyRepository) {
+            BalanceGameViewModelFactory(launch, sessionRepository, completionRepository, economyRepository)
         }
     val gameViewModel: BalanceGameViewModel = viewModel(factory = factory)
     val uiState by gameViewModel.uiState.collectAsStateWithLifecycle()
+    val economy by gameViewModel.economy.collectAsStateWithLifecycle()
     BalanceGameScreen(
         uiState,
+        economy,
         gameViewModel::onCellTapped,
         gameViewModel::selectValue,
         gameViewModel::togglePencilMode,
         gameViewModel::requestHint,
         gameViewModel::retry,
         gameViewModel::retryCompletion,
+        onRestoreLife,
         hapticsEnabled,
         onBack,
         onNewPuzzle,
@@ -102,12 +110,14 @@ internal fun BalanceGameRoute(
 @Composable
 private fun BalanceGameScreen(
     uiState: BalanceGameUiState,
+    economy: PlayerEconomy,
     onCellTapped: (BalancePosition) -> Unit,
     onSelectValue: (BalanceCell) -> Unit,
     onTogglePencil: () -> Unit,
     onHint: () -> Unit,
     onRetryPuzzle: () -> Unit,
     onRetryCompletion: () -> Unit,
+    onRestoreLife: () -> Unit,
     hapticsEnabled: Boolean,
     onBack: () -> Unit,
     onNewPuzzle: (Difficulty) -> Unit,
@@ -144,12 +154,14 @@ private fun BalanceGameScreen(
                 uiState.isPencilMode,
                 uiState.isHintLoading,
                 uiState.completionPersistence,
+                economy,
                 onCellTapped,
                 onSelectValue,
                 onTogglePencil,
                 onHint,
                 onRetryPuzzle,
                 onRetryCompletion,
+                onRestoreLife,
                 hapticsEnabled,
                 { onNewPuzzle(uiState.puzzle.id.difficulty) },
                 onCatalog,
@@ -169,12 +181,14 @@ private fun ReadyState(
     isPencilMode: Boolean,
     isHintLoading: Boolean,
     completionPersistence: CompletionPersistence,
+    economy: PlayerEconomy,
     onCellTapped: (BalancePosition) -> Unit,
     onSelectValue: (BalanceCell) -> Unit,
     onTogglePencil: () -> Unit,
     onHint: () -> Unit,
     onRetryPuzzle: () -> Unit,
     onRetryCompletion: () -> Unit,
+    onRestoreLife: () -> Unit,
     hapticsEnabled: Boolean,
     onNewPuzzle: () -> Unit,
     onCatalog: () -> Unit,
@@ -209,10 +223,13 @@ private fun ReadyState(
     ) {
         DifficultyBadge(difficultyLabel(PuzzleType.BALANCE, difficulty))
         MistakeIndicator(game.mistakesUsed, PuzzleMistakes.MAX_MISTAKES)
+        // The saved puzzle stays visible and intact at zero lives; only the actions stop working.
+        ZeroLivesCard(economy, onRestoreLife)
         BalanceBoard(
             puzzle = puzzle,
             game = game,
             onCellTapped = {
+                if (!economy.isGameplayAllowed) return@BalanceBoard
                 if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                 onCellTapped(it)
             },
@@ -225,7 +242,10 @@ private fun ReadyState(
                 GameAction(
                     icon = Icons.Filled.Lightbulb,
                     label = stringResource(R.string.hint),
-                    enabled = !isHintLoading && game.status == BalanceGameStatus.IN_PROGRESS,
+                    enabled =
+                        !isHintLoading &&
+                            game.status == BalanceGameStatus.IN_PROGRESS &&
+                            economy.isGameplayAllowed,
                     onClick = onHint,
                 ),
             ),
@@ -238,6 +258,8 @@ private fun ReadyState(
             completionPersistence = completionPersistence,
             hintsUsed = game.hintsUsed,
             maxMistakes = PuzzleMistakes.MAX_MISTAKES,
+            lives = economy.lives,
+            isRetryAllowed = economy.isGameplayAllowed,
             isDaily = isDaily,
             onRetryCompletion = onRetryCompletion,
             onRetryPuzzle = onRetryPuzzle,

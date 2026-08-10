@@ -1,6 +1,7 @@
 package com.stanisryz.logica.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -63,6 +64,9 @@ internal fun CompletionCard(
  * Balance and Crowns share one terminal dialog for both endings. A failed attempt leads with Retry
  * on the very same puzzle; a solved one keeps its Today or New puzzle / Catalog navigation. The
  * board stays visible behind the dialog either way.
+ *
+ * The wallet effect is reported only once the result is durably stored, and a retry is offered only
+ * while a life is available.
  */
 @Composable
 internal fun PuzzleTerminalDialog(
@@ -70,6 +74,8 @@ internal fun PuzzleTerminalDialog(
     completionPersistence: CompletionPersistence,
     hintsUsed: Int,
     maxMistakes: Int,
+    lives: Int,
+    isRetryAllowed: Boolean,
     isDaily: Boolean,
     onRetryCompletion: () -> Unit,
     onRetryPuzzle: () -> Unit,
@@ -105,22 +111,28 @@ internal fun PuzzleTerminalDialog(
             )
         },
         text = {
-            Text(
-                when {
-                    completionPersistence == CompletionPersistence.Error ->
-                        stringResource(R.string.completion_save_error_body)
-                    !isSaved -> stringResource(R.string.saving_completion)
-                    isSolved -> stringResource(R.string.hints_used, hintsUsed)
-                    else -> stringResource(R.string.puzzle_failed_body, maxMistakes)
-                },
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
+                Text(
+                    when {
+                        completionPersistence == CompletionPersistence.Error ->
+                            stringResource(R.string.completion_save_error_body)
+                        !isSaved -> stringResource(R.string.saving_completion)
+                        isSolved -> stringResource(R.string.hints_used, hintsUsed)
+                        else -> stringResource(R.string.puzzle_failed_body, maxMistakes)
+                    },
+                )
+                if (isSaved) EconomyResultFeedback(isSolved = isSolved, lives = lives)
+            }
         },
         confirmButton = {
             when {
                 completionPersistence == CompletionPersistence.Error ->
                     TextButton(onClick = onRetryCompletion) { Text(stringResource(R.string.retry)) }
                 !isSaved -> TextButton(onClick = {}, enabled = false) { Text(stringResource(R.string.saving)) }
-                !isSolved -> TextButton(onClick = onRetryPuzzle) { Text(stringResource(R.string.retry_puzzle)) }
+                !isSolved ->
+                    TextButton(onClick = onRetryPuzzle, enabled = isRetryAllowed) {
+                        Text(stringResource(R.string.retry_puzzle))
+                    }
                 isDaily -> TextButton(onClick = onToday) { Text(stringResource(R.string.to_today)) }
                 else -> TextButton(onClick = onNewPuzzle) { Text(stringResource(R.string.new_puzzle)) }
             }

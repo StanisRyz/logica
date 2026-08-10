@@ -70,6 +70,14 @@ attempts — and both are recorded.
 
 Completed games are persisted as durable results with a typed outcome and, for Word, the attempts used. The app reports core gameplay statistics and derives current and best Daily streaks from completed Daily history. Once a Daily run is fully completed, the Today screen offers a spoiler-free plain-text share of that run's per-puzzle results (each puzzle's solved result and, for Word, the attempts it took, never the Word answer), progress, and current streak through the standard Android Sharesheet.
 
+The app has an offline economy of gems and lives. You start with five lives and no gems: every solved
+attempt earns one gem, every failed attempt costs one life, and a missing life comes back on its own
+after 15 minutes (the countdown keeps running while the app is closed and never restarts when you
+lose another life). With no lives left you can still open and look at a saved puzzle, but playing,
+starting, and replaying wait until a life is available; five gems restore one life immediately.
+Tutorials never touch gems or lives, and everything is stored locally — there is no account, server,
+or purchase.
+
 All three puzzles share one calm Material 3 shell: a single Light/Dark colour scheme, one spacing and text hierarchy, one difficulty selector, and one loading/error/completion presentation, while each board keeps its own specialised gameplay. Puzzle states are always readable without colour, and the shared UI pieces live in `app/src/main/java/com/stanisryz/logica/ui/components/` and `.../ui/theme/`.
 
 Dependency versions are managed in `gradle/libs.versions.toml`.

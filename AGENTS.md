@@ -78,7 +78,14 @@
 - Retry keeps the `PuzzleId` and the Catalog/Daily context but starts a new `sessionId` with a clean board and zero mistakes; it is allowed only after the finished attempt's result is durably persisted.
 - Daily entries and runs complete on `SOLVED` only: a `FAILED` attempt stays durable, leaves the entry open for another attempt, and never advances progress, the run, or the streak. Historical runs already `COMPLETED` are never rewritten.
 - Solved-labelled statistics and Daily sharing read `SOLVED` results only; a completed run with no solved result for an entry disables sharing rather than showing a failure.
-- Gems, lives, regeneration, rewarded ads, and payments are deliberately deferred to Stage 31, which consumes the durable attempt results introduced here.
+- `EconomyRules` is the only place economy numbers live: 0 starting gems, 5 starting and maximum lives, `+1` gem per SOLVED, `-1` life per FAILED, one regenerated life every 15 minutes, and 5 gems per refilled life.
+- Room v6 adds the singleton `player_economy` wallet and the `economy_events` ledger; `MIGRATION_5_6` creates both, seeds 0 gems / 5 lives, preserves every existing table and record, and never replays historical results into the economy.
+- Reward and penalty happen inside the existing terminal-completion transaction and are keyed by `result:<resultId>`: one durable result causes exactly zero or one wallet change, and a repeated insert is a safe no-op. The economy never observes or backfills old `GameResult`s.
+- Lives regenerate from a stored anchor instead of a repeating worker: elapsed whole intervals are applied whenever the wallet is refreshed, another loss or a purchase never restarts a running countdown, reaching 5/5 clears the anchor, and backwards clock movement restores nothing.
+- `EconomyRepository` observes/refreshes the wallet and buys a life for gems; the refill re-checks the balance inside the transaction and carries a generated action ID so a repeated tap cannot buy twice. `EconomyClock` is the only time source for economy math.
+- `0 lives` blocks starting, retrying, and active Balance/Crowns/Word interaction everywhere, including Daily; saved sessions are never touched, stay viewable, and continue once a life is back. Starting or resuming a game costs nothing by itself.
+- Tutorials produce no durable results, so they never grant gems or spend lives; Daily, statistics, and sharing semantics are unchanged by the economy.
+- Rewarded ads, RuStore payments, gem stores, and any economy history UI are deliberately deferred to Stage 32; the typed `EconomyEventType` ledger is the extension point.
 - Balance tutorial is application onboarding: it reuses core Balance gameplay but stays separate from Room-backed catalog sessions; completion is a DataStore preference.
 - Crowns tutorial is Crowns-only application onboarding: its fixed state never touches Catalog sessions, results, statistics, Daily state, or gameplay hint counters; its prompt state is a DataStore preference.
 - Catalog and Daily gameplay use separate session scopes, must coexist, and reuse the existing per-puzzle engines/UI rather than generic gameplay screens.

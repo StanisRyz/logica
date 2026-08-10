@@ -30,6 +30,8 @@ import com.stanisryz.logica.crowns.CrownsGameLaunch
 import com.stanisryz.logica.crowns.CrownsGameUiState
 import com.stanisryz.logica.crowns.CrownsGameViewModel
 import com.stanisryz.logica.crowns.CrownsGameViewModelFactory
+import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameState
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
 import com.stanisryz.logica.puzzle.core.crowns.CrownsHint
@@ -59,6 +61,7 @@ import com.stanisryz.logica.ui.components.PuzzleToolBar
 import com.stanisryz.logica.ui.components.RetryableErrorState
 import com.stanisryz.logica.ui.components.ScreenColumn
 import com.stanisryz.logica.ui.components.SupportingText
+import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.components.difficultyLabel
 import com.stanisryz.logica.ui.crowns.CrownsBoard
 import com.stanisryz.logica.ui.theme.LogicaSpacing
@@ -68,29 +71,34 @@ internal fun CrownsGameRoute(
     launch: CrownsGameLaunch,
     sessionRepository: GameSessionRepository,
     completionRepository: GameCompletionRepository,
+    economyRepository: EconomyRepository,
     hapticsEnabled: Boolean,
     onBack: () -> Unit,
     onNewPuzzle: (Difficulty) -> Unit,
     onStartNew: () -> Unit,
     onCatalog: () -> Unit,
     onToday: () -> Unit,
+    onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val factory =
-        remember(launch, sessionRepository, completionRepository) {
-            CrownsGameViewModelFactory(launch, sessionRepository, completionRepository)
+        remember(launch, sessionRepository, completionRepository, economyRepository) {
+            CrownsGameViewModelFactory(launch, sessionRepository, completionRepository, economyRepository)
         }
     val gameViewModel: CrownsGameViewModel = viewModel(factory = factory)
     val uiState by gameViewModel.uiState.collectAsStateWithLifecycle()
+    val economy by gameViewModel.economy.collectAsStateWithLifecycle()
 
     CrownsGameScreen(
         uiState = uiState,
+        economy = economy,
         onCellTapped = gameViewModel::onCellTapped,
         onSelectValue = gameViewModel::selectValue,
         onTogglePencil = gameViewModel::togglePencilMode,
         onHint = gameViewModel::requestHint,
         onRetryPuzzle = gameViewModel::retry,
         onRetryCompletion = gameViewModel::retryCompletion,
+        onRestoreLife = onRestoreLife,
         hapticsEnabled = hapticsEnabled,
         onBack = onBack,
         onNewPuzzle = onNewPuzzle,
@@ -105,12 +113,14 @@ internal fun CrownsGameRoute(
 @Composable
 private fun CrownsGameScreen(
     uiState: CrownsGameUiState,
+    economy: PlayerEconomy,
     onCellTapped: (CrownsPosition) -> Unit,
     onSelectValue: (CrownsPlayerCell) -> Unit,
     onTogglePencil: () -> Unit,
     onHint: () -> Unit,
     onRetryPuzzle: () -> Unit,
     onRetryCompletion: () -> Unit,
+    onRestoreLife: () -> Unit,
     hapticsEnabled: Boolean,
     onBack: () -> Unit,
     onNewPuzzle: (Difficulty) -> Unit,
@@ -147,12 +157,14 @@ private fun CrownsGameScreen(
                 isPencilMode = uiState.isPencilMode,
                 isHintLoading = uiState.isHintLoading,
                 completionPersistence = uiState.completionPersistence,
+                economy = economy,
                 onCellTapped = onCellTapped,
                 onSelectValue = onSelectValue,
                 onTogglePencil = onTogglePencil,
                 onHint = onHint,
                 onRetryPuzzle = onRetryPuzzle,
                 onRetryCompletion = onRetryCompletion,
+                onRestoreLife = onRestoreLife,
                 hapticsEnabled = hapticsEnabled,
                 onNewPuzzle = { onNewPuzzle(uiState.puzzle.id.difficulty) },
                 onCatalog = onCatalog,
@@ -172,12 +184,14 @@ private fun CrownsReadyState(
     isPencilMode: Boolean,
     isHintLoading: Boolean,
     completionPersistence: CompletionPersistence,
+    economy: PlayerEconomy,
     onCellTapped: (CrownsPosition) -> Unit,
     onSelectValue: (CrownsPlayerCell) -> Unit,
     onTogglePencil: () -> Unit,
     onHint: () -> Unit,
     onRetryPuzzle: () -> Unit,
     onRetryCompletion: () -> Unit,
+    onRestoreLife: () -> Unit,
     hapticsEnabled: Boolean,
     onNewPuzzle: () -> Unit,
     onCatalog: () -> Unit,
@@ -213,10 +227,13 @@ private fun CrownsReadyState(
     ) {
         DifficultyBadge(difficultyLabel(PuzzleType.CROWNS, difficulty))
         MistakeIndicator(game.mistakesUsed, PuzzleMistakes.MAX_MISTAKES)
+        // The saved puzzle stays visible and intact at zero lives; only the actions stop working.
+        ZeroLivesCard(economy, onRestoreLife)
         CrownsBoard(
             puzzle = puzzle,
             game = game,
             onCellTapped = { position ->
+                if (!economy.isGameplayAllowed) return@CrownsBoard
                 if (hapticsEnabled) {
                     val feedback =
                         if (isPencilMode) HapticFeedbackConstants.CLOCK_TICK else HapticFeedbackConstants.KEYBOARD_TAP
@@ -233,7 +250,10 @@ private fun CrownsReadyState(
                 GameAction(
                     icon = Icons.Filled.Lightbulb,
                     label = stringResource(R.string.hint),
-                    enabled = !isHintLoading && game.status == CrownsGameStatus.IN_PROGRESS,
+                    enabled =
+                        !isHintLoading &&
+                            game.status == CrownsGameStatus.IN_PROGRESS &&
+                            economy.isGameplayAllowed,
                     onClick = onHint,
                 ),
             ),
@@ -247,6 +267,8 @@ private fun CrownsReadyState(
             completionPersistence = completionPersistence,
             hintsUsed = game.hintsUsed,
             maxMistakes = PuzzleMistakes.MAX_MISTAKES,
+            lives = economy.lives,
+            isRetryAllowed = economy.isGameplayAllowed,
             isDaily = isDaily,
             onRetryCompletion = onRetryCompletion,
             onRetryPuzzle = onRetryPuzzle,

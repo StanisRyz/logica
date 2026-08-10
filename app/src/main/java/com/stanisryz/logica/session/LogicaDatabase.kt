@@ -11,14 +11,25 @@ import com.stanisryz.logica.daily.DailyChallengeDao
 import com.stanisryz.logica.daily.DailyChallengeEntity
 import com.stanisryz.logica.daily.DailyRunDao
 import com.stanisryz.logica.daily.DailyRunEntity
+import com.stanisryz.logica.economy.EconomyDao
+import com.stanisryz.logica.economy.EconomyEventEntity
+import com.stanisryz.logica.economy.EconomyRules
+import com.stanisryz.logica.economy.PlayerEconomyEntity
 import com.stanisryz.logica.result.GameCompletionDao
 import com.stanisryz.logica.result.GameResultDao
 import com.stanisryz.logica.result.GameResultEntity
 import kotlinx.coroutines.Dispatchers
 
 @Database(
-    entities = [GameSessionEntity::class, DailyChallengeEntity::class, DailyRunEntity::class, GameResultEntity::class],
-    version = 5,
+    entities = [
+        GameSessionEntity::class,
+        DailyChallengeEntity::class,
+        DailyRunEntity::class,
+        GameResultEntity::class,
+        PlayerEconomyEntity::class,
+        EconomyEventEntity::class,
+    ],
+    version = 6,
     exportSchema = true,
 )
 internal abstract class LogicaDatabase : RoomDatabase() {
@@ -32,6 +43,8 @@ internal abstract class LogicaDatabase : RoomDatabase() {
 
     abstract fun gameCompletionDao(): GameCompletionDao
 
+    abstract fun economyDao(): EconomyDao
+
     companion object {
         private const val DATABASE_NAME = "logica.db"
 
@@ -43,7 +56,7 @@ internal abstract class LogicaDatabase : RoomDatabase() {
                     name = applicationContext.getDatabasePath(DATABASE_NAME).absolutePath,
                 ).setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(Dispatchers.IO)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .build()
         }
 
@@ -186,6 +199,54 @@ internal abstract class LogicaDatabase : RoomDatabase() {
                         "ALTER TABLE `game_results` ADD COLUMN `outcome` TEXT NOT NULL DEFAULT 'SOLVED'",
                     )
                     connection.execute("ALTER TABLE `game_results` ADD COLUMN `attempts_used` INTEGER")
+                }
+            }
+
+        /**
+         * Adds the player wallet and its economy ledger. Every existing table and record is left
+         * untouched, and the wallet starts at the configured beginning of the economy: historical
+         * SOLVED and FAILED results are never replayed, so the economy only reacts to attempts
+         * finished after this migration.
+         */
+        internal val MIGRATION_5_6 =
+            object : Migration(5, 6) {
+                override suspend fun migrate(connection: SQLiteConnection) {
+                    connection.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS `player_economy` (
+                            `economy_id` INTEGER NOT NULL,
+                            `gems` INTEGER NOT NULL,
+                            `lives` INTEGER NOT NULL,
+                            `next_life_at_epoch_millis` INTEGER,
+                            `updated_at_epoch_millis` INTEGER NOT NULL,
+                            PRIMARY KEY(`economy_id`)
+                        )
+                        """.trimIndent(),
+                    )
+                    connection.execute(
+                        """
+                        INSERT OR IGNORE INTO `player_economy` (
+                            `economy_id`, `gems`, `lives`, `next_life_at_epoch_millis`, `updated_at_epoch_millis`
+                        ) VALUES (
+                            ${PlayerEconomyEntity.SINGLETON_ID}, ${EconomyRules.STARTING_GEMS},
+                            ${EconomyRules.STARTING_LIVES}, NULL,
+                            CAST(strftime('%s', 'now') AS INTEGER) * 1000
+                        )
+                        """.trimIndent(),
+                    )
+                    connection.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS `economy_events` (
+                            `event_id` TEXT NOT NULL,
+                            `event_type` TEXT NOT NULL,
+                            `source_id` TEXT,
+                            `gem_delta` INTEGER NOT NULL,
+                            `life_delta` INTEGER NOT NULL,
+                            `created_at_epoch_millis` INTEGER NOT NULL,
+                            PRIMARY KEY(`event_id`)
+                        )
+                        """.trimIndent(),
+                    )
                 }
             }
 

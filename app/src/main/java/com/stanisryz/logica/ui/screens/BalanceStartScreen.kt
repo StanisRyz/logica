@@ -3,6 +3,7 @@ package com.stanisryz.logica.ui.screens
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.stanisryz.logica.R
+import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.ui.components.PuzzleStartScreen
@@ -11,8 +12,10 @@ import com.stanisryz.logica.ui.components.PuzzleStartScreen
 internal fun BalanceStartScreen(
     hasActiveSession: Boolean,
     tutorialCompleted: Boolean,
+    economy: PlayerEconomy,
     onOpenTutorial: () -> Unit,
     onStart: (Difficulty) -> Unit,
+    onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     PuzzleStartScreen(
@@ -21,8 +24,10 @@ internal fun BalanceStartScreen(
         tutorialOfferBodyResource = R.string.balance_tutorial_offer_body,
         tutorialCompleted = tutorialCompleted,
         hasActiveSession = hasActiveSession,
+        economy = economy,
         onOpenTutorial = onOpenTutorial,
         onStart = onStart,
+        onRestoreLife = onRestoreLife,
         modifier = modifier,
     )
 }

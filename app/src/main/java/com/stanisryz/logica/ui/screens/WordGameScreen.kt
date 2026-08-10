@@ -29,6 +29,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
+import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordGameState
@@ -42,9 +44,11 @@ import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.ui.components.CompletionActions
 import com.stanisryz.logica.ui.components.CompletionCard
 import com.stanisryz.logica.ui.components.DifficultyBadge
+import com.stanisryz.logica.ui.components.EconomyResultFeedback
 import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.components.RetryableErrorState
 import com.stanisryz.logica.ui.components.SupportingText
+import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.components.difficultyLabel
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
@@ -62,29 +66,34 @@ internal fun WordGameRoute(
     launch: WordGameLaunch,
     sessionRepository: GameSessionRepository,
     completionRepository: GameCompletionRepository,
+    economyRepository: EconomyRepository,
     hapticsEnabled: Boolean,
     onBack: () -> Unit,
     onNewPuzzle: (Difficulty) -> Unit,
     onStartNew: () -> Unit,
     onCatalog: () -> Unit,
     onToday: () -> Unit,
+    onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val factory =
-        remember(launch, sessionRepository, completionRepository) {
-            WordGameViewModelFactory(launch, sessionRepository, completionRepository)
+        remember(launch, sessionRepository, completionRepository, economyRepository) {
+            WordGameViewModelFactory(launch, sessionRepository, completionRepository, economyRepository)
         }
     val gameViewModel: WordGameViewModel = viewModel(factory = factory)
     val uiState by gameViewModel.uiState.collectAsStateWithLifecycle()
+    val economy by gameViewModel.economy.collectAsStateWithLifecycle()
 
     WordGameScreen(
         uiState = uiState,
+        economy = economy,
         onLetter = gameViewModel::appendLetter,
         onBackspace = gameViewModel::removeLastLetter,
         onSubmit = gameViewModel::submit,
         onDismissRejection = gameViewModel::dismissRejection,
         onRetryCompletion = gameViewModel::retryCompletion,
         onRetryPuzzle = gameViewModel::retry,
+        onRestoreLife = onRestoreLife,
         hapticsEnabled = hapticsEnabled,
         onBack = onBack,
         onNewPuzzle = onNewPuzzle,
@@ -99,12 +108,14 @@ internal fun WordGameRoute(
 @Composable
 private fun WordGameScreen(
     uiState: WordGameUiState,
+    economy: PlayerEconomy,
     onLetter: (Char) -> Unit,
     onBackspace: () -> Unit,
     onSubmit: () -> Unit,
     onDismissRejection: () -> Unit,
     onRetryCompletion: () -> Unit,
     onRetryPuzzle: () -> Unit,
+    onRestoreLife: () -> Unit,
     hapticsEnabled: Boolean,
     onBack: () -> Unit,
     onNewPuzzle: (Difficulty) -> Unit,
@@ -138,12 +149,14 @@ private fun WordGameScreen(
                 game = uiState.game,
                 rejection = uiState.rejection,
                 completionPersistence = uiState.completionPersistence,
+                economy = economy,
                 onLetter = onLetter,
                 onBackspace = onBackspace,
                 onSubmit = onSubmit,
                 onDismissRejection = onDismissRejection,
                 onRetryCompletion = onRetryCompletion,
                 onRetryPuzzle = onRetryPuzzle,
+                onRestoreLife = onRestoreLife,
                 hapticsEnabled = hapticsEnabled,
                 onNewPuzzle = { onNewPuzzle(uiState.puzzle.id.difficulty) },
                 onCatalog = onCatalog,
@@ -164,12 +177,14 @@ private fun WordReadyState(
     game: WordGameState,
     rejection: WordGuessRejection?,
     completionPersistence: CompletionPersistence,
+    economy: PlayerEconomy,
     onLetter: (Char) -> Unit,
     onBackspace: () -> Unit,
     onSubmit: () -> Unit,
     onDismissRejection: () -> Unit,
     onRetryCompletion: () -> Unit,
     onRetryPuzzle: () -> Unit,
+    onRestoreLife: () -> Unit,
     hapticsEnabled: Boolean,
     onNewPuzzle: () -> Unit,
     onCatalog: () -> Unit,
@@ -214,6 +229,8 @@ private fun WordReadyState(
             SupportingText(
                 stringResource(R.string.word_attempts_left, game.remainingAttempts, WordRules.MAXIMUM_ATTEMPTS),
             )
+            // The saved word stays visible and intact at zero lives; only the actions stop working.
+            ZeroLivesCard(economy, onRestoreLife)
             WordBoard(game)
             rejection?.let { reason ->
                 Text(
@@ -228,6 +245,7 @@ private fun WordReadyState(
                     puzzle = puzzle,
                     game = game,
                     completionPersistence = completionPersistence,
+                    economy = economy,
                     onRetryCompletion = onRetryCompletion,
                     onRetryPuzzle = onRetryPuzzle,
                     onNewPuzzle = onNewPuzzle,
@@ -241,7 +259,7 @@ private fun WordReadyState(
         if (game.status == WordGameStatus.IN_PROGRESS) {
             WordKeyboard(
                 knowledge = game.letterKnowledge,
-                enabled = true,
+                enabled = economy.isGameplayAllowed,
                 onLetter = { letter ->
                     if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                     onDismissRejection()
@@ -263,6 +281,7 @@ private fun WordTerminalCard(
     puzzle: WordPuzzle,
     game: WordGameState,
     completionPersistence: CompletionPersistence,
+    economy: PlayerEconomy,
     onRetryCompletion: () -> Unit,
     onRetryPuzzle: () -> Unit,
     onNewPuzzle: () -> Unit,
@@ -303,13 +322,19 @@ private fun WordTerminalCard(
                     stringResource(R.string.saving_completion),
                     style = MaterialTheme.typography.bodyMedium,
                 )
+            // The wallet effect is only reported once the result is durably stored.
+            CompletionPersistence.Saved -> EconomyResultFeedback(isSolved = isSolved, lives = economy.lives)
             else -> Unit
         }
 
         CompletionActions {
             // A failed attempt leads with replaying the very same word; the Daily entry stays open.
             if (!isSolved && completionPersistence == CompletionPersistence.Saved) {
-                Button(onClick = onRetryPuzzle, modifier = Modifier.weight(1f)) {
+                Button(
+                    onClick = onRetryPuzzle,
+                    enabled = economy.isGameplayAllowed,
+                    modifier = Modifier.weight(1f),
+                ) {
                     Text(stringResource(R.string.retry_puzzle))
                 }
                 TextButton(onClick = if (isDaily) onToday else onCatalog) {
