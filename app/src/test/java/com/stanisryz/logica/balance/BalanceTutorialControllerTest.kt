@@ -18,7 +18,7 @@ class BalanceTutorialControllerTest {
             val expectedMove = requireNotNull(BalanceTutorialScenarios.expectedMove(stage))
             val engine = BalanceGameEngine(puzzle)
             val guidedGame =
-                engine.setValue(
+                engine.placeValue(
                     engine.start(),
                     expectedMove.position,
                     expectedMove.value,
@@ -29,16 +29,25 @@ class BalanceTutorialControllerTest {
         val controller = BalanceTutorialController()
         val firstTarget = BalancePosition(0, 2)
 
+        // A pencil note is a hypothesis: it neither passes nor fails the step.
+        controller.togglePencilMode()
         controller.onCellTapped(firstTarget)
+        assertEquals(setOf(BalanceCell.ONE), controller.state.game.pencilMarksAt(firstTarget))
+        assertEquals(BalanceTutorialStage.PREVENT_THREE, controller.state.stage)
+        assertEquals(null, controller.state.feedback)
+        controller.togglePencilMode()
 
+        controller.selectValue(BalanceCell.ZERO)
+        controller.onCellTapped(firstTarget)
         assertEquals(BalanceTutorialStage.PREVENT_THREE, controller.state.stage)
         assertEquals(BalanceTutorialFeedback.TRY_AGAIN, controller.state.feedback)
 
+        controller.selectValue(BalanceCell.ONE)
         controller.onCellTapped(firstTarget)
-        controller.onCellTapped(BalancePosition(0, 3))
+        assertEquals(BalanceTutorialStage.COMPLETE_QUOTA, controller.state.stage)
+
         controller.onCellTapped(BalancePosition(0, 3))
         assertRuleConsistent(controller)
-        controller.onCellTapped(BalancePosition(1, 0))
         controller.onCellTapped(BalancePosition(1, 0))
         assertRuleConsistent(controller)
 
@@ -55,11 +64,8 @@ class BalanceTutorialControllerTest {
             BalancePosition(3, 1) to BalanceCell.ONE,
             BalancePosition(3, 2) to BalanceCell.ZERO,
         ).forEach { (position, value) ->
-            while (controller.state.game.board
-                    .cellAt(position) != value
-            ) {
-                controller.onCellTapped(position)
-            }
+            controller.selectValue(value)
+            controller.onCellTapped(position)
         }
 
         assertTrue(controller.state.completed)

@@ -6,7 +6,7 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleId
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -14,37 +14,56 @@ import org.junit.Test
 
 class CrownsGameplayTest {
     @Test
-    fun mixedTransitionsRestoreExactlyAndResetPreservesHintUsage() {
+    fun committedValuesAreValidatedWhilePencilMarksStayHypotheses() {
         val engine = CrownsGameEngine(puzzle())
-        val position = CrownsPosition(2, 0)
+        val solutionCell = CrownsPosition(2, 0)
+        val draftCell = CrownsPosition(0, 0)
         val initial = engine.start()
 
-        val marked = engine.placeMark(initial, position)
-        val crowned = engine.placeCrown(marked, position)
+        // A blocked mark on a cell that really holds a crown is a wrong committed value.
+        val marked = engine.placeValue(initial, solutionCell, CrownsPlayerCell.MARKED)
+        assertEquals(CrownsCellStatus.INCORRECT, marked.statusAt(solutionCell))
+        assertEquals(CrownsPlayerCell.MARKED, marked.cellAt(solutionCell))
+
+        val crowned = engine.placeValue(marked, solutionCell, CrownsPlayerCell.CROWN)
+        assertEquals(CrownsCellStatus.CORRECT, crowned.statusAt(solutionCell))
+        assertTrue(crowned.userMarks.isEmpty())
+        assertSame(crowned, engine.placeValue(crowned, solutionCell, CrownsPlayerCell.CROWN))
+        assertSame(crowned, engine.togglePencilMark(crowned, solutionCell, CrownsPlayerCell.MARKED))
+
+        var drafted = engine.togglePencilMark(crowned, draftCell, CrownsPlayerCell.CROWN)
+        drafted = engine.togglePencilMark(drafted, draftCell, CrownsPlayerCell.MARKED)
+        assertEquals(
+            setOf(CrownsPlayerCell.CROWN, CrownsPlayerCell.MARKED),
+            drafted.pencilAt(draftCell),
+        )
+        assertEquals(CrownsPlayerCell.EMPTY, drafted.cellAt(draftCell))
+        assertEquals(
+            setOf(CrownsPlayerCell.MARKED),
+            engine.togglePencilMark(drafted, draftCell, CrownsPlayerCell.CROWN).pencilAt(draftCell),
+        )
+
         val restored =
             engine.restore(
-                board = crowned.board,
-                userMarks = crowned.userMarks,
-                moveHistory = crowned.moveHistory,
-                hintsUsed = crowned.hintsUsed,
-                currentHint = crowned.currentHint,
+                board = drafted.board,
+                userMarks = drafted.userMarks,
+                pencilCrowns = drafted.pencilCrowns,
+                pencilMarks = drafted.pencilMarks,
+                hintsUsed = drafted.hintsUsed,
+                currentHint = drafted.currentHint,
             )
-        val undone = engine.undo(crowned)
-        val hinted = engine.requestHint(undone)
+        assertEquals(drafted, restored)
 
-        assertEquals(crowned, restored)
-        assertEquals(CrownsPlayerCell.CROWN, crowned.cellAt(position))
-        assertFalse(position in crowned.userMarks)
-        assertEquals(CrownsPlayerCell.MARKED, undone.cellAt(position))
-        assertFalse(position in undone.board.crowns)
-        assertEquals(CrownsHintKind.INCORRECT_MARK, hinted.currentHint?.kind)
+        val hinted = engine.requestHint(drafted)
         assertEquals(1, hinted.hintsUsed)
+        assertNotNull(hinted.currentHint)
         assertSame(hinted, engine.requestHint(hinted))
 
         val reset = engine.reset(hinted)
         assertTrue(reset.board.crowns.isEmpty())
         assertTrue(reset.userMarks.isEmpty())
-        assertTrue(reset.moveHistory.isEmpty())
+        assertTrue(reset.pencilCrowns.isEmpty())
+        assertTrue(reset.pencilMarks.isEmpty())
         assertEquals(1, reset.hintsUsed)
         assertNull(reset.currentHint)
     }
@@ -54,20 +73,22 @@ class CrownsGameplayTest {
         val engine = CrownsGameEngine(puzzle())
         var game = engine.start()
 
-        game = engine.placeCrown(game, CrownsPosition(0, 0))
-        game = engine.placeCrown(game, CrownsPosition(0, 2))
+        game = engine.placeValue(game, CrownsPosition(0, 0), CrownsPlayerCell.CROWN)
+        game = engine.placeValue(game, CrownsPosition(0, 2), CrownsPlayerCell.CROWN)
 
         assertEquals(CrownsGameStatus.IN_PROGRESS, game.status)
+        assertEquals(CrownsCellStatus.INCORRECT, game.statusAt(CrownsPosition(0, 0)))
         assertTrue(game.violations.any { it.type == CrownsViolationType.ROW_CONFLICT })
         assertTrue(game.violations.any { it.type == CrownsViolationType.REGION_CONFLICT })
 
         game = engine.reset(game)
-        game = engine.placeMark(game, CrownsPosition(0, 3))
-        solutionPositions.forEach { position -> game = engine.placeCrown(game, position) }
+        game = engine.placeValue(game, CrownsPosition(0, 3), CrownsPlayerCell.MARKED)
+        solutionPositions.forEach { position -> game = engine.placeValue(game, position, CrownsPlayerCell.CROWN) }
 
         assertEquals(CrownsGameStatus.SOLVED, game.status)
         assertTrue(game.violations.isEmpty())
         assertEquals(CrownsPlayerCell.MARKED, game.cellAt(CrownsPosition(0, 3)))
+        assertEquals(CrownsCellStatus.CORRECT, game.statusAt(CrownsPosition(0, 3)))
     }
 
     @Test

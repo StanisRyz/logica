@@ -26,7 +26,8 @@ internal data class CrownsTutorialUiState(
     val puzzle: CrownsPuzzle = CrownsTutorialScenarios.puzzle,
     val game: CrownsGameState = CrownsGameEngine(puzzle).start(),
     val focusedPositions: Set<CrownsPosition> = CrownsTutorialScenarios.focusedPositions(stage),
-    val markCycleStep: Int = 0,
+    val selectedValue: CrownsPlayerCell = CrownsPlayerCell.CROWN,
+    val isPencilMode: Boolean = false,
     val feedback: CrownsTutorialFeedback? = null,
     val completed: Boolean = false,
 )
@@ -46,61 +47,47 @@ internal class CrownsTutorialController {
     var state = CrownsTutorialUiState()
         private set
 
+    fun selectValue(value: CrownsPlayerCell) {
+        if (value == CrownsPlayerCell.EMPTY) return
+        state = state.copy(selectedValue = value)
+    }
+
+    fun togglePencilMode() {
+        state = state.copy(isPencilMode = !state.isPencilMode)
+    }
+
     fun onCellTapped(position: CrownsPosition) {
         if (state.completed) return
 
-        val updated = cycleCell(state.game, position)
+        // A pencil note is a hypothesis, so it never passes or fails a tutorial step.
+        if (state.isPencilMode) {
+            state = state.copy(game = engine.togglePencilMark(state.game, position, state.selectedValue))
+            return
+        }
+
+        val updated = engine.placeValue(state.game, position, state.selectedValue)
         state =
             when (state.stage) {
                 CrownsTutorialStage.ROW_AND_COLUMN,
                 CrownsTutorialStage.REGION,
                 CrownsTutorialStage.DIAGONAL,
-                -> handleCrownStage(position, updated)
-                CrownsTutorialStage.MARKS_AND_CONTROLS -> handleMarksStage(position, updated)
+                -> handleExpectedValueStage(position, updated, CrownsPlayerCell.CROWN)
+                CrownsTutorialStage.MARKS_AND_CONTROLS ->
+                    handleExpectedValueStage(position, updated, CrownsPlayerCell.MARKED)
                 CrownsTutorialStage.MINI_PUZZLE -> handleMiniPuzzle(updated)
             }
     }
 
-    private fun cycleCell(
-        game: CrownsGameState,
-        position: CrownsPosition,
-    ): CrownsGameState =
-        when (game.cellAt(position)) {
-            CrownsPlayerCell.EMPTY -> engine.placeMark(game, position)
-            CrownsPlayerCell.MARKED -> engine.placeCrown(game, position)
-            CrownsPlayerCell.CROWN -> engine.clearCell(game, position)
-        }
-
-    private fun handleCrownStage(
+    private fun handleExpectedValueStage(
         position: CrownsPosition,
         updated: CrownsGameState,
+        expected: CrownsPlayerCell,
     ): CrownsTutorialUiState {
         val target = CrownsTutorialScenarios.targetFor(state.stage)
-        if (position == target && updated.cellAt(position) == CrownsPlayerCell.CROWN && updated.violations.isEmpty()) {
+        if (position == target && updated.cellAt(position) == expected && updated.violations.isEmpty()) {
             return advance()
         }
-        val isExpectedFirstTap = position == target && updated.cellAt(position) == CrownsPlayerCell.MARKED
-        return state.copy(
-            game = updated,
-            feedback = if (isExpectedFirstTap) null else CrownsTutorialScenarios.feedbackFor(state.stage),
-        )
-    }
-
-    private fun handleMarksStage(
-        position: CrownsPosition,
-        updated: CrownsGameState,
-    ): CrownsTutorialUiState {
-        val target = CrownsTutorialScenarios.targetFor(state.stage)
-        val expectedCell = CrownsTutorialScenarios.markCycle[state.markCycleStep]
-        if (position == target && updated.cellAt(position) == expectedCell) {
-            val nextStep = state.markCycleStep + 1
-            return if (nextStep == CrownsTutorialScenarios.markCycle.size) {
-                advance()
-            } else {
-                state.copy(game = updated, markCycleStep = nextStep)
-            }
-        }
-        return state.copy(game = updated, feedback = CrownsTutorialFeedback.MARKS_AND_CONTROLS)
+        return state.copy(game = updated, feedback = CrownsTutorialScenarios.feedbackFor(state.stage))
     }
 
     private fun handleMiniPuzzle(updated: CrownsGameState): CrownsTutorialUiState =
@@ -116,7 +103,12 @@ internal class CrownsTutorialController {
     private fun advance(): CrownsTutorialUiState {
         val nextStage = CrownsTutorialScenarios.nextStage(state.stage) ?: return state.copy(completed = true, feedback = null)
         engine = CrownsGameEngine(CrownsTutorialScenarios.puzzle)
-        return CrownsTutorialUiState(stage = nextStage, game = engine.start())
+        return CrownsTutorialUiState(
+            stage = nextStage,
+            game = engine.start(),
+            selectedValue = state.selectedValue,
+            isPencilMode = state.isPencilMode,
+        )
     }
 }
 
@@ -143,8 +135,6 @@ internal object CrownsTutorialScenarios {
                 },
         )
 
-    val markCycle = listOf(CrownsPlayerCell.MARKED, CrownsPlayerCell.CROWN, CrownsPlayerCell.EMPTY)
-
     fun nextStage(stage: CrownsTutorialStage): CrownsTutorialStage? = CrownsTutorialStage.entries.getOrNull(stage.ordinal + 1)
 
     fun focusedPositions(stage: CrownsTutorialStage): Set<CrownsPosition> =
@@ -155,7 +145,8 @@ internal object CrownsTutorialScenarios {
             CrownsTutorialStage.ROW_AND_COLUMN -> CrownsPosition(0, 1)
             CrownsTutorialStage.REGION -> CrownsPosition(1, 3)
             CrownsTutorialStage.DIAGONAL -> CrownsPosition(2, 0)
-            CrownsTutorialStage.MARKS_AND_CONTROLS -> CrownsPosition(3, 2)
+            // A cell the answer definitely leaves empty, so the blocked mark placed here is correct.
+            CrownsTutorialStage.MARKS_AND_CONTROLS -> CrownsPosition(0, 0)
             CrownsTutorialStage.MINI_PUZZLE -> error("The mini-puzzle has no single target.")
         }
 

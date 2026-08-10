@@ -4,6 +4,7 @@ import com.stanisryz.logica.puzzle.core.balance.BalanceCell
 import com.stanisryz.logica.puzzle.core.balance.BalanceClue
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameEngine
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameState
+import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
 import com.stanisryz.logica.puzzle.core.balance.BalancePosition
 import com.stanisryz.logica.puzzle.core.balance.BalancePuzzle
 import com.stanisryz.logica.puzzle.core.model.Difficulty
@@ -25,6 +26,8 @@ internal data class BalanceTutorialUiState(
     val game: BalanceGameState = BalanceGameEngine(puzzle).start(),
     val interactivePositions: Set<BalancePosition> =
         BalanceTutorialScenarios.interactivePositions(stage, puzzle),
+    val selectedValue: BalanceCell = BalanceCell.ONE,
+    val isPencilMode: Boolean = false,
     val feedback: BalanceTutorialFeedback? = null,
     val completed: Boolean = false,
 )
@@ -40,10 +43,25 @@ internal class BalanceTutorialController {
     var state = BalanceTutorialUiState()
         private set
 
+    fun selectValue(value: BalanceCell) {
+        if (value == BalanceCell.EMPTY) return
+        state = state.copy(selectedValue = value)
+    }
+
+    fun togglePencilMode() {
+        state = state.copy(isPencilMode = !state.isPencilMode)
+    }
+
     fun onCellTapped(position: BalancePosition) {
         if (state.completed) return
 
-        val updated = engine.cycleValue(state.game, position)
+        // A pencil note is a hypothesis, so it never passes or fails a tutorial step.
+        if (state.isPencilMode) {
+            state = state.copy(game = engine.togglePencilMark(state.game, position, state.selectedValue))
+            return
+        }
+
+        val updated = engine.placeValue(state.game, position, state.selectedValue)
         if (updated == state.game) return
 
         val expectedMove = BalanceTutorialScenarios.expectedMove(state.stage)
@@ -62,7 +80,7 @@ internal class BalanceTutorialController {
         }
 
         state =
-            if (updated.status == com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus.SOLVED) {
+            if (updated.status == BalanceGameStatus.SOLVED) {
                 state.copy(game = updated, feedback = null, completed = true)
             } else {
                 state.copy(game = updated, feedback = null)
@@ -74,7 +92,13 @@ internal class BalanceTutorialController {
         if (nextStage == null) return state.copy(completed = true, feedback = null)
         val puzzle = BalanceTutorialScenarios.puzzleFor(nextStage)
         engine = BalanceGameEngine(puzzle)
-        return BalanceTutorialUiState(stage = nextStage, puzzle = puzzle, game = engine.start())
+        return BalanceTutorialUiState(
+            stage = nextStage,
+            puzzle = puzzle,
+            game = engine.start(),
+            selectedValue = state.selectedValue,
+            isPencilMode = state.isPencilMode,
+        )
     }
 }
 

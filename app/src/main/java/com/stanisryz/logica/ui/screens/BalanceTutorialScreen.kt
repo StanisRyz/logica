@@ -18,6 +18,7 @@ import com.stanisryz.logica.balance.BalanceTutorialStage
 import com.stanisryz.logica.balance.BalanceTutorialUiState
 import com.stanisryz.logica.balance.BalanceTutorialViewModel
 import com.stanisryz.logica.balance.BalanceTutorialViewModelFactory
+import com.stanisryz.logica.puzzle.core.balance.BalanceCell
 import com.stanisryz.logica.puzzle.core.balance.BalancePosition
 import com.stanisryz.logica.settings.SettingsRepository
 import com.stanisryz.logica.ui.balance.BalanceBoard
@@ -34,13 +35,22 @@ internal fun BalanceTutorialRoute(
     val factory = androidx.compose.runtime.remember(settingsRepository) { BalanceTutorialViewModelFactory(settingsRepository) }
     val viewModel: BalanceTutorialViewModel = viewModel(factory = factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    BalanceTutorialScreen(state, viewModel::onCellTapped, onDone, modifier)
+    BalanceTutorialScreen(
+        state,
+        viewModel::onCellTapped,
+        viewModel::selectValue,
+        viewModel::togglePencilMode,
+        onDone,
+        modifier,
+    )
 }
 
 @Composable
 private fun BalanceTutorialScreen(
     state: BalanceTutorialUiState,
     onCellTapped: (BalancePosition) -> Unit,
+    onSelectValue: (BalanceCell) -> Unit,
+    onTogglePencil: () -> Unit,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -62,6 +72,7 @@ private fun BalanceTutorialScreen(
             enabledPositions = state.interactivePositions,
             modifier = Modifier.fillMaxWidth(),
         )
+        BalanceToolBar(state.selectedValue, state.isPencilMode, onSelectValue, onTogglePencil)
         if (state.feedback == BalanceTutorialFeedback.TRY_AGAIN) {
             LogicaCard(containerColor = MaterialTheme.colorScheme.errorContainer) {
                 Text(stringResource(R.string.balance_tutorial_try_again))

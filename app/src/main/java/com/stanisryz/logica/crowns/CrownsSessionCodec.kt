@@ -5,8 +5,6 @@ import com.stanisryz.logica.puzzle.core.crowns.CrownsGameState
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
 import com.stanisryz.logica.puzzle.core.crowns.CrownsHint
 import com.stanisryz.logica.puzzle.core.crowns.CrownsHintProvider
-import com.stanisryz.logica.puzzle.core.crowns.CrownsMove
-import com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPosition
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPuzzle
 import com.stanisryz.logica.puzzle.core.crowns.CrownsState
@@ -19,7 +17,8 @@ internal data class EncodedCrownsSession(
 )
 
 internal object CrownsSessionCodec {
-    const val SESSION_FORMAT_VERSION = 1
+    /** V1 stored committed values plus an Undo history; V2 stores committed values plus pencil marks. */
+    const val SESSION_FORMAT_VERSION = 2
 
     fun encode(
         puzzle: CrownsPuzzle,
@@ -31,40 +30,45 @@ internal object CrownsSessionCodec {
                 appendLine("size=${puzzle.size}")
                 appendLine("crowns=${game.board.crowns.toPositionPayload()}")
                 appendLine("marks=${game.userMarks.toPositionPayload()}")
+                appendLine("pencilCrowns=${game.pencilCrowns.toPositionPayload()}")
+                appendLine("pencilMarks=${game.pencilMarks.toPositionPayload()}")
                 append("hint=${game.currentHint?.toPayload() ?: "-"}")
             }
-        val moveHistoryPayload =
-            game.moveHistory.joinToString(separator = "\n") { move ->
-                "${move.position.row},${move.position.column},${move.previousCell.name},${move.newCell.name}"
-            }
         return EncodedCrownsSession(
+            // Undo is gone, so the legacy history column stays empty for every new save.
             gameplayPayload = gameplayPayload,
-            moveHistoryPayload = moveHistoryPayload,
+            moveHistoryPayload = "",
             hintsUsed = game.hintsUsed,
             status = game.status.name,
         )
     }
 
+    /**
+     * Restores committed crowns/marks and pencil marks. Correct/wrong presentation is recomputed by
+     * the engine from the regenerated puzzle, so a V1 save simply reopens with its values classified
+     * and no pencil marks; its stored Undo history is dropped.
+     */
     fun decode(
         puzzle: CrownsPuzzle,
         sessionFormatVersion: Int,
         gameplayPayload: String,
-        moveHistoryPayload: String,
         hintsUsed: Int,
         status: String,
+        engine: CrownsGameEngine = CrownsGameEngine(puzzle),
     ): CrownsGameState {
-        require(sessionFormatVersion == SESSION_FORMAT_VERSION) {
+        require(sessionFormatVersion in SUPPORTED_FORMAT_VERSIONS) {
             "Unsupported Crowns session format version: $sessionFormatVersion."
         }
         require(hintsUsed >= 0) { "Hints used must not be negative." }
 
-        val gameplay = gameplayPayload.parseGameplayPayload()
+        val gameplay = gameplayPayload.parseGameplayPayload(sessionFormatVersion)
         val size = gameplay.getValue("size").toIntOrNull() ?: error("Invalid saved board size.")
         require(size == puzzle.size) { "Saved board size does not match the regenerated puzzle." }
         val crowns = gameplay.getValue("crowns").decodePositions()
         val marks = gameplay.getValue("marks").decodePositions()
+        val pencilCrowns = gameplay["pencilCrowns"].orEmpty().decodePositions()
+        val pencilMarks = gameplay["pencilMarks"].orEmpty().decodePositions()
         val board = CrownsState(crowns)
-        val moves = moveHistoryPayload.decodeMoves()
         val savedHintPayload = gameplay.getValue("hint")
         val currentHint =
             if (savedHintPayload == "-") {
@@ -77,10 +81,11 @@ internal object CrownsSessionCodec {
                 }
             }
         val game =
-            CrownsGameEngine(puzzle).restore(
+            engine.restore(
                 board = board,
                 userMarks = marks,
-                moveHistory = moves,
+                pencilCrowns = pencilCrowns,
+                pencilMarks = pencilMarks,
                 hintsUsed = hintsUsed,
                 currentHint = currentHint,
             )
@@ -91,7 +96,7 @@ internal object CrownsSessionCodec {
         return game
     }
 
-    private fun String.parseGameplayPayload(): Map<String, String> {
+    private fun String.parseGameplayPayload(sessionFormatVersion: Int): Map<String, String> {
         val entries =
             lineSequence()
                 .filter(String::isNotBlank)
@@ -100,10 +105,15 @@ internal object CrownsSessionCodec {
                     require(parts.size == 2 && parts[0].isNotBlank()) { "Invalid gameplay payload line." }
                     parts[0] to parts[1]
                 }.toList()
-        val values =
-            entries.toMap()
+        val values = entries.toMap()
         require(entries.size == values.size) { "Gameplay payload contains duplicate fields." }
-        require(values.keys == setOf("size", "crowns", "marks", "hint")) { "Invalid gameplay payload fields." }
+        val expectedFields =
+            if (sessionFormatVersion == 1) {
+                setOf("size", "crowns", "marks", "hint")
+            } else {
+                setOf("size", "crowns", "marks", "pencilCrowns", "pencilMarks", "hint")
+            }
+        require(values.keys == expectedFields) { "Invalid gameplay payload fields." }
         return values
     }
 
@@ -113,7 +123,7 @@ internal object CrownsSessionCodec {
             .ifEmpty { "-" }
 
     private fun String.decodePositions(): Set<CrownsPosition> {
-        if (this == "-") return emptySet()
+        if (isEmpty() || this == "-") return emptySet()
         val positions =
             split('|').map { entry ->
                 val parts = entry.split(':')
@@ -127,28 +137,6 @@ internal object CrownsSessionCodec {
         return positions.toSet()
     }
 
-    private fun String.decodeMoves(): List<CrownsMove> {
-        if (isBlank()) return emptyList()
-        return lineSequence()
-            .map { line ->
-                val parts = line.split(',')
-                require(parts.size == 4) { "Invalid move history entry." }
-                CrownsMove(
-                    position =
-                        CrownsPosition(
-                            row = parts[0].toIntOrNull() ?: error("Invalid move row."),
-                            column = parts[1].toIntOrNull() ?: error("Invalid move column."),
-                        ),
-                    previousCell = parts[2].toPlayerCell(),
-                    newCell = parts[3].toPlayerCell(),
-                )
-            }.toList()
-    }
-
-    private fun String.toPlayerCell(): CrownsPlayerCell =
-        runCatching { CrownsPlayerCell.valueOf(this) }
-            .getOrElse { error("Invalid saved player cell.") }
-
     private fun CrownsHint.toPayload(): String =
         listOf(
             kind.name,
@@ -160,4 +148,6 @@ internal object CrownsSessionCodec {
         ).joinToString(separator = ",")
 
     private val POSITION_ORDER = compareBy(CrownsPosition::row, CrownsPosition::column)
+
+    private val SUPPORTED_FORMAT_VERSIONS = 1..SESSION_FORMAT_VERSION
 }

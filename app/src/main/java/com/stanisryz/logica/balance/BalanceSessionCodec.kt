@@ -6,7 +6,6 @@ import com.stanisryz.logica.puzzle.core.balance.BalanceGameState
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
 import com.stanisryz.logica.puzzle.core.balance.BalanceHint
 import com.stanisryz.logica.puzzle.core.balance.BalanceHintProvider
-import com.stanisryz.logica.puzzle.core.balance.BalanceMove
 import com.stanisryz.logica.puzzle.core.balance.BalancePosition
 import com.stanisryz.logica.puzzle.core.balance.BalancePuzzle
 import com.stanisryz.logica.puzzle.core.balance.BalanceState
@@ -19,7 +18,8 @@ internal data class EncodedBalanceSession(
 )
 
 internal object BalanceSessionCodec {
-    const val SESSION_FORMAT_VERSION = 1
+    /** V1 stored committed values plus an Undo history; V2 stores committed values plus pencil marks. */
+    const val SESSION_FORMAT_VERSION = 2
 
     fun encode(game: BalanceGameState): EncodedBalanceSession {
         val cells =
@@ -34,35 +34,37 @@ internal object BalanceSessionCodec {
             buildString {
                 appendLine("size=${game.board.size}")
                 appendLine("cells=$cells")
+                appendLine("pencil=${game.pencilMarks.toPayload()}")
                 append("hint=${game.currentHint?.toPayload() ?: "-"}")
             }
-        val moveHistoryPayload =
-            game.moveHistory.joinToString(separator = "\n") { move ->
-                "${move.position.row},${move.position.column}," +
-                    "${move.previousValue.payloadSymbol},${move.newValue.payloadSymbol}"
-            }
         return EncodedBalanceSession(
+            // Undo is gone, so the legacy history column stays empty for every new save.
             gameplayPayload = gameplayPayload,
-            moveHistoryPayload = moveHistoryPayload,
+            moveHistoryPayload = "",
             hintsUsed = game.hintsUsed,
             status = game.status.name,
         )
     }
 
+    /**
+     * Restores committed values and pencil marks. Correct/wrong presentation is recomputed by the
+     * engine from the regenerated puzzle, so a V1 save simply reopens with its values classified and
+     * no pencil marks; its stored Undo history is dropped.
+     */
     fun decode(
         puzzle: BalancePuzzle,
         sessionFormatVersion: Int,
         gameplayPayload: String,
-        moveHistoryPayload: String,
         hintsUsed: Int,
         status: String,
+        engine: BalanceGameEngine = BalanceGameEngine(puzzle),
     ): BalanceGameState {
-        require(sessionFormatVersion == SESSION_FORMAT_VERSION) {
+        require(sessionFormatVersion in SUPPORTED_FORMAT_VERSIONS) {
             "Unsupported Balance session format version: $sessionFormatVersion."
         }
         require(hintsUsed >= 0) { "Hints used must not be negative." }
 
-        val gameplay = gameplayPayload.parseGameplayPayload()
+        val gameplay = gameplayPayload.parseGameplayPayload(sessionFormatVersion)
         val size = gameplay.getValue("size").toIntOrNull() ?: error("Invalid saved board size.")
         require(size == puzzle.size) { "Saved board size does not match the regenerated puzzle." }
         val cells = gameplay.getValue("cells")
@@ -71,7 +73,7 @@ internal object BalanceSessionCodec {
             BalanceState.fromRows(
                 cells.map(::balanceCellFromPayloadSymbol).chunked(size),
             )
-        val moves = moveHistoryPayload.decodeMoves()
+        val pencilMarks = gameplay["pencil"].orEmpty().decodePencilMarks()
         val savedHint = gameplay.getValue("hint")
         val currentHint =
             if (savedHint == "-") {
@@ -84,9 +86,9 @@ internal object BalanceSessionCodec {
                 }
             }
         val game =
-            BalanceGameEngine(puzzle).restore(
+            engine.restore(
                 board = board,
-                moveHistory = moves,
+                pencilMarks = pencilMarks,
                 hintsUsed = hintsUsed,
                 currentHint = currentHint,
             )
@@ -97,7 +99,7 @@ internal object BalanceSessionCodec {
         return game
     }
 
-    private fun String.parseGameplayPayload(): Map<String, String> {
+    private fun String.parseGameplayPayload(sessionFormatVersion: Int): Map<String, String> {
         val values =
             lineSequence()
                 .filter(String::isNotBlank)
@@ -106,24 +108,39 @@ internal object BalanceSessionCodec {
                     require(parts.size == 2 && parts[0].isNotBlank()) { "Invalid gameplay payload line." }
                     parts[0] to parts[1]
                 }
-        require(values.keys == setOf("size", "cells", "hint")) { "Invalid gameplay payload fields." }
+        val expectedFields =
+            if (sessionFormatVersion == 1) setOf("size", "cells", "hint") else setOf("size", "cells", "pencil", "hint")
+        require(values.keys == expectedFields) { "Invalid gameplay payload fields." }
         return values
     }
 
-    private fun String.decodeMoves(): List<BalanceMove> {
-        if (isBlank()) return emptyList()
-        return lineSequence()
-            .map { line ->
-                val parts = line.split(',')
-                require(parts.size == 4) { "Invalid move history entry." }
-                val row = parts[0].toIntOrNull() ?: error("Invalid move row.")
-                val column = parts[1].toIntOrNull() ?: error("Invalid move column.")
-                BalanceMove(
-                    position = BalancePosition(row, column),
-                    previousValue = balanceCellFromPayloadSymbol(parts[2].singleOrNull()),
-                    newValue = balanceCellFromPayloadSymbol(parts[3].singleOrNull()),
-                )
-            }.toList()
+    private fun Map<BalancePosition, Set<BalanceCell>>.toPayload(): String =
+        entries
+            .sortedWith(compareBy({ it.key.row }, { it.key.column }))
+            .joinToString(separator = "|") { (position, marks) ->
+                val symbols = marks.sortedBy(BalanceCell::ordinal).map { it.payloadSymbol }.joinToString(separator = "")
+                "${position.row}:${position.column}=$symbols"
+            }.ifEmpty { "-" }
+
+    private fun String.decodePencilMarks(): Map<BalancePosition, Set<BalanceCell>> {
+        if (isEmpty() || this == "-") return emptyMap()
+        val entries =
+            split('|').map { entry ->
+                val parts = entry.split('=')
+                require(parts.size == 2) { "Invalid saved pencil entry." }
+                val coordinates = parts[0].split(':')
+                require(coordinates.size == 2) { "Invalid saved pencil position." }
+                val position =
+                    BalancePosition(
+                        row = coordinates[0].toIntOrNull() ?: error("Invalid saved pencil row."),
+                        column = coordinates[1].toIntOrNull() ?: error("Invalid saved pencil column."),
+                    )
+                val marks = parts[1].map(::balanceCellFromPayloadSymbol).toSet()
+                require(marks.isNotEmpty() && marks.size == parts[1].length) { "Invalid saved pencil marks." }
+                position to marks
+            }
+        require(entries.size == entries.map { it.first }.toSet().size) { "Saved pencil marks contain duplicates." }
+        return entries.toMap()
     }
 
     private fun BalanceHint.toPayload(): String {
@@ -157,4 +174,6 @@ internal object BalanceSessionCodec {
             '1' -> BalanceCell.ONE
             else -> error("Invalid saved cell value.")
         }
+
+    private val SUPPORTED_FORMAT_VERSIONS = 1..SESSION_FORMAT_VERSION
 }

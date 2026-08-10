@@ -22,6 +22,7 @@ import com.stanisryz.logica.crowns.CrownsTutorialStage
 import com.stanisryz.logica.crowns.CrownsTutorialUiState
 import com.stanisryz.logica.crowns.CrownsTutorialViewModel
 import com.stanisryz.logica.crowns.CrownsTutorialViewModelFactory
+import com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPosition
 import com.stanisryz.logica.settings.SettingsRepository
 import com.stanisryz.logica.ui.components.LogicaCard
@@ -39,13 +40,23 @@ internal fun CrownsTutorialRoute(
     val factory = remember(settingsRepository) { CrownsTutorialViewModelFactory(settingsRepository) }
     val viewModel: CrownsTutorialViewModel = viewModel(factory = factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    CrownsTutorialScreen(state, viewModel::onCellTapped, hapticsEnabled, onDone, modifier)
+    CrownsTutorialScreen(
+        state,
+        viewModel::onCellTapped,
+        viewModel::selectValue,
+        viewModel::togglePencilMode,
+        hapticsEnabled,
+        onDone,
+        modifier,
+    )
 }
 
 @Composable
 private fun CrownsTutorialScreen(
     state: CrownsTutorialUiState,
     onCellTapped: (CrownsPosition) -> Unit,
+    onSelectValue: (CrownsPlayerCell) -> Unit,
+    onTogglePencil: () -> Unit,
     hapticsEnabled: Boolean,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
@@ -75,11 +86,7 @@ private fun CrownsTutorialScreen(
             onCellTapped = { position ->
                 if (hapticsEnabled) {
                     view.performHapticFeedback(
-                        when (state.game.cellAt(position)) {
-                            com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell.EMPTY -> HapticFeedbackConstants.KEYBOARD_TAP
-                            com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell.MARKED -> HapticFeedbackConstants.CLOCK_TICK
-                            com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell.CROWN -> HapticFeedbackConstants.KEYBOARD_TAP
-                        },
+                        if (state.isPencilMode) HapticFeedbackConstants.CLOCK_TICK else HapticFeedbackConstants.KEYBOARD_TAP,
                     )
                 }
                 onCellTapped(position)
@@ -87,6 +94,7 @@ private fun CrownsTutorialScreen(
             guidedPositions = state.focusedPositions,
             modifier = Modifier.fillMaxWidth(),
         )
+        CrownsToolBar(state.selectedValue, state.isPencilMode, onSelectValue, onTogglePencil)
         state.feedback?.let { feedback ->
             LogicaCard(containerColor = MaterialTheme.colorScheme.errorContainer) {
                 Text(crownsTutorialFeedbackText(feedback))
@@ -123,12 +131,7 @@ private fun crownsTutorialStageInstruction(state: CrownsTutorialUiState): String
             CrownsTutorialStage.ROW_AND_COLUMN -> R.string.crowns_tutorial_stage_one_body
             CrownsTutorialStage.REGION -> R.string.crowns_tutorial_stage_two_body
             CrownsTutorialStage.DIAGONAL -> R.string.crowns_tutorial_stage_three_body
-            CrownsTutorialStage.MARKS_AND_CONTROLS ->
-                when (state.markCycleStep) {
-                    0 -> R.string.crowns_tutorial_stage_four_body_mark
-                    1 -> R.string.crowns_tutorial_stage_four_body_crown
-                    else -> R.string.crowns_tutorial_stage_four_body_clear
-                }
+            CrownsTutorialStage.MARKS_AND_CONTROLS -> R.string.crowns_tutorial_stage_four_body
             CrownsTutorialStage.MINI_PUZZLE -> R.string.crowns_tutorial_stage_five_body
         },
     )

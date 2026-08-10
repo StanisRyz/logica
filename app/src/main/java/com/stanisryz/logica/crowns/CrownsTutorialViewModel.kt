@@ -3,6 +3,7 @@ package com.stanisryz.logica.crowns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPosition
 import com.stanisryz.logica.settings.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,6 +17,16 @@ internal class CrownsTutorialViewModel(
     private val controller = CrownsTutorialController()
     private val mutableUiState = MutableStateFlow(controller.state)
     val uiState: StateFlow<CrownsTutorialUiState> = mutableUiState.asStateFlow()
+
+    fun selectValue(value: CrownsPlayerCell) {
+        controller.selectValue(value)
+        mutableUiState.value = controller.state
+    }
+
+    fun togglePencilMode() {
+        controller.togglePencilMode()
+        mutableUiState.value = controller.state
+    }
 
     fun onCellTapped(position: CrownsPosition) {
         controller.onCellTapped(position)

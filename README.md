@@ -6,7 +6,7 @@ Requires JDK 17 and Android SDK Platform 36.
 
 Crowns, the second puzzle type, now has a pure-Kotlin domain model, deterministic solving and generation, solve-based difficulty evaluation, and unique/multiple-solution detection in `puzzle-core/`.
 
-Crowns also has a pure-Kotlin gameplay/session layer with user marks, undo/reset, structured conflicts, completion tracking, and logic-based hints. Its complete Android experience is available from the Catalog with selectable difficulty, independent save/restore, explainable hints, and a short replayable interactive onboarding, and it is also part of the Daily challenge.
+Crowns also has a pure-Kotlin gameplay/session layer with committed crowns and blocked marks, pencil notes, reset, structured conflicts, completion tracking, and logic-based hints. Its complete Android experience is available from the Catalog with selectable difficulty, independent save/restore, explainable hints, and a short replayable interactive onboarding, and it is also part of the Daily challenge.
 
 ```powershell
 .\gradlew.bat assembleDebug
@@ -56,7 +56,9 @@ Modules:
 - `puzzle-core/` — deterministic Balance, Crowns, and Word generation/solving plus pure-Kotlin gameplay and diagnostics.
 - `lexicon/word/` — curated offline Word corpus sources and their provenance note.
 
-Balance is playable from the Catalog with optional interactive onboarding, selectable difficulties, undo/reset, conflicts, hints, and improved accessibility cues. The Today screen provides a deterministic, resumable Daily challenge that contains Balance, Crowns, and Word (Policy V4, with Word Generator V2): each puzzle is started, resumed, and completed independently in any order, aggregate progress is shown as `0 / 3` … `3 / 3`, and unfinished Catalog progress stays separate. A Word game that ends in failure still completes its Daily entry, so the run and the streak are never blocked. Earlier Daily runs keep their immutable V1, V2, or V3 definitions.
+Balance is playable from the Catalog with optional interactive onboarding, selectable difficulties, reset, conflicts, hints, and improved accessibility cues.
+
+Balance and Crowns use explicit input rather than cycling taps: you pick the value to place (● or ○ in Balance, a crown or a × mark in Crowns) and tap a cell. A correct value is confirmed and fixed for the rest of the game; a wrong one stays on the board, marked as an error, until you replace it or tap it again with the same value to remove it — the app never shows you what the right value was. The separate Pencil toggle writes small unchecked notes in a cell's upper-right corner; committing a value clears that cell's notes. There is no Undo and no eraser. The Today screen provides a deterministic, resumable Daily challenge that contains Balance, Crowns, and Word (Policy V4, with Word Generator V2): each puzzle is started, resumed, and completed independently in any order, aggregate progress is shown as `0 / 3` … `3 / 3`, and unfinished Catalog progress stays separate. A Word game that ends in failure still completes its Daily entry, so the run and the streak are never blocked. Earlier Daily runs keep their immutable V1, V2, or V3 definitions.
 
 Word (Слово) is the third playable puzzle: EASY uses four letters, MEDIUM five, HARD six, and
 EXPERT seven, with six valid attempts at every difficulty. It is available from the Catalog with an

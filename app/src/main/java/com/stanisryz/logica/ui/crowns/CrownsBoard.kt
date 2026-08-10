@@ -2,14 +2,20 @@ package com.stanisryz.logica.ui.crowns
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,8 +33,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.stanisryz.logica.R
+import com.stanisryz.logica.puzzle.core.crowns.CrownsCellStatus
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameState
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell
@@ -56,9 +65,11 @@ internal fun CrownsBoard(
         }
     val hint = game.currentHint
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier.widthIn(max = 560.dp).fillMaxWidth().aspectRatio(1f),
     ) {
+        // Pencil marks have to stay readable inside one cell of an 8x8 board on a small screen.
+        val pencilSize = ((maxWidth / puzzle.size).value * PENCIL_RATIO).coerceIn(8f, 16f).dp
         Column(Modifier.fillMaxSize()) {
             repeat(puzzle.size) { row ->
                 Row(Modifier.fillMaxWidth().weight(1f)) {
@@ -69,6 +80,9 @@ internal fun CrownsBoard(
                             position = position,
                             regionNumber = checkNotNull(regionNumbers[region]),
                             cell = game.cellAt(position),
+                            status = game.statusAt(position),
+                            pencil = game.pencilAt(position),
+                            pencilSize = pencilSize,
                             isConflict = position in conflictPositions,
                             isHintTarget = position in (hint?.targetPositions ?: emptySet()),
                             isHintEvidence = position in (hint?.evidencePositions ?: emptySet()),
@@ -79,7 +93,7 @@ internal fun CrownsBoard(
                             leftBoundary = column == 0 || puzzle.regionAt(CrownsPosition(row, column - 1)) != region,
                             bottomBoundary = row == puzzle.size - 1 || puzzle.regionAt(CrownsPosition(row + 1, column)) != region,
                             rightBoundary = column == puzzle.size - 1 || puzzle.regionAt(CrownsPosition(row, column + 1)) != region,
-                            enabled = game.status == CrownsGameStatus.IN_PROGRESS,
+                            enabled = game.status == CrownsGameStatus.IN_PROGRESS && !game.isLocked(position),
                             onClick = { onCellTapped(position) },
                             modifier = Modifier.weight(1f).fillMaxHeight(),
                         )
@@ -95,6 +109,9 @@ private fun CrownsCellView(
     position: CrownsPosition,
     regionNumber: Int,
     cell: CrownsPlayerCell,
+    status: CrownsCellStatus,
+    pencil: Set<CrownsPlayerCell>,
+    pencilSize: Dp,
     isConflict: Boolean,
     isHintTarget: Boolean,
     isHintEvidence: Boolean,
@@ -112,9 +129,10 @@ private fun CrownsCellView(
     val colors = MaterialTheme.colorScheme
     val palette = LocalLogicaPalette.current
     val regionColors = palette.crownsRegions
+    val isIncorrect = status == CrownsCellStatus.INCORRECT
     val background =
         when {
-            isConflict -> colors.errorContainer
+            isConflict || isIncorrect -> colors.errorContainer
             isHintConflict -> colors.errorContainer.copy(alpha = 0.72f)
             isHintTarget -> colors.tertiaryContainer
             isHintEvidence -> colors.secondaryContainer
@@ -124,8 +142,15 @@ private fun CrownsCellView(
     val evidenceSuffix = if (isHintEvidence) stringResource(R.string.hint_evidence_suffix) else ""
     val hintConflictSuffix = if (isHintConflict) stringResource(R.string.hint_conflict_suffix) else ""
     val guidedSuffix = if (isGuided) stringResource(R.string.crowns_guided_suffix) else ""
-    val nextAction = stringResource(R.string.crowns_cell_next_action, cell.nextActionLabel())
-    val hintSuffix = targetSuffix + evidenceSuffix + hintConflictSuffix + guidedSuffix
+    val stateLabel =
+        stringResource(
+            when (status) {
+                CrownsCellStatus.CORRECT -> R.string.confirmed_cell
+                CrownsCellStatus.INCORRECT -> R.string.incorrect_cell
+                else -> R.string.editable_cell
+            },
+        )
+    val hintSuffix = targetSuffix + evidenceSuffix + hintConflictSuffix + guidedSuffix + pencil.pencilAccessibilitySuffix()
     val description =
         stringResource(
             R.string.crowns_cell_description,
@@ -133,7 +158,7 @@ private fun CrownsCellView(
             position.column + 1,
             regionNumber,
             cell.accessibilityLabel(),
-            nextAction,
+            stateLabel,
             if (isConflict) stringResource(R.string.conflict_suffix) else "",
             hintSuffix,
         )
@@ -187,7 +212,7 @@ private fun CrownsCellView(
                         )
                     }
                     when {
-                        isConflict || isHintConflict ->
+                        isConflict || isHintConflict || isIncorrect ->
                             drawRect(
                                 color = colors.error,
                                 style = Stroke(width = strong),
@@ -210,24 +235,66 @@ private fun CrownsCellView(
                 },
         contentAlignment = Alignment.Center,
     ) {
+        val symbolTint = if (isConflict || isIncorrect) colors.onErrorContainer else palette.onCrownsRegion
         when (cell) {
             CrownsPlayerCell.EMPTY -> Unit
             CrownsPlayerCell.MARKED ->
                 Text(
                     text = "×",
                     style = MaterialTheme.typography.titleMedium,
-                    color = if (isConflict) colors.onErrorContainer else palette.onCrownsRegion,
+                    color = symbolTint,
                 )
             CrownsPlayerCell.CROWN ->
                 Icon(
                     painter = painterResource(R.drawable.ic_crown),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(0.55f),
-                    tint = if (isConflict) colors.onErrorContainer else palette.onCrownsRegion,
+                    tint = symbolTint,
                 )
+        }
+        if (isIncorrect) {
+            // A wrong value must be recognisable without relying on the error colour alone.
+            Icon(
+                imageVector = Icons.Filled.PriorityHigh,
+                contentDescription = null,
+                tint = colors.error,
+                modifier = Modifier.align(Alignment.TopStart).size(pencilSize),
+            )
+        }
+        if (pencil.isNotEmpty()) {
+            Row(
+                modifier = Modifier.align(Alignment.TopEnd).padding(horizontal = 1.dp),
+                horizontalArrangement = Arrangement.spacedBy(1.dp),
+            ) {
+                if (CrownsPlayerCell.CROWN in pencil) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_crown),
+                        contentDescription = null,
+                        modifier = Modifier.size(pencilSize),
+                        tint = palette.onCrownsRegion.copy(alpha = PENCIL_ALPHA),
+                    )
+                }
+                if (CrownsPlayerCell.MARKED in pencil) {
+                    Text(
+                        text = "×",
+                        fontSize = pencilSize.value.sp,
+                        lineHeight = pencilSize.value.sp,
+                        color = palette.onCrownsRegion.copy(alpha = PENCIL_ALPHA),
+                    )
+                }
+            }
         }
     }
 }
+
+@Composable
+private fun Set<CrownsPlayerCell>.pencilAccessibilitySuffix(): String =
+    if (isEmpty()) {
+        ""
+    } else {
+        val labels = sortedBy(CrownsPlayerCell::ordinal).map { it.accessibilityLabel() }
+        stringResource(R.string.pencil_marks_suffix, labels.joinToString(separator = ", "))
+    }
 
 @Composable
 private fun CrownsPlayerCell.accessibilityLabel(): String =
@@ -239,12 +306,5 @@ private fun CrownsPlayerCell.accessibilityLabel(): String =
         },
     )
 
-@Composable
-private fun CrownsPlayerCell.nextActionLabel(): String =
-    stringResource(
-        when (this) {
-            CrownsPlayerCell.EMPTY -> R.string.crowns_next_mark
-            CrownsPlayerCell.MARKED -> R.string.crowns_next_crown
-            CrownsPlayerCell.CROWN -> R.string.crowns_next_clear
-        },
-    )
+private const val PENCIL_RATIO = 0.3f
+private const val PENCIL_ALPHA = 0.7f

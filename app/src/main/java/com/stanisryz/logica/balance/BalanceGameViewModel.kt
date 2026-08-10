@@ -3,6 +3,7 @@ package com.stanisryz.logica.balance
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.stanisryz.logica.puzzle.core.balance.BalanceCell
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameEngine
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameState
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
@@ -71,6 +72,9 @@ internal sealed interface BalanceGameUiState {
     data class Ready(
         val puzzle: BalancePuzzle,
         val game: BalanceGameState,
+        /** The value the next tap places. Tool selection is presentation state and is never persisted. */
+        val selectedValue: BalanceCell = BalanceCell.ONE,
+        val isPencilMode: Boolean = false,
         val isHintLoading: Boolean = false,
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
     ) : BalanceGameUiState
@@ -124,12 +128,25 @@ internal class BalanceGameViewModel(
         }
     }
 
-    fun onCellTapped(position: BalancePosition) {
-        updateGame { engine, game -> engine.cycleValue(game, position) }
+    fun selectValue(value: BalanceCell) {
+        val ready = mutableUiState.value as? BalanceGameUiState.Ready ?: return
+        if (ready.selectedValue == value) return
+        mutableUiState.value = ready.copy(selectedValue = value)
     }
 
-    fun undo() {
-        updateGame { engine, game -> engine.undo(game) }
+    fun togglePencilMode() {
+        val ready = mutableUiState.value as? BalanceGameUiState.Ready ?: return
+        mutableUiState.value = ready.copy(isPencilMode = !ready.isPencilMode)
+    }
+
+    fun onCellTapped(position: BalancePosition) {
+        val ready = mutableUiState.value as? BalanceGameUiState.Ready ?: return
+        val value = ready.selectedValue
+        if (ready.isPencilMode) {
+            updateGame { engine, game -> engine.togglePencilMark(game, position, value) }
+        } else {
+            updateGame { engine, game -> engine.placeValue(game, position, value) }
+        }
     }
 
     fun reset() {
@@ -201,19 +218,20 @@ internal class BalanceGameViewModel(
                 require(saved.generatorVersion == generator.version)
                 val puzzle = generator.generate(saved.puzzleSeed, saved.difficulty)
                 require(puzzle.id.generatorVersion == saved.generatorVersion)
+                val engine = BalanceGameEngine(puzzle)
                 val game =
                     BalanceSessionCodec.decode(
                         puzzle = puzzle,
                         sessionFormatVersion = saved.sessionFormatVersion,
                         gameplayPayload = saved.gameplayPayload,
-                        moveHistoryPayload = saved.moveHistoryPayload,
                         hintsUsed = saved.hintsUsed,
                         status = saved.status,
+                        engine = engine,
                     )
                 require(game.status == BalanceGameStatus.IN_PROGRESS)
                 LoadedSession(
                     puzzle = puzzle,
-                    engine = BalanceGameEngine(puzzle),
+                    engine = engine,
                     game = game,
                     activeSession = ActiveSession(saved.sessionId, puzzle, requestedLaunch.context),
                     isNew = false,

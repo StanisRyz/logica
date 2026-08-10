@@ -65,7 +65,13 @@
 - Balance gameplay is immutable and separate from `BalanceState`; fixed clues cannot change, while editable cells may be invalid.
 - UI renders gameplay state and dispatches actions; diagnostics and hints reuse core rules/logic, and reset preserves hint usage.
 - Balance is the first playable Android slice; generation and solver-backed hints run off the main thread.
-- Localized hint text belongs in `:app`; active Balance progress preserves moves, Undo history, and hint usage across restarts.
+- Localized hint text belongs in `:app`; active Balance progress preserves committed values, pencil marks, and hint usage across restarts.
+- Balance and Crowns input is explicit: the player selects a value (`ZERO`/`ONE`, crown/blocked mark) and taps a cell; there is no tap cycle, no Undo, and no Eraser, and tapping the selected value again removes it.
+- A committed placement is validated at once against the puzzle's single answer: correct becomes `CORRECT` and is permanently locked, wrong becomes `INCORRECT` and stays visible and editable; the correct value is never revealed by the wrong-state presentation. A puzzle without a unique answer stays `UNVERIFIED` and locks nothing.
+- Pencil marks are a separate unvalidated layer on empty cells only: they never lock, any committed placement clears them, and they render small in the cell's upper-right corner.
+- Balance/Crowns session codecs are V2 (committed values plus pencil marks); V1 saves still decode, keep their values, gain no pencil marks, and drop their obsolete Undo history. Correct/wrong is always recomputed from the regenerated puzzle, never stored.
+- Tool selection and Pencil mode are transient presentation state and are never persisted.
+- Mistake counting, `GameOutcome.FAILED` for Balance/Crowns, retry, and SOLVED-only Daily behaviour are deliberately deferred to Stage 30.1.
 - Balance tutorial is application onboarding: it reuses core Balance gameplay but stays separate from Room-backed catalog sessions; completion is a DataStore preference.
 - Crowns tutorial is Crowns-only application onboarding: its fixed state never touches Catalog sessions, results, statistics, Daily state, or gameplay hint counters; its prompt state is a DataStore preference.
 - Catalog and Daily gameplay use separate session scopes, must coexist, and reuse the existing per-puzzle engines/UI rather than generic gameplay screens.

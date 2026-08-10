@@ -72,6 +72,9 @@ internal sealed interface CrownsGameUiState {
     data class Ready(
         val puzzle: CrownsPuzzle,
         val game: CrownsGameState,
+        /** The value the next tap places. Tool selection is presentation state and is never persisted. */
+        val selectedValue: CrownsPlayerCell = CrownsPlayerCell.CROWN,
+        val isPencilMode: Boolean = false,
         val isHintLoading: Boolean = false,
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
     ) : CrownsGameUiState
@@ -123,18 +126,26 @@ internal class CrownsGameViewModel(
         }
     }
 
-    fun onCellTapped(position: CrownsPosition) {
-        updateGame { engine, game ->
-            when (game.cellAt(position)) {
-                CrownsPlayerCell.EMPTY -> engine.placeMark(game, position)
-                CrownsPlayerCell.MARKED -> engine.placeCrown(game, position)
-                CrownsPlayerCell.CROWN -> engine.clearCell(game, position)
-            }
-        }
+    fun selectValue(value: CrownsPlayerCell) {
+        require(value != CrownsPlayerCell.EMPTY) { "Only a concrete value can be selected." }
+        val ready = mutableUiState.value as? CrownsGameUiState.Ready ?: return
+        if (ready.selectedValue == value) return
+        mutableUiState.value = ready.copy(selectedValue = value)
     }
 
-    fun undo() {
-        updateGame { engine, game -> engine.undo(game) }
+    fun togglePencilMode() {
+        val ready = mutableUiState.value as? CrownsGameUiState.Ready ?: return
+        mutableUiState.value = ready.copy(isPencilMode = !ready.isPencilMode)
+    }
+
+    fun onCellTapped(position: CrownsPosition) {
+        val ready = mutableUiState.value as? CrownsGameUiState.Ready ?: return
+        val value = ready.selectedValue
+        if (ready.isPencilMode) {
+            updateGame { engine, game -> engine.togglePencilMark(game, position, value) }
+        } else {
+            updateGame { engine, game -> engine.placeValue(game, position, value) }
+        }
     }
 
     fun reset() {
@@ -203,19 +214,20 @@ internal class CrownsGameViewModel(
                 require(saved.generatorVersion == generator.version)
                 val puzzle = generator.generate(saved.puzzleSeed, saved.difficulty)
                 require(puzzle.id.generatorVersion == saved.generatorVersion)
+                val engine = CrownsGameEngine(puzzle)
                 val game =
                     CrownsSessionCodec.decode(
                         puzzle = puzzle,
                         sessionFormatVersion = saved.sessionFormatVersion,
                         gameplayPayload = saved.gameplayPayload,
-                        moveHistoryPayload = saved.moveHistoryPayload,
                         hintsUsed = saved.hintsUsed,
                         status = saved.status,
+                        engine = engine,
                     )
                 require(game.status == CrownsGameStatus.IN_PROGRESS)
                 LoadedSession(
                     puzzle,
-                    CrownsGameEngine(puzzle),
+                    engine,
                     game,
                     ActiveSession(saved.sessionId, puzzle, requestedLaunch.context),
                     isNew = false,

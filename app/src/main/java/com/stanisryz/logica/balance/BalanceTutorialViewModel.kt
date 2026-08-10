@@ -3,6 +3,7 @@ package com.stanisryz.logica.balance
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.stanisryz.logica.puzzle.core.balance.BalanceCell
 import com.stanisryz.logica.puzzle.core.balance.BalancePosition
 import com.stanisryz.logica.settings.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,6 +17,16 @@ internal class BalanceTutorialViewModel(
     private val controller = BalanceTutorialController()
     private val mutableUiState = MutableStateFlow(controller.state)
     val uiState: StateFlow<BalanceTutorialUiState> = mutableUiState.asStateFlow()
+
+    fun selectValue(value: BalanceCell) {
+        controller.selectValue(value)
+        mutableUiState.value = controller.state
+    }
+
+    fun togglePencilMode() {
+        controller.togglePencilMode()
+        mutableUiState.value = controller.state
+    }
 
     fun onCellTapped(position: BalancePosition) {
         controller.onCellTapped(position)

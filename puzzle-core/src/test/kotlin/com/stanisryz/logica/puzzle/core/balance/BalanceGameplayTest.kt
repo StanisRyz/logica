@@ -13,33 +13,41 @@ import org.junit.Test
 
 class BalanceGameplayTest {
     @Test
-    fun gameplayTransitionsProtectCluesAndPreserveHintUsageAcrossReset() {
+    fun committedValuesAreValidatedWhilePencilMarksStayHypotheses() {
         val puzzle = puzzle("001.", "110.", "010.", "101.")
         val engine = BalanceGameEngine(puzzle)
         val editable = BalancePosition(0, 3)
         val initial = engine.start()
 
-        assertSame(initial, engine.cycleValue(initial, BalancePosition(0, 0)))
+        assertSame(initial, engine.placeValue(initial, BalancePosition(0, 0), BalanceCell.ONE))
+        assertEquals(BalanceCellStatus.FIXED, initial.statusAt(BalancePosition(0, 0)))
 
-        val zero = engine.cycleValue(initial, editable)
-        val hinted = engine.requestHint(zero)
-        assertEquals(BalanceCell.ZERO, zero.board.cellAt(editable))
+        val hinted = engine.requestHint(initial)
         assertEquals(1, hinted.hintsUsed)
         assertSame(hinted, engine.requestHint(hinted))
 
-        val one = engine.cycleValue(hinted, editable)
-        val empty = engine.cycleValue(one, editable)
-        val set = engine.setValue(empty, editable, BalanceCell.ONE)
-        val cleared = engine.clearValue(set, editable)
-        val undone = engine.undo(cleared)
+        val drafted = engine.togglePencilMark(hinted, editable, BalanceCell.ZERO)
+        val bothDrafted = engine.togglePencilMark(drafted, editable, BalanceCell.ONE)
+        assertEquals(setOf(BalanceCell.ZERO, BalanceCell.ONE), bothDrafted.pencilMarksAt(editable))
+        assertEquals(BalanceCellStatus.EMPTY, bothDrafted.statusAt(editable))
+        assertEquals(setOf(BalanceCell.ONE), engine.togglePencilMark(bothDrafted, editable, BalanceCell.ZERO).pencilMarksAt(editable))
 
-        assertEquals(BalanceCell.ONE, undone.board.cellAt(editable))
-        assertEquals(BalanceCell.EMPTY, empty.board.cellAt(editable))
-        assertEquals(set.moveHistory.last(), BalanceMove(editable, BalanceCell.EMPTY, BalanceCell.ONE))
+        val wrong = engine.placeValue(bothDrafted, editable, BalanceCell.ZERO)
+        assertEquals(BalanceCellStatus.INCORRECT, wrong.statusAt(editable))
+        assertEquals(BalanceCell.ZERO, wrong.board.cellAt(editable))
+        assertTrue(wrong.pencilMarksAt(editable).isEmpty())
+        // A wrong value can neither be pencilled over nor silently corrected.
+        assertSame(wrong, engine.togglePencilMark(wrong, editable, BalanceCell.ONE))
+        assertEquals(BalanceCell.EMPTY, engine.placeValue(wrong, editable, BalanceCell.ZERO).board.cellAt(editable))
 
-        val reset = engine.reset(undone)
+        val correct = engine.placeValue(wrong, editable, BalanceCell.ONE)
+        assertEquals(BalanceCellStatus.CORRECT, correct.statusAt(editable))
+        assertSame(correct, engine.placeValue(correct, editable, BalanceCell.ONE))
+        assertSame(correct, engine.togglePencilMark(correct, editable, BalanceCell.ZERO))
+
+        val reset = engine.reset(correct)
         assertEquals(BalanceState.fromPuzzle(puzzle), reset.board)
-        assertTrue(reset.moveHistory.isEmpty())
+        assertTrue(reset.pencilMarks.isEmpty())
         assertEquals(1, reset.hintsUsed)
         assertNull(reset.currentHint)
     }
@@ -50,11 +58,13 @@ class BalanceGameplayTest {
         val engine = BalanceGameEngine(puzzle)
         var game = engine.start()
 
-        game = engine.setValue(game, BalancePosition(0, 0), BalanceCell.ZERO)
-        game = engine.setValue(game, BalancePosition(0, 1), BalanceCell.ZERO)
-        game = engine.setValue(game, BalancePosition(0, 2), BalanceCell.ZERO)
+        game = engine.placeValue(game, BalancePosition(0, 0), BalanceCell.ZERO)
+        game = engine.placeValue(game, BalancePosition(0, 1), BalanceCell.ZERO)
+        game = engine.placeValue(game, BalancePosition(0, 2), BalanceCell.ZERO)
 
         assertEquals(BalanceGameStatus.IN_PROGRESS, game.status)
+        // An empty board has many answers, so nothing can be called right or wrong.
+        assertEquals(BalanceCellStatus.UNVERIFIED, game.statusAt(BalancePosition(0, 0)))
         assertTrue(game.violations.any { it.type == BalanceViolationType.UNBALANCED_ROW })
         assertEquals(
             setOf(BalancePosition(0, 0), BalancePosition(0, 1), BalancePosition(0, 2)),
@@ -101,7 +111,11 @@ class BalanceGameplayTest {
         var game = initial
         rows.forEachIndexed { row, values ->
             values.forEachIndexed { column, value ->
-                game = engine.setValue(game, BalancePosition(row, column), value.toCell())
+                val position = BalancePosition(row, column)
+                val cell = value.toCell()
+                if (cell != BalanceCell.EMPTY && game.board.cellAt(position) != cell) {
+                    game = engine.placeValue(game, position, cell)
+                }
             }
         }
         return game

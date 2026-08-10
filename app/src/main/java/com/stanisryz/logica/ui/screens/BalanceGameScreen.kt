@@ -3,10 +3,11 @@ package com.stanisryz.logica.ui.screens
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,6 +45,7 @@ import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.ui.balance.BalanceBoard
+import com.stanisryz.logica.ui.balance.symbol
 import com.stanisryz.logica.ui.components.BodyText
 import com.stanisryz.logica.ui.components.DifficultyBadge
 import com.stanisryz.logica.ui.components.GameAction
@@ -52,6 +54,8 @@ import com.stanisryz.logica.ui.components.GameMessage
 import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.components.LogicaCard
 import com.stanisryz.logica.ui.components.PuzzleSolvedDialog
+import com.stanisryz.logica.ui.components.PuzzleTool
+import com.stanisryz.logica.ui.components.PuzzleToolBar
 import com.stanisryz.logica.ui.components.RetryableErrorState
 import com.stanisryz.logica.ui.components.ScreenColumn
 import com.stanisryz.logica.ui.components.SupportingText
@@ -80,7 +84,8 @@ internal fun BalanceGameRoute(
     BalanceGameScreen(
         uiState,
         gameViewModel::onCellTapped,
-        gameViewModel::undo,
+        gameViewModel::selectValue,
+        gameViewModel::togglePencilMode,
         gameViewModel::requestHint,
         gameViewModel::reset,
         gameViewModel::retryCompletion,
@@ -99,7 +104,8 @@ internal fun BalanceGameRoute(
 private fun BalanceGameScreen(
     uiState: BalanceGameUiState,
     onCellTapped: (BalancePosition) -> Unit,
-    onUndo: () -> Unit,
+    onSelectValue: (BalanceCell) -> Unit,
+    onTogglePencil: () -> Unit,
     onHint: () -> Unit,
     onReset: () -> Unit,
     onRetryCompletion: () -> Unit,
@@ -135,10 +141,13 @@ private fun BalanceGameScreen(
                 uiState.puzzle,
                 uiState.game,
                 uiState.puzzle.id.difficulty,
+                uiState.selectedValue,
+                uiState.isPencilMode,
                 uiState.isHintLoading,
                 uiState.completionPersistence,
                 onCellTapped,
-                onUndo,
+                onSelectValue,
+                onTogglePencil,
                 onHint,
                 onReset,
                 onRetryCompletion,
@@ -157,10 +166,13 @@ private fun ReadyState(
     puzzle: BalancePuzzle,
     game: BalanceGameState,
     difficulty: Difficulty,
+    selectedValue: BalanceCell,
+    isPencilMode: Boolean,
     isHintLoading: Boolean,
     completionPersistence: CompletionPersistence,
     onCellTapped: (BalancePosition) -> Unit,
-    onUndo: () -> Unit,
+    onSelectValue: (BalanceCell) -> Unit,
+    onTogglePencil: () -> Unit,
     onHint: () -> Unit,
     onReset: () -> Unit,
     onRetryCompletion: () -> Unit,
@@ -202,16 +214,11 @@ private fun ReadyState(
                 onCellTapped(it)
             },
         )
+        BalanceToolBar(selectedValue, isPencilMode, onSelectValue, onTogglePencil)
         game.currentHint?.let { hint -> HintCard(hint) }
         GameMessage(game.violations.firstOrNull()?.let { violationText(it.type) })
         GameActionBar(
             listOf(
-                GameAction(
-                    icon = Icons.AutoMirrored.Filled.Undo,
-                    label = stringResource(R.string.undo),
-                    enabled = game.moveHistory.isNotEmpty(),
-                    onClick = onUndo,
-                ),
                 GameAction(
                     icon = Icons.Filled.Lightbulb,
                     label = stringResource(R.string.hint),
@@ -222,7 +229,7 @@ private fun ReadyState(
                     icon = Icons.Filled.Refresh,
                     label = stringResource(R.string.reset),
                     enabled = true,
-                    onClick = { if (game.moveHistory.isEmpty()) onReset() else showResetConfirmation = true },
+                    onClick = { if (game.hasPlayerInput) showResetConfirmation = true else onReset() },
                 ),
             ),
         )
@@ -249,6 +256,48 @@ private fun ReadyState(
         )
     }
 }
+
+/** Explicit input: pick the value to place, and optionally switch to unvalidated pencil notes. */
+@Composable
+internal fun BalanceToolBar(
+    selectedValue: BalanceCell,
+    isPencilMode: Boolean,
+    onSelectValue: (BalanceCell) -> Unit,
+    onTogglePencil: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    PuzzleToolBar(
+        tools =
+            listOf(
+                balanceValueTool(BalanceCell.ONE, R.string.balance_tool_black, selectedValue, onSelectValue),
+                balanceValueTool(BalanceCell.ZERO, R.string.balance_tool_white, selectedValue, onSelectValue),
+                PuzzleTool(
+                    label = stringResource(R.string.tool_pencil),
+                    stateDescription = if (isPencilMode) stringResource(R.string.tool_on) else stringResource(R.string.tool_off),
+                    selected = isPencilMode,
+                    onClick = onTogglePencil,
+                    symbol = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                ),
+            ),
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun balanceValueTool(
+    value: BalanceCell,
+    labelResource: Int,
+    selectedValue: BalanceCell,
+    onSelectValue: (BalanceCell) -> Unit,
+): PuzzleTool =
+    PuzzleTool(
+        label = stringResource(labelResource),
+        stateDescription =
+            stringResource(if (selectedValue == value) R.string.tool_selected else R.string.tool_not_selected),
+        selected = selectedValue == value,
+        onClick = { onSelectValue(value) },
+        symbol = { Text(value.symbol(), style = MaterialTheme.typography.titleMedium) },
+    )
 
 @Composable
 internal fun ResetConfirmationDialog(
@@ -321,10 +370,3 @@ private fun violationText(type: BalanceViolationType): String =
             BalanceViolationType.BOARD_SIZE_MISMATCH -> R.string.violation_board_size
         },
     )
-
-private fun BalanceCell.symbol(): String =
-    when (this) {
-        BalanceCell.EMPTY -> ""
-        BalanceCell.ZERO -> "○"
-        BalanceCell.ONE -> "●"
-    }
