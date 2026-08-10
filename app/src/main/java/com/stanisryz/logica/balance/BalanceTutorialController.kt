@@ -63,6 +63,12 @@ internal class BalanceTutorialController {
 
         val updated = engine.placeValue(state.game, position, state.selectedValue)
         if (updated == state.game) return
+        // Onboarding teaches the three-mistake rule by living through it: a failed practice attempt
+        // simply restarts the same stage instead of dead-ending the tutorial.
+        if (updated.status == BalanceGameStatus.FAILED) {
+            state = state.copy(game = engine.start(), feedback = BalanceTutorialFeedback.TRY_AGAIN)
+            return
+        }
 
         val expectedMove = BalanceTutorialScenarios.expectedMove(state.stage)
         if (expectedMove != null) {

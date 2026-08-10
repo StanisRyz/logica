@@ -66,6 +66,12 @@ internal class CrownsTutorialController {
         }
 
         val updated = engine.placeValue(state.game, position, state.selectedValue)
+        // Onboarding teaches the three-mistake rule by living through it: a failed practice attempt
+        // simply restarts the same stage instead of dead-ending the tutorial.
+        if (updated.status == CrownsGameStatus.FAILED) {
+            state = state.copy(game = engine.start(), feedback = CrownsTutorialScenarios.feedbackFor(state.stage))
+            return
+        }
         state =
             when (state.stage) {
                 CrownsTutorialStage.ROW_AND_COLUMN,

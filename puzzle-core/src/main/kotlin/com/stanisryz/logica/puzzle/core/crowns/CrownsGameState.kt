@@ -1,6 +1,7 @@
 package com.stanisryz.logica.puzzle.core.crowns
 
 import com.stanisryz.logica.puzzle.core.model.PuzzleId
+import com.stanisryz.logica.puzzle.core.model.PuzzleMistakes
 
 enum class CrownsPlayerCell {
     EMPTY,
@@ -23,6 +24,10 @@ enum class CrownsCellStatus {
 enum class CrownsGameStatus {
     IN_PROGRESS,
     SOLVED,
+    FAILED,
+    ;
+
+    val isTerminal: Boolean get() = this != IN_PROGRESS
 }
 
 class CrownsGameState internal constructor(
@@ -33,6 +38,8 @@ class CrownsGameState internal constructor(
     pencilMarks: Iterable<CrownsPosition>,
     cellStatuses: Map<CrownsPosition, CrownsCellStatus>,
     val status: CrownsGameStatus,
+    /** How many incorrect values this attempt has committed, counted as events rather than red cells. */
+    val mistakesUsed: Int,
     val hintsUsed: Int,
     val currentHint: CrownsHint?,
     violations: Iterable<CrownsViolation>,
@@ -49,6 +56,9 @@ class CrownsGameState internal constructor(
     init {
         require(board.crowns.intersect(this.userMarks).isEmpty()) { "A cell cannot contain both a crown and a mark." }
         require(hintsUsed >= 0) { "Hints used must not be negative." }
+        require(mistakesUsed in 0..PuzzleMistakes.MAX_MISTAKES) {
+            "Mistakes used must be within 0..${PuzzleMistakes.MAX_MISTAKES}."
+        }
         val committed = board.crowns + this.userMarks
         require((this.pencilCrowns + this.pencilMarks).none { it in committed }) {
             "A committed cell cannot also hold pencil marks."
@@ -57,9 +67,6 @@ class CrownsGameState internal constructor(
             "Empty cells are not listed among the cell statuses."
         }
     }
-
-    val hasPlayerInput: Boolean
-        get() = board.crowns.isNotEmpty() || userMarks.isNotEmpty() || pencilCrowns.isNotEmpty() || pencilMarks.isNotEmpty()
 
     fun cellAt(position: CrownsPosition): CrownsPlayerCell =
         when (position) {
@@ -89,6 +96,7 @@ class CrownsGameState internal constructor(
             pencilMarks == other.pencilMarks &&
             cellStatuses == other.cellStatuses &&
             status == other.status &&
+            mistakesUsed == other.mistakesUsed &&
             hintsUsed == other.hintsUsed &&
             currentHint == other.currentHint &&
             violations == other.violations
@@ -101,6 +109,7 @@ class CrownsGameState internal constructor(
         result = 31 * result + pencilMarks.hashCode()
         result = 31 * result + cellStatuses.hashCode()
         result = 31 * result + status.hashCode()
+        result = 31 * result + mistakesUsed
         result = 31 * result + hintsUsed
         result = 31 * result + (currentHint?.hashCode() ?: 0)
         result = 31 * result + violations.hashCode()
@@ -109,6 +118,6 @@ class CrownsGameState internal constructor(
 
     override fun toString(): String =
         "CrownsGameState(puzzleId=$puzzleId, board=$board, userMarks=$userMarks, pencilCrowns=$pencilCrowns, " +
-            "pencilMarks=$pencilMarks, cellStatuses=$cellStatuses, status=$status, hintsUsed=$hintsUsed, " +
-            "currentHint=$currentHint, violations=$violations)"
+            "pencilMarks=$pencilMarks, cellStatuses=$cellStatuses, status=$status, " +
+            "mistakesUsed=$mistakesUsed, hintsUsed=$hintsUsed, currentHint=$currentHint, violations=$violations)"
 }

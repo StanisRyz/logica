@@ -26,10 +26,11 @@ internal data class DailyResultSummary(
 )
 
 /**
- * Builds a shareable Daily result only when persisted terminal results exactly match the resolved
- * Daily definition, ordered by policy rather than completion time. A completed run with a
- * missing/mismatched result returns null so sharing stays unavailable instead of showing an
- * incomplete or misleading summary; the normal completion UI does not depend on this.
+ * Builds a shareable Daily result only when a *solved* result exists for every entry of the resolved
+ * Daily definition, ordered by policy rather than completion time. Failed attempts stay durable but
+ * never appear here, and a completed run whose solved result is missing or mismatched returns null so
+ * sharing stays unavailable instead of showing an incomplete or misleading summary; the normal
+ * completion UI does not depend on this.
  */
 internal object DailyResultSummaryBuilder {
     fun build(
@@ -48,6 +49,7 @@ internal object DailyResultSummaryBuilder {
                 .asSequence()
                 .filter { it.sessionScope == GameSessionScope.DAILY }
                 .filter { it.challengeDate == definition.challengeDate && it.dailyPolicyVersion == definition.policyVersion }
+                .filter { it.outcome == GameOutcome.SOLVED }
                 .associateBy { it.puzzleType }
         val entries =
             definition.entries.map { entry ->

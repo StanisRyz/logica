@@ -18,8 +18,12 @@ internal data class EncodedBalanceSession(
 )
 
 internal object BalanceSessionCodec {
-    /** V1 stored committed values plus an Undo history; V2 stores committed values plus pencil marks. */
-    const val SESSION_FORMAT_VERSION = 2
+    /**
+     * V1 stored committed values plus an Undo history, V2 added pencil marks, and V3 adds the
+     * attempt's mistake count. An older save restores with `mistakesUsed = 0`; mistakes are historical
+     * events and are never inferred from the incorrect cells already on the board.
+     */
+    const val SESSION_FORMAT_VERSION = 3
 
     fun encode(game: BalanceGameState): EncodedBalanceSession {
         val cells =
@@ -35,6 +39,7 @@ internal object BalanceSessionCodec {
                 appendLine("size=${game.board.size}")
                 appendLine("cells=$cells")
                 appendLine("pencil=${game.pencilMarks.toPayload()}")
+                appendLine("mistakes=${game.mistakesUsed}")
                 append("hint=${game.currentHint?.toPayload() ?: "-"}")
             }
         return EncodedBalanceSession(
@@ -47,9 +52,9 @@ internal object BalanceSessionCodec {
     }
 
     /**
-     * Restores committed values and pencil marks. Correct/wrong presentation is recomputed by the
-     * engine from the regenerated puzzle, so a V1 save simply reopens with its values classified and
-     * no pencil marks; its stored Undo history is dropped.
+     * Restores committed values, pencil marks, and mistakes. Correct/wrong presentation is recomputed
+     * by the engine from the regenerated puzzle, so an older save simply reopens with its values
+     * classified, no pencil marks, and no retroactive mistakes; its stored Undo history is dropped.
      */
     fun decode(
         puzzle: BalancePuzzle,
@@ -74,6 +79,8 @@ internal object BalanceSessionCodec {
                 cells.map(::balanceCellFromPayloadSymbol).chunked(size),
             )
         val pencilMarks = gameplay["pencil"].orEmpty().decodePencilMarks()
+        val mistakesUsed =
+            gameplay["mistakes"]?.let { it.toIntOrNull() ?: error("Invalid saved mistake count.") } ?: 0
         val savedHint = gameplay.getValue("hint")
         val currentHint =
             if (savedHint == "-") {
@@ -89,6 +96,7 @@ internal object BalanceSessionCodec {
             engine.restore(
                 board = board,
                 pencilMarks = pencilMarks,
+                mistakesUsed = mistakesUsed,
                 hintsUsed = hintsUsed,
                 currentHint = currentHint,
             )
@@ -109,7 +117,11 @@ internal object BalanceSessionCodec {
                     parts[0] to parts[1]
                 }
         val expectedFields =
-            if (sessionFormatVersion == 1) setOf("size", "cells", "hint") else setOf("size", "cells", "pencil", "hint")
+            when (sessionFormatVersion) {
+                1 -> setOf("size", "cells", "hint")
+                2 -> setOf("size", "cells", "pencil", "hint")
+                else -> setOf("size", "cells", "pencil", "mistakes", "hint")
+            }
         require(values.keys == expectedFields) { "Invalid gameplay payload fields." }
         return values
     }

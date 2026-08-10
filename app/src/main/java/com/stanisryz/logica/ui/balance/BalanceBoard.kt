@@ -34,7 +34,6 @@ import com.stanisryz.logica.R
 import com.stanisryz.logica.puzzle.core.balance.BalanceCell
 import com.stanisryz.logica.puzzle.core.balance.BalanceCellStatus
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameState
-import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
 import com.stanisryz.logica.puzzle.core.balance.BalancePosition
 import com.stanisryz.logica.puzzle.core.balance.BalancePuzzle
 
@@ -67,7 +66,7 @@ fun BalanceBoard(
                             isHintEvidence = position in (hint?.evidencePositions ?: emptySet()),
                             enabled =
                                 !game.isLocked(position) &&
-                                    game.status != BalanceGameStatus.SOLVED &&
+                                    !game.status.isTerminal &&
                                     (enabledPositions == null || position in enabledPositions),
                             onClick = { onCellTapped(position) },
                             modifier = Modifier.weight(1f).fillMaxHeight(),

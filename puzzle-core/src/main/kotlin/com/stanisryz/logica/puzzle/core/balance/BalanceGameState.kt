@@ -1,8 +1,14 @@
 package com.stanisryz.logica.puzzle.core.balance
 
+import com.stanisryz.logica.puzzle.core.model.PuzzleMistakes
+
 enum class BalanceGameStatus {
     IN_PROGRESS,
     SOLVED,
+    FAILED,
+    ;
+
+    val isTerminal: Boolean get() = this != IN_PROGRESS
 }
 
 /**
@@ -23,6 +29,8 @@ class BalanceGameState internal constructor(
     val status: BalanceGameStatus,
     pencilMarks: Map<BalancePosition, Set<BalanceCell>>,
     cellStatuses: Map<BalancePosition, BalanceCellStatus>,
+    /** How many incorrect values this attempt has committed, counted as events rather than red cells. */
+    val mistakesUsed: Int,
     val hintsUsed: Int,
     val currentHint: BalanceHint?,
     violations: Iterable<BalanceViolation>,
@@ -34,6 +42,9 @@ class BalanceGameState internal constructor(
 
     init {
         require(hintsUsed >= 0) { "Hints used must not be negative." }
+        require(mistakesUsed in 0..PuzzleMistakes.MAX_MISTAKES) {
+            "Mistakes used must be within 0..${PuzzleMistakes.MAX_MISTAKES}."
+        }
         require(this.pencilMarks.values.all { marks -> marks.isNotEmpty() && BalanceCell.EMPTY !in marks }) {
             "A pencil mark must be a concrete value."
         }
@@ -41,11 +52,6 @@ class BalanceGameState internal constructor(
             "Empty cells are not listed among the cell statuses."
         }
     }
-
-    val hasPlayerInput: Boolean
-        get() =
-            pencilMarks.isNotEmpty() ||
-                cellStatuses.values.any { it != BalanceCellStatus.FIXED }
 
     fun statusAt(position: BalancePosition): BalanceCellStatus = cellStatuses[position] ?: BalanceCellStatus.EMPTY
 
@@ -65,6 +71,7 @@ class BalanceGameState internal constructor(
             status == other.status &&
             pencilMarks == other.pencilMarks &&
             cellStatuses == other.cellStatuses &&
+            mistakesUsed == other.mistakesUsed &&
             hintsUsed == other.hintsUsed &&
             currentHint == other.currentHint &&
             violations == other.violations
@@ -74,6 +81,7 @@ class BalanceGameState internal constructor(
         result = 31 * result + status.hashCode()
         result = 31 * result + pencilMarks.hashCode()
         result = 31 * result + cellStatuses.hashCode()
+        result = 31 * result + mistakesUsed
         result = 31 * result + hintsUsed
         result = 31 * result + (currentHint?.hashCode() ?: 0)
         result = 31 * result + violations.hashCode()
@@ -82,5 +90,6 @@ class BalanceGameState internal constructor(
 
     override fun toString(): String =
         "BalanceGameState(board=$board, status=$status, pencilMarks=$pencilMarks, " +
-            "cellStatuses=$cellStatuses, hintsUsed=$hintsUsed, currentHint=$currentHint, violations=$violations)"
+            "cellStatuses=$cellStatuses, mistakesUsed=$mistakesUsed, hintsUsed=$hintsUsed, " +
+            "currentHint=$currentHint, violations=$violations)"
 }

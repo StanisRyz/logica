@@ -7,7 +7,6 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -49,6 +48,7 @@ class CrownsGameplayTest {
                 userMarks = drafted.userMarks,
                 pencilCrowns = drafted.pencilCrowns,
                 pencilMarks = drafted.pencilMarks,
+                mistakesUsed = drafted.mistakesUsed,
                 hintsUsed = drafted.hintsUsed,
                 currentHint = drafted.currentHint,
             )
@@ -59,13 +59,43 @@ class CrownsGameplayTest {
         assertNotNull(hinted.currentHint)
         assertSame(hinted, engine.requestHint(hinted))
 
-        val reset = engine.reset(hinted)
-        assertTrue(reset.board.crowns.isEmpty())
-        assertTrue(reset.userMarks.isEmpty())
-        assertTrue(reset.pencilCrowns.isEmpty())
-        assertTrue(reset.pencilMarks.isEmpty())
-        assertEquals(1, reset.hintsUsed)
-        assertNull(reset.currentHint)
+        // Removing a wrong value never refunds the mistake it already cost.
+        assertEquals(1, hinted.mistakesUsed)
+    }
+
+    @Test
+    fun theThirdCommittedMistakeEndsTheAttemptAndFreezesTheBoard() {
+        val engine = CrownsGameEngine(puzzle())
+        val locked = CrownsPosition(2, 0)
+
+        var game = engine.placeValue(engine.start(), locked, CrownsPlayerCell.CROWN)
+        assertEquals(CrownsCellStatus.CORRECT, game.statusAt(locked))
+        assertEquals(0, game.mistakesUsed)
+
+        game = engine.placeValue(game, CrownsPosition(0, 0), CrownsPlayerCell.CROWN)
+        game = engine.placeValue(game, CrownsPosition(1, 3), CrownsPlayerCell.MARKED)
+        assertEquals(2, game.mistakesUsed)
+        assertEquals(CrownsGameStatus.IN_PROGRESS, game.status)
+        // Pencil marks are hypotheses and never cost a mistake.
+        game = engine.togglePencilMark(game, CrownsPosition(3, 0), CrownsPlayerCell.CROWN)
+        assertEquals(2, game.mistakesUsed)
+
+        val failed = engine.placeValue(game, CrownsPosition(0, 2), CrownsPlayerCell.CROWN)
+        assertEquals(3, failed.mistakesUsed)
+        assertEquals(CrownsGameStatus.FAILED, failed.status)
+        // The wrong values stay exactly as the player left them, and the board goes read-only.
+        assertEquals(CrownsPlayerCell.CROWN, failed.cellAt(CrownsPosition(0, 2)))
+        assertEquals(CrownsCellStatus.INCORRECT, failed.statusAt(CrownsPosition(0, 2)))
+        assertEquals(CrownsCellStatus.CORRECT, failed.statusAt(locked))
+        assertSame(failed, engine.placeValue(failed, CrownsPosition(0, 2), CrownsPlayerCell.CROWN))
+        assertSame(failed, engine.togglePencilMark(failed, CrownsPosition(3, 0), CrownsPlayerCell.MARKED))
+        assertSame(failed, engine.requestHint(failed))
+
+        // Retrying is a brand-new attempt at the same puzzle.
+        val retried = engine.start()
+        assertEquals(0, retried.mistakesUsed)
+        assertTrue(retried.board.crowns.isEmpty())
+        assertEquals(CrownsGameStatus.IN_PROGRESS, retried.status)
     }
 
     @Test
@@ -81,7 +111,7 @@ class CrownsGameplayTest {
         assertTrue(game.violations.any { it.type == CrownsViolationType.ROW_CONFLICT })
         assertTrue(game.violations.any { it.type == CrownsViolationType.REGION_CONFLICT })
 
-        game = engine.reset(game)
+        game = engine.start()
         game = engine.placeValue(game, CrownsPosition(0, 3), CrownsPlayerCell.MARKED)
         solutionPositions.forEach { position -> game = engine.placeValue(game, position, CrownsPlayerCell.CROWN) }
 

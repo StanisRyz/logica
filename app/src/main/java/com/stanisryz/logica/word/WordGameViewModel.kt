@@ -161,6 +161,25 @@ internal class WordGameViewModel(
         if (ready.game.isFinished) persistCompletion(ready.game)
     }
 
+    /**
+     * Starts a fresh attempt at the very same word: a new session ID, empty input, and all six
+     * attempts again. The puzzle is the one already generated from the saved identity, never a new
+     * one, and the retry waits for the finished attempt's result to be durably stored.
+     */
+    fun retry() {
+        val ready = mutableUiState.value as? WordGameUiState.Ready ?: return
+        if (!ready.game.isFinished) return
+        if (ready.completionPersistence != CompletionPersistence.Saved) return
+        val engine = gameEngine ?: return
+        val previous = activeSession ?: return
+
+        val session = previous.copy(sessionId = sessionIdFactory())
+        val game = engine.start()
+        activeSession = session
+        mutableUiState.value = WordGameUiState.Ready(ready.puzzle, game)
+        sessionRepository.replaceActiveSession(session.saved(game))
+    }
+
     private suspend fun loadSession(): LoadedSession =
         when (val requestedLaunch = launch) {
             is WordGameLaunch.New ->

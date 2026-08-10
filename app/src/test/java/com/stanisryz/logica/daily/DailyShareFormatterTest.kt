@@ -10,6 +10,7 @@ import com.stanisryz.logica.session.GameSessionScope
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
@@ -50,23 +51,38 @@ class DailyShareFormatterTest {
     }
 
     @Test
-    fun failedWordStaysThreeOfThreeAndNeverShowsTheAnswer() {
+    fun sharingUsesTheSolvedAttemptAndStaysUnavailableWithoutOne() {
         val definition = DailyChallengePolicyV4.definitionFor(date)
-        val results =
+        val failedWordAttempts =
             listOf(
                 result(definition, PuzzleType.BALANCE, GameOutcome.SOLVED, attemptsUsed = null),
                 result(definition, PuzzleType.CROWNS, GameOutcome.SOLVED, attemptsUsed = null),
-                result(definition, PuzzleType.WORD, GameOutcome.FAILED, attemptsUsed = 6),
+                result(definition, PuzzleType.WORD, GameOutcome.FAILED, attemptsUsed = 6, resultId = "word-1"),
+                result(definition, PuzzleType.WORD, GameOutcome.FAILED, attemptsUsed = 6, resultId = "word-2"),
             )
+
+        // A run whose entry only has failed attempts cannot be shared at all.
+        assertNull(
+            DailyResultSummaryBuilder.build(
+                definition,
+                completedRun(definition),
+                failedWordAttempts,
+                currentStreak = 8,
+                bestStreak = 12,
+            ),
+        )
+
+        val withSolvedRetry =
+            failedWordAttempts + result(definition, PuzzleType.WORD, GameOutcome.SOLVED, attemptsUsed = 4, resultId = "word-3")
         val summary =
-            DailyResultSummaryBuilder.build(definition, completedRun(definition), results, currentStreak = 8, bestStreak = 12)
+            DailyResultSummaryBuilder.build(definition, completedRun(definition), withSolvedRetry, currentStreak = 8, bestStreak = 12)
         assertNotNull(summary)
 
         val text = DailyShareFormatter.format(summary!!)
 
-        assertTrue(text.contains("Слово   не угадано"))
+        assertTrue(text.contains("Слово   4/6"))
         assertTrue(text.contains("3 из 3"))
-        assertFalse(text.contains("6/6"))
+        assertFalse(text.contains("не угадано"))
     }
 
     @Test
@@ -92,10 +108,11 @@ class DailyShareFormatterTest {
         puzzleType: PuzzleType,
         outcome: GameOutcome,
         attemptsUsed: Int?,
+        resultId: String = "result-$puzzleType",
     ): GameResult {
         val entry = definition.entries.single { it.puzzleType == puzzleType }
         return GameResult(
-            resultId = "result-$puzzleType",
+            resultId = resultId,
             puzzleType = puzzleType,
             difficulty = entry.difficulty,
             puzzleSeed = entry.seed,

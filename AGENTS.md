@@ -71,7 +71,14 @@
 - Pencil marks are a separate unvalidated layer on empty cells only: they never lock, any committed placement clears them, and they render small in the cell's upper-right corner.
 - Balance/Crowns session codecs are V2 (committed values plus pencil marks); V1 saves still decode, keep their values, gain no pencil marks, and drop their obsolete Undo history. Correct/wrong is always recomputed from the regenerated puzzle, never stored.
 - Tool selection and Pencil mode are transient presentation state and are never persisted.
-- Mistake counting, `GameOutcome.FAILED` for Balance/Crowns, retry, and SOLVED-only Daily behaviour are deliberately deferred to Stage 30.1.
+- Balance and Crowns end an attempt at `PuzzleMistakes.MAX_MISTAKES` (3): every newly committed incorrect value costs one mistake, the third sets `FAILED`, and a terminal attempt is read-only for input, pencil, and hints. Pencil marks, tool changes, removing or fixing a wrong value, hints, and restores never change the count.
+- `mistakesUsed` is an event count, never derived from the incorrect cells currently on the board, and Balance/Crowns have no Reset.
+- Balance/Crowns session codecs are V3 (committed values + pencil marks + mistakes); V1 and V2 saves still decode and restore with `mistakesUsed = 0`, never a retroactive penalty.
+- Every terminal attempt — `SOLVED` or `FAILED` — produces exactly one durable `GameResult`; `attemptsUsed` stays Word-only. One attempt is one `sessionId` with at most one result, and a session is never reused once its result is durable.
+- Retry keeps the `PuzzleId` and the Catalog/Daily context but starts a new `sessionId` with a clean board and zero mistakes; it is allowed only after the finished attempt's result is durably persisted.
+- Daily entries and runs complete on `SOLVED` only: a `FAILED` attempt stays durable, leaves the entry open for another attempt, and never advances progress, the run, or the streak. Historical runs already `COMPLETED` are never rewritten.
+- Solved-labelled statistics and Daily sharing read `SOLVED` results only; a completed run with no solved result for an entry disables sharing rather than showing a failure.
+- Gems, lives, regeneration, rewarded ads, and payments are deliberately deferred to Stage 31, which consumes the durable attempt results introduced here.
 - Balance tutorial is application onboarding: it reuses core Balance gameplay but stays separate from Room-backed catalog sessions; completion is a DataStore preference.
 - Crowns tutorial is Crowns-only application onboarding: its fixed state never touches Catalog sessions, results, statistics, Daily state, or gameplay hint counters; its prompt state is a DataStore preference.
 - Catalog and Daily gameplay use separate session scopes, must coexist, and reuse the existing per-puzzle engines/UI rather than generic gameplay screens.

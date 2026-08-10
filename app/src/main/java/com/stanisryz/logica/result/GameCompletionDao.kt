@@ -96,7 +96,9 @@ internal interface GameCompletionDao {
             }
         }
 
-        if (result.sessionScope == GameSessionScope.DAILY.name) {
+        // Daily lifecycle now tracks success, not participation: a FAILED attempt still produces a
+        // durable result and frees the session for a retry, but leaves the entry and run untouched.
+        if (result.sessionScope == GameSessionScope.DAILY.name && result.outcome == GameOutcome.SOLVED.name) {
             val challengeDate = requireNotNull(result.challengeDate)
             val policyVersion = requireNotNull(result.dailyPolicyVersion)
             val run =
@@ -111,8 +113,6 @@ internal interface GameCompletionDao {
                     "The matching Daily lifecycle record was not found."
                 }
             require(daily.matches(result)) { "The Daily lifecycle identity does not match the result." }
-            // Daily lifecycle tracks participation, not success: a terminal FAILED Word result
-            // completes its entry exactly like a SOLVED one, so the run can still reach 3/3.
             require(
                 completeDailyChallenge(
                     challengeDate = challengeDate,

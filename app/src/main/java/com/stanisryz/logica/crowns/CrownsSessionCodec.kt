@@ -17,8 +17,12 @@ internal data class EncodedCrownsSession(
 )
 
 internal object CrownsSessionCodec {
-    /** V1 stored committed values plus an Undo history; V2 stores committed values plus pencil marks. */
-    const val SESSION_FORMAT_VERSION = 2
+    /**
+     * V1 stored committed values plus an Undo history, V2 added pencil marks, and V3 adds the
+     * attempt's mistake count. An older save restores with `mistakesUsed = 0`; mistakes are historical
+     * events and are never inferred from the incorrect cells already on the board.
+     */
+    const val SESSION_FORMAT_VERSION = 3
 
     fun encode(
         puzzle: CrownsPuzzle,
@@ -32,6 +36,7 @@ internal object CrownsSessionCodec {
                 appendLine("marks=${game.userMarks.toPositionPayload()}")
                 appendLine("pencilCrowns=${game.pencilCrowns.toPositionPayload()}")
                 appendLine("pencilMarks=${game.pencilMarks.toPositionPayload()}")
+                appendLine("mistakes=${game.mistakesUsed}")
                 append("hint=${game.currentHint?.toPayload() ?: "-"}")
             }
         return EncodedCrownsSession(
@@ -44,9 +49,9 @@ internal object CrownsSessionCodec {
     }
 
     /**
-     * Restores committed crowns/marks and pencil marks. Correct/wrong presentation is recomputed by
-     * the engine from the regenerated puzzle, so a V1 save simply reopens with its values classified
-     * and no pencil marks; its stored Undo history is dropped.
+     * Restores committed crowns/marks, pencil marks, and mistakes. Correct/wrong presentation is
+     * recomputed by the engine from the regenerated puzzle, so an older save simply reopens with its
+     * values classified, no pencil marks, and no retroactive mistakes; its Undo history is dropped.
      */
     fun decode(
         puzzle: CrownsPuzzle,
@@ -68,6 +73,8 @@ internal object CrownsSessionCodec {
         val marks = gameplay.getValue("marks").decodePositions()
         val pencilCrowns = gameplay["pencilCrowns"].orEmpty().decodePositions()
         val pencilMarks = gameplay["pencilMarks"].orEmpty().decodePositions()
+        val mistakesUsed =
+            gameplay["mistakes"]?.let { it.toIntOrNull() ?: error("Invalid saved mistake count.") } ?: 0
         val board = CrownsState(crowns)
         val savedHintPayload = gameplay.getValue("hint")
         val currentHint =
@@ -86,6 +93,7 @@ internal object CrownsSessionCodec {
                 userMarks = marks,
                 pencilCrowns = pencilCrowns,
                 pencilMarks = pencilMarks,
+                mistakesUsed = mistakesUsed,
                 hintsUsed = hintsUsed,
                 currentHint = currentHint,
             )
@@ -108,10 +116,10 @@ internal object CrownsSessionCodec {
         val values = entries.toMap()
         require(entries.size == values.size) { "Gameplay payload contains duplicate fields." }
         val expectedFields =
-            if (sessionFormatVersion == 1) {
-                setOf("size", "crowns", "marks", "hint")
-            } else {
-                setOf("size", "crowns", "marks", "pencilCrowns", "pencilMarks", "hint")
+            when (sessionFormatVersion) {
+                1 -> setOf("size", "crowns", "marks", "hint")
+                2 -> setOf("size", "crowns", "marks", "pencilCrowns", "pencilMarks", "hint")
+                else -> setOf("size", "crowns", "marks", "pencilCrowns", "pencilMarks", "mistakes", "hint")
             }
         require(values.keys == expectedFields) { "Invalid gameplay payload fields." }
         return values

@@ -19,7 +19,7 @@ import org.junit.Test
 
 class BalanceSessionCodecTest {
     @Test
-    fun roundTripPreservesCommittedValuesPencilMarksAndHintUsage() {
+    fun roundTripPreservesCommittedValuesPencilMarksMistakesAndHintUsage() {
         val puzzle = testPuzzle()
         val engine = BalanceGameEngine(puzzle)
         val wrongCell = BalancePosition(0, 0)
@@ -43,25 +43,39 @@ class BalanceSessionCodecTest {
         assertEquals(game, restored)
         assertEquals(BalanceCellStatus.INCORRECT, restored.statusAt(wrongCell))
         assertEquals(setOf(BalanceCell.ZERO, BalanceCell.ONE), restored.pencilMarksAt(draftCell))
+        assertEquals(1, restored.mistakesUsed)
         assertEquals(1, restored.hintsUsed)
         assertEquals("", encoded.moveHistoryPayload)
     }
 
     @Test
-    fun preStagePlayerValuesRestoreAsCorrectOrWrongWithoutPencilMarks() {
+    fun olderSavesRestoreTheirValuesWithoutPencilMarksOrRetroactiveMistakes() {
         val puzzle = testPuzzle()
         val editable = BalancePosition(0, 0)
+        val wrongCells = "1.11" + "0101" + "1010" + "1100"
+        val correctCells = "0.11" + "0101" + "1010" + "1100"
 
-        // A pre-Stage-30 save: committed values plus an Undo history, and no pencil field at all.
-        val wrong = decodeLegacy(puzzle, "1.11" + "0101" + "1010" + "1100")
-        val correct = decodeLegacy(puzzle, "0.11" + "0101" + "1010" + "1100")
+        // V1 predates both pencil marks and mistakes; V2 predates mistakes only.
+        val v1 = decodeLegacy(puzzle, version = 1, gameplayPayload = "size=4\ncells=$wrongCells\nhint=-")
+        val v2 =
+            decodeLegacy(
+                puzzle,
+                version = 2,
+                gameplayPayload = "size=4\ncells=$wrongCells\npencil=0:1=01\nhint=-",
+            )
+        val correct = decodeLegacy(puzzle, version = 1, gameplayPayload = "size=4\ncells=$correctCells\nhint=-")
 
-        assertEquals(BalanceCellStatus.INCORRECT, wrong.statusAt(editable))
-        assertFalse(wrong.isLocked(editable))
+        listOf(v1, v2).forEach { restored ->
+            assertEquals(BalanceCellStatus.INCORRECT, restored.statusAt(editable))
+            assertFalse(restored.isLocked(editable))
+            // An already-incorrect cell never becomes a retroactive mistake.
+            assertEquals(0, restored.mistakesUsed)
+            assertEquals(0, restored.hintsUsed)
+        }
+        assertTrue(v1.pencilMarks.isEmpty())
+        assertEquals(setOf(BalanceCell.ZERO, BalanceCell.ONE), v2.pencilMarksAt(BalancePosition(0, 1)))
         assertEquals(BalanceCellStatus.CORRECT, correct.statusAt(editable))
         assertTrue(correct.isLocked(editable))
-        assertTrue(wrong.pencilMarks.isEmpty())
-        assertEquals(0, wrong.hintsUsed)
     }
 
     @Test
@@ -91,11 +105,12 @@ class BalanceSessionCodecTest {
 
     private fun decodeLegacy(
         puzzle: BalancePuzzle,
-        cells: String,
+        version: Int,
+        gameplayPayload: String,
     ) = BalanceSessionCodec.decode(
         puzzle = puzzle,
-        sessionFormatVersion = 1,
-        gameplayPayload = "size=4\ncells=$cells\nhint=-",
+        sessionFormatVersion = version,
+        gameplayPayload = gameplayPayload,
         hintsUsed = 0,
         status = "IN_PROGRESS",
     )

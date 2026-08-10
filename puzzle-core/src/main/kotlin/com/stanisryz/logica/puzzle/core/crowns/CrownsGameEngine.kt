@@ -1,5 +1,7 @@
 package com.stanisryz.logica.puzzle.core.crowns
 
+import com.stanisryz.logica.puzzle.core.model.PuzzleMistakes
+
 class CrownsGameEngine(
     private val puzzle: CrownsPuzzle,
     private val hintProvider: CrownsHintProvider = CrownsHintProvider(),
@@ -14,12 +16,14 @@ class CrownsGameEngine(
         if (solver.countSolutions(puzzle, limit = 2) != 1) null else solver.solve(puzzle)
     }
 
+    /** A fresh attempt: an empty board, no pencil marks, no mistakes. */
     fun start(): CrownsGameState =
         createState(
             board = CrownsState(),
             userMarks = emptySet(),
             pencilCrowns = emptySet(),
             pencilMarks = emptySet(),
+            mistakesUsed = 0,
             hintsUsed = 0,
             currentHint = null,
         )
@@ -27,6 +31,7 @@ class CrownsGameEngine(
     /**
      * Commits the value the player selected. Tapping a cell that already holds that same value
      * removes it, which is how a wrong value is taken back; a confirmed value cannot be changed.
+     * Every newly committed incorrect value costs one mistake, and the third one ends the attempt.
      */
     fun placeValue(
         state: CrownsGameState,
@@ -36,21 +41,26 @@ class CrownsGameEngine(
         require(cell != CrownsPlayerCell.EMPTY) { "A committed placement needs a concrete value." }
         requireCompatible(state)
         CrownsBoardConstraints.requireInside(puzzle.size, position)
+        if (state.status.isTerminal) return state
         if (state.isLocked(position)) return state
 
         val committed = if (state.cellAt(position) == cell) CrownsPlayerCell.EMPTY else cell
+        // Removing a wrong value never refunds the mistake it already cost, and replacing one wrong
+        // value with another is a new incorrect attempt of its own.
+        val isNewMistake = committed != CrownsPlayerCell.EMPTY && isIncorrect(position, committed)
         val updated = applyCell(state.board, state.userMarks, position, committed)
         return createState(
             board = updated.board,
             userMarks = updated.userMarks,
             pencilCrowns = state.pencilCrowns - position,
             pencilMarks = state.pencilMarks - position,
+            mistakesUsed = if (isNewMistake) state.mistakesUsed + 1 else state.mistakesUsed,
             hintsUsed = state.hintsUsed,
             currentHint = null,
         )
     }
 
-    /** Adds or removes one draft value. Pencil marks are never validated and never lock a cell. */
+    /** Adds or removes one draft value. Pencil marks are never validated and never cost a mistake. */
     fun togglePencilMark(
         state: CrownsGameState,
         position: CrownsPosition,
@@ -59,6 +69,7 @@ class CrownsGameEngine(
         require(cell != CrownsPlayerCell.EMPTY) { "A pencil mark needs a concrete value." }
         requireCompatible(state)
         CrownsBoardConstraints.requireInside(puzzle.size, position)
+        if (state.status.isTerminal) return state
         if (state.isLocked(position)) return state
         // A cell holding a committed value is not a hypothesis any more.
         if (state.cellAt(position) != CrownsPlayerCell.EMPTY) return state
@@ -70,22 +81,10 @@ class CrownsGameEngine(
             userMarks = state.userMarks,
             pencilCrowns = if (cell == CrownsPlayerCell.CROWN) updated else state.pencilCrowns,
             pencilMarks = if (cell == CrownsPlayerCell.CROWN) state.pencilMarks else updated,
+            mistakesUsed = state.mistakesUsed,
             hintsUsed = state.hintsUsed,
             // The committed board is unchanged, so an open hint still describes this position correctly.
             currentHint = state.currentHint,
-        )
-    }
-
-    fun reset(state: CrownsGameState): CrownsGameState {
-        requireCompatible(state)
-        if (!state.hasPlayerInput && state.currentHint == null) return state
-        return createState(
-            board = CrownsState(),
-            userMarks = emptySet(),
-            pencilCrowns = emptySet(),
-            pencilMarks = emptySet(),
-            hintsUsed = state.hintsUsed,
-            currentHint = null,
         )
     }
 
@@ -94,6 +93,7 @@ class CrownsGameEngine(
         userMarks: Set<CrownsPosition>,
         pencilCrowns: Set<CrownsPosition>,
         pencilMarks: Set<CrownsPosition>,
+        mistakesUsed: Int,
         hintsUsed: Int,
         currentHint: CrownsHint?,
     ): CrownsGameState {
@@ -107,6 +107,7 @@ class CrownsGameEngine(
             "A committed cell cannot also hold pencil marks."
         }
         require(hintsUsed >= 0) { "Hints used must not be negative." }
+        require(mistakesUsed in 0..PuzzleMistakes.MAX_MISTAKES) { "Saved mistakes are out of range." }
         require(currentHint == null || hintsUsed > 0) { "A current hint requires positive hint usage." }
         require(currentHint == null || hintProvider.hint(puzzle, board, userMarks) == currentHint) {
             "Saved hint is not compatible with the saved gameplay state."
@@ -117,6 +118,7 @@ class CrownsGameEngine(
             userMarks = userMarks,
             pencilCrowns = pencilCrowns,
             pencilMarks = pencilMarks,
+            mistakesUsed = mistakesUsed,
             hintsUsed = hintsUsed,
             currentHint = currentHint,
         )
@@ -124,6 +126,7 @@ class CrownsGameEngine(
 
     fun requestHint(state: CrownsGameState): CrownsGameState {
         requireCompatible(state)
+        if (state.status.isTerminal) return state
         val hint = hintProvider.hint(puzzle, state.board, state.userMarks) ?: return state
         if (hint == state.currentHint) return state
         return createState(
@@ -131,6 +134,7 @@ class CrownsGameEngine(
             userMarks = state.userMarks,
             pencilCrowns = state.pencilCrowns,
             pencilMarks = state.pencilMarks,
+            mistakesUsed = state.mistakesUsed,
             hintsUsed = state.hintsUsed + 1,
             currentHint = hint,
         )
@@ -141,15 +145,16 @@ class CrownsGameEngine(
         userMarks: Set<CrownsPosition>,
         pencilCrowns: Set<CrownsPosition>,
         pencilMarks: Set<CrownsPosition>,
+        mistakesUsed: Int,
         hintsUsed: Int,
         currentHint: CrownsHint?,
     ): CrownsGameState {
         val analysis = CrownsRules.analyze(puzzle, board)
         val status =
-            if (analysis.isComplete && analysis.violations.isEmpty()) {
-                CrownsGameStatus.SOLVED
-            } else {
-                CrownsGameStatus.IN_PROGRESS
+            when {
+                mistakesUsed >= PuzzleMistakes.MAX_MISTAKES -> CrownsGameStatus.FAILED
+                analysis.isComplete && analysis.violations.isEmpty() -> CrownsGameStatus.SOLVED
+                else -> CrownsGameStatus.IN_PROGRESS
             }
         return CrownsGameState(
             puzzleId = puzzle.id,
@@ -159,11 +164,17 @@ class CrownsGameEngine(
             pencilMarks = pencilMarks,
             cellStatuses = cellStatuses(board, userMarks),
             status = status,
+            mistakesUsed = mistakesUsed,
             hintsUsed = hintsUsed,
             currentHint = currentHint,
             violations = analysis.violations,
         )
     }
+
+    private fun isIncorrect(
+        position: CrownsPosition,
+        cell: CrownsPlayerCell,
+    ): Boolean = statusOf(solution, cell == CrownsPlayerCell.CROWN, position) == CrownsCellStatus.INCORRECT
 
     private fun cellStatuses(
         board: CrownsState,

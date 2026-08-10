@@ -84,6 +84,7 @@ internal fun WordGameRoute(
         onSubmit = gameViewModel::submit,
         onDismissRejection = gameViewModel::dismissRejection,
         onRetryCompletion = gameViewModel::retryCompletion,
+        onRetryPuzzle = gameViewModel::retry,
         hapticsEnabled = hapticsEnabled,
         onBack = onBack,
         onNewPuzzle = onNewPuzzle,
@@ -103,6 +104,7 @@ private fun WordGameScreen(
     onSubmit: () -> Unit,
     onDismissRejection: () -> Unit,
     onRetryCompletion: () -> Unit,
+    onRetryPuzzle: () -> Unit,
     hapticsEnabled: Boolean,
     onBack: () -> Unit,
     onNewPuzzle: (Difficulty) -> Unit,
@@ -141,6 +143,7 @@ private fun WordGameScreen(
                 onSubmit = onSubmit,
                 onDismissRejection = onDismissRejection,
                 onRetryCompletion = onRetryCompletion,
+                onRetryPuzzle = onRetryPuzzle,
                 hapticsEnabled = hapticsEnabled,
                 onNewPuzzle = { onNewPuzzle(uiState.puzzle.id.difficulty) },
                 onCatalog = onCatalog,
@@ -166,6 +169,7 @@ private fun WordReadyState(
     onSubmit: () -> Unit,
     onDismissRejection: () -> Unit,
     onRetryCompletion: () -> Unit,
+    onRetryPuzzle: () -> Unit,
     hapticsEnabled: Boolean,
     onNewPuzzle: () -> Unit,
     onCatalog: () -> Unit,
@@ -225,6 +229,7 @@ private fun WordReadyState(
                     game = game,
                     completionPersistence = completionPersistence,
                     onRetryCompletion = onRetryCompletion,
+                    onRetryPuzzle = onRetryPuzzle,
                     onNewPuzzle = onNewPuzzle,
                     onCatalog = onCatalog,
                     onToday = onToday,
@@ -259,6 +264,7 @@ private fun WordTerminalCard(
     game: WordGameState,
     completionPersistence: CompletionPersistence,
     onRetryCompletion: () -> Unit,
+    onRetryPuzzle: () -> Unit,
     onNewPuzzle: () -> Unit,
     onCatalog: () -> Unit,
     onToday: () -> Unit,
@@ -301,7 +307,15 @@ private fun WordTerminalCard(
         }
 
         CompletionActions {
-            if (isDaily) {
+            // A failed attempt leads with replaying the very same word; the Daily entry stays open.
+            if (!isSolved && completionPersistence == CompletionPersistence.Saved) {
+                Button(onClick = onRetryPuzzle, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.retry_puzzle))
+                }
+                TextButton(onClick = if (isDaily) onToday else onCatalog) {
+                    Text(stringResource(if (isDaily) R.string.to_today else R.string.to_catalog))
+                }
+            } else if (isDaily) {
                 Button(onClick = onToday, modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.to_today))
                 }

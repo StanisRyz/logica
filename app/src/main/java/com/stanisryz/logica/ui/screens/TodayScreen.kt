@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.HighlightOff
 import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Timelapse
 import androidx.compose.material3.Button
@@ -274,11 +275,12 @@ private fun TodayEntryCard(
                 Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.continue_game))
                 }
-            // A Word entry completes on SOLVED or FAILED, so its label stays outcome-neutral.
-            DailyEntryState.COMPLETED ->
-                if (entry.puzzleType == PuzzleType.WORD) {
-                    SupportingText(stringResource(R.string.word_daily_entry_done))
+            // A failed attempt leaves the entry open, so the only way forward is another attempt.
+            DailyEntryState.RETRY ->
+                Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.retry_puzzle))
                 }
+            DailyEntryState.COMPLETED -> Unit
         }
 
         // Compact and per-entry: the tutorial is offered next to the puzzle it belongs to and
@@ -307,9 +309,13 @@ private fun EntryStatusChip(
             icon = Icons.Filled.Timelapse
             labelResource = R.string.daily_in_progress
         }
+        DailyEntryState.RETRY -> {
+            icon = Icons.Filled.HighlightOff
+            labelResource = R.string.daily_entry_failed
+        }
         DailyEntryState.COMPLETED -> {
             icon = Icons.Filled.CheckCircle
-            labelResource = R.string.daily_entry_completed
+            labelResource = R.string.daily_entry_solved
         }
     }
     StatusChip(

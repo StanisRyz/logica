@@ -60,61 +60,78 @@ internal fun CompletionCard(
 }
 
 /**
- * Balance and Crowns share one solved dialog. Daily returns to Today; a Catalog game keeps its
- * New puzzle / Catalog navigation.
+ * Balance and Crowns share one terminal dialog for both endings. A failed attempt leads with Retry
+ * on the very same puzzle; a solved one keeps its Today or New puzzle / Catalog navigation. The
+ * board stays visible behind the dialog either way.
  */
 @Composable
-internal fun PuzzleSolvedDialog(
+internal fun PuzzleTerminalDialog(
+    isSolved: Boolean,
     completionPersistence: CompletionPersistence,
     hintsUsed: Int,
+    maxMistakes: Int,
     isDaily: Boolean,
     onRetryCompletion: () -> Unit,
+    onRetryPuzzle: () -> Unit,
     onNewPuzzle: () -> Unit,
     onCatalog: () -> Unit,
     onToday: () -> Unit,
 ) {
     val isError = completionPersistence == CompletionPersistence.Error
+    val isSaved = completionPersistence == CompletionPersistence.Saved
     AlertDialog(
         onDismissRequest = {},
         icon = {
             Icon(
-                imageVector = if (isError) Icons.Filled.ErrorOutline else Icons.Filled.TaskAlt,
+                imageVector = if (isError || !isSolved) Icons.Filled.ErrorOutline else Icons.Filled.TaskAlt,
                 contentDescription = null,
-                tint = if (isError) MaterialTheme.colorScheme.error else LocalLogicaPalette.current.success,
+                tint =
+                    if (isError || !isSolved) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        LocalLogicaPalette.current.success
+                    },
             )
         },
         title = {
-            Text(stringResource(if (isError) R.string.completion_save_error_title else R.string.puzzle_solved))
+            Text(
+                stringResource(
+                    when {
+                        isError -> R.string.completion_save_error_title
+                        isSolved -> R.string.puzzle_solved
+                        else -> R.string.puzzle_failed
+                    },
+                ),
+            )
         },
         text = {
             Text(
-                when (completionPersistence) {
-                    CompletionPersistence.NotRequired,
-                    CompletionPersistence.Saving,
-                    -> stringResource(R.string.saving_completion)
-                    CompletionPersistence.Saved -> stringResource(R.string.hints_used, hintsUsed)
-                    CompletionPersistence.Error -> stringResource(R.string.completion_save_error_body)
+                when {
+                    completionPersistence == CompletionPersistence.Error ->
+                        stringResource(R.string.completion_save_error_body)
+                    !isSaved -> stringResource(R.string.saving_completion)
+                    isSolved -> stringResource(R.string.hints_used, hintsUsed)
+                    else -> stringResource(R.string.puzzle_failed_body, maxMistakes)
                 },
             )
         },
         confirmButton = {
-            when (completionPersistence) {
-                CompletionPersistence.NotRequired,
-                CompletionPersistence.Saving,
-                -> TextButton(onClick = {}, enabled = false) { Text(stringResource(R.string.saving)) }
-                CompletionPersistence.Error ->
+            when {
+                completionPersistence == CompletionPersistence.Error ->
                     TextButton(onClick = onRetryCompletion) { Text(stringResource(R.string.retry)) }
-                CompletionPersistence.Saved ->
-                    if (isDaily) {
-                        TextButton(onClick = onToday) { Text(stringResource(R.string.to_today)) }
-                    } else {
-                        TextButton(onClick = onNewPuzzle) { Text(stringResource(R.string.new_puzzle)) }
-                    }
+                !isSaved -> TextButton(onClick = {}, enabled = false) { Text(stringResource(R.string.saving)) }
+                !isSolved -> TextButton(onClick = onRetryPuzzle) { Text(stringResource(R.string.retry_puzzle)) }
+                isDaily -> TextButton(onClick = onToday) { Text(stringResource(R.string.to_today)) }
+                else -> TextButton(onClick = onNewPuzzle) { Text(stringResource(R.string.new_puzzle)) }
             }
         },
         dismissButton = {
-            if (!isDaily && completionPersistence == CompletionPersistence.Saved) {
-                TextButton(onClick = onCatalog) { Text(stringResource(R.string.to_catalog)) }
+            if (isSaved) {
+                if (isDaily) {
+                    if (!isSolved) TextButton(onClick = onToday) { Text(stringResource(R.string.to_today)) }
+                } else {
+                    TextButton(onClick = onCatalog) { Text(stringResource(R.string.to_catalog)) }
+                }
             }
         },
     )

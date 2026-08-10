@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -41,6 +40,7 @@ import com.stanisryz.logica.puzzle.core.crowns.CrownsPosition
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPuzzle
 import com.stanisryz.logica.puzzle.core.crowns.CrownsViolationType
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleMistakes
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
@@ -52,7 +52,8 @@ import com.stanisryz.logica.ui.components.GameActionBar
 import com.stanisryz.logica.ui.components.GameMessage
 import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.components.LogicaCard
-import com.stanisryz.logica.ui.components.PuzzleSolvedDialog
+import com.stanisryz.logica.ui.components.MistakeIndicator
+import com.stanisryz.logica.ui.components.PuzzleTerminalDialog
 import com.stanisryz.logica.ui.components.PuzzleTool
 import com.stanisryz.logica.ui.components.PuzzleToolBar
 import com.stanisryz.logica.ui.components.RetryableErrorState
@@ -88,7 +89,7 @@ internal fun CrownsGameRoute(
         onSelectValue = gameViewModel::selectValue,
         onTogglePencil = gameViewModel::togglePencilMode,
         onHint = gameViewModel::requestHint,
-        onReset = gameViewModel::reset,
+        onRetryPuzzle = gameViewModel::retry,
         onRetryCompletion = gameViewModel::retryCompletion,
         hapticsEnabled = hapticsEnabled,
         onBack = onBack,
@@ -108,7 +109,7 @@ private fun CrownsGameScreen(
     onSelectValue: (CrownsPlayerCell) -> Unit,
     onTogglePencil: () -> Unit,
     onHint: () -> Unit,
-    onReset: () -> Unit,
+    onRetryPuzzle: () -> Unit,
     onRetryCompletion: () -> Unit,
     hapticsEnabled: Boolean,
     onBack: () -> Unit,
@@ -150,7 +151,7 @@ private fun CrownsGameScreen(
                 onSelectValue = onSelectValue,
                 onTogglePencil = onTogglePencil,
                 onHint = onHint,
-                onReset = onReset,
+                onRetryPuzzle = onRetryPuzzle,
                 onRetryCompletion = onRetryCompletion,
                 hapticsEnabled = hapticsEnabled,
                 onNewPuzzle = { onNewPuzzle(uiState.puzzle.id.difficulty) },
@@ -175,7 +176,7 @@ private fun CrownsReadyState(
     onSelectValue: (CrownsPlayerCell) -> Unit,
     onTogglePencil: () -> Unit,
     onHint: () -> Unit,
-    onReset: () -> Unit,
+    onRetryPuzzle: () -> Unit,
     onRetryCompletion: () -> Unit,
     hapticsEnabled: Boolean,
     onNewPuzzle: () -> Unit,
@@ -184,7 +185,6 @@ private fun CrownsReadyState(
     isDaily: Boolean,
     modifier: Modifier,
 ) {
-    var showResetConfirmation by remember { mutableStateOf(false) }
     val view = LocalView.current
     var previouslyConflicted by remember { mutableStateOf(game.violations.isNotEmpty()) }
     var previousStatus by remember { mutableStateOf(game.status) }
@@ -196,8 +196,12 @@ private fun CrownsReadyState(
         previouslyConflicted = game.violations.isNotEmpty()
     }
     LaunchedEffect(game.status) {
-        if (hapticsEnabled && previousStatus != CrownsGameStatus.SOLVED && game.status == CrownsGameStatus.SOLVED) {
-            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+        if (hapticsEnabled && previousStatus != game.status) {
+            when (game.status) {
+                CrownsGameStatus.SOLVED -> view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                CrownsGameStatus.FAILED -> view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                CrownsGameStatus.IN_PROGRESS -> Unit
+            }
         }
         previousStatus = game.status
     }
@@ -208,6 +212,7 @@ private fun CrownsReadyState(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         DifficultyBadge(difficultyLabel(PuzzleType.CROWNS, difficulty))
+        MistakeIndicator(game.mistakesUsed, PuzzleMistakes.MAX_MISTAKES)
         CrownsBoard(
             puzzle = puzzle,
             game = game,
@@ -231,32 +236,20 @@ private fun CrownsReadyState(
                     enabled = !isHintLoading && game.status == CrownsGameStatus.IN_PROGRESS,
                     onClick = onHint,
                 ),
-                GameAction(
-                    icon = Icons.Filled.Refresh,
-                    label = stringResource(R.string.reset),
-                    enabled = true,
-                    onClick = { if (game.hasPlayerInput) showResetConfirmation = true else onReset() },
-                ),
             ),
         )
         if (isHintLoading) SupportingText(stringResource(R.string.searching_hint))
     }
 
-    if (showResetConfirmation) {
-        ResetConfirmationDialog(
-            onConfirm = {
-                showResetConfirmation = false
-                onReset()
-            },
-            onDismiss = { showResetConfirmation = false },
-        )
-    }
-    if (game.status == CrownsGameStatus.SOLVED) {
-        PuzzleSolvedDialog(
+    if (game.status.isTerminal) {
+        PuzzleTerminalDialog(
+            isSolved = game.status == CrownsGameStatus.SOLVED,
             completionPersistence = completionPersistence,
             hintsUsed = game.hintsUsed,
+            maxMistakes = PuzzleMistakes.MAX_MISTAKES,
             isDaily = isDaily,
             onRetryCompletion = onRetryCompletion,
+            onRetryPuzzle = onRetryPuzzle,
             onNewPuzzle = onNewPuzzle,
             onCatalog = onCatalog,
             onToday = onToday,

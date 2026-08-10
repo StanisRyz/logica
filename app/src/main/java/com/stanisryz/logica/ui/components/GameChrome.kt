@@ -2,11 +2,15 @@ package com.stanisryz.logica.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -15,13 +19,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.stanisryz.logica.R
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 /** The difficulty a game is being played at, shown the same way above every board. */
@@ -90,6 +98,46 @@ internal fun GameActionBar(
     }
 }
 
+/**
+ * The attempt's mistake budget for Balance and Crowns. The count is spelled out in words, so the
+ * dots beside it are only reinforcement and never the sole carrier of the state.
+ */
+@Composable
+internal fun MistakeIndicator(
+    mistakesUsed: Int,
+    maxMistakes: Int,
+    modifier: Modifier = Modifier,
+) {
+    val description = stringResource(R.string.mistakes_description, mistakesUsed, maxMistakes)
+    Row(
+        modifier = modifier.clearAndSetSemantics { contentDescription = description },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.text),
+    ) {
+        Text(
+            text = stringResource(R.string.mistakes_label, mistakesUsed, maxMistakes),
+            style = MaterialTheme.typography.labelLarge,
+            color =
+                if (mistakesUsed == 0) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.error
+                },
+        )
+        repeat(maxMistakes) { index ->
+            val used = index < mistakesUsed
+            Box(
+                modifier =
+                    Modifier
+                        .size(MISTAKE_DOT_SIZE)
+                        .clip(CircleShape)
+                        .background(if (used) MaterialTheme.colorScheme.error else Color.Transparent)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape),
+            )
+        }
+    }
+}
+
 /** A recoverable in-game message, announced once when it appears. */
 @Composable
 internal fun GameMessage(
@@ -111,4 +159,5 @@ internal fun GameMessage(
 
 private val BADGE_HORIZONTAL_PADDING = 12.dp
 private val BADGE_VERTICAL_PADDING = 6.dp
+private val MISTAKE_DOT_SIZE = 10.dp
 private const val DISABLED_ALPHA = 0.38f

@@ -47,9 +47,12 @@ internal object StatisticsAggregator {
     ): StatisticsSnapshot {
         val dailyDates = completedDailyDates.filterNot { it.isAfter(currentDate) }.toSet()
         val streak = DailyStreakCalculator.calculate(currentDate, dailyDates)
+        // Every "solved" metric counts solved attempts only; a failed attempt stays durable but
+        // never inflates them. Word keeps its own played/solved/failed breakdown below.
+        val solvedResults = results.filter { it.outcome == GameOutcome.SOLVED }
         val puzzleStatistics =
             listOf(PuzzleType.BALANCE, PuzzleType.CROWNS).associateWith { puzzleType ->
-                val puzzleResults = results.filter { it.puzzleType == puzzleType }
+                val puzzleResults = solvedResults.filter { it.puzzleType == puzzleType }
                 PuzzleStatistics(
                     totalCompleted = puzzleResults.size,
                     countsByDifficulty =
@@ -68,7 +71,7 @@ internal object StatisticsAggregator {
         return StatisticsSnapshot(
             statistics =
                 GameStatistics(
-                    totalCompletedResults = results.size,
+                    totalCompletedResults = solvedResults.size,
                     completedDailyCount = dailyDates.size,
                     totalHintsUsed = results.sumOf(GameResult::hintsUsed),
                     currentDailyStreak = streak.current,

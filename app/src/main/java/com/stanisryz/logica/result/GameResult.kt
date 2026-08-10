@@ -11,8 +11,8 @@ import java.time.Instant
 import java.time.LocalDate
 
 /**
- * How a terminal game ended. Balance and Crowns are only ever completed by solving them; Word is
- * also terminal after its sixth valid incorrect attempt.
+ * How a terminal attempt ended. Every puzzle can now fail: Balance and Crowns after their third
+ * committed mistake, Word after its sixth valid incorrect attempt.
  */
 internal enum class GameOutcome {
     SOLVED,
@@ -22,7 +22,6 @@ internal enum class GameOutcome {
 /** Shared validation for the typed outcome metadata of one terminal game. */
 private fun requireOutcomeMetadata(
     puzzleType: PuzzleType,
-    outcome: GameOutcome,
     attemptsUsed: Int?,
 ) {
     if (puzzleType == PuzzleType.WORD) {
@@ -32,7 +31,6 @@ private fun requireOutcomeMetadata(
         }
     } else {
         require(attemptsUsed == null) { "Only Word results record attempts used." }
-        require(outcome == GameOutcome.SOLVED) { "$puzzleType results are always solved." }
     }
 }
 
@@ -56,7 +54,7 @@ internal data class GameCompletion(
             (sessionScope == GameSessionScope.DAILY) ==
                 (challengeDate != null && dailyPolicyVersion != null),
         ) { "Daily identity must be present only for Daily results." }
-        requireOutcomeMetadata(puzzleType, outcome, attemptsUsed)
+        requireOutcomeMetadata(puzzleType, attemptsUsed)
     }
 }
 
@@ -81,7 +79,7 @@ internal data class GameResult(
             (sessionScope == GameSessionScope.DAILY) ==
                 (challengeDate != null && dailyPolicyVersion != null),
         ) { "Daily identity must be present only for Daily results." }
-        requireOutcomeMetadata(puzzleType, outcome, attemptsUsed)
+        requireOutcomeMetadata(puzzleType, attemptsUsed)
     }
 }
 

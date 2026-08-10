@@ -20,7 +20,7 @@ import org.junit.Test
 
 class CrownsSessionCodecTest {
     @Test
-    fun roundTripPreservesCommittedValuesPencilMarksAndHint() {
+    fun roundTripPreservesCommittedValuesPencilMarksMistakesAndHint() {
         val puzzle = testPuzzle()
         val engine = CrownsGameEngine(puzzle)
         val solutionCell = CrownsPosition(2, 0)
@@ -51,31 +51,36 @@ class CrownsSessionCodecTest {
             setOf(CrownsPlayerCell.CROWN, CrownsPlayerCell.MARKED),
             restored.pencilAt(draftCell),
         )
+        assertEquals(1, restored.mistakesUsed)
         assertEquals("", encoded.moveHistoryPayload)
     }
 
     @Test
-    fun preStagePlayerValuesRestoreAsCorrectOrWrongWithoutPencilMarks() {
+    fun olderSavesRestoreTheirValuesWithoutPencilMarksOrRetroactiveMistakes() {
         val puzzle = testPuzzle()
         val solutionCell = CrownsPosition(2, 0)
         val wrongMark = CrownsPosition(0, 1)
 
-        // A pre-Stage-30 save: crowns and marks only, and no pencil fields at all.
-        val restored =
-            CrownsSessionCodec.decode(
-                puzzle = puzzle,
-                sessionFormatVersion = 1,
-                gameplayPayload = "size=4\ncrowns=2:0\nmarks=0:1\nhint=-",
-                hintsUsed = 0,
-                status = "IN_PROGRESS",
+        // V1 predates both pencil marks and mistakes; V2 predates mistakes only.
+        val v1 = decodeLegacy(puzzle, version = 1, gameplayPayload = "size=4\ncrowns=2:0\nmarks=0:1\nhint=-")
+        val v2 =
+            decodeLegacy(
+                puzzle,
+                version = 2,
+                gameplayPayload = "size=4\ncrowns=2:0\nmarks=0:1\npencilCrowns=1:1\npencilMarks=-\nhint=-",
             )
 
-        assertEquals(CrownsCellStatus.CORRECT, restored.statusAt(solutionCell))
-        assertTrue(restored.isLocked(solutionCell))
-        assertEquals(CrownsCellStatus.INCORRECT, restored.statusAt(wrongMark))
-        assertFalse(restored.isLocked(wrongMark))
-        assertTrue(restored.pencilCrowns.isEmpty() && restored.pencilMarks.isEmpty())
-        assertEquals(0, restored.hintsUsed)
+        listOf(v1, v2).forEach { restored ->
+            assertEquals(CrownsCellStatus.CORRECT, restored.statusAt(solutionCell))
+            assertTrue(restored.isLocked(solutionCell))
+            assertEquals(CrownsCellStatus.INCORRECT, restored.statusAt(wrongMark))
+            assertFalse(restored.isLocked(wrongMark))
+            // An already-incorrect cell never becomes a retroactive mistake.
+            assertEquals(0, restored.mistakesUsed)
+            assertEquals(0, restored.hintsUsed)
+        }
+        assertTrue(v1.pencilCrowns.isEmpty() && v1.pencilMarks.isEmpty())
+        assertEquals(setOf(CrownsPosition(1, 1)), v2.pencilCrowns)
     }
 
     @Test
@@ -102,6 +107,18 @@ class CrownsSessionCodecTest {
             )
         }
     }
+
+    private fun decodeLegacy(
+        puzzle: CrownsPuzzle,
+        version: Int,
+        gameplayPayload: String,
+    ) = CrownsSessionCodec.decode(
+        puzzle = puzzle,
+        sessionFormatVersion = version,
+        gameplayPayload = gameplayPayload,
+        hintsUsed = 0,
+        status = "IN_PROGRESS",
+    )
 
     private fun testPuzzle(): CrownsPuzzle {
         val rows = listOf("AAAB", "ADAB", "CDDD", "DDDD")

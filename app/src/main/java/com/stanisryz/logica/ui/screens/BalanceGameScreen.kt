@@ -5,12 +5,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,6 +37,7 @@ import com.stanisryz.logica.puzzle.core.balance.BalancePosition
 import com.stanisryz.logica.puzzle.core.balance.BalancePuzzle
 import com.stanisryz.logica.puzzle.core.balance.BalanceViolationType
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleMistakes
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
@@ -53,7 +51,8 @@ import com.stanisryz.logica.ui.components.GameActionBar
 import com.stanisryz.logica.ui.components.GameMessage
 import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.components.LogicaCard
-import com.stanisryz.logica.ui.components.PuzzleSolvedDialog
+import com.stanisryz.logica.ui.components.MistakeIndicator
+import com.stanisryz.logica.ui.components.PuzzleTerminalDialog
 import com.stanisryz.logica.ui.components.PuzzleTool
 import com.stanisryz.logica.ui.components.PuzzleToolBar
 import com.stanisryz.logica.ui.components.RetryableErrorState
@@ -87,7 +86,7 @@ internal fun BalanceGameRoute(
         gameViewModel::selectValue,
         gameViewModel::togglePencilMode,
         gameViewModel::requestHint,
-        gameViewModel::reset,
+        gameViewModel::retry,
         gameViewModel::retryCompletion,
         hapticsEnabled,
         onBack,
@@ -107,7 +106,7 @@ private fun BalanceGameScreen(
     onSelectValue: (BalanceCell) -> Unit,
     onTogglePencil: () -> Unit,
     onHint: () -> Unit,
-    onReset: () -> Unit,
+    onRetryPuzzle: () -> Unit,
     onRetryCompletion: () -> Unit,
     hapticsEnabled: Boolean,
     onBack: () -> Unit,
@@ -149,7 +148,7 @@ private fun BalanceGameScreen(
                 onSelectValue,
                 onTogglePencil,
                 onHint,
-                onReset,
+                onRetryPuzzle,
                 onRetryCompletion,
                 hapticsEnabled,
                 { onNewPuzzle(uiState.puzzle.id.difficulty) },
@@ -174,7 +173,7 @@ private fun ReadyState(
     onSelectValue: (BalanceCell) -> Unit,
     onTogglePencil: () -> Unit,
     onHint: () -> Unit,
-    onReset: () -> Unit,
+    onRetryPuzzle: () -> Unit,
     onRetryCompletion: () -> Unit,
     hapticsEnabled: Boolean,
     onNewPuzzle: () -> Unit,
@@ -183,7 +182,6 @@ private fun ReadyState(
     isDaily: Boolean,
     modifier: Modifier,
 ) {
-    var showResetConfirmation by remember { mutableStateOf(false) }
     val view = LocalView.current
     var previouslyConflicted by remember { mutableStateOf(game.violations.isNotEmpty()) }
     var previousStatus by remember { mutableStateOf(game.status) }
@@ -194,8 +192,12 @@ private fun ReadyState(
         previouslyConflicted = game.violations.isNotEmpty()
     }
     LaunchedEffect(game.status) {
-        if (hapticsEnabled && previousStatus != BalanceGameStatus.SOLVED && game.status == BalanceGameStatus.SOLVED) {
-            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+        if (hapticsEnabled && previousStatus != game.status) {
+            when (game.status) {
+                BalanceGameStatus.SOLVED -> view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                BalanceGameStatus.FAILED -> view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                BalanceGameStatus.IN_PROGRESS -> Unit
+            }
         }
         previousStatus = game.status
     }
@@ -206,6 +208,7 @@ private fun ReadyState(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         DifficultyBadge(difficultyLabel(PuzzleType.BALANCE, difficulty))
+        MistakeIndicator(game.mistakesUsed, PuzzleMistakes.MAX_MISTAKES)
         BalanceBoard(
             puzzle = puzzle,
             game = game,
@@ -225,31 +228,19 @@ private fun ReadyState(
                     enabled = !isHintLoading && game.status == BalanceGameStatus.IN_PROGRESS,
                     onClick = onHint,
                 ),
-                GameAction(
-                    icon = Icons.Filled.Refresh,
-                    label = stringResource(R.string.reset),
-                    enabled = true,
-                    onClick = { if (game.hasPlayerInput) showResetConfirmation = true else onReset() },
-                ),
             ),
         )
         if (isHintLoading) SupportingText(stringResource(R.string.searching_hint))
     }
-    if (showResetConfirmation) {
-        ResetConfirmationDialog(
-            onConfirm = {
-                showResetConfirmation = false
-                onReset()
-            },
-            onDismiss = { showResetConfirmation = false },
-        )
-    }
-    if (game.status == BalanceGameStatus.SOLVED) {
-        PuzzleSolvedDialog(
+    if (game.status.isTerminal) {
+        PuzzleTerminalDialog(
+            isSolved = game.status == BalanceGameStatus.SOLVED,
             completionPersistence = completionPersistence,
             hintsUsed = game.hintsUsed,
+            maxMistakes = PuzzleMistakes.MAX_MISTAKES,
             isDaily = isDaily,
             onRetryCompletion = onRetryCompletion,
+            onRetryPuzzle = onRetryPuzzle,
             onNewPuzzle = onNewPuzzle,
             onCatalog = onCatalog,
             onToday = onToday,
@@ -298,20 +289,6 @@ private fun balanceValueTool(
         onClick = { onSelectValue(value) },
         symbol = { Text(value.symbol(), style = MaterialTheme.typography.titleMedium) },
     )
-
-@Composable
-internal fun ResetConfirmationDialog(
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.reset_title)) },
-        text = { Text(stringResource(R.string.reset_body)) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.reset)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
-    )
-}
 
 @Composable
 private fun HintCard(hint: BalanceHint) {

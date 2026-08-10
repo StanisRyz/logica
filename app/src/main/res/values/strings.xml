@@ -20,7 +20,7 @@
     <string name="balance_tutorial_stage_three_title">Линии не повторяются</string>
     <string name="balance_tutorial_stage_three_body">Готовые строки и столбцы должны отличаться. Поставьте значение, которое не повторит верхнюю строку.</string>
     <string name="balance_tutorial_stage_four_title">Небольшая самостоятельная задача</string>
-    <string name="balance_tutorial_stage_four_body">Решите эту головоломку, применяя все три правила. Верное значение закрепляется и больше не меняется, неверное остаётся выделенным, пока вы его не исправите: повторное касание тем же значением убирает его. Карандаш ставит маленькие черновые пометки — они не проверяются и не считаются ответом.</string>
+    <string name="balance_tutorial_stage_four_body">Решите эту головоломку, применяя все три правила. Верное значение закрепляется и больше не меняется, неверное остаётся выделенным, пока вы его не исправите: повторное касание тем же значением убирает его. Каждое неверное значение — ошибка; после трёх ошибок попытка заканчивается, и головоломку можно пройти заново. Карандаш ставит маленькие черновые пометки — они не проверяются, не считаются ответом и не дают ошибок.</string>
     <string name="balance_tutorial_try_again">Пока не так. Проверьте правило и попробуйте ещё раз.</string>
     <string name="balance_tutorial_complete_title">Обучение завершено</string>
     <string name="balance_tutorial_complete_body">Отлично! Теперь можно выбрать сложность и начать игру.</string>
@@ -37,11 +37,13 @@
     <string name="creating_puzzle">Создаём головоломку…</string>
     <string name="try_another">Попробовать другую</string>
     <string name="hint">Подсказка</string>
-    <string name="reset">Сбросить</string>
     <string name="searching_hint">Ищем подсказку…</string>
-    <string name="reset_title">Сбросить прогресс?</string>
-    <string name="reset_body">Все введённые значения будут удалены.</string>
     <string name="puzzle_solved">Головоломка решена</string>
+    <string name="puzzle_failed">Попытка не пройдена</string>
+    <string name="puzzle_failed_body">Допущено %1$d ошибки. Можно начать эту же головоломку заново.</string>
+    <string name="retry_puzzle">Пройти заново</string>
+    <string name="mistakes_label">Ошибки: %1$d из %2$d</string>
+    <string name="mistakes_description">Ошибок: %1$d из %2$d</string>
     <string name="hints_used">Использовано подсказок: %1$d</string>
     <string name="new_puzzle">Новая головоломка</string>
     <string name="to_catalog">В каталог</string>
@@ -87,7 +89,8 @@
     <string name="daily_challenge">Задача дня</string>
     <string name="daily_available">Не начата</string>
     <string name="daily_in_progress">В процессе</string>
-    <string name="daily_entry_completed">Сыграно</string>
+    <string name="daily_entry_solved">Решено</string>
+    <string name="daily_entry_failed">Не пройдено</string>
     <string name="daily_completed">Задача дня выполнена</string>
     <string name="daily_progress_short">%1$d / %2$d</string>
     <string name="daily_progress_description">Выполнено %1$d из %2$d головоломок дня.</string>
@@ -170,7 +173,7 @@
     <string name="crowns_tutorial_stage_four_title">Метки и карандаш</string>
     <string name="crowns_tutorial_stage_four_body">Выберите инструмент «Метка ×» и отметьте выделенную клетку: так вы фиксируете вывод, что короны здесь нет. Верное значение закрепляется, неверное остаётся выделенным, пока вы его не исправите. Карандаш ставит маленькие черновые пометки — они не проверяются и не считаются ответом.</string>
     <string name="crowns_tutorial_stage_five_title">Небольшая самостоятельная задача</string>
-    <string name="crowns_tutorial_stage_five_body">Расставьте четыре короны, применяя все правила. Метки и карандаш помогают исключать варианты.</string>
+    <string name="crowns_tutorial_stage_five_body">Расставьте четыре короны, применяя все правила. Каждое неверное значение — ошибка; после трёх ошибок попытка заканчивается, и головоломку можно пройти заново. Метки и карандаш помогают исключать варианты, а черновые пометки ошибок не дают.</string>
     <string name="crowns_tutorial_feedback_row_column">Пока не так. В этом шаге нужна корона в выделенной клетке: две короны в одной строке или столбце конфликтуют.</string>
     <string name="crowns_tutorial_feedback_region">Пока не так. Проверьте границу области: в ней может быть только одна корона.</string>
     <string name="crowns_tutorial_feedback_diagonal">Пока не так. Короны в соседних по диагонали клетках конфликтуют.</string>
@@ -197,7 +200,6 @@
     <string name="word_solved">Слово отгадано</string>
     <string name="word_failed">Попытки закончились</string>
     <string name="word_answer_was">Загаданное слово: %1$s</string>
-    <string name="word_daily_entry_done">Слово на сегодня сыграно.</string>
     <string name="word_rejection_incomplete">Введите слово полностью.</string>
     <string name="word_rejection_unknown_word">Такого слова нет в словаре. Попытка не потрачена.</string>
     <string name="word_rejection_invalid_letters">Допустимы только русские буквы.</string>

@@ -14,6 +14,7 @@ import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.session.DailyGameSessionIdentity
 import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.session.GameSessionScope
@@ -51,6 +52,9 @@ internal sealed interface DailyGameLaunch {
 internal enum class DailyEntryState {
     AVAILABLE,
     IN_PROGRESS,
+
+    /** Derived only: no active session, but this entry already has at least one failed attempt. */
+    RETRY,
     COMPLETED,
 }
 
@@ -122,7 +126,16 @@ internal class TodayViewModel(
                     // A persisted run keeps its own policy version forever; only brand-new runs use V4.
                     val definition =
                         definitionProvider(challengeDate, run?.policyVersion ?: DailyChallengePolicyV4.VERSION)
-                    val entries = definition.entries.map { entry -> entryState(definition, entry, run) }
+                    // Failed attempts stay durable, so an entry with no active session can still be
+                    // a retry rather than an untouched start.
+                    val failedPuzzleTypes =
+                        run
+                            ?.let { dailyResultRepository.readResults(challengeDate, it.policyVersion) }
+                            .orEmpty()
+                            .filter { it.outcome == GameOutcome.FAILED }
+                            .mapTo(mutableSetOf()) { it.puzzleType }
+                    val entries =
+                        definition.entries.map { entry -> entryState(definition, entry, run, failedPuzzleTypes) }
                     mutableUiState.value =
                         TodayUiState.Content(
                             definition = definition,
@@ -156,10 +169,11 @@ internal class TodayViewModel(
         )
     }
 
+    /** Starts a first or a repeat attempt: a retry after a failure is just a new attempt. */
     fun start(puzzleType: PuzzleType) {
         val content = mutableUiState.value as? TodayUiState.Content ?: return
         val entry = content.definition.entryFor(puzzleType) ?: return
-        if (content.entries.stateOf(puzzleType) != DailyEntryState.AVAILABLE) return
+        if (content.entries.stateOf(puzzleType) !in setOf(DailyEntryState.AVAILABLE, DailyEntryState.RETRY)) return
         val definition = content.definition
         val needsRun = content.runStatus == null
         mutableUiState.value = TodayUiState.Loading
@@ -186,6 +200,7 @@ internal class TodayViewModel(
         definition: DailyChallengeDefinition,
         entry: DailyPuzzleEntry,
         run: SavedDailyRun?,
+        failedPuzzleTypes: Set<PuzzleType>,
     ): TodayEntryUiState {
         val lifecycle =
             dailyChallengeRepository
@@ -198,6 +213,7 @@ internal class TodayViewModel(
             when {
                 lifecycle?.status == DailyChallengeStatus.COMPLETED -> DailyEntryState.COMPLETED
                 matchingDailySession(definition, entry) != null -> DailyEntryState.IN_PROGRESS
+                entry.puzzleType in failedPuzzleTypes -> DailyEntryState.RETRY
                 else -> DailyEntryState.AVAILABLE
             }
         return TodayEntryUiState(entry.puzzleType, entry.difficulty, state)

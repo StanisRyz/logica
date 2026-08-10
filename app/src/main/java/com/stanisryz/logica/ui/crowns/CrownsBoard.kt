@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -130,6 +131,7 @@ private fun CrownsCellView(
     val palette = LocalLogicaPalette.current
     val regionColors = palette.crownsRegions
     val isIncorrect = status == CrownsCellStatus.INCORRECT
+    val isConfirmed = status == CrownsCellStatus.CORRECT
     val background =
         when {
             isConflict || isIncorrect -> colors.errorContainer
@@ -164,6 +166,7 @@ private fun CrownsCellView(
         )
     val boundaryColor = colors.outline
     val internalColor = colors.outlineVariant
+    val confirmedRingColor = palette.onCrownsRegion.copy(alpha = CONFIRMED_RING_ALPHA)
     val strongWidth = 2.dp
     val thinWidth = 1.dp
 
@@ -231,6 +234,17 @@ private fun CrownsCellView(
                                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(thin * 3f, thin * 2f)),
                                     ),
                             )
+                        // Confirmed cells get a restrained inset ring: it reads as "settled" without
+                        // an icon on every cell and leaves the region colour fully visible.
+                        isConfirmed -> {
+                            val inset = strong * 1.5f
+                            drawRect(
+                                color = confirmedRingColor,
+                                topLeft = Offset(inset, inset),
+                                size = Size(size.width - 2f * inset, size.height - 2f * inset),
+                                style = Stroke(width = thin),
+                            )
+                        }
                     }
                 },
         contentAlignment = Alignment.Center,
@@ -308,3 +322,4 @@ private fun CrownsPlayerCell.accessibilityLabel(): String =
 
 private const val PENCIL_RATIO = 0.3f
 private const val PENCIL_ALPHA = 0.7f
+private const val CONFIRMED_RING_ALPHA = 0.4f

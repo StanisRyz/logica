@@ -47,6 +47,37 @@ class DailyAggregateCompletionTest {
         }
 
     @Test
+    fun aFailedAttemptStaysDurableButOnlyASolvedOneCompletesTheEntryAndRun() =
+        runBlocking {
+            val definition = DailyChallengePolicyV2.definitionFor(LocalDate.of(2026, 8, 9))
+            val dao = FakeGameCompletionDao(definition)
+            val entry = definition.entries[0]
+            val failed =
+                entry.completion(definition, "daily-0", hintsUsed = 1, outcome = GameOutcome.FAILED).toEntity(1_000)
+
+            dao.complete(failed)
+
+            // The result is durable, the session is released for a retry, and nothing else moved.
+            assertNotNull(dao.results["daily-0"])
+            assertEquals(DailyChallengeStatus.IN_PROGRESS.name, dao.challenge(failed).status)
+            assertEquals(DailyRunStatus.IN_PROGRESS.name, dao.run.status)
+            assertNull(dao.findSession(failed.puzzleType, failed.sessionScope))
+
+            dao.startRetrySession(definition, entry, sessionId = "daily-0-retry", hintsUsed = 0)
+            val solved = entry.completion(definition, "daily-0-retry", hintsUsed = 0).toEntity(2_000)
+            dao.complete(solved)
+
+            assertEquals(2, dao.results.size)
+            assertEquals(DailyChallengeStatus.COMPLETED.name, dao.challenge(solved).status)
+            assertEquals(DailyRunStatus.IN_PROGRESS.name, dao.run.status)
+
+            dao.complete(definition.entries[1].completion(definition, "daily-1", hintsUsed = 2).toEntity(3_000))
+
+            assertEquals(DailyRunStatus.COMPLETED.name, dao.run.status)
+            assertEquals(3, dao.results.size)
+        }
+
+    @Test
     fun completingOneSessionLeavesTheOtherThreePuzzleScopeSessionsIntact() =
         runBlocking {
             val definition = DailyChallengePolicyV2.definitionFor(LocalDate.of(2026, 8, 9))
@@ -77,6 +108,7 @@ class DailyAggregateCompletionTest {
         definition: DailyChallengeDefinition,
         resultId: String,
         hintsUsed: Int,
+        outcome: GameOutcome = GameOutcome.SOLVED,
     ): GameCompletion =
         GameCompletion(
             resultId = resultId,
@@ -86,6 +118,7 @@ class DailyAggregateCompletionTest {
             generatorVersion = generatorVersion,
             sessionScope = GameSessionScope.DAILY,
             hintsUsed = hintsUsed,
+            outcome = outcome,
             challengeDate = definition.challengeDate,
             dailyPolicyVersion = definition.policyVersion,
         )
@@ -244,6 +277,33 @@ private class FakeGameCompletionDao(
                 completedAtEpochMillis = completedAt,
             )
         return 1
+    }
+
+    /** A retry is a brand-new session for the very same Daily entry identity. */
+    fun startRetrySession(
+        definition: DailyChallengeDefinition,
+        entry: DailyPuzzleEntry,
+        sessionId: String,
+        hintsUsed: Int,
+    ) {
+        sessions[entry.puzzleType.name to GameSessionScope.DAILY.name] =
+            GameSessionEntity(
+                puzzleType = entry.puzzleType.name,
+                sessionScope = GameSessionScope.DAILY.name,
+                sessionId = sessionId,
+                difficulty = entry.difficulty.name,
+                puzzleSeed = entry.seed.value,
+                generatorVersion = entry.generatorVersion.value,
+                challengeDate = definition.challengeDate.toString(),
+                dailyPolicyVersion = definition.policyVersion.value,
+                sessionFormatVersion = 3,
+                gameplayPayload = "payload",
+                moveHistoryPayload = "",
+                hintsUsed = hintsUsed,
+                status = "IN_PROGRESS",
+                createdAtEpochMillis = 100,
+                updatedAtEpochMillis = 100,
+            )
     }
 
     fun catalogCompletion(puzzleType: PuzzleType): GameCompletion =

@@ -19,6 +19,7 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletion
 import com.stanisryz.logica.result.GameCompletionRepository
+import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.session.DailyGameSessionIdentity
 import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.session.GameSessionScope
@@ -148,8 +149,28 @@ internal class CrownsGameViewModel(
         }
     }
 
-    fun reset() {
-        updateGame { engine, game -> engine.reset(game) }
+    /**
+     * Starts a fresh attempt at the very same puzzle: a new session ID, a clean board, no pencil
+     * marks, and no mistakes. It waits for the finished attempt's result to be durably stored, so one
+     * attempt always maps to exactly one session and at most one terminal result.
+     */
+    fun retry() {
+        val ready = mutableUiState.value as? CrownsGameUiState.Ready ?: return
+        if (!ready.game.status.isTerminal) return
+        if (ready.completionPersistence != CompletionPersistence.Saved) return
+        val engine = gameEngine ?: return
+        val previous = activeSession ?: return
+
+        val session = previous.copy(sessionId = sessionIdFactory())
+        val game = engine.start()
+        activeSession = session
+        mutableUiState.value =
+            CrownsGameUiState.Ready(
+                puzzle = ready.puzzle,
+                game = game,
+                selectedValue = ready.selectedValue,
+            )
+        sessionRepository.replaceActiveSession(session.saved(game))
     }
 
     fun requestHint() {
@@ -179,7 +200,7 @@ internal class CrownsGameViewModel(
 
     fun retryCompletion() {
         val ready = mutableUiState.value as? CrownsGameUiState.Ready ?: return
-        if (ready.game.status == CrownsGameStatus.SOLVED) persistCompletion(ready.game)
+        if (ready.game.status.isTerminal) persistCompletion(ready.game)
     }
 
     private suspend fun loadSession(): LoadedSession =
@@ -270,7 +291,7 @@ internal class CrownsGameViewModel(
 
     private fun persist(game: CrownsGameState) {
         val session = activeSession ?: return
-        if (game.status == CrownsGameStatus.SOLVED) {
+        if (game.status.isTerminal) {
             persistCompletion(game)
         } else {
             sessionRepository.updateActiveSession(session.saved(game))
@@ -337,7 +358,7 @@ internal class CrownsGameViewModel(
         }
 
         fun completion(game: CrownsGameState): GameCompletion {
-            require(game.status == CrownsGameStatus.SOLVED)
+            require(game.status.isTerminal) { "Only a terminal Crowns attempt produces a result." }
             val dailyContext = context as? CrownsGameContext.Daily
             return GameCompletion(
                 resultId = sessionId,
@@ -347,6 +368,8 @@ internal class CrownsGameViewModel(
                 generatorVersion = puzzle.id.generatorVersion,
                 sessionScope = context.sessionScope,
                 hintsUsed = game.hintsUsed,
+                outcome =
+                    if (game.status == CrownsGameStatus.SOLVED) GameOutcome.SOLVED else GameOutcome.FAILED,
                 challengeDate = dailyContext?.challengeDate,
                 dailyPolicyVersion = dailyContext?.policyVersion,
             )
