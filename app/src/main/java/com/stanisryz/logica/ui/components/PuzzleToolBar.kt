@@ -40,6 +40,7 @@ internal data class PuzzleTool(
 internal fun PuzzleToolBar(
     tools: List<PuzzleTool>,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -54,6 +55,7 @@ internal fun PuzzleToolBar(
                 FilledTonalIconToggleButton(
                     checked = tool.selected,
                     onCheckedChange = { tool.onClick() },
+                    enabled = enabled,
                     modifier =
                         Modifier
                             .then(

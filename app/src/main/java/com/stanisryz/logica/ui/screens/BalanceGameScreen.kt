@@ -229,7 +229,13 @@ private fun ReadyState(
                 onCellTapped(it)
             },
         )
-        BalanceToolBar(selectedValue, isPencilMode, onSelectValue, onTogglePencil)
+        BalanceToolBar(
+            selectedValue,
+            isPencilMode,
+            onSelectValue,
+            onTogglePencil,
+            enabled = economy.isGameplayAllowed,
+        )
         game.currentHint?.let { hint -> HintCard(hint) }
         GameMessage(game.violations.firstOrNull()?.let { violationText(it.type) })
         GameActionBar(
@@ -273,6 +279,7 @@ internal fun BalanceToolBar(
     onSelectValue: (BalanceCell) -> Unit,
     onTogglePencil: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     PuzzleToolBar(
         tools =
@@ -288,6 +295,7 @@ internal fun BalanceToolBar(
                 ),
             ),
         modifier = modifier,
+        enabled = enabled,
     )
 }
 

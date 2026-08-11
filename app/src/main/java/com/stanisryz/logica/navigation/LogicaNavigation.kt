@@ -2,10 +2,20 @@ package com.stanisryz.logica.navigation
 
 import android.app.Activity
 import androidx.activity.compose.LocalActivity
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -34,6 +44,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.hideFromAccessibility
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -84,6 +96,7 @@ import com.stanisryz.logica.ui.screens.WordGameRoute
 import com.stanisryz.logica.ui.screens.WordStartScreen
 import com.stanisryz.logica.ui.screens.WordTutorialRoute
 import com.stanisryz.logica.ui.screens.gameCatalogEntries
+import com.stanisryz.logica.ui.theme.LogicaMotion
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.word.WordGameLaunch
 import java.security.SecureRandom
@@ -182,6 +195,25 @@ internal fun LogicaNavigation(
         interstitialOpportunity?.let { onInterstitialOpportunity(it, activity) }
     }
 
+    val catalog =
+        gameCatalogEntries(
+            hasActiveSession = { puzzleType ->
+                when (puzzleType) {
+                    PuzzleType.BALANCE -> hasActiveBalanceSession
+                    PuzzleType.CROWNS -> hasActiveCrownsSession
+                    PuzzleType.WORD -> hasActiveWordSession
+                    PuzzleType.SUDOKU -> hasActiveSudokuSession
+                    PuzzleType.GAME_2048 -> hasActiveGame2048Session
+                    else -> error("$puzzleType is not a Catalog game.")
+                }
+            },
+            onContinue = { puzzleType -> backStack.add(puzzleType.catalogGameDestination()) },
+            onNew = { puzzleType -> backStack.add(puzzleType.startDestination()) },
+        )
+    val openDaily: (DailyGameLaunch) -> Unit = { dailyLaunch ->
+        backStack.add(dailyLaunch.gameDestination())
+    }
+
     Scaffold(
         topBar = {
             AppTopBar(
@@ -197,7 +229,11 @@ internal fun LogicaNavigation(
             )
         },
         bottomBar = {
-            if (currentDestination.showsBottomBar()) {
+            AnimatedVisibility(
+                visible = currentDestination.showsBottomBar(),
+                enter = fadeIn(tween(LogicaMotion.SHORT_MILLIS)),
+                exit = fadeOut(tween(LogicaMotion.SHORT_MILLIS)),
+            ) {
                 AppBottomBar(selectedTab) { selectedTab = it }
             }
         },
@@ -206,86 +242,71 @@ internal fun LogicaNavigation(
             backStack = backStack,
             modifier = Modifier.padding(contentPadding),
             onBack = { backStack.removeLastOrNull() },
+            transitionSpec = {
+                (
+                    fadeIn(tween(LogicaMotion.SCREEN_MILLIS)) +
+                        slideInHorizontally(tween(LogicaMotion.SCREEN_MILLIS)) { width -> width / 20 }
+                ) togetherWith (
+                    fadeOut(tween(LogicaMotion.SHORT_MILLIS)) +
+                        slideOutHorizontally(tween(LogicaMotion.SCREEN_MILLIS)) { width -> -width / 28 }
+                )
+            },
+            popTransitionSpec = {
+                (
+                    fadeIn(tween(LogicaMotion.SCREEN_MILLIS)) +
+                        slideInHorizontally(tween(LogicaMotion.SCREEN_MILLIS)) { width -> -width / 20 }
+                ) togetherWith (
+                    fadeOut(tween(LogicaMotion.SHORT_MILLIS)) +
+                        slideOutHorizontally(tween(LogicaMotion.SCREEN_MILLIS)) { width -> width / 28 }
+                )
+            },
             entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
             entryProvider =
                 entryProvider {
                     entry<AppDestination.Home> {
-                        tabStateHolder.SaveableStateProvider(selectedTab) {
-                            when (selectedTab) {
-                                PrimaryTab.GAME ->
-                                    GameHubRoute(
-                                        dailyChallengeRepository = dailyChallengeRepository,
-                                        gameSessionRepository = gameSessionRepository,
-                                        statisticsRepository = statisticsRepository,
-                                        dailyResultRepository = dailyResultRepository,
-                                        catalog =
-                                            gameCatalogEntries(
-                                                hasActiveSession = { puzzleType ->
-                                                    when (puzzleType) {
-                                                        PuzzleType.BALANCE -> hasActiveBalanceSession
-                                                        PuzzleType.CROWNS -> hasActiveCrownsSession
-                                                        PuzzleType.WORD -> hasActiveWordSession
-                                                        PuzzleType.SUDOKU -> hasActiveSudokuSession
-                                                        PuzzleType.GAME_2048 -> hasActiveGame2048Session
-                                                        else -> error("$puzzleType is not a Catalog game.")
-                                                    }
-                                                },
-                                                onContinue = { puzzleType ->
-                                                    backStack.add(
-                                                        when (puzzleType) {
-                                                            PuzzleType.BALANCE ->
-                                                                AppDestination.BalanceGame(BalanceGameLaunch.Restore())
-                                                            PuzzleType.CROWNS ->
-                                                                AppDestination.CrownsGame(CrownsGameLaunch.Restore())
-                                                            PuzzleType.WORD -> AppDestination.WordGame(WordGameLaunch.Restore())
-                                                            PuzzleType.SUDOKU -> AppDestination.SudokuGame(SudokuGameLaunch.Restore())
-                                                            PuzzleType.GAME_2048 ->
-                                                                AppDestination.Game2048Game(Game2048Launch.Restore())
-                                                            else -> error("$puzzleType is not a Catalog game.")
-                                                        },
-                                                    )
-                                                },
-                                                onNew = { puzzleType ->
-                                                    backStack.add(
-                                                        when (puzzleType) {
-                                                            PuzzleType.BALANCE -> AppDestination.BalanceStart
-                                                            PuzzleType.CROWNS -> AppDestination.CrownsStart
-                                                            PuzzleType.WORD -> AppDestination.WordStart
-                                                            PuzzleType.SUDOKU -> AppDestination.SudokuStart
-                                                            PuzzleType.GAME_2048 -> AppDestination.Game2048Start
-                                                            else -> error("$puzzleType is not a Catalog game.")
-                                                        },
-                                                    )
-                                                },
-                                            ),
-                                        economy = economy,
-                                        onOpenDaily = { dailyLaunch ->
-                                            backStack.add(
-                                                when (dailyLaunch) {
-                                                    is DailyGameLaunch.Balance ->
-                                                        AppDestination.BalanceGame(dailyLaunch.launch)
-                                                    is DailyGameLaunch.Crowns ->
-                                                        AppDestination.CrownsGame(dailyLaunch.launch)
-                                                    is DailyGameLaunch.Word ->
-                                                        AppDestination.WordGame(dailyLaunch.launch)
-                                                    is DailyGameLaunch.Sudoku ->
-                                                        AppDestination.SudokuGame(dailyLaunch.launch)
-                                                    is DailyGameLaunch.Game2048 ->
-                                                        AppDestination.Game2048Game(dailyLaunch.launch)
-                                                },
+                        AnimatedContent(
+                            targetState = selectedTab,
+                            modifier = Modifier.fillMaxSize(),
+                            transitionSpec = {
+                                val direction = if (targetState.ordinal >= initialState.ordinal) 1 else -1
+                                (
+                                    fadeIn(tween(LogicaMotion.SHORT_MILLIS)) +
+                                        slideInHorizontally(tween(LogicaMotion.SCREEN_MILLIS)) { width ->
+                                            direction * (width / 28)
+                                        }
+                                ) togetherWith fadeOut(tween(LogicaMotion.SHORT_MILLIS))
+                            },
+                            label = "primaryTab",
+                        ) { tab ->
+                            Box(
+                                Modifier
+                                    .fillMaxSize()
+                                    .semantics { if (tab != selectedTab) hideFromAccessibility() },
+                            ) {
+                                tabStateHolder.SaveableStateProvider(tab) {
+                                    when (tab) {
+                                        PrimaryTab.GAME ->
+                                            GameHubRoute(
+                                                dailyChallengeRepository = dailyChallengeRepository,
+                                                gameSessionRepository = gameSessionRepository,
+                                                statisticsRepository = statisticsRepository,
+                                                dailyResultRepository = dailyResultRepository,
+                                                catalog = catalog,
+                                                economy = economy,
+                                                onOpenDaily = openDaily,
+                                                onRestoreLife = onRestoreLife,
                                             )
-                                        },
-                                        onRestoreLife = onRestoreLife,
-                                    )
-                                PrimaryTab.STORE ->
-                                    StoreScreen(
-                                        economy = economy,
-                                        state = gemStoreState,
-                                        onOpen = onOpenGemStore,
-                                        onBuy = onBuyGemPack,
-                                        onDismissOutcome = onDismissGemPurchaseOutcome,
-                                    )
-                                PrimaryTab.PROFILE -> ProfileRoute(statisticsRepository)
+                                        PrimaryTab.STORE ->
+                                            StoreScreen(
+                                                economy = economy,
+                                                state = gemStoreState,
+                                                onOpen = onOpenGemStore,
+                                                onBuy = onBuyGemPack,
+                                                onDismissOutcome = onDismissGemPurchaseOutcome,
+                                            )
+                                        PrimaryTab.PROFILE -> ProfileRoute(statisticsRepository)
+                                    }
+                                }
                             }
                         }
                     }
@@ -534,6 +555,35 @@ private fun returnToGameHub(
     onSelectTab(PrimaryTab.GAME)
     while (backStack.size > 1) backStack.removeLastOrNull()
 }
+
+private fun PuzzleType.catalogGameDestination(): AppDestination =
+    when (this) {
+        PuzzleType.BALANCE -> AppDestination.BalanceGame(BalanceGameLaunch.Restore())
+        PuzzleType.CROWNS -> AppDestination.CrownsGame(CrownsGameLaunch.Restore())
+        PuzzleType.WORD -> AppDestination.WordGame(WordGameLaunch.Restore())
+        PuzzleType.SUDOKU -> AppDestination.SudokuGame(SudokuGameLaunch.Restore())
+        PuzzleType.GAME_2048 -> AppDestination.Game2048Game(Game2048Launch.Restore())
+        else -> error("$this is not a Catalog game.")
+    }
+
+private fun PuzzleType.startDestination(): AppDestination =
+    when (this) {
+        PuzzleType.BALANCE -> AppDestination.BalanceStart
+        PuzzleType.CROWNS -> AppDestination.CrownsStart
+        PuzzleType.WORD -> AppDestination.WordStart
+        PuzzleType.SUDOKU -> AppDestination.SudokuStart
+        PuzzleType.GAME_2048 -> AppDestination.Game2048Start
+        else -> error("$this is not a Catalog game.")
+    }
+
+private fun DailyGameLaunch.gameDestination(): AppDestination =
+    when (this) {
+        is DailyGameLaunch.Balance -> AppDestination.BalanceGame(launch)
+        is DailyGameLaunch.Crowns -> AppDestination.CrownsGame(launch)
+        is DailyGameLaunch.Word -> AppDestination.WordGame(launch)
+        is DailyGameLaunch.Sudoku -> AppDestination.SudokuGame(launch)
+        is DailyGameLaunch.Game2048 -> AppDestination.Game2048Game(launch)
+    }
 
 /**
  * The shared header of every screen: what you are looking at, the wallet where it belongs, and the

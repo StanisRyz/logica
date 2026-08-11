@@ -212,6 +212,10 @@ private fun WordReadyState(
             mutableIntStateOf(initialWordSelection(game))
         }
     val rejectionShake = remember { Animatable(0f) }
+    var revealedAttemptRevision by
+        rememberSaveable(puzzle.id) {
+            mutableIntStateOf(0)
+        }
 
     LaunchedEffect(rejectionRevision) {
         if (rejectionRevision == 0) return@LaunchedEffect
@@ -266,6 +270,7 @@ private fun WordReadyState(
                 editableEnabled = economy.isGameplayAllowed,
                 onCellSelected = { selectedCellIndex = it },
                 acceptedAttemptRevision = acceptedAttemptRevision,
+                onAcceptedAttemptRevealed = { revealedAttemptRevision = it },
                 modifier =
                     Modifier.offset {
                         IntOffset(rejectionShake.value.roundToInt(), 0)
@@ -280,7 +285,9 @@ private fun WordReadyState(
                 )
             }
             AnimatedVisibility(
-                visible = game.status != WordGameStatus.IN_PROGRESS,
+                visible =
+                    game.status != WordGameStatus.IN_PROGRESS &&
+                        (acceptedAttemptRevision == 0 || revealedAttemptRevision >= acceptedAttemptRevision),
                 enter =
                     fadeIn(tween(TERMINAL_APPEAR_MILLIS)) +
                         scaleIn(
@@ -404,25 +411,35 @@ private fun WordTerminalCard(
         }
 
         CompletionActions {
-            // A failed attempt leads with replaying the very same word; the Daily entry stays open.
-            if (!isSolved && completionPersistence == CompletionPersistence.Saved) {
-                Button(
-                    onClick = onRetryPuzzle,
-                    enabled = economy.isGameplayAllowed,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(stringResource(R.string.retry_puzzle))
+            when (completionPersistence) {
+                CompletionPersistence.Saved -> {
+                    // A failed attempt leads with replaying the same word; Daily stays open.
+                    if (!isSolved) {
+                        Button(
+                            onClick = onRetryPuzzle,
+                            enabled = economy.isGameplayAllowed,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(stringResource(R.string.retry_puzzle))
+                        }
+                        TextButton(onClick = onGameHub) { Text(stringResource(R.string.to_games)) }
+                    } else if (isDaily) {
+                        Button(onClick = onGameHub, modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.to_games))
+                        }
+                    } else {
+                        Button(onClick = onNewPuzzle, modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.new_puzzle))
+                        }
+                        TextButton(onClick = onGameHub) { Text(stringResource(R.string.to_games)) }
+                    }
                 }
-                TextButton(onClick = onGameHub) { Text(stringResource(R.string.to_games)) }
-            } else if (isDaily) {
-                Button(onClick = onGameHub, modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.to_games))
+                CompletionPersistence.Saving -> {
+                    TextButton(onClick = {}, enabled = false) { Text(stringResource(R.string.saving)) }
                 }
-            } else {
-                Button(onClick = onNewPuzzle, modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.new_puzzle))
-                }
-                TextButton(onClick = onGameHub) { Text(stringResource(R.string.to_games)) }
+                CompletionPersistence.Error,
+                CompletionPersistence.NotRequired,
+                -> Unit
             }
         }
     }

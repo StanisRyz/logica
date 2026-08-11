@@ -1,6 +1,12 @@
 package com.stanisryz.logica.ui.screens
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -8,6 +14,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.hideFromAccessibility
+import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -39,6 +47,7 @@ import com.stanisryz.logica.ui.components.SectionTitle
 import com.stanisryz.logica.ui.components.difficultyResource
 import com.stanisryz.logica.ui.components.russianLabel
 import com.stanisryz.logica.ui.components.titleResource
+import com.stanisryz.logica.ui.theme.LogicaMotion
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 /**
@@ -74,27 +83,50 @@ private fun ProfileScreen(
     onRetry: () -> Unit,
     modifier: Modifier,
 ) {
-    when (uiState) {
-        StatisticsUiState.Loading -> LoadingState(modifier)
-        StatisticsUiState.Error ->
-            RetryableErrorState(
-                message = stringResource(R.string.statistics_load_error),
-                retryLabel = stringResource(R.string.retry),
-                onRetry = onRetry,
-                modifier = modifier,
-            )
-        is StatisticsUiState.Ready ->
-            if (uiState.statistics.isEmpty()) {
-                EmptyState(
-                    title = stringResource(R.string.statistics_empty_title),
-                    body = stringResource(R.string.statistics_empty_body),
-                    modifier = modifier,
-                )
-            } else {
-                ProfileContent(uiState.statistics, modifier)
+    AnimatedContent(
+        targetState = uiState,
+        contentKey = { it.presentationKey() },
+        transitionSpec = {
+            fadeIn(tween(LogicaMotion.SCREEN_MILLIS)) togetherWith
+                fadeOut(tween(LogicaMotion.SHORT_MILLIS))
+        },
+        label = "profileState",
+    ) { state ->
+        Box(
+            Modifier.semantics {
+                if (state.presentationKey() != uiState.presentationKey()) hideFromAccessibility()
+            },
+        ) {
+            when (state) {
+                StatisticsUiState.Loading -> LoadingState(modifier)
+                StatisticsUiState.Error ->
+                    RetryableErrorState(
+                        message = stringResource(R.string.statistics_load_error),
+                        retryLabel = stringResource(R.string.retry),
+                        onRetry = onRetry,
+                        modifier = modifier,
+                    )
+                is StatisticsUiState.Ready ->
+                    if (state.statistics.isEmpty()) {
+                        EmptyState(
+                            title = stringResource(R.string.statistics_empty_title),
+                            body = stringResource(R.string.statistics_empty_body),
+                            modifier = modifier,
+                        )
+                    } else {
+                        ProfileContent(state.statistics, modifier)
+                    }
             }
+        }
     }
 }
+
+private fun StatisticsUiState.presentationKey(): String =
+    when (this) {
+        StatisticsUiState.Loading -> "loading"
+        StatisticsUiState.Error -> "error"
+        is StatisticsUiState.Ready -> if (statistics.isEmpty()) "empty" else "content"
+    }
 
 /** Nothing has been completed yet, so every metric would read zero. */
 private fun GameStatistics.isEmpty(): Boolean =

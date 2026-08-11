@@ -49,6 +49,7 @@ internal fun SudokuBoard(
     selectedCell: SudokuPosition?,
     onCellSelected: (SudokuPosition) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val selectedValue = selectedCell?.let(game::cellAt)?.value?.takeIf { it != 0 }
     val colors = MaterialTheme.colorScheme
@@ -90,7 +91,7 @@ internal fun SudokuBoard(
                                     cell.status.isConfirmedValue &&
                                     cell.value == selectedValue,
                             isHintTarget = game.currentHint?.position == position,
-                            enabled = !game.status.isTerminal,
+                            enabled = enabled && !game.status.isTerminal,
                             candidateTextSize = candidateTextSize,
                             valueTextSize = valueTextSize,
                             onClick = { onCellSelected(position) },

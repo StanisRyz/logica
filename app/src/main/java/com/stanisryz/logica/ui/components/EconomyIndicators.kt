@@ -80,6 +80,7 @@ internal fun EconomyBar(
                         contentDescription = livesDescription
                         role = Role.Button
                     },
+            animateLabel = true,
         )
         val gemsDescription = stringResource(R.string.economy_gems_action_description, economy.gems)
         StatusChip(
@@ -93,6 +94,7 @@ internal fun EconomyBar(
                         contentDescription = gemsDescription
                         role = Role.Button
                     },
+            animateLabel = true,
         )
     }
 }

@@ -138,12 +138,14 @@ internal class CrownsGameViewModel(
 
     fun selectValue(value: CrownsPlayerCell) {
         require(value != CrownsPlayerCell.EMPTY) { "Only a concrete value can be selected." }
+        if (!economy.value.isGameplayAllowed) return
         val ready = mutableUiState.value as? CrownsGameUiState.Ready ?: return
         if (ready.selectedValue == value) return
         mutableUiState.value = ready.copy(selectedValue = value)
     }
 
     fun togglePencilMode() {
+        if (!economy.value.isGameplayAllowed) return
         val ready = mutableUiState.value as? CrownsGameUiState.Ready ?: return
         mutableUiState.value = ready.copy(isPencilMode = !ready.isPencilMode)
     }

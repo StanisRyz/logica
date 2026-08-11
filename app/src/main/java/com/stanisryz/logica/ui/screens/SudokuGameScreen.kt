@@ -253,6 +253,7 @@ private fun SudokuReadyState(
         SudokuBoard(
             game = game,
             selectedCell = uiState.selectedCell,
+            enabled = economy.isGameplayAllowed,
             onCellSelected = {
                 if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                 onSelectCell(it)
@@ -275,6 +276,7 @@ private fun SudokuReadyState(
                     ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
             )
         }
         SudokuNumberPad(enabled = inputEnabled, onDigit = onDigit)

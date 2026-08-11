@@ -27,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -64,6 +65,7 @@ internal fun WordBoard(
     editableEnabled: Boolean = false,
     onCellSelected: (Int) -> Unit = {},
     acceptedAttemptRevision: Int = 0,
+    onAcceptedAttemptRevealed: (Int) -> Unit = {},
 ) {
     val rows = buildRows(game)
     val cellSpacing = if (game.wordLength == WordRules.MAXIMUM_WORD_LENGTH) COMPACT_CELL_SPACING else CELL_SPACING
@@ -71,12 +73,14 @@ internal fun WordBoard(
         rememberSaveable(game.puzzleId, game.attempts.size, acceptedAttemptRevision) {
             mutableIntStateOf(if (acceptedAttemptRevision == 0) game.wordLength else 0)
         }
+    val currentOnAcceptedAttemptRevealed by rememberUpdatedState(onAcceptedAttemptRevealed)
     LaunchedEffect(acceptedAttemptRevision) {
         if (acceptedAttemptRevision == 0) return@LaunchedEffect
         repeat(game.wordLength) { index ->
             delay(REVEAL_STEP_MILLIS)
             revealedCells = index + 1
         }
+        currentOnAcceptedAttemptRevealed(acceptedAttemptRevision)
     }
 
     Column(

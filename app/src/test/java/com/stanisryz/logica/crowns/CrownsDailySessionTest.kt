@@ -5,6 +5,7 @@ import com.stanisryz.logica.economy.EconomyRefill
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.EconomyRewardedLife
 import com.stanisryz.logica.economy.PlayerEconomy
+import com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV2
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleId
@@ -127,15 +128,44 @@ class CrownsDailySessionTest {
             assertNotNull(sessions.readActiveSession(PuzzleType.CROWNS, GameSessionScope.CATALOG))
         }
 
+    @Test
+    fun zeroLivesBlocksToolAndPencilChangesWithoutTouchingTheSave() =
+        runBlocking {
+            val sessions = FakeGameSessionRepository()
+            val economy = MutableEconomyRepository()
+            val gameViewModel =
+                viewModel(
+                    CrownsGameLaunch.New(Difficulty.EASY, PuzzleSeed(4242)),
+                    sessions,
+                    economy,
+                )
+            val ready = gameViewModel.awaitReady()
+            val savedBefore = requireNotNull(sessions.readActiveSession(PuzzleType.CROWNS, GameSessionScope.CATALOG))
+
+            economy.wallet.value = PlayerEconomy(lives = 0, nextLifeAtEpochMillis = 1_000L)
+            val otherValue =
+                if (ready.selectedValue == CrownsPlayerCell.CROWN) {
+                    CrownsPlayerCell.MARKED
+                } else {
+                    CrownsPlayerCell.CROWN
+                }
+            gameViewModel.selectValue(otherValue)
+            gameViewModel.togglePencilMode()
+
+            assertEquals(ready, gameViewModel.uiState.value)
+            assertEquals(savedBefore, sessions.readActiveSession(PuzzleType.CROWNS, GameSessionScope.CATALOG))
+        }
+
     private fun viewModel(
         launch: CrownsGameLaunch,
         sessions: GameSessionRepository,
+        economy: EconomyRepository = FullWalletEconomyRepository,
     ): CrownsGameViewModel =
         CrownsGameViewModel(
             launch = launch,
             sessionRepository = sessions,
             completionRepository = UnusedCompletionRepository,
-            economyRepository = FullWalletEconomyRepository,
+            economyRepository = economy,
             workDispatcher = dispatcher,
         )
 
@@ -182,6 +212,23 @@ class CrownsDailySessionTest {
         override fun observe(): Flow<PlayerEconomy> = MutableStateFlow(PlayerEconomy())
 
         override suspend fun refresh(): PlayerEconomy = PlayerEconomy()
+
+        override suspend fun refillLifeWithGems(actionId: String): EconomyRefill = error("Unused.")
+
+        override suspend fun grantRewardedLife(actionId: String): EconomyRewardedLife = error("Unused.")
+
+        override suspend fun grantPurchasedGems(
+            purchaseId: String,
+            productId: String,
+        ): EconomyGemPurchase = error("Unused.")
+    }
+
+    private class MutableEconomyRepository : EconomyRepository {
+        val wallet = MutableStateFlow(PlayerEconomy())
+
+        override fun observe(): Flow<PlayerEconomy> = wallet
+
+        override suspend fun refresh(): PlayerEconomy = wallet.value
 
         override suspend fun refillLifeWithGems(actionId: String): EconomyRefill = error("Unused.")
 

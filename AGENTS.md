@@ -138,6 +138,7 @@
 - Store reuses the existing RuStore flow unchanged (`GemStoreViewModel`, `GemPurchaseProcessor`, `RuStorePayGateway`); selecting the tab is what reconciles and loads prices. Profile is the existing `StatisticsViewModel` and nothing else: no login, account, avatar, or cloud profile.
 - The wallet is visible on all three tabs, but only the Game tab and the gameplay surfaces may preload a rewarded ad; Store and Profile never trigger a load merely by showing the balance.
 - Shared UI lives in `app/src/main/java/com/stanisryz/logica/ui/components/` and `.../ui/theme/`; screens compose those pieces instead of inventing their own paddings, text sizes, cards, or state views.
+- `LogicaMotion` owns the shared short state and screen-transition durations; gameplay-specific motion may keep local timings tied to its sequencing.
 - `LogicaSpacing` owns every layout value and `LogicaTheme` owns the complete Light/Dark `ColorScheme` plus shapes; do not leave Material container/surface roles at their baseline defaults.
 - `LogicaPalette` (via `LocalLogicaPalette`) holds only what Material 3 has no role for: the success family and the categorical Crowns region colors; everything else uses `MaterialTheme.colorScheme`.
 - Text hierarchy is `ScreenTitle`, `SectionTitle`, `PuzzleTitle`, `MetricValue`, `BodyText`, `SupportingText`; puzzle accents are subtle scheme colors, never separate per-puzzle themes.

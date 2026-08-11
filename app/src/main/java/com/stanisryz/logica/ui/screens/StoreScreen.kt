@@ -1,6 +1,13 @@
 package com.stanisryz.logica.ui.screens
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
@@ -17,6 +24,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.hideFromAccessibility
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.R
 import com.stanisryz.logica.economy.GemPack
@@ -28,6 +37,7 @@ import com.stanisryz.logica.ui.components.LogicaCard
 import com.stanisryz.logica.ui.components.ScreenColumn
 import com.stanisryz.logica.ui.components.ScreenTitle
 import com.stanisryz.logica.ui.components.SupportingText
+import com.stanisryz.logica.ui.theme.LogicaMotion
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 /**
@@ -60,13 +70,36 @@ internal fun StoreScreen(
             text = stringResource(R.string.gem_store_balance, economy.gems),
             style = MaterialTheme.typography.bodyMedium,
         )
-        when (state) {
-            GemStoreState.Loading -> GemStoreLoading()
-            GemStoreState.Unavailable -> GemStoreUnavailable(onOpen)
-            is GemStoreState.Ready -> GemStoreOffers(state, onBuy)
+        AnimatedContent(
+            targetState = state,
+            contentKey = { it.presentationKey() },
+            transitionSpec = {
+                fadeIn(tween(LogicaMotion.SCREEN_MILLIS)) togetherWith
+                    fadeOut(tween(LogicaMotion.SHORT_MILLIS))
+            },
+            label = "storeState",
+        ) { currentState ->
+            Box(
+                Modifier.semantics {
+                    if (currentState.presentationKey() != state.presentationKey()) hideFromAccessibility()
+                },
+            ) {
+                when (currentState) {
+                    GemStoreState.Loading -> GemStoreLoading()
+                    GemStoreState.Unavailable -> GemStoreUnavailable(onOpen)
+                    is GemStoreState.Ready -> GemStoreOffers(currentState, onBuy)
+                }
+            }
         }
     }
 }
+
+private fun GemStoreState.presentationKey(): String =
+    when (this) {
+        GemStoreState.Loading -> "loading"
+        GemStoreState.Unavailable -> "unavailable"
+        is GemStoreState.Ready -> "ready"
+    }
 
 @Composable
 private fun GemStoreLoading() {
@@ -102,7 +135,13 @@ private fun GemStoreOffers(
                 onBuy = { onBuy(offer.pack) },
             )
         }
-        state.outcome?.let { GemPurchaseMessage(it) }
+        AnimatedVisibility(
+            visible = state.outcome != null,
+            enter = fadeIn(tween(LogicaMotion.SHORT_MILLIS)),
+            exit = fadeOut(tween(LogicaMotion.SHORT_MILLIS)),
+        ) {
+            state.outcome?.let { GemPurchaseMessage(it) }
+        }
     }
 }
 

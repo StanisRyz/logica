@@ -139,12 +139,14 @@ internal class BalanceGameViewModel(
     }
 
     fun selectValue(value: BalanceCell) {
+        if (!economy.value.isGameplayAllowed) return
         val ready = mutableUiState.value as? BalanceGameUiState.Ready ?: return
         if (ready.selectedValue == value) return
         mutableUiState.value = ready.copy(selectedValue = value)
     }
 
     fun togglePencilMode() {
+        if (!economy.value.isGameplayAllowed) return
         val ready = mutableUiState.value as? BalanceGameUiState.Ready ?: return
         mutableUiState.value = ready.copy(isPencilMode = !ready.isPencilMode)
     }

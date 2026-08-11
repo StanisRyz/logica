@@ -161,15 +161,34 @@ class SudokuCatalogIntegrationTest {
             assertNotEquals(completions.results.single().resultId, active.sessionId)
         }
 
+    @Test
+    fun zeroLivesBlocksSelectionPencilAndBoardChanges() =
+        runBlocking {
+            val sessions = FakeSessions()
+            val economy = MutableEconomy()
+            val gameViewModel = viewModel(SudokuGameLaunch.New(Difficulty.HARD, SELECTOR), sessions, economy)
+            val ready = gameViewModel.awaitReady()
+            val target = ready.game.firstEmptyPosition()
+
+            economy.wallet.value = PlayerEconomy(lives = 0, nextLifeAtEpochMillis = 1_000L)
+            gameViewModel.selectCell(target)
+            gameViewModel.togglePencilMode()
+            gameViewModel.inputDigit(1)
+            gameViewModel.requestHint()
+
+            assertEquals(ready, gameViewModel.uiState.value)
+        }
+
     private fun viewModel(
         launch: SudokuGameLaunch,
         sessions: FakeSessions,
+        economy: EconomyRepository = FullWallet,
     ): SudokuGameViewModel =
         SudokuGameViewModel(
             launch = launch,
             sessionRepository = sessions,
             completionRepository = RecordingCompletions(sessions),
-            economyRepository = FullWallet,
+            economyRepository = economy,
             provider = provider,
             workDispatcher = dispatcher,
         )
@@ -268,6 +287,23 @@ class SudokuCatalogIntegrationTest {
         override fun observe(): Flow<PlayerEconomy> = MutableStateFlow(PlayerEconomy())
 
         override suspend fun refresh(): PlayerEconomy = PlayerEconomy()
+
+        override suspend fun refillLifeWithGems(actionId: String): EconomyRefill = error("Unused")
+
+        override suspend fun grantRewardedLife(actionId: String): EconomyRewardedLife = error("Unused")
+
+        override suspend fun grantPurchasedGems(
+            purchaseId: String,
+            productId: String,
+        ): EconomyGemPurchase = error("Unused")
+    }
+
+    private class MutableEconomy : EconomyRepository {
+        val wallet = MutableStateFlow(PlayerEconomy())
+
+        override fun observe(): Flow<PlayerEconomy> = wallet
+
+        override suspend fun refresh(): PlayerEconomy = wallet.value
 
         override suspend fun refillLifeWithGems(actionId: String): EconomyRefill = error("Unused")
 

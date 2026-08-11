@@ -1,5 +1,12 @@
 package com.stanisryz.logica.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -46,6 +53,7 @@ import com.stanisryz.logica.ui.components.SectionTitle
 import com.stanisryz.logica.ui.components.StatusChip
 import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.components.titleResource
+import com.stanisryz.logica.ui.theme.LogicaMotion
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 /**
@@ -141,8 +149,14 @@ private fun GameHubScreen(
             )
         }
         // The zero-life gate itself is unchanged; the hub only shows it once, above both halves.
-        if (!economy.isGameplayAllowed) {
-            item(key = "zero-lives") { ZeroLivesCard(economy, onRestoreLife) }
+        item(key = "zero-lives") {
+            AnimatedVisibility(
+                visible = !economy.isGameplayAllowed,
+                enter = fadeIn(tween(LogicaMotion.SHORT_MILLIS)) + expandVertically(tween(LogicaMotion.SCREEN_MILLIS)),
+                exit = fadeOut(tween(LogicaMotion.SHORT_MILLIS)) + shrinkVertically(tween(LogicaMotion.SCREEN_MILLIS)),
+            ) {
+                ZeroLivesCard(economy, onRestoreLife)
+            }
         }
         item(key = "games-title") {
             SectionTitle(
@@ -166,7 +180,7 @@ private fun GameCatalogCard(
     entry: GameCatalogEntry,
     gameplayAllowed: Boolean,
 ) {
-    LogicaCard {
+    LogicaCard(modifier = Modifier.animateContentSize(tween(LogicaMotion.SCREEN_MILLIS))) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.action),
@@ -180,13 +194,19 @@ private fun GameCatalogCard(
                 BodyText(stringResource(entry.descriptionResource))
             }
         }
-        if (entry.hasActiveSession) {
+        AnimatedVisibility(
+            visible = entry.hasActiveSession,
+            enter = fadeIn(tween(LogicaMotion.SHORT_MILLIS)) + expandVertically(tween(LogicaMotion.SCREEN_MILLIS)),
+            exit = fadeOut(tween(LogicaMotion.SHORT_MILLIS)) + shrinkVertically(tween(LogicaMotion.SCREEN_MILLIS)),
+        ) {
             // Continue keeps opening the saved puzzle at zero lives; its gameplay actions are what
             // stay disabled.
             StatusChip(
                 icon = Icons.Filled.BookmarkBorder,
                 label = stringResource(R.string.catalog_active_session),
             )
+        }
+        if (entry.hasActiveSession) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.action),

@@ -139,6 +139,7 @@ internal class SudokuGameViewModel(
     }
 
     fun selectCell(position: SudokuPosition) {
+        if (!economy.value.isGameplayAllowed) return
         val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
         if (ready.selectedCell != position) mutableUiState.value = ready.copy(selectedCell = position)
     }
@@ -158,6 +159,7 @@ internal class SudokuGameViewModel(
     }
 
     fun togglePencilMode() {
+        if (!economy.value.isGameplayAllowed) return
         val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
         if (ready.game.status.isTerminal) return
         mutableUiState.value = ready.copy(isPencilMode = !ready.isPencilMode)

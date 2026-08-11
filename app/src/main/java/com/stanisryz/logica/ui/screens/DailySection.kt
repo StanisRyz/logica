@@ -2,7 +2,13 @@ package com.stanisryz.logica.ui.screens
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -38,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.R
@@ -66,6 +73,7 @@ import com.stanisryz.logica.ui.components.difficultyLabel
 import com.stanisryz.logica.ui.components.progressFraction
 import com.stanisryz.logica.ui.components.titleResource
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
+import com.stanisryz.logica.ui.theme.LogicaMotion
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -85,31 +93,63 @@ internal fun DailySection(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
-        when (uiState) {
-            TodayUiState.Loading -> {
-                ScreenTitle(stringResource(R.string.daily_challenge))
-                DailyLoading()
-            }
-            is TodayUiState.Error -> {
-                ScreenTitle(stringResource(R.string.daily_challenge))
-                DailyError(uiState.reason, onRetryLoad)
-            }
-            is TodayUiState.Content -> {
-                DailyHeader(uiState)
-                // Streak status is its own line: from Policy V5 on it is answered by the first solved
-                // game, while the completion card below still belongs to a full Daily.
-                if (uiState.streak.anySolvedQualifies) DailyStreakChip(uiState.streak)
-                DailyEntryRow(
-                    entries = uiState.entries,
-                    gameplayAllowed = gameplayAllowed,
-                    onStart = onStart,
-                    onContinue = onContinue,
-                )
-                uiState.completion?.let { completion -> DailyCompletionCard(completion) }
+        AnimatedContent(
+            targetState = uiState,
+            contentKey = { state -> state.presentationKey() },
+            transitionSpec = {
+                fadeIn(tween(LogicaMotion.SCREEN_MILLIS)) togetherWith
+                    fadeOut(tween(LogicaMotion.SHORT_MILLIS))
+            },
+            label = "dailyState",
+        ) { state ->
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            if (state.presentationKey() != uiState.presentationKey()) hideFromAccessibility()
+                        },
+                verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
+            ) {
+                when (state) {
+                    TodayUiState.Loading -> {
+                        ScreenTitle(stringResource(R.string.daily_challenge))
+                        DailyLoading()
+                    }
+                    is TodayUiState.Error -> {
+                        ScreenTitle(stringResource(R.string.daily_challenge))
+                        DailyError(state.reason, onRetryLoad)
+                    }
+                    is TodayUiState.Content -> {
+                        DailyHeader(state)
+                        // V5 secures the streak on the first solve; full completion stays separate.
+                        if (state.streak.anySolvedQualifies) DailyStreakChip(state.streak)
+                        DailyEntryRow(
+                            entries = state.entries,
+                            gameplayAllowed = gameplayAllowed,
+                            onStart = onStart,
+                            onContinue = onContinue,
+                        )
+                        AnimatedVisibility(
+                            visible = state.completion != null,
+                            enter = fadeIn(tween(LogicaMotion.SCREEN_MILLIS)),
+                            exit = fadeOut(tween(LogicaMotion.SHORT_MILLIS)),
+                        ) {
+                            state.completion?.let { completion -> DailyCompletionCard(completion) }
+                        }
+                    }
+                }
             }
         }
     }
 }
+
+private fun TodayUiState.presentationKey(): String =
+    when (this) {
+        TodayUiState.Loading -> "loading"
+        is TodayUiState.Error -> "error"
+        is TodayUiState.Content -> "content"
+    }
 
 @Composable
 private fun DailyLoading() {
@@ -192,6 +232,7 @@ private fun DailyStreakChip(streak: TodayStreakUiState) {
             if (streak.qualifiedToday) palette.successContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
         contentColor =
             if (streak.qualifiedToday) palette.onSuccessContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        animateLabel = true,
     )
 }
 
@@ -297,6 +338,7 @@ private fun EntryStatusChip(
             if (isCompleted) successContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
         contentColor =
             if (isCompleted) onSuccessContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        animateLabel = true,
     )
 }
 

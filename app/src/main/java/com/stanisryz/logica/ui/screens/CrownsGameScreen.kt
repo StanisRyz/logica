@@ -237,7 +237,13 @@ private fun CrownsReadyState(
                 onCellTapped(position)
             },
         )
-        CrownsToolBar(selectedValue, isPencilMode, onSelectValue, onTogglePencil)
+        CrownsToolBar(
+            selectedValue,
+            isPencilMode,
+            onSelectValue,
+            onTogglePencil,
+            enabled = economy.isGameplayAllowed,
+        )
         game.currentHint?.let { hint -> CrownsHintCard(hint) }
         GameMessage(game.violations.firstOrNull()?.let { crownsViolationText(it.type) })
         GameActionBar(
@@ -282,6 +288,7 @@ internal fun CrownsToolBar(
     onSelectValue: (CrownsPlayerCell) -> Unit,
     onTogglePencil: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val selectedLabel = stringResource(R.string.tool_selected)
     val unselectedLabel = stringResource(R.string.tool_not_selected)
@@ -318,6 +325,7 @@ internal fun CrownsToolBar(
                 ),
             ),
         modifier = modifier,
+        enabled = enabled,
     )
 }
 
