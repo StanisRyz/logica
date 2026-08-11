@@ -136,4 +136,8 @@
 - Sudoku Dataset V1 provenance and the reproducible import report live in `datasets/sudoku/`; V1 is immutable, versioned bundled content sourced only from the pinned Sudoku Exchange Puzzle Bank revision.
 - Sudoku is never generated or downloaded at runtime: Android reads the prevalidated assets and their precomputed unique solutions, and Room is not used for this immutable content.
 - `SudokuPuzzleId` is dataset version + application difficulty + the full SHA-256 fingerprint of canonical givens; selection is the explicit stable V1 SHA-256 selector mapping, never a persisted positional index.
-- Stage 33 is dataset/domain infrastructure only; Sudoku gameplay, sessions, UI, Catalog/Daily/platform integration, and hints belong to Stage 34 or later.
+- Sudoku gameplay is cell-first: givens and correct entries are immutable, wrong committed digits stay visible/editable without revealing the answer, and the third committed mistake fails the attempt.
+- Sudoku Pencil candidates are per-cell 9-bit masks on empty editable cells only; a given, correct entry, or hint confirmation removes its digit from row/column/block peers, while incorrect entries never do.
+- Sudoku hints deterministically apply Naked Single, then Hidden Single by row/column/block, then a lowest-index safe reveal; a hint confirms one correct value and never costs a mistake.
+- Sudoku Session Codec V1 stores puzzle identity, player values, candidate masks, mistake events, and hint count only; givens, solution, and derived correct/incorrect flags are rebuilt from Dataset V1.
+- Stage 34 is a standalone gameplay/Compose-preview slice; production `PuzzleType`, Game Hub, persistence, Daily, economy, statistics, sharing, and navigation integration remain Stage 35 work.

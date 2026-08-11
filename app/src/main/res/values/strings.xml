@@ -258,4 +258,19 @@
     <string name="gem_store_failed">Не удалось завершить покупку.</string>
     <string name="gem_store_unavailable">Магазин сейчас недоступен. Кристаллы по-прежнему можно получить за решённые головоломки.</string>
     <string name="gem_store_retry">Обновить</string>
+    <string name="sudoku">Судоку</string>
+    <string name="sudoku_loading">Загружаем судоку…</string>
+    <string name="sudoku_cell_description">Строка %1$d, столбец %2$d. Значение: %3$s. %4$s%5$s</string>
+    <string name="sudoku_selected_suffix"> Клетка выбрана.</string>
+    <string name="sudoku_select_cell_help">Выберите клетку</string>
+    <string name="sudoku_pencil_on_help">Карандаш включён</string>
+    <string name="sudoku_hint_naked_single">В клетке %1$d:%2$d подходит только число %3$d.</string>
+    <string name="sudoku_hint_hidden_row">Число %1$d может стоять только в столбце %3$d строки %2$d.</string>
+    <string name="sudoku_hint_hidden_column">Число %1$d может стоять только в строке %3$d столбца %2$d.</string>
+    <string name="sudoku_hint_hidden_block">Число %1$d может стоять только в клетке %3$d:%4$d блока %2$d.</string>
+    <string name="sudoku_hint_fallback">Простые ходы не найдены: в клетке %1$d:%2$d подтверждено число %3$d.</string>
+    <string name="sudoku_dataset_missing">Встроенный набор судоку недоступен.</string>
+    <string name="sudoku_dataset_corrupt">Встроенный набор судоку повреждён.</string>
+    <string name="sudoku_puzzle_missing">Это судоку не найдено во встроенном наборе.</string>
+    <string name="sudoku_session_invalid">Сохранённую попытку судоку не удалось открыть.</string>
 </resources>
