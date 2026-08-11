@@ -21,6 +21,7 @@ import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.statistics.StatisticsUiState
 import com.stanisryz.logica.statistics.StatisticsViewModel
 import com.stanisryz.logica.statistics.StatisticsViewModelFactory
+import com.stanisryz.logica.statistics.SudokuStatistics
 import com.stanisryz.logica.statistics.WordStatistics
 import com.stanisryz.logica.ui.components.AttemptDistributionBars
 import com.stanisryz.logica.ui.components.EmptyState
@@ -94,7 +95,8 @@ private fun ProfileScreen(
 }
 
 /** Nothing has been completed yet, so every metric would read zero. */
-private fun GameStatistics.isEmpty(): Boolean = totalCompletedResults == 0 && completedDailyCount == 0
+private fun GameStatistics.isEmpty(): Boolean =
+    totalCompletedResults == 0 && completedDailyCount == 0 && word.played == 0 && sudoku.played == 0
 
 @Composable
 private fun ProfileContent(
@@ -116,7 +118,25 @@ private fun ProfileContent(
         ScreenSection(title = stringResource(R.string.statistics)) {
             PuzzleStatisticsCard(PuzzleType.BALANCE, statistics)
             PuzzleStatisticsCard(PuzzleType.CROWNS, statistics)
+            SudokuStatisticsCard(statistics.sudoku)
             WordStatisticsCard(statistics.word)
+        }
+    }
+}
+
+@Composable
+private fun SudokuStatisticsCard(statistics: SudokuStatistics) {
+    LogicaCard {
+        PuzzleTitle(stringResource(PuzzleType.SUDOKU.titleResource()), puzzleType = PuzzleType.SUDOKU)
+        LabelledValue(stringResource(R.string.sudoku_played), statistics.played.toString())
+        LabelledValue(stringResource(R.string.sudoku_solved_count), statistics.solved.toString())
+        LabelledValue(stringResource(R.string.sudoku_failed_count), statistics.failed.toString())
+        LabelledValue(stringResource(R.string.total_hints_used), statistics.hintsUsed.toString())
+        Difficulty.entries.forEach { difficulty ->
+            LabelledValue(
+                label = stringResource(difficulty.difficultyResource()),
+                value = statistics.solvedByDifficulty.getValue(difficulty).toString(),
+            )
         }
     }
 }

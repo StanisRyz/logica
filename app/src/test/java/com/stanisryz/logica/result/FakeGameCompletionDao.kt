@@ -44,7 +44,7 @@ internal class FakeGameCompletionDao(
         private set
 
     init {
-        listOf(PuzzleType.BALANCE, PuzzleType.CROWNS).forEach { puzzleType ->
+        listOf(PuzzleType.BALANCE, PuzzleType.CROWNS, PuzzleType.SUDOKU).forEach { puzzleType ->
             sessions[puzzleType.name to GameSessionScope.CATALOG.name] =
                 GameSessionEntity(
                     puzzleType = puzzleType.name,

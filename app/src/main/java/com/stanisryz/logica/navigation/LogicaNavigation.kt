@@ -59,6 +59,7 @@ import com.stanisryz.logica.settings.ThemeMode
 import com.stanisryz.logica.settings.UserSettings
 import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.store.GemStoreState
+import com.stanisryz.logica.sudoku.SudokuGameLaunch
 import com.stanisryz.logica.ui.components.EconomyBar
 import com.stanisryz.logica.ui.components.LivesDialog
 import com.stanisryz.logica.ui.screens.BalanceGameRoute
@@ -71,6 +72,9 @@ import com.stanisryz.logica.ui.screens.GameHubRoute
 import com.stanisryz.logica.ui.screens.ProfileRoute
 import com.stanisryz.logica.ui.screens.SettingsScreen
 import com.stanisryz.logica.ui.screens.StoreScreen
+import com.stanisryz.logica.ui.screens.SudokuGameRoute
+import com.stanisryz.logica.ui.screens.SudokuStartScreen
+import com.stanisryz.logica.ui.screens.SudokuTutorialRoute
 import com.stanisryz.logica.ui.screens.WordGameRoute
 import com.stanisryz.logica.ui.screens.WordStartScreen
 import com.stanisryz.logica.ui.screens.WordTutorialRoute
@@ -93,6 +97,7 @@ internal fun LogicaNavigation(
     hasActiveBalanceSession: Boolean,
     hasActiveCrownsSession: Boolean,
     hasActiveWordSession: Boolean,
+    hasActiveSudokuSession: Boolean,
     rewardedState: RewardedAdState,
     gemStoreState: GemStoreState,
     onRestoreLife: () -> Unit,
@@ -189,7 +194,9 @@ internal fun LogicaNavigation(
                                                     when (puzzleType) {
                                                         PuzzleType.BALANCE -> hasActiveBalanceSession
                                                         PuzzleType.CROWNS -> hasActiveCrownsSession
-                                                        else -> hasActiveWordSession
+                                                        PuzzleType.WORD -> hasActiveWordSession
+                                                        PuzzleType.SUDOKU -> hasActiveSudokuSession
+                                                        else -> error("$puzzleType is not a Catalog game.")
                                                     }
                                                 },
                                                 onContinue = { puzzleType ->
@@ -199,7 +206,9 @@ internal fun LogicaNavigation(
                                                                 AppDestination.BalanceGame(BalanceGameLaunch.Restore())
                                                             PuzzleType.CROWNS ->
                                                                 AppDestination.CrownsGame(CrownsGameLaunch.Restore())
-                                                            else -> AppDestination.WordGame(WordGameLaunch.Restore())
+                                                            PuzzleType.WORD -> AppDestination.WordGame(WordGameLaunch.Restore())
+                                                            PuzzleType.SUDOKU -> AppDestination.SudokuGame(SudokuGameLaunch.Restore())
+                                                            else -> error("$puzzleType is not a Catalog game.")
                                                         },
                                                     )
                                                 },
@@ -208,7 +217,9 @@ internal fun LogicaNavigation(
                                                         when (puzzleType) {
                                                             PuzzleType.BALANCE -> AppDestination.BalanceStart
                                                             PuzzleType.CROWNS -> AppDestination.CrownsStart
-                                                            else -> AppDestination.WordStart
+                                                            PuzzleType.WORD -> AppDestination.WordStart
+                                                            PuzzleType.SUDOKU -> AppDestination.SudokuStart
+                                                            else -> error("$puzzleType is not a Catalog game.")
                                                         },
                                                     )
                                                 },
@@ -308,6 +319,28 @@ internal fun LogicaNavigation(
                     entry<AppDestination.WordTutorial> {
                         WordTutorialRoute(settingsRepository = settingsRepository, onDone = { backStack.removeLastOrNull() })
                     }
+                    entry<AppDestination.SudokuStart> {
+                        SudokuStartScreen(
+                            hasActiveSession = hasActiveSudokuSession,
+                            tutorialCompleted = settings.sudokuTutorialCompleted,
+                            economy = economy,
+                            onOpenTutorial = { backStack.add(AppDestination.SudokuTutorial) },
+                            onStart = { difficulty ->
+                                backStack.add(
+                                    AppDestination.SudokuGame(
+                                        SudokuGameLaunch.New(difficulty, catalogSeedSource.nextSeed()),
+                                    ),
+                                )
+                            },
+                            onRestoreLife = onRestoreLife,
+                        )
+                    }
+                    entry<AppDestination.SudokuTutorial> {
+                        SudokuTutorialRoute(
+                            settingsRepository = settingsRepository,
+                            onDone = { backStack.removeLastOrNull() },
+                        )
+                    }
                     entry<AppDestination.BalanceGame> { destination ->
                         BalanceGameRoute(
                             launch = destination.launch,
@@ -371,6 +404,30 @@ internal fun LogicaNavigation(
                             onStartNew = {
                                 backStack.removeLastOrNull()
                                 backStack.add(AppDestination.WordStart)
+                            },
+                            onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                            onRestoreLife = onRestoreLife,
+                        )
+                    }
+                    entry<AppDestination.SudokuGame> { destination ->
+                        SudokuGameRoute(
+                            launch = destination.launch,
+                            sessionRepository = gameSessionRepository,
+                            completionRepository = gameCompletionRepository,
+                            economyRepository = economyRepository,
+                            hapticsEnabled = settings.hapticsEnabled,
+                            onBack = { backStack.removeLastOrNull() },
+                            onNewPuzzle = { difficulty ->
+                                backStack.removeLastOrNull()
+                                backStack.add(
+                                    AppDestination.SudokuGame(
+                                        SudokuGameLaunch.New(difficulty, catalogSeedSource.nextSeed()),
+                                    ),
+                                )
+                            },
+                            onStartNew = {
+                                backStack.removeLastOrNull()
+                                backStack.add(AppDestination.SudokuStart)
                             },
                             onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
                             onRestoreLife = onRestoreLife,
@@ -497,6 +554,8 @@ private fun destinationTitle(
             AppDestination.CrownsTutorial -> R.string.crowns_tutorial_title
             AppDestination.WordStart, is AppDestination.WordGame -> R.string.word
             AppDestination.WordTutorial -> R.string.word_tutorial_title
+            AppDestination.SudokuStart, is AppDestination.SudokuGame -> R.string.sudoku
+            AppDestination.SudokuTutorial -> R.string.sudoku_tutorial_title
         },
     )
 

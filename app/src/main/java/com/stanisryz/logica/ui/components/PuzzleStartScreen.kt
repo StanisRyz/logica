@@ -23,7 +23,7 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 /**
- * The shared structure of the three start screens: puzzle title, short explanation, difficulty
+ * The shared structure of the Catalog start screens: puzzle title, short explanation, difficulty
  * section, primary Start, and a secondary way into the tutorial. Puzzle-specific rule text and
  * difficulty details are supplied by the caller. Starting an attempt needs a life, so the zero-life
  * state replaces Start with its own explanation and gem refill.

@@ -16,4 +16,6 @@ interface SettingsRepository {
     suspend fun setCrownsTutorialCompleted(completed: Boolean)
 
     suspend fun setWordTutorialCompleted(completed: Boolean)
+
+    suspend fun setSudokuTutorialCompleted(completed: Boolean)
 }

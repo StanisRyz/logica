@@ -31,7 +31,7 @@ import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 /**
- * The shared completion shell. Balance, Crowns, Word, and the completed Daily all use the same
+ * The shared completion shell. Balance, Crowns, Word, Sudoku, and the completed Daily use the same
  * icon-plus-title header and only differ in the content and actions they place below it.
  */
 @Composable
@@ -61,9 +61,9 @@ internal fun CompletionCard(
 }
 
 /**
- * Balance and Crowns share one terminal dialog for both endings. A failed attempt leads with Retry
- * on the very same puzzle; a solved Daily returns to the Game hub, a solved catalog puzzle offers a
- * new one first. The board stays visible behind the dialog either way.
+ * Balance, Crowns, and Sudoku share one terminal dialog for both endings. A failed attempt leads
+ * with Retry on the same puzzle; a solved Daily returns to the Game hub, while each Catalog game
+ * chooses new-puzzle or same-puzzle replay as its primary action. The board stays visible behind it.
  *
  * The wallet effect is reported only once the result is durably stored, and a retry is offered only
  * while a life is available.
@@ -81,6 +81,7 @@ internal fun PuzzleTerminalDialog(
     onRetryPuzzle: () -> Unit,
     onNewPuzzle: () -> Unit,
     onGameHub: () -> Unit,
+    preferSamePuzzleRetry: Boolean = false,
 ) {
     val isError = completionPersistence == CompletionPersistence.Error
     val isSaved = completionPersistence == CompletionPersistence.Saved
@@ -128,7 +129,7 @@ internal fun PuzzleTerminalDialog(
                 completionPersistence == CompletionPersistence.Error ->
                     TextButton(onClick = onRetryCompletion) { Text(stringResource(R.string.retry)) }
                 !isSaved -> TextButton(onClick = {}, enabled = false) { Text(stringResource(R.string.saving)) }
-                !isSolved ->
+                !isSolved || preferSamePuzzleRetry ->
                     TextButton(onClick = onRetryPuzzle, enabled = isRetryAllowed) {
                         Text(stringResource(R.string.retry_puzzle))
                     }

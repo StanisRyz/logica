@@ -23,7 +23,7 @@ class EconomyResultCompletionTest {
     fun aSolvedResultGrantsOneGemExactlyOnceHoweverOftenItIsPersisted() =
         runBlocking {
             val dao = FakeGameCompletionDao(definition)
-            val solved = dao.catalogCompletion(PuzzleType.BALANCE).toEntity(NOW)
+            val solved = dao.catalogCompletion(PuzzleType.SUDOKU).toEntity(NOW)
 
             dao.complete(solved)
             dao.complete(solved)
@@ -44,7 +44,7 @@ class EconomyResultCompletionTest {
     fun aFailedResultSpendsOneLifeExactlyOnceAndStartsOneRegenerationCountdown() =
         runBlocking {
             val dao = FakeGameCompletionDao(definition)
-            val failed = dao.catalogCompletion(PuzzleType.CROWNS, GameOutcome.FAILED).toEntity(NOW)
+            val failed = dao.catalogCompletion(PuzzleType.SUDOKU, GameOutcome.FAILED).toEntity(NOW)
 
             dao.complete(failed)
             dao.complete(failed)

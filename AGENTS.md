@@ -41,6 +41,10 @@
 - Active saves are isolated by puzzle type plus session scope; each puzzle owns its explicit session codec version.
 - Android ViewModels regenerate definitions from puzzle identity and restore gameplay through the corresponding core engine.
 - Word is the third playable puzzle: core in `:puzzle-core`, Android gameplay, Catalog, Daily, results, statistics, and onboarding in `:app`.
+- Sudoku is the fourth Catalog puzzle and uses `PuzzleType.SUDOKU`; it remains excluded from immutable Daily Policies V1–V4 until the later five-game Daily stage.
+- Sudoku Catalog identity is app difficulty plus selector `PuzzleSeed` plus content-provider `GeneratorVersion(1)`; the adapter deterministically selects Dataset V1 while the full `SudokuPuzzleId` fingerprint remains authoritative.
+- `SUDOKU/CATALOG` is an independent Room v6 session slot. `SudokuSessionCodecV1` stores exact identity, player values, candidates, mistakes, and hints; restore reselects and verifies the exact dataset puzzle.
+- Terminal Sudoku attempts use the shared idempotent result/economy transaction (`SOLVED` +1 gem, `FAILED` -1 life); same-puzzle Retry waits for durable completion and starts a new `sessionId`. Profile includes Sudoku played/solved/failed, difficulty, and hint statistics.
 - Word V1 stays frozen at five normalized Russian letters for every difficulty; Word V2 maps EASY/MEDIUM/HARD/EXPERT to 4/5/6/7 letters, and both versions keep six attempts with no Undo, Reset, or hints.
 - `RussianWordNormalizer` is the single normalization contract for corpus preparation, lexicon lookup, gameplay submission, and tests: lower case, `Ё -> Е`, Russian Cyrillic only, and explicit puzzle-specific length validation.
 - Incomplete input, failed normalization, and unknown words consume no attempt and are reported as structured rejections; localized Word text belongs in `:app`.
@@ -56,7 +60,7 @@
 - Room v5 adds `outcome` and `attempts_used` to `game_results`; `MIGRATION_4_5` backfills historical results to `SOLVED` with a null attempt count and preserves everything else.
 - Daily lifecycle tracks participation, not success: a `FAILED` Word entry completes like a solved one, so a Daily run still reaches `3/3` and the streak stays valid.
 - Daily policies are immutable: V1 is Balance, V2 adds Crowns, V3 adds Word Medium/Generator V1, and V4 changes only Word to Medium/Generator V2; new runs use V4 and persisted runs keep their original version.
-- All six `BALANCE|CROWNS|WORD` × `CATALOG|DAILY` sessions coexist independently; creating, restoring, corrupting, or completing one never touches another.
+- The six `BALANCE|CROWNS|WORD` × `CATALOG|DAILY` sessions plus `SUDOKU/CATALOG` coexist independently; creating, restoring, corrupting, or completing one never touches another.
 - Change shared puzzle abstractions only when multiple concrete puzzle implementations prove the need.
 - Balance solving is deterministic and reuses the validator rules; logical steps are data-driven for future hints and difficulty analysis.
 - Partial `BalanceState` and completed `BalanceSolution` are distinct; puzzle rules stay UI-independent and reusable.

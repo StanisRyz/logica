@@ -22,28 +22,30 @@ import com.stanisryz.logica.R
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 
-/** Shared user-facing naming for the three puzzles, so every screen calls the same thing the same way. */
+/** Shared user-facing naming for the production puzzles, so every screen calls them the same thing. */
 internal fun PuzzleType.titleResource(): Int =
     when (this) {
         PuzzleType.BALANCE -> R.string.balance
         PuzzleType.CROWNS -> R.string.crowns
         PuzzleType.WORD -> R.string.word
+        PuzzleType.SUDOKU -> R.string.sudoku
         else -> error("$this has no user-facing title yet.")
     }
 
-/** A subtle per-puzzle accent taken from the shared scheme; the three puzzles never get their own themes. */
+/** A subtle per-puzzle accent taken from the shared scheme; puzzles never get separate themes. */
 @Composable
 internal fun PuzzleType.accentColor(): Color =
     when (this) {
         PuzzleType.BALANCE -> MaterialTheme.colorScheme.primary
         PuzzleType.CROWNS -> MaterialTheme.colorScheme.tertiary
         PuzzleType.WORD -> MaterialTheme.colorScheme.secondary
+        PuzzleType.SUDOKU -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.primary
     }
 
 /**
  * The shared card artwork: the puzzle's own accent tinted behind one existing vector, so Balance,
- * Crowns, and Word read as one family on Daily and catalog cards alike. Deliberately icon-sized
+ * Crowns, Word, and Sudoku read as one family on Daily and catalog cards alike. Deliberately icon-sized
  * rather than an illustration framework.
  */
 @Composable
@@ -69,6 +71,7 @@ internal fun PuzzleArtwork(
                 when (puzzleType) {
                     PuzzleType.BALANCE -> Icons.Filled.Balance
                     PuzzleType.WORD -> Icons.Filled.SortByAlpha
+                    PuzzleType.SUDOKU -> Icons.Filled.Extension
                     else -> Icons.Filled.Extension
                 }
             Icon(icon, contentDescription = null, tint = accent, modifier = iconModifier)

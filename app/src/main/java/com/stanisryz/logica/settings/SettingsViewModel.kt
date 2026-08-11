@@ -53,6 +53,12 @@ class SettingsViewModel(
             repository.setWordTutorialCompleted(completed)
         }
     }
+
+    fun setSudokuTutorialCompleted(completed: Boolean) {
+        viewModelScope.launch {
+            repository.setSudokuTutorialCompleted(completed)
+        }
+    }
 }
 
 class SettingsViewModelFactory(

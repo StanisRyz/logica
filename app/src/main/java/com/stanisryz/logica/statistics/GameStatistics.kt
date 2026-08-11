@@ -17,6 +17,7 @@ internal data class GameStatistics(
     val bestDailyStreak: Int,
     val byPuzzleType: Map<PuzzleType, PuzzleStatistics>,
     val word: WordStatistics,
+    val sudoku: SudokuStatistics = SudokuStatistics.EMPTY,
 )
 
 internal data class PuzzleStatistics(
@@ -32,6 +33,26 @@ internal data class WordStatistics(
     val solvedAttemptCounts: Map<Int, Int>,
 ) {
     val winRatePercent: Int get() = if (played == 0) 0 else solved * 100 / played
+}
+
+/** Sudoku keeps terminal-attempt counts while solved difficulty counters retain solved semantics. */
+internal data class SudokuStatistics(
+    val played: Int,
+    val solved: Int,
+    val failed: Int,
+    val hintsUsed: Int,
+    val solvedByDifficulty: Map<Difficulty, Int>,
+) {
+    companion object {
+        val EMPTY =
+            SudokuStatistics(
+                played = 0,
+                solved = 0,
+                failed = 0,
+                hintsUsed = 0,
+                solvedByDifficulty = Difficulty.entries.associateWith { 0 },
+            )
+    }
 }
 
 internal data class StatisticsSnapshot(
@@ -51,7 +72,7 @@ internal object StatisticsAggregator {
         // never inflates them. Word keeps its own played/solved/failed breakdown below.
         val solvedResults = results.filter { it.outcome == GameOutcome.SOLVED }
         val puzzleStatistics =
-            listOf(PuzzleType.BALANCE, PuzzleType.CROWNS).associateWith { puzzleType ->
+            listOf(PuzzleType.BALANCE, PuzzleType.CROWNS, PuzzleType.SUDOKU).associateWith { puzzleType ->
                 val puzzleResults = solvedResults.filter { it.puzzleType == puzzleType }
                 PuzzleStatistics(
                     totalCompleted = puzzleResults.size,
@@ -78,6 +99,7 @@ internal object StatisticsAggregator {
                     bestDailyStreak = streak.best,
                     byPuzzleType = puzzleStatistics,
                     word = wordStatistics(results),
+                    sudoku = sudokuStatistics(results),
                 ),
             dailyHintsUsedByDate = dailyHints,
         )
@@ -93,6 +115,21 @@ internal object StatisticsAggregator {
             solvedAttemptCounts =
                 (1..WordRules.MAXIMUM_ATTEMPTS).associateWith { attempts ->
                     solvedResults.count { it.attemptsUsed == attempts }
+                },
+        )
+    }
+
+    private fun sudokuStatistics(results: List<GameResult>): SudokuStatistics {
+        val sudokuResults = results.filter { it.puzzleType == PuzzleType.SUDOKU }
+        val solvedResults = sudokuResults.filter { it.outcome == GameOutcome.SOLVED }
+        return SudokuStatistics(
+            played = sudokuResults.size,
+            solved = solvedResults.size,
+            failed = sudokuResults.count { it.outcome == GameOutcome.FAILED },
+            hintsUsed = sudokuResults.sumOf(GameResult::hintsUsed),
+            solvedByDifficulty =
+                Difficulty.entries.associateWith { difficulty ->
+                    solvedResults.count { it.difficulty == difficulty }
                 },
         )
     }

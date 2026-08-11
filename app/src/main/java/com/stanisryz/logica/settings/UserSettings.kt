@@ -7,4 +7,5 @@ data class UserSettings(
     val balanceTutorialCompleted: Boolean = false,
     val crownsTutorialCompleted: Boolean = false,
     val wordTutorialCompleted: Boolean = false,
+    val sudokuTutorialCompleted: Boolean = false,
 )

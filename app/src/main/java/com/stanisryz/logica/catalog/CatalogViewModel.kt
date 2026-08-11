@@ -33,6 +33,13 @@ internal class CatalogViewModel(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = false,
         )
+
+    val hasActiveSudokuSession: StateFlow<Boolean> =
+        sessionRepository.observeHasActiveSession(PuzzleType.SUDOKU, GameSessionScope.CATALOG).stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = false,
+        )
 }
 
 internal class CatalogViewModelFactory(

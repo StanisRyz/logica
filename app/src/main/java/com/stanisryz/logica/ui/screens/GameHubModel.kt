@@ -22,6 +22,7 @@ private val CATALOG_PUZZLES: List<Pair<PuzzleType, Int>> =
         PuzzleType.BALANCE to R.string.balance_catalog_description,
         PuzzleType.CROWNS to R.string.crowns_catalog_description,
         PuzzleType.WORD to R.string.word_catalog_description,
+        PuzzleType.SUDOKU to R.string.sudoku_catalog_description,
     )
 
 internal fun gameCatalogEntries(

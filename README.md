@@ -1,10 +1,11 @@
 # Логика дня
 
-Native Android application with playable Balance, Crowns, and Word puzzles. The stack is Kotlin, Jetpack Compose, Navigation 3, DataStore, Room, and Gradle Kotlin DSL.
+Native Android application with playable Balance, Crowns, Word, and Sudoku puzzles. The stack is Kotlin, Jetpack Compose, Navigation 3, DataStore, Room, and Gradle Kotlin DSL.
 
 Sudoku uses a frozen, validated Puzzle Bank corpus bundled offline; puzzles are never generated or
-downloaded at runtime. Its standalone 9x9 gameplay slice is locally inspectable through a Compose
-preview, while Game Hub, Daily, economy, statistics, and production navigation integration remain deferred.
+downloaded at runtime. It is the fourth Catalog game, with EASY, MEDIUM, HARD, and EXPERT selection,
+independent save/restore, onboarding, economy/results, and Profile statistics. Sudoku remains outside
+the three-game Daily challenge until the later five-game Daily stage.
 
 Requires JDK 17 and Android SDK Platform 36.
 
@@ -68,7 +69,7 @@ the tutorials, and gameplay open on top of them with normal Back navigation.
 Modules:
 
 - `app/` — Android/Compose application shell, navigation, theme, and settings.
-- `puzzle-core/` — deterministic Balance, Crowns, and Word generation/solving plus pure-Kotlin gameplay and diagnostics.
+- `puzzle-core/` — deterministic Balance, Crowns, Word, and Sudoku domain/gameplay code and diagnostics.
 - `lexicon/word/` — curated offline Word corpus sources and their provenance note.
 
 Balance is playable from the Game tab's catalog with optional interactive onboarding, selectable difficulties, conflicts, hints, and improved accessibility cues.
@@ -103,6 +104,6 @@ a rewarded ad and get one life. It is never forced and never shown anywhere else
 interstitials, nothing after a solved or failed game — and if there is no network or no ad to show,
 the 15-minute timer and the five-gem refill work exactly as before.
 
-All three puzzles share one calm Material 3 shell: a single Light/Dark colour scheme, one spacing and text hierarchy, one difficulty selector, and one loading/error/completion presentation, while each board keeps its own specialised gameplay. Puzzle states are always readable without colour, and the shared UI pieces live in `app/src/main/java/com/stanisryz/logica/ui/components/` and `.../ui/theme/`.
+All four Catalog puzzles share one calm Material 3 shell: a single Light/Dark colour scheme, one spacing and text hierarchy, one difficulty selector, and one loading/error/completion presentation, while each board keeps its own specialised gameplay. Puzzle states are always readable without colour, and the shared UI pieces live in `app/src/main/java/com/stanisryz/logica/ui/components/` and `.../ui/theme/`.
 
 Dependency versions are managed in `gradle/libs.versions.toml`.

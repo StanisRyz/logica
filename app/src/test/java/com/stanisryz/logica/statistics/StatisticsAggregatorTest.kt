@@ -5,6 +5,7 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.result.GameResult
 import com.stanisryz.logica.session.GameSessionScope
 import org.junit.Assert.assertEquals
@@ -34,6 +35,21 @@ class StatisticsAggregatorTest {
                     hintsUsed = 3,
                     puzzleType = PuzzleType.CROWNS,
                 ),
+                result(
+                    "sudoku-solved",
+                    Difficulty.HARD,
+                    GameSessionScope.CATALOG,
+                    hintsUsed = 4,
+                    puzzleType = PuzzleType.SUDOKU,
+                ),
+                result(
+                    "sudoku-failed",
+                    Difficulty.MEDIUM,
+                    GameSessionScope.CATALOG,
+                    hintsUsed = 5,
+                    puzzleType = PuzzleType.SUDOKU,
+                    outcome = GameOutcome.FAILED,
+                ),
             )
         val completedDailyDates =
             listOf(
@@ -48,9 +64,9 @@ class StatisticsAggregatorTest {
         val snapshot = StatisticsAggregator.aggregate(today, results, completedDailyDates)
         val statistics = snapshot.statistics
 
-        assertEquals(4, statistics.totalCompletedResults)
+        assertEquals(5, statistics.totalCompletedResults)
         assertEquals(5, statistics.completedDailyCount)
-        assertEquals(6, statistics.totalHintsUsed)
+        assertEquals(15, statistics.totalHintsUsed)
         assertEquals(2, statistics.currentDailyStreak)
         assertEquals(3, statistics.bestDailyStreak)
         assertEquals(3, statistics.byPuzzleType.getValue(PuzzleType.BALANCE).totalCompleted)
@@ -71,6 +87,12 @@ class StatisticsAggregatorTest {
                 .countsByDifficulty
                 .getValue(Difficulty.EXPERT),
         )
+        assertEquals(2, statistics.sudoku.played)
+        assertEquals(1, statistics.sudoku.solved)
+        assertEquals(1, statistics.sudoku.failed)
+        assertEquals(9, statistics.sudoku.hintsUsed)
+        assertEquals(1, statistics.sudoku.solvedByDifficulty.getValue(Difficulty.HARD))
+        assertEquals(0, statistics.sudoku.solvedByDifficulty.getValue(Difficulty.MEDIUM))
         assertEquals(2, snapshot.dailyHintsUsedByDate[today.minusDays(1)])
     }
 
@@ -81,6 +103,7 @@ class StatisticsAggregatorTest {
         hintsUsed: Int,
         challengeDate: LocalDate? = null,
         puzzleType: PuzzleType = PuzzleType.BALANCE,
+        outcome: GameOutcome = GameOutcome.SOLVED,
     ): GameResult =
         GameResult(
             resultId = id,
@@ -91,6 +114,7 @@ class StatisticsAggregatorTest {
             sessionScope = scope,
             hintsUsed = hintsUsed,
             completedAt = Instant.ofEpochMilli(1_000),
+            outcome = outcome,
             challengeDate = challengeDate,
             dailyPolicyVersion = challengeDate?.let { DailyPolicyVersion(1) },
         )

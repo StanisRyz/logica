@@ -1,25 +1,32 @@
 package com.stanisryz.logica.ui.screens
 
+import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
+import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.economy.PlayerEconomy
+import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetVersion
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDifficulty
@@ -31,6 +38,8 @@ import com.stanisryz.logica.puzzle.core.sudoku.SudokuHintTechnique
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuPosition
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuPuzzle
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuPuzzleId
+import com.stanisryz.logica.result.GameCompletionRepository
+import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.settings.ThemeMode
 import com.stanisryz.logica.sudoku.SudokuGameError
 import com.stanisryz.logica.sudoku.SudokuGameLaunch
@@ -44,35 +53,62 @@ import com.stanisryz.logica.ui.components.GameActionBar
 import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.components.LogicaCard
 import com.stanisryz.logica.ui.components.MistakeIndicator
+import com.stanisryz.logica.ui.components.PuzzleTerminalDialog
 import com.stanisryz.logica.ui.components.PuzzleTitle
 import com.stanisryz.logica.ui.components.RetryableErrorState
 import com.stanisryz.logica.ui.components.ScreenColumn
+import com.stanisryz.logica.ui.components.ZeroLivesCard
+import com.stanisryz.logica.ui.components.difficultyLabel
 import com.stanisryz.logica.ui.sudoku.SudokuBoard
 import com.stanisryz.logica.ui.sudoku.SudokuNumberPad
 import com.stanisryz.logica.ui.sudoku.SudokuPencilToggle
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.ui.theme.LogicaTheme
 
-/** Standalone Stage 34 route. It is intentionally not registered in production navigation yet. */
 @Composable
 internal fun SudokuGameRoute(
     launch: SudokuGameLaunch,
-    onClose: () -> Unit,
+    sessionRepository: GameSessionRepository,
+    completionRepository: GameCompletionRepository,
+    economyRepository: EconomyRepository,
+    hapticsEnabled: Boolean,
+    onBack: () -> Unit,
+    onNewPuzzle: (Difficulty) -> Unit,
+    onStartNew: () -> Unit,
+    onGameHub: () -> Unit,
+    onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val assets = LocalContext.current.assets
-    val factory = remember(launch, assets) { SudokuGameViewModelFactory(launch, assets) }
+    val factory =
+        remember(launch, assets, sessionRepository, completionRepository, economyRepository) {
+            SudokuGameViewModelFactory(
+                launch,
+                assets,
+                sessionRepository,
+                completionRepository,
+                economyRepository,
+            )
+        }
     val gameViewModel: SudokuGameViewModel = viewModel(factory = factory)
     val uiState by gameViewModel.uiState.collectAsStateWithLifecycle()
+    val economy by gameViewModel.economy.collectAsStateWithLifecycle()
     SudokuGameScreen(
         uiState = uiState,
+        economy = economy,
         onSelectCell = gameViewModel::selectCell,
         onDigit = gameViewModel::inputDigit,
         onTogglePencil = gameViewModel::togglePencilMode,
         onHint = gameViewModel::requestHint,
         onRetry = gameViewModel::retry,
+        onRetryCompletion = gameViewModel::retryCompletion,
         onRetryLoad = gameViewModel::reload,
-        onClose = onClose,
+        onRestoreLife = onRestoreLife,
+        hapticsEnabled = hapticsEnabled,
+        onBack = onBack,
+        onNewPuzzle = onNewPuzzle,
+        onStartNew = onStartNew,
+        onGameHub = onGameHub,
         modifier = modifier,
     )
 }
@@ -80,35 +116,57 @@ internal fun SudokuGameRoute(
 @Composable
 private fun SudokuGameScreen(
     uiState: SudokuGameUiState,
+    economy: PlayerEconomy,
     onSelectCell: (SudokuPosition) -> Unit,
     onDigit: (Int) -> Unit,
     onTogglePencil: () -> Unit,
     onHint: () -> Unit,
     onRetry: () -> Unit,
+    onRetryCompletion: () -> Unit,
     onRetryLoad: () -> Unit,
-    onClose: () -> Unit,
+    onRestoreLife: () -> Unit,
+    hapticsEnabled: Boolean,
+    onBack: () -> Unit,
+    onNewPuzzle: (Difficulty) -> Unit,
+    onStartNew: () -> Unit,
+    onGameHub: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (uiState) {
         SudokuGameUiState.Loading -> LoadingState(modifier, stringResource(R.string.sudoku_loading))
-        is SudokuGameUiState.Error ->
+        is SudokuGameUiState.Error -> {
+            val canReload =
+                uiState.reason == SudokuGameError.MISSING_DATASET ||
+                    uiState.reason == SudokuGameError.CORRUPT_DATASET ||
+                    uiState.reason == SudokuGameError.PUZZLE_NOT_FOUND
             RetryableErrorState(
                 message = uiState.reason.message(),
-                retryLabel = stringResource(R.string.retry),
-                onRetry = onRetryLoad,
+                retryLabel = stringResource(if (canReload) R.string.retry else R.string.try_another),
+                onRetry = if (canReload) onRetryLoad else onStartNew,
                 modifier = modifier,
-                secondaryLabel = stringResource(R.string.close),
-                onSecondary = onClose,
+                secondaryLabel = stringResource(R.string.back),
+                onSecondary = onBack,
             )
+        }
         is SudokuGameUiState.Ready ->
             SudokuReadyState(
                 uiState = uiState,
+                economy = economy,
                 onSelectCell = onSelectCell,
                 onDigit = onDigit,
                 onTogglePencil = onTogglePencil,
                 onHint = onHint,
                 onRetry = onRetry,
-                onClose = onClose,
+                onRetryCompletion = onRetryCompletion,
+                onRestoreLife = onRestoreLife,
+                hapticsEnabled = hapticsEnabled,
+                onNewPuzzle = {
+                    onNewPuzzle(
+                        uiState.puzzle.id.difficulty
+                            .toDifficulty(),
+                    )
+                },
+                onGameHub = onGameHub,
                 modifier = modifier,
             )
     }
@@ -117,18 +175,44 @@ private fun SudokuGameScreen(
 @Composable
 private fun SudokuReadyState(
     uiState: SudokuGameUiState.Ready,
+    economy: PlayerEconomy,
     onSelectCell: (SudokuPosition) -> Unit,
     onDigit: (Int) -> Unit,
     onTogglePencil: () -> Unit,
     onHint: () -> Unit,
     onRetry: () -> Unit,
-    onClose: () -> Unit,
+    onRetryCompletion: () -> Unit,
+    onRestoreLife: () -> Unit,
+    hapticsEnabled: Boolean,
+    onNewPuzzle: () -> Unit,
+    onGameHub: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val game = uiState.game
+    val view = LocalView.current
+    var previousMistakes by remember { mutableStateOf(game.mistakesUsed) }
+    var previousStatus by remember { mutableStateOf(game.status) }
+    LaunchedEffect(game.mistakesUsed) {
+        if (hapticsEnabled && game.mistakesUsed > previousMistakes) {
+            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+        }
+        previousMistakes = game.mistakesUsed
+    }
+    LaunchedEffect(game.status) {
+        if (hapticsEnabled && game.status != previousStatus) {
+            when (game.status) {
+                SudokuGameStatus.SOLVED -> view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                SudokuGameStatus.FAILED -> view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                SudokuGameStatus.IN_PROGRESS -> Unit
+            }
+        }
+        previousStatus = game.status
+    }
+
     val selectedStatus = uiState.selectedCell?.let(game::cellAt)?.status
     val inputEnabled =
         game.status == SudokuGameStatus.IN_PROGRESS &&
+            economy.isGameplayAllowed &&
             if (uiState.isPencilMode) {
                 selectedStatus == SudokuCellStatus.EMPTY
             } else {
@@ -139,13 +223,24 @@ private fun SudokuReadyState(
         verticalSpacing = LogicaSpacing.item,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        PuzzleTitle(stringResource(R.string.sudoku))
+        PuzzleTitle(stringResource(R.string.sudoku), puzzleType = PuzzleType.SUDOKU)
         DifficultyBadge(
-            uiState.puzzle.id.difficulty
-                .label(),
+            difficultyLabel(
+                PuzzleType.SUDOKU,
+                uiState.puzzle.id.difficulty
+                    .toDifficulty(),
+            ),
         )
         MistakeIndicator(game.mistakesUsed, SudokuGameState.MAX_MISTAKES)
-        SudokuBoard(game, uiState.selectedCell, onSelectCell)
+        ZeroLivesCard(economy, onRestoreLife)
+        SudokuBoard(
+            game = game,
+            selectedCell = uiState.selectedCell,
+            onCellSelected = {
+                if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                onSelectCell(it)
+            },
+        )
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -153,7 +248,7 @@ private fun SudokuReadyState(
         ) {
             SudokuPencilToggle(
                 isPencilMode = uiState.isPencilMode,
-                enabled = game.status == SudokuGameStatus.IN_PROGRESS,
+                enabled = game.status == SudokuGameStatus.IN_PROGRESS && economy.isGameplayAllowed,
                 onToggle = onTogglePencil,
             )
             Text(
@@ -172,14 +267,27 @@ private fun SudokuReadyState(
                 GameAction(
                     icon = Icons.Filled.Lightbulb,
                     label = stringResource(R.string.hint),
-                    enabled = game.status == SudokuGameStatus.IN_PROGRESS,
+                    enabled = game.status == SudokuGameStatus.IN_PROGRESS && economy.isGameplayAllowed,
                     onClick = onHint,
                 ),
             ),
         )
     }
     if (game.status.isTerminal) {
-        SudokuTerminalDialog(game, onRetry, onClose)
+        PuzzleTerminalDialog(
+            isSolved = game.status == SudokuGameStatus.SOLVED,
+            completionPersistence = uiState.completionPersistence,
+            hintsUsed = game.hintsUsed,
+            maxMistakes = SudokuGameState.MAX_MISTAKES,
+            lives = economy.lives,
+            isRetryAllowed = economy.isGameplayAllowed,
+            isDaily = false,
+            onRetryCompletion = onRetryCompletion,
+            onRetryPuzzle = onRetry,
+            onNewPuzzle = onNewPuzzle,
+            onGameHub = onGameHub,
+            preferSamePuzzleRetry = true,
+        )
     }
 }
 
@@ -191,34 +299,6 @@ private fun SudokuHintCard(hint: SudokuHint) {
     ) {
         BodyText(hint.presentationText())
     }
-}
-
-@Composable
-private fun SudokuTerminalDialog(
-    game: SudokuGameState,
-    onRetry: () -> Unit,
-    onClose: () -> Unit,
-) {
-    val solved = game.status == SudokuGameStatus.SOLVED
-    AlertDialog(
-        onDismissRequest = {},
-        title = { Text(stringResource(if (solved) R.string.puzzle_solved else R.string.puzzle_failed)) },
-        text = {
-            Text(
-                if (solved) {
-                    stringResource(R.string.hints_used, game.hintsUsed)
-                } else {
-                    stringResource(R.string.puzzle_failed_body, SudokuGameState.MAX_MISTAKES)
-                },
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = onRetry) { Text(stringResource(R.string.retry_puzzle)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onClose) { Text(stringResource(R.string.close)) }
-        },
-    )
 }
 
 @Composable
@@ -246,25 +326,17 @@ private fun SudokuHint.presentationText(): String =
 private fun SudokuGameError.message(): String =
     stringResource(
         when (this) {
+            SudokuGameError.MISSING_SAVED_SESSION -> R.string.missing_saved_game
+            SudokuGameError.INVALID_SAVED_SESSION -> R.string.invalid_saved_game
             SudokuGameError.MISSING_DATASET -> R.string.sudoku_dataset_missing
             SudokuGameError.CORRUPT_DATASET -> R.string.sudoku_dataset_corrupt
             SudokuGameError.PUZZLE_NOT_FOUND -> R.string.sudoku_puzzle_missing
-            SudokuGameError.INVALID_SESSION -> R.string.sudoku_session_invalid
         },
     )
 
-@Composable
-private fun SudokuDifficulty.label(): String =
-    stringResource(
-        when (this) {
-            SudokuDifficulty.EASY -> R.string.difficulty_easy
-            SudokuDifficulty.MEDIUM -> R.string.difficulty_medium
-            SudokuDifficulty.HARD -> R.string.difficulty_hard
-            SudokuDifficulty.EXPERT -> R.string.difficulty_expert
-        },
-    )
+private fun SudokuDifficulty.toDifficulty(): Difficulty = Difficulty.valueOf(name)
 
-@Preview(name = "Sudoku standalone", widthDp = 360, heightDp = 800, showBackground = true)
+@Preview(name = "Sudoku", widthDp = 360, heightDp = 800, showBackground = true)
 @Composable
 private fun SudokuGamePreview() {
     val puzzle = previewPuzzle()
@@ -277,18 +349,25 @@ private fun SudokuGamePreview() {
     LogicaTheme(ThemeMode.LIGHT) {
         SudokuGameScreen(
             uiState = SudokuGameUiState.Ready(puzzle, game, selectedCell = SudokuPosition(0, 4)),
+            economy = PlayerEconomy(),
             onSelectCell = {},
             onDigit = {},
             onTogglePencil = {},
             onHint = {},
             onRetry = {},
+            onRetryCompletion = {},
             onRetryLoad = {},
-            onClose = {},
+            onRestoreLife = {},
+            hapticsEnabled = true,
+            onBack = {},
+            onNewPuzzle = {},
+            onStartNew = {},
+            onGameHub = {},
         )
     }
 }
 
-private fun previewPuzzle(): SudokuPuzzle =
+internal fun previewSudokuPuzzle(): SudokuPuzzle =
     SudokuPuzzle(
         id =
             SudokuPuzzleId(
@@ -300,3 +379,5 @@ private fun previewPuzzle(): SudokuPuzzle =
         solution = "158723469367954821294816375619238547485697132732145986976381254841572693523469718",
         upstreamRatingTenths = 12,
     )
+
+private fun previewPuzzle(): SudokuPuzzle = previewSudokuPuzzle()
