@@ -4,7 +4,7 @@ import androidx.compose.ui.unit.dp
 
 /**
  * The single layout rhythm shared by every screen. Screens use these values instead of inventing
- * their own paddings so Today, Catalog, Statistics, Settings, and the start screens stay aligned.
+ * their own paddings so the Game hub, Store, Profile, Settings, and the start screens stay aligned.
  */
 object LogicaSpacing {
     /** Horizontal inset of every screen's content. */

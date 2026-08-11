@@ -74,8 +74,7 @@ internal fun BalanceGameRoute(
     onBack: () -> Unit,
     onNewPuzzle: (Difficulty) -> Unit,
     onStartNew: () -> Unit,
-    onCatalog: () -> Unit,
-    onToday: () -> Unit,
+    onGameHub: () -> Unit,
     onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -100,8 +99,7 @@ internal fun BalanceGameRoute(
         onBack,
         onNewPuzzle,
         onStartNew,
-        onCatalog,
-        onToday,
+        onGameHub,
         launch.context is BalanceGameContext.Daily,
         modifier,
     )
@@ -122,8 +120,7 @@ private fun BalanceGameScreen(
     onBack: () -> Unit,
     onNewPuzzle: (Difficulty) -> Unit,
     onStartNew: () -> Unit,
-    onCatalog: () -> Unit,
-    onToday: () -> Unit,
+    onGameHub: () -> Unit,
     isDaily: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -139,8 +136,8 @@ private fun BalanceGameScreen(
                             BalanceGameError.GENERATION -> R.string.puzzle_generation_error
                         },
                     ),
-                retryLabel = stringResource(if (isDaily) R.string.to_today else R.string.try_another),
-                onRetry = if (isDaily) onToday else onStartNew,
+                retryLabel = stringResource(if (isDaily) R.string.to_games else R.string.try_another),
+                onRetry = if (isDaily) onGameHub else onStartNew,
                 modifier = modifier,
                 secondaryLabel = stringResource(R.string.back),
                 onSecondary = onBack,
@@ -164,8 +161,7 @@ private fun BalanceGameScreen(
                 onRestoreLife,
                 hapticsEnabled,
                 { onNewPuzzle(uiState.puzzle.id.difficulty) },
-                onCatalog,
-                onToday,
+                onGameHub,
                 isDaily,
                 modifier,
             )
@@ -191,8 +187,7 @@ private fun ReadyState(
     onRestoreLife: () -> Unit,
     hapticsEnabled: Boolean,
     onNewPuzzle: () -> Unit,
-    onCatalog: () -> Unit,
-    onToday: () -> Unit,
+    onGameHub: () -> Unit,
     isDaily: Boolean,
     modifier: Modifier,
 ) {
@@ -264,8 +259,7 @@ private fun ReadyState(
             onRetryCompletion = onRetryCompletion,
             onRetryPuzzle = onRetryPuzzle,
             onNewPuzzle = onNewPuzzle,
-            onCatalog = onCatalog,
-            onToday = onToday,
+            onGameHub = onGameHub,
         )
     }
 }

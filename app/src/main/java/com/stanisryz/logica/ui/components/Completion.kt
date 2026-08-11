@@ -62,8 +62,8 @@ internal fun CompletionCard(
 
 /**
  * Balance and Crowns share one terminal dialog for both endings. A failed attempt leads with Retry
- * on the very same puzzle; a solved one keeps its Today or New puzzle / Catalog navigation. The
- * board stays visible behind the dialog either way.
+ * on the very same puzzle; a solved Daily returns to the Game hub, a solved catalog puzzle offers a
+ * new one first. The board stays visible behind the dialog either way.
  *
  * The wallet effect is reported only once the result is durably stored, and a retry is offered only
  * while a life is available.
@@ -80,8 +80,7 @@ internal fun PuzzleTerminalDialog(
     onRetryCompletion: () -> Unit,
     onRetryPuzzle: () -> Unit,
     onNewPuzzle: () -> Unit,
-    onCatalog: () -> Unit,
-    onToday: () -> Unit,
+    onGameHub: () -> Unit,
 ) {
     val isError = completionPersistence == CompletionPersistence.Error
     val isSaved = completionPersistence == CompletionPersistence.Saved
@@ -133,17 +132,14 @@ internal fun PuzzleTerminalDialog(
                     TextButton(onClick = onRetryPuzzle, enabled = isRetryAllowed) {
                         Text(stringResource(R.string.retry_puzzle))
                     }
-                isDaily -> TextButton(onClick = onToday) { Text(stringResource(R.string.to_today)) }
+                isDaily -> TextButton(onClick = onGameHub) { Text(stringResource(R.string.to_games)) }
                 else -> TextButton(onClick = onNewPuzzle) { Text(stringResource(R.string.new_puzzle)) }
             }
         },
         dismissButton = {
-            if (isSaved) {
-                if (isDaily) {
-                    if (!isSolved) TextButton(onClick = onToday) { Text(stringResource(R.string.to_today)) }
-                } else {
-                    TextButton(onClick = onCatalog) { Text(stringResource(R.string.to_catalog)) }
-                }
+            // One way out of a finished attempt, because Daily and the catalog share one hub.
+            if (isSaved && !(isDaily && isSolved)) {
+                TextButton(onClick = onGameHub) { Text(stringResource(R.string.to_games)) }
             }
         },
     )

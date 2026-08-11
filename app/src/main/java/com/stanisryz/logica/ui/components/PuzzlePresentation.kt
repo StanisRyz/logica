@@ -1,9 +1,23 @@
 package com.stanisryz.logica.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Balance
+import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.SortByAlpha
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.R
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
@@ -26,6 +40,41 @@ internal fun PuzzleType.accentColor(): Color =
         PuzzleType.WORD -> MaterialTheme.colorScheme.secondary
         else -> MaterialTheme.colorScheme.primary
     }
+
+/**
+ * The shared card artwork: the puzzle's own accent tinted behind one existing vector, so Balance,
+ * Crowns, and Word read as one family on Daily and catalog cards alike. Deliberately icon-sized
+ * rather than an illustration framework.
+ */
+@Composable
+internal fun PuzzleArtwork(
+    puzzleType: PuzzleType,
+    modifier: Modifier = Modifier,
+    size: Dp = ARTWORK_SIZE,
+) {
+    val accent = puzzleType.accentColor()
+    Box(
+        modifier =
+            modifier
+                .size(size)
+                .clip(MaterialTheme.shapes.small)
+                .background(accent.copy(alpha = ARTWORK_TINT_ALPHA)),
+        contentAlignment = Alignment.Center,
+    ) {
+        val iconModifier = Modifier.size(size * ARTWORK_ICON_RATIO)
+        if (puzzleType == PuzzleType.CROWNS) {
+            Icon(painterResource(R.drawable.ic_crown), contentDescription = null, tint = accent, modifier = iconModifier)
+        } else {
+            val icon =
+                when (puzzleType) {
+                    PuzzleType.BALANCE -> Icons.Filled.Balance
+                    PuzzleType.WORD -> Icons.Filled.SortByAlpha
+                    else -> Icons.Filled.Extension
+                }
+            Icon(icon, contentDescription = null, tint = accent, modifier = iconModifier)
+        }
+    }
+}
 
 @Composable
 internal fun Difficulty.russianLabel(): String = stringResource(difficultyResource())
@@ -56,3 +105,7 @@ internal fun difficultyLabel(
     stringResource(
         if (puzzleType == PuzzleType.WORD) difficulty.wordDifficultyResource() else difficulty.difficultyResource(),
     )
+
+private val ARTWORK_SIZE = 44.dp
+private const val ARTWORK_ICON_RATIO = 0.55f
+private const val ARTWORK_TINT_ALPHA = 0.14f

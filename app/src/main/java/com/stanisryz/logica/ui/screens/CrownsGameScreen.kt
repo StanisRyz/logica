@@ -76,8 +76,7 @@ internal fun CrownsGameRoute(
     onBack: () -> Unit,
     onNewPuzzle: (Difficulty) -> Unit,
     onStartNew: () -> Unit,
-    onCatalog: () -> Unit,
-    onToday: () -> Unit,
+    onGameHub: () -> Unit,
     onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -103,8 +102,7 @@ internal fun CrownsGameRoute(
         onBack = onBack,
         onNewPuzzle = onNewPuzzle,
         onStartNew = onStartNew,
-        onCatalog = onCatalog,
-        onToday = onToday,
+        onGameHub = onGameHub,
         isDaily = launch.context is CrownsGameContext.Daily,
         modifier = modifier,
     )
@@ -125,8 +123,7 @@ private fun CrownsGameScreen(
     onBack: () -> Unit,
     onNewPuzzle: (Difficulty) -> Unit,
     onStartNew: () -> Unit,
-    onCatalog: () -> Unit,
-    onToday: () -> Unit,
+    onGameHub: () -> Unit,
     isDaily: Boolean,
     modifier: Modifier,
 ) {
@@ -142,8 +139,8 @@ private fun CrownsGameScreen(
                             CrownsGameError.GENERATION -> R.string.puzzle_generation_error
                         },
                     ),
-                retryLabel = stringResource(if (isDaily) R.string.to_today else R.string.try_another),
-                onRetry = if (isDaily) onToday else onStartNew,
+                retryLabel = stringResource(if (isDaily) R.string.to_games else R.string.try_another),
+                onRetry = if (isDaily) onGameHub else onStartNew,
                 modifier = modifier,
                 secondaryLabel = stringResource(R.string.back),
                 onSecondary = onBack,
@@ -167,8 +164,7 @@ private fun CrownsGameScreen(
                 onRestoreLife = onRestoreLife,
                 hapticsEnabled = hapticsEnabled,
                 onNewPuzzle = { onNewPuzzle(uiState.puzzle.id.difficulty) },
-                onCatalog = onCatalog,
-                onToday = onToday,
+                onGameHub = onGameHub,
                 isDaily = isDaily,
                 modifier = modifier,
             )
@@ -194,8 +190,7 @@ private fun CrownsReadyState(
     onRestoreLife: () -> Unit,
     hapticsEnabled: Boolean,
     onNewPuzzle: () -> Unit,
-    onCatalog: () -> Unit,
-    onToday: () -> Unit,
+    onGameHub: () -> Unit,
     isDaily: Boolean,
     modifier: Modifier,
 ) {
@@ -273,8 +268,7 @@ private fun CrownsReadyState(
             onRetryCompletion = onRetryCompletion,
             onRetryPuzzle = onRetryPuzzle,
             onNewPuzzle = onNewPuzzle,
-            onCatalog = onCatalog,
-            onToday = onToday,
+            onGameHub = onGameHub,
         )
     }
 }

@@ -33,7 +33,7 @@ internal data class Metric(
 )
 
 /**
- * Overall metrics as compact tiles, two per row, so a Statistics screen can be scanned instead of
+ * Overall metrics as compact tiles, two per row, so the Profile summary can be scanned instead of
  * read. Tiles grow vertically, so long labels and large font scales wrap rather than clip.
  */
 @Composable

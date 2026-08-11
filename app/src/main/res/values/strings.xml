@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Логика дня</string>
-    <string name="today">Сегодня</string>
-    <string name="catalog">Каталог</string>
+    <string name="tab_game">Игра</string>
+    <string name="tab_store">Магазин</string>
+    <string name="tab_profile">Профиль</string>
     <string name="statistics">Статистика</string>
     <string name="settings">Настройки</string>
     <string name="back">Назад</string>
@@ -46,7 +47,7 @@
     <string name="mistakes_description">Ошибок: %1$d из %2$d</string>
     <string name="hints_used">Использовано подсказок: %1$d</string>
     <string name="new_puzzle">Новая головоломка</string>
-    <string name="to_catalog">В каталог</string>
+    <string name="to_games">К играм</string>
     <string name="hint_legend">Рамка показывает цель подсказки; светлые клетки — её основание.</string>
     <string name="hint_incorrect_value">Проверьте клетку %1$d:%2$d: здесь должно быть %3$s.</string>
     <string name="hint_logical_deduction">Клетка %1$d:%2$d: %3$s. %4$s</string>
@@ -93,8 +94,8 @@
     <string name="daily_entry_failed">Не пройдено</string>
     <string name="daily_completed">Задача дня выполнена</string>
     <string name="daily_progress_short">%1$d / %2$d</string>
+    <string name="daily_loading">Загружаем задачу дня…</string>
     <string name="daily_progress_description">Выполнено %1$d из %2$d головоломок дня.</string>
-    <string name="to_today">На экран «Сегодня»</string>
     <string name="retry">Повторить</string>
     <string name="saving">Сохраняем…</string>
     <string name="saving_completion">Сохраняем результат…</string>

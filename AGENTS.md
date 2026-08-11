@@ -34,7 +34,7 @@
 - Incorrect player crowns are allowed and reported through centralized structured violations.
 - User marks are annotations checked only for hint/error reasoning, never Crowns domain violations.
 - Crowns hints reuse deterministic logic and a confirmed unique solution; reset preserves session-level hint usage.
-- Crowns gameplay is context-aware like Balance: `Catalog` is the default, and `Daily(challengeDate, policyVersion)` drives session scope, Daily identity, completion metadata, and return-to-Today navigation.
+- Crowns gameplay is context-aware like Balance: `Catalog` is the default, and `Daily(challengeDate, policyVersion)` drives session scope, Daily identity, completion metadata, and the return to the Game hub.
 - `BALANCE/CATALOG`, `CROWNS/CATALOG`, `BALANCE/DAILY`, and `CROWNS/DAILY` saves coexist and are keyed by puzzle type plus scope; every read, write, and delete targets exactly one of them.
 - Restore separates identity from payload: a save belonging to another scope or Daily definition is reported as inconsistent and kept, while only undecodable gameplay of the requested identity is discarded.
 - Balance and Crowns keep separate UI/gameplay adapters while sharing session, completion, and result infrastructure.
@@ -100,13 +100,13 @@
 - Reconciliation runs on `GemStoreViewModel` construction and on every store open; consumable gems need no "Restore purchases" button and there is no purchase-history UI.
 - `EconomyRepository` takes plain `purchaseId`/`productId` strings, so no RuStore SDK type reaches the economy; `RuStorePayGateway` is the whole billing boundary and the seam tests fake.
 - Room stays v6: purchases reuse `economy_events` and add no table, column, or second wallet. The wallet stays local — no accounts, cloud balance, or server receipt verification.
-- The Gem Store is one dialog reached from the gem chip in `EconomyBar` and from the Lives dialog when a refill is unaffordable; it never opens itself, and a store that fails to load leaves gameplay, regeneration, gem refill, and rewarded ads untouched.
+- The Gem Store is the Store primary tab, selected from the tab bar, from the gem chip in `EconomyBar`, and from the Lives dialog when a refill is unaffordable; there is no second store surface, it never opens itself, and a store that fails to load leaves gameplay, regeneration, gem refill, and rewarded ads untouched.
 - `logica.rustoreConsoleAppId` is private build configuration read into the `console_app_id_value` manifest placeholder; unset is a supported build where the Gem Store simply reports itself unavailable.
 - Balance tutorial is application onboarding: it reuses core Balance gameplay but stays separate from Room-backed catalog sessions; completion is a DataStore preference.
 - Crowns tutorial is Crowns-only application onboarding: its fixed state never touches Catalog sessions, results, statistics, Daily state, or gameplay hint counters; its prompt state is a DataStore preference.
 - Catalog and Daily gameplay use separate session scopes, must coexist, and reuse the existing per-puzzle engines/UI rather than generic gameplay screens.
-- Today derives one state per policy entry: completed from the persisted Daily entry, in progress from a matching active `DAILY` session, otherwise available; entry status alone is not enough because all entries are materialized with the run.
-- Today operates on the current date only, targets puzzles individually, and recommends each puzzle's own tutorial without blocking the start.
+- The Daily section derives one state per policy entry: completed from the persisted Daily entry, in progress from a matching active `DAILY` session, otherwise available; entry status alone is not enough because all entries are materialized with the run.
+- The Daily section operates on the current date only and targets puzzles individually; the tutorial is offered by each puzzle's start screen rather than by the Daily card.
 - Room migrations preserve existing saves and never use destructive migration.
 - Room v4 stores one aggregate `daily_runs` lifecycle per date separately from policy-defined `daily_challenges` entries, active sessions, and results.
 - Completed puzzle results are immutable Room records separate from active sessions; completion persistence is atomic and idempotent.
@@ -115,6 +115,11 @@
 - Daily counts and streaks are derived from completed `daily_runs`, never individual entries or mutable counters.
 - Statistics reads persisted results and lifecycle history, never active sessions; do not add unreliable metrics such as wall-clock solve duration.
 - User-facing rule and hint explanations belong in `:app`; Compose renders structured core state and UX polish must not change deterministic generation or persistence compatibility without a concrete requirement.
+- Primary navigation is exactly Game/Store/Profile, Game is the start destination, and the Settings gear is on all three; Settings, the start/tutorial screens, and gameplay are secondary destinations that hide the bottom bar and show Back.
+- The three tabs share one back-stack entry and a `SaveableStateHolder` keyed by tab, so switching tabs preserves each tab's ViewModels and saved Compose state; the selected tab is shell state, never a back-stack entry.
+- Game combines Daily and the catalog in one hub without merging their state holders: `TodayViewModel` still owns the Daily run and the shell still owns active catalog sessions. Daily is a horizontal `LazyRow` of whole-card actions; the catalog is the vertical list below it, driven by `gameCatalogEntries` so a fourth game is one row of data.
+- Store reuses the existing RuStore flow unchanged (`GemStoreViewModel`, `GemPurchaseProcessor`, `RuStorePayGateway`); selecting the tab is what reconciles and loads prices. Profile is the existing `StatisticsViewModel` and nothing else: no login, account, avatar, or cloud profile.
+- The wallet is visible on all three tabs, but only the Game tab and the gameplay surfaces may preload a rewarded ad; Store and Profile never trigger a load merely by showing the balance.
 - Shared UI lives in `app/src/main/java/com/stanisryz/logica/ui/components/` and `.../ui/theme/`; screens compose those pieces instead of inventing their own paddings, text sizes, cards, or state views.
 - `LogicaSpacing` owns every layout value and `LogicaTheme` owns the complete Light/Dark `ColorScheme` plus shapes; do not leave Material container/surface roles at their baseline defaults.
 - `LogicaPalette` (via `LocalLogicaPalette`) holds only what Material 3 has no role for: the success family and the categorical Crowns region colors; everything else uses `MaterialTheme.colorScheme`.

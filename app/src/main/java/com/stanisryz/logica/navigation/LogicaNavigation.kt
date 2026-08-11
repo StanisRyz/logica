@@ -2,14 +2,18 @@ package com.stanisryz.logica.navigation
 
 import android.app.Activity
 import androidx.activity.compose.LocalActivity
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.CollectionsBookmark
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -25,9 +29,13 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
@@ -52,78 +60,24 @@ import com.stanisryz.logica.settings.UserSettings
 import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.store.GemStoreState
 import com.stanisryz.logica.ui.components.EconomyBar
-import com.stanisryz.logica.ui.components.GemStoreDialog
 import com.stanisryz.logica.ui.components.LivesDialog
 import com.stanisryz.logica.ui.screens.BalanceGameRoute
 import com.stanisryz.logica.ui.screens.BalanceStartScreen
 import com.stanisryz.logica.ui.screens.BalanceTutorialRoute
-import com.stanisryz.logica.ui.screens.CatalogPuzzleCard
-import com.stanisryz.logica.ui.screens.CatalogScreen
 import com.stanisryz.logica.ui.screens.CrownsGameRoute
 import com.stanisryz.logica.ui.screens.CrownsStartScreen
 import com.stanisryz.logica.ui.screens.CrownsTutorialRoute
+import com.stanisryz.logica.ui.screens.GameHubRoute
+import com.stanisryz.logica.ui.screens.ProfileRoute
 import com.stanisryz.logica.ui.screens.SettingsScreen
-import com.stanisryz.logica.ui.screens.StatisticsRoute
-import com.stanisryz.logica.ui.screens.TodayRoute
+import com.stanisryz.logica.ui.screens.StoreScreen
 import com.stanisryz.logica.ui.screens.WordGameRoute
 import com.stanisryz.logica.ui.screens.WordStartScreen
 import com.stanisryz.logica.ui.screens.WordTutorialRoute
+import com.stanisryz.logica.ui.screens.gameCatalogEntries
+import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.word.WordGameLaunch
 import java.security.SecureRandom
-
-private sealed interface AppDestination {
-    data object Today : AppDestination
-
-    data object Catalog : AppDestination
-
-    data object Statistics : AppDestination
-
-    data object Settings : AppDestination
-
-    data object BalanceStart : AppDestination
-
-    data object BalanceTutorial : AppDestination
-
-    data object CrownsStart : AppDestination
-
-    data object CrownsTutorial : AppDestination
-
-    data object WordStart : AppDestination
-
-    data object WordTutorial : AppDestination
-
-    data class BalanceGame(
-        val launch: BalanceGameLaunch,
-    ) : AppDestination
-
-    data class CrownsGame(
-        val launch: CrownsGameLaunch,
-    ) : AppDestination
-
-    data class WordGame(
-        val launch: WordGameLaunch,
-    ) : AppDestination
-}
-
-private val primaryDestinations = listOf(AppDestination.Today, AppDestination.Catalog, AppDestination.Statistics)
-
-/**
- * Where the wallet belongs: everywhere a game can be started, resumed, or played. Statistics,
- * Settings, and the tutorials deliberately stay free of it.
- */
-private fun AppDestination.showsEconomy(): Boolean =
-    when (this) {
-        AppDestination.Today,
-        AppDestination.Catalog,
-        AppDestination.BalanceStart,
-        AppDestination.CrownsStart,
-        AppDestination.WordStart,
-        is AppDestination.BalanceGame,
-        is AppDestination.CrownsGame,
-        is AppDestination.WordGame,
-        -> true
-        else -> false
-    }
 
 @Composable
 internal fun LogicaNavigation(
@@ -155,28 +109,37 @@ internal fun LogicaNavigation(
     onCrownsTutorialCompleted: (Boolean) -> Unit,
     onWordTutorialCompleted: (Boolean) -> Unit,
 ) {
-    val backStack = remember { mutableStateListOf<AppDestination>(AppDestination.Today) }
+    val backStack = remember { mutableStateListOf<AppDestination>(AppDestination.Home) }
+    /*
+     * The selected tab is shell state rather than a back-stack entry: the three primary screens
+     * share one entry, so switching tabs keeps their ViewModels and — through the state holder
+     * below — their scroll positions and other saved Compose state.
+     */
+    var selectedTab by rememberSaveable { mutableStateOf(PrimaryTab.START) }
+    val tabStateHolder = rememberSaveableStateHolder()
     val catalogSeedSource = remember { CatalogSeedSource() }
     val currentDestination = backStack.last()
-    val isPrimaryDestination = currentDestination in primaryDestinations
     var showLivesDialog by rememberSaveable { mutableStateOf(false) }
-    var showGemStore by rememberSaveable { mutableStateOf(false) }
     val activity = LocalActivity.current
 
-    /** Opening the store is the only thing that loads prices, and it never happens by itself. */
-    val openGemStore = {
+    /** There is one store: everything that offers gems selects the Store tab instead of a dialog. */
+    val openStore = {
         showLivesDialog = false
-        showGemStore = true
-        onOpenGemStore()
+        selectedTab = PrimaryTab.STORE
+        while (backStack.size > 1) backStack.removeLastOrNull()
     }
 
     /*
      * The rewarded ad is loaded only where it can actually be offered: the player is out of lives
-     * and is standing on a screen that carries the wallet. Tutorials, Settings, and Statistics never
-     * trigger a load, and a wallet with lives in it releases whatever was loaded instead of rotating
-     * ads in the background. A failed load stays failed until the player asks for a retry.
+     * and either the Lives dialog with the offer in it is open, or they are standing on a screen a
+     * game can be started or played from. The Store and Profile tabs carry the same wallet without
+     * ever causing a load, and tutorials and Settings never trigger one either. A wallet with lives
+     * in it releases whatever was loaded instead of rotating ads in the background, and a failed
+     * load stays failed until the player asks for a retry.
      */
-    val rewardedOfferVisible = !economy.isGameplayAllowed && currentDestination.showsEconomy()
+    val rewardedOfferVisible =
+        !economy.isGameplayAllowed &&
+            (showLivesDialog || currentDestination.allowsRewardedOffer(selectedTab))
     LaunchedEffect(rewardedOfferVisible, rewardedState) {
         when {
             rewardedOfferVisible && rewardedState == RewardedAdState.IDLE -> onPreloadRewardedAd()
@@ -187,20 +150,20 @@ internal fun LogicaNavigation(
     Scaffold(
         topBar = {
             AppTopBar(
-                destination = currentDestination,
+                title = destinationTitle(currentDestination, selectedTab),
+                showBack = currentDestination != AppDestination.Home,
+                showWallet = currentDestination.showsWallet(),
+                showSettings = currentDestination.showsSettingsAction(),
                 economy = economy,
                 onBack = { backStack.removeLastOrNull() },
-                onOpenSettings = { if (isPrimaryDestination) backStack.add(AppDestination.Settings) },
+                onOpenSettings = { backStack.add(AppDestination.Settings) },
                 onOpenLives = { showLivesDialog = true },
-                onOpenGemStore = openGemStore,
+                onOpenStore = openStore,
             )
         },
         bottomBar = {
-            if (isPrimaryDestination) {
-                AppBottomBar(currentDestination) { destination ->
-                    backStack.clear()
-                    backStack.add(destination)
-                }
+            if (currentDestination.showsBottomBar()) {
+                AppBottomBar(selectedTab) { selectedTab = it }
             }
         },
     ) { contentPadding ->
@@ -211,73 +174,72 @@ internal fun LogicaNavigation(
             entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
             entryProvider =
                 entryProvider {
-                    entry<AppDestination.Today> {
-                        TodayRoute(
-                            dailyChallengeRepository = dailyChallengeRepository,
-                            gameSessionRepository = gameSessionRepository,
-                            statisticsRepository = statisticsRepository,
-                            dailyResultRepository = dailyResultRepository,
-                            balanceTutorialCompleted = settings.balanceTutorialCompleted,
-                            crownsTutorialCompleted = settings.crownsTutorialCompleted,
-                            wordTutorialCompleted = settings.wordTutorialCompleted,
-                            economy = economy,
-                            onRestoreLife = onRestoreLife,
-                            onOpenDaily = { dailyLaunch ->
-                                backStack.add(
-                                    when (dailyLaunch) {
-                                        is DailyGameLaunch.Balance -> AppDestination.BalanceGame(dailyLaunch.launch)
-                                        is DailyGameLaunch.Crowns -> AppDestination.CrownsGame(dailyLaunch.launch)
-                                        is DailyGameLaunch.Word -> AppDestination.WordGame(dailyLaunch.launch)
-                                    },
-                                )
-                            },
-                            onOpenTutorial = { puzzleType ->
-                                when (puzzleType) {
-                                    PuzzleType.BALANCE -> backStack.add(AppDestination.BalanceTutorial)
-                                    PuzzleType.CROWNS -> {
-                                        onCrownsTutorialCompleted(true)
-                                        backStack.add(AppDestination.CrownsTutorial)
-                                    }
-                                    PuzzleType.WORD -> {
-                                        onWordTutorialCompleted(true)
-                                        backStack.add(AppDestination.WordTutorial)
-                                    }
-                                    else -> Unit
-                                }
-                            },
-                        )
+                    entry<AppDestination.Home> {
+                        tabStateHolder.SaveableStateProvider(selectedTab) {
+                            when (selectedTab) {
+                                PrimaryTab.GAME ->
+                                    GameHubRoute(
+                                        dailyChallengeRepository = dailyChallengeRepository,
+                                        gameSessionRepository = gameSessionRepository,
+                                        statisticsRepository = statisticsRepository,
+                                        dailyResultRepository = dailyResultRepository,
+                                        catalog =
+                                            gameCatalogEntries(
+                                                hasActiveSession = { puzzleType ->
+                                                    when (puzzleType) {
+                                                        PuzzleType.BALANCE -> hasActiveBalanceSession
+                                                        PuzzleType.CROWNS -> hasActiveCrownsSession
+                                                        else -> hasActiveWordSession
+                                                    }
+                                                },
+                                                onContinue = { puzzleType ->
+                                                    backStack.add(
+                                                        when (puzzleType) {
+                                                            PuzzleType.BALANCE ->
+                                                                AppDestination.BalanceGame(BalanceGameLaunch.Restore())
+                                                            PuzzleType.CROWNS ->
+                                                                AppDestination.CrownsGame(CrownsGameLaunch.Restore())
+                                                            else -> AppDestination.WordGame(WordGameLaunch.Restore())
+                                                        },
+                                                    )
+                                                },
+                                                onNew = { puzzleType ->
+                                                    backStack.add(
+                                                        when (puzzleType) {
+                                                            PuzzleType.BALANCE -> AppDestination.BalanceStart
+                                                            PuzzleType.CROWNS -> AppDestination.CrownsStart
+                                                            else -> AppDestination.WordStart
+                                                        },
+                                                    )
+                                                },
+                                            ),
+                                        economy = economy,
+                                        onOpenDaily = { dailyLaunch ->
+                                            backStack.add(
+                                                when (dailyLaunch) {
+                                                    is DailyGameLaunch.Balance ->
+                                                        AppDestination.BalanceGame(dailyLaunch.launch)
+                                                    is DailyGameLaunch.Crowns ->
+                                                        AppDestination.CrownsGame(dailyLaunch.launch)
+                                                    is DailyGameLaunch.Word ->
+                                                        AppDestination.WordGame(dailyLaunch.launch)
+                                                },
+                                            )
+                                        },
+                                        onRestoreLife = onRestoreLife,
+                                    )
+                                PrimaryTab.STORE ->
+                                    StoreScreen(
+                                        economy = economy,
+                                        state = gemStoreState,
+                                        onOpen = onOpenGemStore,
+                                        onBuy = onBuyGemPack,
+                                        onDismissOutcome = onDismissGemPurchaseOutcome,
+                                    )
+                                PrimaryTab.PROFILE -> ProfileRoute(statisticsRepository)
+                            }
+                        }
                     }
-                    entry<AppDestination.Catalog> {
-                        CatalogScreen(
-                            puzzles =
-                                listOf(
-                                    CatalogPuzzleCard(
-                                        puzzleType = PuzzleType.BALANCE,
-                                        descriptionResource = R.string.balance_catalog_description,
-                                        hasActiveSession = hasActiveBalanceSession,
-                                        onContinue = { backStack.add(AppDestination.BalanceGame(BalanceGameLaunch.Restore())) },
-                                        onNew = { backStack.add(AppDestination.BalanceStart) },
-                                    ),
-                                    CatalogPuzzleCard(
-                                        puzzleType = PuzzleType.CROWNS,
-                                        descriptionResource = R.string.crowns_catalog_description,
-                                        hasActiveSession = hasActiveCrownsSession,
-                                        onContinue = { backStack.add(AppDestination.CrownsGame(CrownsGameLaunch.Restore())) },
-                                        onNew = { backStack.add(AppDestination.CrownsStart) },
-                                    ),
-                                    CatalogPuzzleCard(
-                                        puzzleType = PuzzleType.WORD,
-                                        descriptionResource = R.string.word_catalog_description,
-                                        hasActiveSession = hasActiveWordSession,
-                                        onContinue = { backStack.add(AppDestination.WordGame(WordGameLaunch.Restore())) },
-                                        onNew = { backStack.add(AppDestination.WordStart) },
-                                    ),
-                                ),
-                            economy = economy,
-                            onRestoreLife = onRestoreLife,
-                        )
-                    }
-                    entry<AppDestination.Statistics> { StatisticsRoute(statisticsRepository) }
                     entry<AppDestination.Settings> {
                         SettingsScreen(settings, onThemeModeChanged, onSoundEnabledChanged, onHapticsEnabledChanged)
                     }
@@ -362,14 +324,7 @@ internal fun LogicaNavigation(
                                 backStack.removeLastOrNull()
                                 backStack.add(AppDestination.BalanceStart)
                             },
-                            onCatalog = {
-                                backStack.clear()
-                                backStack.add(AppDestination.Catalog)
-                            },
-                            onToday = {
-                                backStack.clear()
-                                backStack.add(AppDestination.Today)
-                            },
+                            onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
                             onRestoreLife = onRestoreLife,
                         )
                     }
@@ -393,14 +348,7 @@ internal fun LogicaNavigation(
                                 backStack.removeLastOrNull()
                                 backStack.add(AppDestination.CrownsStart)
                             },
-                            onCatalog = {
-                                backStack.clear()
-                                backStack.add(AppDestination.Catalog)
-                            },
-                            onToday = {
-                                backStack.clear()
-                                backStack.add(AppDestination.Today)
-                            },
+                            onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
                             onRestoreLife = onRestoreLife,
                         )
                     }
@@ -424,14 +372,7 @@ internal fun LogicaNavigation(
                                 backStack.removeLastOrNull()
                                 backStack.add(AppDestination.WordStart)
                             },
-                            onCatalog = {
-                                backStack.clear()
-                                backStack.add(AppDestination.Catalog)
-                            },
-                            onToday = {
-                                backStack.clear()
-                                backStack.add(AppDestination.Today)
-                            },
+                            onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
                             onRestoreLife = onRestoreLife,
                         )
                     }
@@ -446,88 +387,109 @@ internal fun LogicaNavigation(
             onRestoreLife = onRestoreLife,
             onWatchRewardedAd = { activity?.let(onWatchRewardedAd) },
             onRetryRewardedAd = onRetryRewardedAd,
-            onOpenGemStore = openGemStore,
+            onOpenGemStore = openStore,
             onDismiss = { showLivesDialog = false },
-        )
-    }
-
-    if (showGemStore) {
-        GemStoreDialog(
-            economy = economy,
-            state = gemStoreState,
-            onBuy = onBuyGemPack,
-            onRetry = onOpenGemStore,
-            onDismiss = {
-                showGemStore = false
-                onDismissGemPurchaseOutcome()
-            },
         )
     }
 }
 
+/** Daily and the catalog share one tab, so every way out of a game leads back to the same hub. */
+private fun returnToGameHub(
+    backStack: MutableList<AppDestination>,
+    onSelectTab: (PrimaryTab) -> Unit,
+) {
+    onSelectTab(PrimaryTab.GAME)
+    while (backStack.size > 1) backStack.removeLastOrNull()
+}
+
+/**
+ * The shared header of every screen: what you are looking at, the wallet where it belongs, and the
+ * Settings gear on all three primary tabs. On a narrow screen the wallet moves to its own line
+ * instead of squeezing the title.
+ */
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun AppTopBar(
-    destination: AppDestination,
+    title: String,
+    showBack: Boolean,
+    showWallet: Boolean,
+    showSettings: Boolean,
     economy: PlayerEconomy,
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenLives: () -> Unit,
-    onOpenGemStore: () -> Unit,
+    onOpenStore: () -> Unit,
 ) {
-    TopAppBar(
-        title = { Text(destinationTitle(destination)) },
-        navigationIcon = {
-            if (destination !in primaryDestinations) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+    BoxWithConstraints {
+        val walletOnOwnLine = showWallet && maxWidth < COMPACT_HEADER_WIDTH
+        Column {
+            TopAppBar(
+                title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                navigationIcon = {
+                    if (showBack) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                        }
+                    }
+                },
+                actions = {
+                    if (showWallet && !walletOnOwnLine) {
+                        EconomyBar(economy = economy, onOpenLives = onOpenLives, onOpenGemStore = onOpenStore)
+                    }
+                    if (showSettings) {
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings))
+                        }
+                    }
+                },
+            )
+            if (walletOnOwnLine) {
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = LogicaSpacing.screenHorizontal, vertical = LogicaSpacing.text),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    EconomyBar(economy = economy, onOpenLives = onOpenLives, onOpenGemStore = onOpenStore)
                 }
             }
-        },
-        actions = {
-            if (destination.showsEconomy()) {
-                EconomyBar(economy = economy, onOpenLives = onOpenLives, onOpenGemStore = onOpenGemStore)
-            }
-            if (destination in primaryDestinations) {
-                IconButton(onClick = onOpenSettings) {
-                    Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings))
-                }
-            }
-        },
-    )
+        }
+    }
 }
 
 @Composable
 private fun AppBottomBar(
-    selectedDestination: AppDestination,
-    onDestinationSelected: (AppDestination) -> Unit,
+    selectedTab: PrimaryTab,
+    onTabSelected: (PrimaryTab) -> Unit,
 ) {
     NavigationBar(modifier = Modifier.fillMaxWidth()) {
-        primaryDestinations.forEach { destination ->
+        PrimaryTab.entries.forEach { tab ->
             NavigationBarItem(
-                selected = selectedDestination == destination,
-                onClick = { onDestinationSelected(destination) },
+                selected = selectedTab == tab,
+                onClick = { onTabSelected(tab) },
                 icon = {
-                    when (destination) {
-                        AppDestination.Today -> Icon(Icons.Filled.CalendarToday, null)
-                        AppDestination.Catalog -> Icon(Icons.Filled.CollectionsBookmark, null)
-                        AppDestination.Statistics -> Icon(Icons.Filled.BarChart, null)
-                        else -> Unit
+                    when (tab) {
+                        PrimaryTab.GAME -> Icon(Icons.Filled.SportsEsports, null)
+                        PrimaryTab.STORE -> Icon(Icons.Filled.Storefront, null)
+                        PrimaryTab.PROFILE -> Icon(Icons.Filled.Person, null)
                     }
                 },
-                label = { Text(destinationTitle(destination)) },
+                label = { Text(stringResource(tab.titleResource)) },
             )
         }
     }
 }
 
 @Composable
-private fun destinationTitle(destination: AppDestination): String =
+private fun destinationTitle(
+    destination: AppDestination,
+    tab: PrimaryTab,
+): String =
     stringResource(
         when (destination) {
-            AppDestination.Today -> R.string.today
-            AppDestination.Catalog -> R.string.catalog
-            AppDestination.Statistics -> R.string.statistics
+            AppDestination.Home -> tab.titleResource
             AppDestination.Settings -> R.string.settings
             AppDestination.BalanceStart, is AppDestination.BalanceGame -> R.string.balance
             AppDestination.BalanceTutorial -> R.string.balance_tutorial_title
@@ -543,3 +505,6 @@ private class CatalogSeedSource {
 
     fun nextSeed(): PuzzleSeed = PuzzleSeed(random.nextLong())
 }
+
+/** Below this the title, the wallet, and the gear stop fitting on one comfortable line. */
+private val COMPACT_HEADER_WIDTH = 380.dp

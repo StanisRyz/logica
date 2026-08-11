@@ -2,6 +2,7 @@ package com.stanisryz.logica.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -166,7 +167,11 @@ internal fun BodyText(
     Text(text = text, modifier = modifier, style = MaterialTheme.typography.bodyMedium)
 }
 
-/** The one card shape, elevation, and padding used across the product. */
+/**
+ * The one card shape, elevation, and padding used across the product. A card may also be the tap
+ * target itself: [onClick] makes the whole card actionable, with [onClickLabel] naming the action
+ * it performs for accessibility services.
+ */
 @Composable
 internal fun LogicaCard(
     modifier: Modifier = Modifier,
@@ -174,6 +179,9 @@ internal fun LogicaCard(
     contentColor: Color = defaultContentColorFor(containerColor),
     border: BorderStroke? = null,
     verticalSpacing: Dp = LogicaSpacing.cardContent,
+    contentPadding: Dp = LogicaSpacing.cardPadding,
+    onClick: (() -> Unit)? = null,
+    onClickLabel: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Card(
@@ -182,7 +190,16 @@ internal fun LogicaCard(
         border = border,
     ) {
         Column(
-            modifier = Modifier.padding(LogicaSpacing.cardPadding),
+            modifier =
+                Modifier
+                    // Inside the card, so the tap ripple is clipped to the card's own shape.
+                    .then(
+                        if (onClick == null) {
+                            Modifier
+                        } else {
+                            Modifier.clickable(onClickLabel = onClickLabel, onClick = onClick)
+                        },
+                    ).padding(contentPadding),
             verticalArrangement = Arrangement.spacedBy(verticalSpacing),
             content = content,
         )

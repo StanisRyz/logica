@@ -1,4 +1,4 @@
-package com.stanisryz.logica.ui.components
+package com.stanisryz.logica.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -6,13 +6,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Diamond
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -23,44 +24,48 @@ import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.store.GemPackOffer
 import com.stanisryz.logica.store.GemPurchaseOutcome
 import com.stanisryz.logica.store.GemStoreState
+import com.stanisryz.logica.ui.components.LogicaCard
+import com.stanisryz.logica.ui.components.ScreenColumn
+import com.stanisryz.logica.ui.components.ScreenTitle
+import com.stanisryz.logica.ui.components.SupportingText
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 /**
- * The one Gem Store in the product, reached from the gem balance in the top bar and from the lives
- * dialog when a refill is out of reach. It sells gem packs and nothing else.
+ * The one Gem Store in the product, now a primary tab rather than a dialog. It sells gem packs and
+ * nothing else, and it is only ever reached because the player asked for it — from the tab bar, from
+ * the gem balance, or from the lives dialog when a refill is out of reach.
  *
  * Every price on screen is RuStore's own formatted label; the application never states an amount of
  * money. The gem counts beside them come from the local [GemPack] table, so what a pack is worth is
  * this build's number rather than something read out of store metadata.
  */
 @Composable
-internal fun GemStoreDialog(
+internal fun StoreScreen(
     economy: PlayerEconomy,
     state: GemStoreState,
+    onOpen: () -> Unit,
     onBuy: (GemPack) -> Unit,
-    onRetry: () -> Unit,
-    onDismiss: () -> Unit,
+    onDismissOutcome: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Filled.Diamond, contentDescription = null) },
-        title = { Text(stringResource(R.string.gem_store_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
-                // The balance stays visible in every state, including a store that cannot load.
-                Text(
-                    text = stringResource(R.string.gem_store_balance, economy.gems),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                when (state) {
-                    GemStoreState.Loading -> GemStoreLoading()
-                    GemStoreState.Unavailable -> GemStoreUnavailable(onRetry)
-                    is GemStoreState.Ready -> GemStoreOffers(state, onBuy)
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) } },
-    )
+    // Opening the store is what reconciles anything paid for but not yet credited, and what loads
+    // the prices. Leaving the tab clears the last purchase message rather than keeping it forever.
+    LaunchedEffect(Unit) { onOpen() }
+    DisposableEffect(Unit) { onDispose(onDismissOutcome) }
+
+    ScreenColumn(modifier, verticalSpacing = LogicaSpacing.item) {
+        ScreenTitle(stringResource(R.string.gem_store_title))
+        // The balance stays visible in every state, including a store that cannot load.
+        Text(
+            text = stringResource(R.string.gem_store_balance, economy.gems),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        when (state) {
+            GemStoreState.Loading -> GemStoreLoading()
+            GemStoreState.Unavailable -> GemStoreUnavailable(onOpen)
+            is GemStoreState.Ready -> GemStoreOffers(state, onBuy)
+        }
+    }
 }
 
 @Composable
@@ -87,7 +92,7 @@ private fun GemStoreOffers(
     state: GemStoreState.Ready,
     onBuy: (GemPack) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
+    Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
         state.offers.forEach { offer ->
             GemPackRow(
                 offer = offer,

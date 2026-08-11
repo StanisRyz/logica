@@ -16,7 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 
-/** The one loading state used by Today, Statistics, and the three gameplay screens. */
+/** The one loading state used by Profile and the three gameplay screens. */
 @Composable
 internal fun LoadingState(
     modifier: Modifier = Modifier,

@@ -33,14 +33,18 @@ import com.stanisryz.logica.ui.components.PuzzleTitle
 import com.stanisryz.logica.ui.components.RetryableErrorState
 import com.stanisryz.logica.ui.components.ScreenColumn
 import com.stanisryz.logica.ui.components.ScreenSection
-import com.stanisryz.logica.ui.components.ScreenTitle
 import com.stanisryz.logica.ui.components.SectionTitle
 import com.stanisryz.logica.ui.components.difficultyResource
 import com.stanisryz.logica.ui.components.titleResource
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 
+/**
+ * The Profile tab: a local gameplay profile and nothing more. It is the existing statistics, read
+ * through the existing [StatisticsViewModel], presented as a short summary with the detailed
+ * per-puzzle breakdown below it. There is no account, no name, and no cloud.
+ */
 @Composable
-internal fun StatisticsRoute(
+internal fun ProfileRoute(
     repository: StatisticsRepository,
     modifier: Modifier = Modifier,
 ) {
@@ -58,11 +62,11 @@ internal fun StatisticsRoute(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    StatisticsScreen(uiState, statisticsViewModel::refresh, modifier)
+    ProfileScreen(uiState, statisticsViewModel::refresh, modifier)
 }
 
 @Composable
-private fun StatisticsScreen(
+private fun ProfileScreen(
     uiState: StatisticsUiState,
     onRetry: () -> Unit,
     modifier: Modifier,
@@ -84,7 +88,7 @@ private fun StatisticsScreen(
                     modifier = modifier,
                 )
             } else {
-                StatisticsContent(uiState.statistics, modifier)
+                ProfileContent(uiState.statistics, modifier)
             }
     }
 }
@@ -93,12 +97,11 @@ private fun StatisticsScreen(
 private fun GameStatistics.isEmpty(): Boolean = totalCompletedResults == 0 && completedDailyCount == 0
 
 @Composable
-private fun StatisticsContent(
+private fun ProfileContent(
     statistics: GameStatistics,
     modifier: Modifier,
 ) {
     ScreenColumn(modifier) {
-        ScreenTitle(stringResource(R.string.statistics))
         ScreenSection(title = stringResource(R.string.statistics_overall)) {
             MetricGrid(
                 listOf(
@@ -110,9 +113,11 @@ private fun StatisticsContent(
                 ),
             )
         }
-        PuzzleStatisticsCard(PuzzleType.BALANCE, statistics)
-        PuzzleStatisticsCard(PuzzleType.CROWNS, statistics)
-        WordStatisticsCard(statistics.word)
+        ScreenSection(title = stringResource(R.string.statistics)) {
+            PuzzleStatisticsCard(PuzzleType.BALANCE, statistics)
+            PuzzleStatisticsCard(PuzzleType.CROWNS, statistics)
+            WordStatisticsCard(statistics.word)
+        }
     }
 }
 

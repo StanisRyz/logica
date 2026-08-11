@@ -71,8 +71,7 @@ internal fun WordGameRoute(
     onBack: () -> Unit,
     onNewPuzzle: (Difficulty) -> Unit,
     onStartNew: () -> Unit,
-    onCatalog: () -> Unit,
-    onToday: () -> Unit,
+    onGameHub: () -> Unit,
     onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -98,8 +97,7 @@ internal fun WordGameRoute(
         onBack = onBack,
         onNewPuzzle = onNewPuzzle,
         onStartNew = onStartNew,
-        onCatalog = onCatalog,
-        onToday = onToday,
+        onGameHub = onGameHub,
         isDaily = launch.context is WordGameContext.Daily,
         modifier = modifier,
     )
@@ -120,8 +118,7 @@ private fun WordGameScreen(
     onBack: () -> Unit,
     onNewPuzzle: (Difficulty) -> Unit,
     onStartNew: () -> Unit,
-    onCatalog: () -> Unit,
-    onToday: () -> Unit,
+    onGameHub: () -> Unit,
     isDaily: Boolean,
     modifier: Modifier,
 ) {
@@ -137,8 +134,8 @@ private fun WordGameScreen(
                             WordGameError.GENERATION -> R.string.puzzle_generation_error
                         },
                     ),
-                retryLabel = stringResource(if (isDaily) R.string.to_today else R.string.try_another),
-                onRetry = if (isDaily) onToday else onStartNew,
+                retryLabel = stringResource(if (isDaily) R.string.to_games else R.string.try_another),
+                onRetry = if (isDaily) onGameHub else onStartNew,
                 modifier = modifier,
                 secondaryLabel = stringResource(R.string.back),
                 onSecondary = onBack,
@@ -159,8 +156,7 @@ private fun WordGameScreen(
                 onRestoreLife = onRestoreLife,
                 hapticsEnabled = hapticsEnabled,
                 onNewPuzzle = { onNewPuzzle(uiState.puzzle.id.difficulty) },
-                onCatalog = onCatalog,
-                onToday = onToday,
+                onGameHub = onGameHub,
                 isDaily = isDaily,
                 modifier = modifier,
             )
@@ -187,8 +183,7 @@ private fun WordReadyState(
     onRestoreLife: () -> Unit,
     hapticsEnabled: Boolean,
     onNewPuzzle: () -> Unit,
-    onCatalog: () -> Unit,
-    onToday: () -> Unit,
+    onGameHub: () -> Unit,
     isDaily: Boolean,
     modifier: Modifier,
 ) {
@@ -249,8 +244,7 @@ private fun WordReadyState(
                     onRetryCompletion = onRetryCompletion,
                     onRetryPuzzle = onRetryPuzzle,
                     onNewPuzzle = onNewPuzzle,
-                    onCatalog = onCatalog,
-                    onToday = onToday,
+                    onGameHub = onGameHub,
                     isDaily = isDaily,
                 )
             }
@@ -285,8 +279,7 @@ private fun WordTerminalCard(
     onRetryCompletion: () -> Unit,
     onRetryPuzzle: () -> Unit,
     onNewPuzzle: () -> Unit,
-    onCatalog: () -> Unit,
-    onToday: () -> Unit,
+    onGameHub: () -> Unit,
     isDaily: Boolean,
 ) {
     val isSolved = game.status == WordGameStatus.SOLVED
@@ -337,18 +330,16 @@ private fun WordTerminalCard(
                 ) {
                     Text(stringResource(R.string.retry_puzzle))
                 }
-                TextButton(onClick = if (isDaily) onToday else onCatalog) {
-                    Text(stringResource(if (isDaily) R.string.to_today else R.string.to_catalog))
-                }
+                TextButton(onClick = onGameHub) { Text(stringResource(R.string.to_games)) }
             } else if (isDaily) {
-                Button(onClick = onToday, modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.to_today))
+                Button(onClick = onGameHub, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.to_games))
                 }
             } else {
                 Button(onClick = onNewPuzzle, modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.new_puzzle))
                 }
-                TextButton(onClick = onCatalog) { Text(stringResource(R.string.to_catalog)) }
+                TextButton(onClick = onGameHub) { Text(stringResource(R.string.to_games)) }
             }
         }
     }
