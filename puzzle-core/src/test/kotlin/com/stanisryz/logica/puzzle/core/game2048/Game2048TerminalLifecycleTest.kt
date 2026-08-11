@@ -3,6 +3,7 @@ package com.stanisryz.logica.puzzle.core.game2048
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class Game2048TerminalLifecycleTest {
@@ -17,13 +18,17 @@ class Game2048TerminalLifecycleTest {
                 score = 100L,
                 nextSpawnIndex = 12L,
             )
-        val solved = engine.move(before, Game2048Direction.LEFT)
+        val transition = engine.moveWithTrace(before, Game2048Direction.LEFT)
+        val solved = transition.state
 
+        assertEquals(solved, engine.move(before, Game2048Direction.LEFT))
         assertEquals(Game2048Status.SOLVED, solved.status)
         assertEquals(256, solved.board[0])
         assertEquals(1, solved.board.count { it != 0 })
         assertEquals(356L, solved.score)
         assertEquals(12L, solved.nextSpawnIndex)
+        assertEquals(256L, transition.trace?.scoreGained)
+        assertNull(transition.trace?.spawnedTile)
         assertEquals(solved, engine.move(solved, Game2048Direction.DOWN))
     }
 

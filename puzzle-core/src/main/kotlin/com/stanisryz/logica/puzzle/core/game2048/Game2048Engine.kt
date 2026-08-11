@@ -13,8 +13,8 @@ class Game2048Engine(
 
     fun start(): Game2048State {
         var board = List(Game2048State.CELL_COUNT) { 0 }
-        board = spawn(board, 0L)
-        board = spawn(board, 1L)
+        board = spawnWithTrace(board, 0L).board
+        board = spawnWithTrace(board, 1L).board
         return Game2048State(
             puzzleId = puzzleId,
             board = board,
@@ -27,30 +27,43 @@ class Game2048Engine(
     fun move(
         state: Game2048State,
         direction: Game2048Direction,
-    ): Game2048State {
+    ): Game2048State = moveWithTrace(state, direction).state
+
+    fun moveWithTrace(
+        state: Game2048State,
+        direction: Game2048Direction,
+    ): Game2048MoveTransition {
         require(state.puzzleId == puzzleId) { "2048 state belongs to another puzzle." }
-        if (state.status.isTerminal) return state
-        val movement = Game2048Rules.move(state.board, direction)
-        if (movement.board == state.board) return state
+        if (state.status.isTerminal) return Game2048MoveTransition(state, null)
+        val movement = Game2048Rules.moveWithTrace(state.board, direction)
+        val trace = movement.trace ?: return Game2048MoveTransition(state, null)
 
         val updatedScore = state.score + movement.scoreGained
         // V1 only: a target-producing move ends the attempt before it consumes a spawn sample.
         if (rules.solvesBeforeSpawn(movement.board, updatedScore)) {
-            return state.copy(
-                board = movement.board,
-                score = updatedScore,
-                status = Game2048Status.SOLVED,
+            return Game2048MoveTransition(
+                state =
+                    state.copy(
+                        board = movement.board,
+                        score = updatedScore,
+                        status = Game2048Status.SOLVED,
+                    ),
+                trace = trace,
             )
         }
 
         // Every other valid move spawns exactly one tile and is judged afterwards, so a move that
         // fills the last cell is evaluated on the board the player will actually see.
-        val spawned = spawn(movement.board, state.nextSpawnIndex)
-        return state.copy(
-            board = spawned,
-            score = updatedScore,
-            nextSpawnIndex = state.nextSpawnIndex + 1L,
-            status = rules.status(spawned, updatedScore),
+        val spawned = spawnWithTrace(movement.board, state.nextSpawnIndex)
+        return Game2048MoveTransition(
+            state =
+                state.copy(
+                    board = spawned.board,
+                    score = updatedScore,
+                    nextSpawnIndex = state.nextSpawnIndex + 1L,
+                    status = rules.status(spawned.board, updatedScore),
+                ),
+            trace = trace.copy(spawnedTile = spawned.spawnedTile),
         )
     }
 
@@ -73,17 +86,25 @@ class Game2048Engine(
             status = rules.status(board, score),
         )
 
-    private fun spawn(
+    private fun spawnWithTrace(
         board: List<Int>,
         spawnIndex: Long,
-    ): List<Int> {
+    ): Game2048SpawnResult {
         require(spawnIndex >= 0L)
         val emptyCells = board.indices.filter { board[it] == 0 }
         require(emptyCells.isNotEmpty()) { "Cannot spawn a 2048 tile on a full board." }
         val samples = Game2048SpawnV1.samples(puzzleId.seed.value, spawnIndex)
         val selectedCell = emptyCells[(samples.positionSample % emptyCells.size.toULong()).toInt()]
-        return board.toMutableList().also { it[selectedCell] = samples.tileValue }
+        return Game2048SpawnResult(
+            board = board.toMutableList().also { it[selectedCell] = samples.tileValue },
+            spawnedTile = Game2048SpawnTrace(selectedCell, samples.tileValue),
+        )
     }
+
+    private data class Game2048SpawnResult(
+        val board: List<Int>,
+        val spawnedTile: Game2048SpawnTrace,
+    )
 
     private companion object {
         const val INITIAL_SPAWN_COUNT = 2L
