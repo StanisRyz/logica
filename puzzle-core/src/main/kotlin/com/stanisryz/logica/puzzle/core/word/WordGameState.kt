@@ -83,7 +83,7 @@ class WordLetterKnowledge internal constructor(
 class WordGameState internal constructor(
     val puzzleId: PuzzleId,
     val wordLength: Int,
-    val currentInput: String,
+    val currentDraft: WordDraft,
     attempts: Iterable<WordAttempt>,
     val status: WordGameStatus,
 ) {
@@ -92,13 +92,7 @@ class WordGameState internal constructor(
 
     init {
         require(WordRules.isSupportedLength(wordLength)) { "Unsupported Word length $wordLength." }
-        require(currentInput.length <= wordLength) { "Current input is longer than the puzzle word." }
-        require(currentInput.all(RussianWordNormalizer::isSupportedLetter)) {
-            "Current input must contain supported Russian letters only."
-        }
-        require(currentInput == currentInput.map(RussianWordNormalizer::normalizeLetter).joinToString("")) {
-            "Current input must already be normalized."
-        }
+        require(currentDraft.wordLength == wordLength) { "Current draft does not match the puzzle word length." }
         require(this.attempts.size <= WordRules.MAXIMUM_ATTEMPTS) { "Too many submitted attempts." }
         require(this.attempts.all { it.word.length == wordLength }) {
             "Every submitted attempt must match the puzzle word length."
@@ -113,19 +107,19 @@ class WordGameState internal constructor(
             other is WordGameState &&
             puzzleId == other.puzzleId &&
             wordLength == other.wordLength &&
-            currentInput == other.currentInput &&
+            currentDraft == other.currentDraft &&
             attempts == other.attempts &&
             status == other.status
 
     override fun hashCode(): Int {
         var result = puzzleId.hashCode()
         result = 31 * result + wordLength
-        result = 31 * result + currentInput.hashCode()
+        result = 31 * result + currentDraft.hashCode()
         result = 31 * result + attempts.hashCode()
         result = 31 * result + status.hashCode()
         return result
     }
 
     override fun toString(): String =
-        "WordGameState(puzzleId=$puzzleId, wordLength=$wordLength, currentInput=$currentInput, attempts=$attempts, status=$status)"
+        "WordGameState(puzzleId=$puzzleId, wordLength=$wordLength, currentDraft=$currentDraft, attempts=$attempts, status=$status)"
 }

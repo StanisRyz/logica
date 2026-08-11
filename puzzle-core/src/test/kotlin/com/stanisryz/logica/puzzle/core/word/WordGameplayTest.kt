@@ -13,8 +13,12 @@ class WordGameplayTest {
     private val engine = WordGameEngine(puzzle(), WordLexiconV1.allowedGuesses)
 
     @Test
-    fun rejectedGuessesConsumeNoAttempt() {
-        val incomplete = type("пол")
+    fun positionalDraftSupportsInsertReplaceClearAndNonConsumingIncompleteSubmit() {
+        var incomplete = engine.start()
+        incomplete = engine.setLetter(incomplete, 0, 'п')
+        incomplete = engine.setLetter(incomplete, 2, 'л')
+        incomplete = engine.setLetter(incomplete, 2, 'м')
+        incomplete = engine.clearLetter(incomplete, 2)
         val incompleteResult = engine.submit(incomplete)
 
         val unknownWord = type("ббббб")
@@ -32,7 +36,8 @@ class WordGameplayTest {
         assertTrue(unknownResult.state.attempts.isEmpty())
         assertEquals(WordRules.MAXIMUM_ATTEMPTS, unknownResult.state.remainingAttempts)
         assertEquals(WordGameStatus.IN_PROGRESS, unknownResult.state.status)
-        assertEquals("пол", engine.removeLastLetter(type("полк")).currentInput)
+        assertEquals(listOf('п', null, null, null, null), incomplete.currentDraft.positions)
+        assertEquals("ббббб", unknownWord.currentDraft.completedWordOrNull())
     }
 
     @Test
@@ -41,7 +46,7 @@ class WordGameplayTest {
 
         assertEquals(WordGameStatus.SOLVED, solved.status)
         assertTrue(solved.isFinished)
-        assertEquals("", solved.currentInput)
+        assertEquals(WordDraft.empty(5), solved.currentDraft)
         assertEquals(2, solved.attempts.size)
         assertTrue(solved.attempts.last().isCorrect)
         assertEquals(WordLetterFeedback.CORRECT, solved.letterKnowledge['к'])
@@ -60,17 +65,22 @@ class WordGameplayTest {
         assertEquals(WordRules.MAXIMUM_ATTEMPTS, failed.attempts.size)
         assertEquals(0, failed.remainingAttempts)
         assertTrue(failed.attempts.none { it.isCorrect })
-        assertEquals(failed, engine.restore(currentInput = "", submittedWords = wrongGuesses))
+        assertEquals(failed, engine.restore(currentDraft = WordDraft.empty(5), submittedWords = wrongGuesses))
     }
 
     private fun submitAll(words: List<String>): WordGameState =
         words.fold(engine.start()) { state, word ->
-            val result = engine.submit(word.fold(state, engine::appendLetter))
+            val result = engine.submit(type(state, word))
             assertTrue("Guess '$word' must be accepted.", result is WordSubmitResult.Accepted)
             result.state
         }
 
-    private fun type(input: String): WordGameState = input.fold(engine.start(), engine::appendLetter)
+    private fun type(input: String): WordGameState = type(engine.start(), input)
+
+    private fun type(
+        state: WordGameState,
+        input: String,
+    ): WordGameState = input.foldIndexed(state) { index, current, letter -> engine.setLetter(current, index, letter) }
 
     private fun puzzle(): WordPuzzle =
         WordPuzzle(

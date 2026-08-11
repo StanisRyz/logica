@@ -27,14 +27,24 @@ class WordSessionCodecTest {
     private val engine = WordGameEngine(puzzle, WordLexiconV1.allowedGuesses)
 
     @Test
-    fun roundTripPreservesSubmittedAttemptsAndTheUnfinishedInput() {
-        val played = type(submit(submit(engine.start(), "лампа"), "весна"), "пол")
-        val encoded = WordSessionCodec.encode(puzzle, played)
+    fun v1PrefixRestoreAndV2RoundTripPreserveThePositionalDraft() {
+        var played = submit(submit(engine.start(), "лампа"), "весна")
+        played = engine.setLetter(played, 0, 'п')
+        played = engine.setLetter(played, 2, 'л')
+        val encoded = WordSessionCodecV2.encode(puzzle, played)
 
         val restored = decode(encoded.gameplayPayload, encoded.moveHistoryPayload, encoded.status)
+        val restoredV1 =
+            decode(
+                gameplayPayload = "length=5\ninput=ком",
+                moveHistoryPayload = "",
+                status = WordGameStatus.IN_PROGRESS.name,
+                sessionFormatVersion = 1,
+            )
 
         assertEquals(played, restored)
-        assertEquals("пол", restored.currentInput)
+        assertEquals(listOf('п', null, 'л', null, null), restored.currentDraft.positions)
+        assertEquals(listOf('к', 'о', 'м', null, null), restoredV1.currentDraft.positions)
         assertEquals(listOf("лампа", "весна"), restored.attempts.map { it.word })
         assertEquals(WordGameStatus.IN_PROGRESS, restored.status)
         assertEquals(4, restored.remainingAttempts)
@@ -53,13 +63,13 @@ class WordSessionCodecTest {
 
     @Test
     fun decodeRejectsUnsupportedVersionsAndCorruptedPayloads() {
-        val encoded = WordSessionCodec.encode(puzzle, submit(engine.start(), "лампа"))
+        val encoded = WordSessionCodecV2.encode(puzzle, submit(engine.start(), "лампа"))
 
         assertThrows(IllegalArgumentException::class.java) {
-            WordSessionCodec.decode(
+            WordSessionCodecV2.decode(
                 puzzle = puzzle,
                 allowedGuesses = WordLexiconV1.allowedGuesses,
-                sessionFormatVersion = WordSessionCodec.SESSION_FORMAT_VERSION + 1,
+                sessionFormatVersion = WordSessionCodecV2.SESSION_FORMAT_VERSION + 1,
                 gameplayPayload = encoded.gameplayPayload,
                 moveHistoryPayload = encoded.moveHistoryPayload,
                 hintsUsed = encoded.hintsUsed,
@@ -87,17 +97,17 @@ class WordSessionCodecTest {
                     it.length == variablePuzzle.wordLength && it != variablePuzzle.answer
                 }
             val accepted =
-                variableEngine.submit(wrongGuess.fold(variableEngine.start(), variableEngine::appendLetter))
+                variableEngine.submit(type(variableEngine, variableEngine.start(), wrongGuess))
                     as WordSubmitResult.Accepted
             val partial = variablePuzzle.answer.take(variablePuzzle.wordLength - 1)
-            val played = partial.fold(accepted.state, variableEngine::appendLetter)
-            val encoded = WordSessionCodec.encode(variablePuzzle, played)
+            val played = type(variableEngine, accepted.state, partial)
+            val encoded = WordSessionCodecV2.encode(variablePuzzle, played)
 
             val restored =
-                WordSessionCodec.decode(
+                WordSessionCodecV2.decode(
                     puzzle = variablePuzzle,
                     allowedGuesses = WordLexiconV2.allowedGuesses,
-                    sessionFormatVersion = WordSessionCodec.SESSION_FORMAT_VERSION,
+                    sessionFormatVersion = WordSessionCodecV2.SESSION_FORMAT_VERSION,
                     gameplayPayload = encoded.gameplayPayload,
                     moveHistoryPayload = encoded.moveHistoryPayload,
                     hintsUsed = 0,
@@ -113,11 +123,12 @@ class WordSessionCodecTest {
         gameplayPayload: String,
         moveHistoryPayload: String,
         status: String,
+        sessionFormatVersion: Int = WordSessionCodecV2.SESSION_FORMAT_VERSION,
     ): WordGameState =
-        WordSessionCodec.decode(
+        WordSessionCodecV2.decode(
             puzzle = puzzle,
             allowedGuesses = WordLexiconV1.allowedGuesses,
-            sessionFormatVersion = WordSessionCodec.SESSION_FORMAT_VERSION,
+            sessionFormatVersion = sessionFormatVersion,
             gameplayPayload = gameplayPayload,
             moveHistoryPayload = moveHistoryPayload,
             hintsUsed = 0,
@@ -132,5 +143,14 @@ class WordSessionCodecTest {
     private fun type(
         state: WordGameState,
         input: String,
-    ): WordGameState = input.fold(state, engine::appendLetter)
+    ): WordGameState = type(engine, state, input)
+
+    private fun type(
+        targetEngine: WordGameEngine,
+        state: WordGameState,
+        input: String,
+    ): WordGameState =
+        input.foldIndexed(state) { index, current, letter ->
+            targetEngine.setLetter(current, index, letter)
+        }
 }

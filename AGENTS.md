@@ -54,7 +54,8 @@
 - `WordLexiconV1` is FROZEN: its answer contents and ordering fix the `(difficulty, seed, generatorVersion = 1)` mapping, so any change to that mapping requires a new generator version rather than a V1 edit.
 - `WordLexiconV2` is generated offline from pinned local `pymorphy3`/`pymorphy3-dicts-ru` dictionary entries, pinned Russian `wordfreq` ranking, and project allow/block files; Android bundles generated data and has no Python or runtime morphology dependency.
 - Word V2 difficulty is word-length-only; morphology provides broad noun guesses, `wordfreq` ranks answer commonness without misusing pymorphy parse confidence, and every difficulty keeps at least 500 possible answers.
-- `WordSessionCodecV1` persists only the current input and submitted words; feedback is always recomputed from the regenerated answer, which stays the single source of truth.
+- An unfinished Word attempt is an immutable position-aware `WordDraft`; the engine owns per-position set, replace, clear, and submit operations while submitted attempts stay immutable.
+- `WordSessionCodecV2` persists the positional draft and submitted words, continues to restore V1 prefix inputs into the leading draft positions, and always recomputes feedback from the regenerated answer. Cell selection and animation state are transient UI state and are never persisted.
 - A Word game is terminal on `SOLVED` and on `FAILED`; both produce exactly one durable `GameResult`, but only `SOLVED` completes its Daily entry.
 - Results carry typed `GameOutcome` plus nullable `attemptsUsed`; Balance, Crowns, and Sudoku may be `SOLVED` or `FAILED` with a null attempt count, while Word records `1..6`.
 - Room v5 adds `outcome` and `attempts_used` to `game_results`; `MIGRATION_4_5` backfills historical results to `SOLVED` with a null attempt count and preserves everything else.

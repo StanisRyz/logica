@@ -83,6 +83,8 @@ internal sealed interface WordGameUiState {
         val puzzle: WordPuzzle,
         val game: WordGameState,
         val rejection: WordGuessRejection? = null,
+        val rejectionRevision: Int = 0,
+        val acceptedAttemptRevision: Int = 0,
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
     ) : WordGameUiState
 
@@ -137,14 +139,17 @@ internal class WordGameViewModel(
         }
     }
 
-    fun appendLetter(letter: Char) {
+    fun setLetter(
+        position: Int,
+        letter: Char,
+    ) {
         if (!economy.value.isGameplayAllowed) return
-        updateGame { engine, game -> engine.appendLetter(game, letter) }
+        updateGame { engine, game -> engine.setLetter(game, position, letter) }
     }
 
-    fun removeLastLetter() {
+    fun clearLetter(position: Int) {
         if (!economy.value.isGameplayAllowed) return
-        updateGame { engine, game -> engine.removeLastLetter(game) }
+        updateGame { engine, game -> engine.clearLetter(game, position) }
     }
 
     fun submit() {
@@ -154,10 +159,19 @@ internal class WordGameViewModel(
         when (val result = engine.submit(current.game)) {
             is WordSubmitResult.Rejected -> {
                 // A rejected guess consumes no attempt and stays editable.
-                mutableUiState.value = current.copy(rejection = result.rejection)
+                mutableUiState.value =
+                    current.copy(
+                        rejection = result.rejection,
+                        rejectionRevision = current.rejectionRevision + 1,
+                    )
             }
             is WordSubmitResult.Accepted -> {
-                mutableUiState.value = current.copy(game = result.state, rejection = null)
+                mutableUiState.value =
+                    current.copy(
+                        game = result.state,
+                        rejection = null,
+                        acceptedAttemptRevision = current.acceptedAttemptRevision + 1,
+                    )
                 persist(result.state)
             }
         }
@@ -227,7 +241,7 @@ internal class WordGameViewModel(
                 val puzzle = runtime.generator.generate(saved.puzzleSeed, saved.difficulty)
                 require(puzzle.id.generatorVersion == saved.generatorVersion)
                 val game =
-                    WordSessionCodec.decode(
+                    WordSessionCodecV2.decode(
                         puzzle = puzzle,
                         allowedGuesses = runtime.allowedGuesses,
                         sessionFormatVersion = saved.sessionFormatVersion,
@@ -330,7 +344,7 @@ internal class WordGameViewModel(
         val context: WordGameContext,
     ) {
         fun saved(game: WordGameState): SavedGameSession {
-            val encoded = WordSessionCodec.encode(puzzle, game)
+            val encoded = WordSessionCodecV2.encode(puzzle, game)
             return SavedGameSession(
                 sessionId = sessionId,
                 puzzleType = PuzzleType.WORD,
@@ -342,7 +356,7 @@ internal class WordGameViewModel(
                     (context as? WordGameContext.Daily)?.let {
                         DailyGameSessionIdentity(it.challengeDate, it.policyVersion.value)
                     },
-                sessionFormatVersion = WordSessionCodec.SESSION_FORMAT_VERSION,
+                sessionFormatVersion = WordSessionCodecV2.SESSION_FORMAT_VERSION,
                 gameplayPayload = encoded.gameplayPayload,
                 moveHistoryPayload = encoded.moveHistoryPayload,
                 hintsUsed = encoded.hintsUsed,

@@ -1,10 +1,16 @@
 package com.stanisryz.logica.ui.screens
 
 import android.view.HapticFeedbackConstants
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -18,14 +24,20 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
@@ -33,6 +45,7 @@ import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.puzzle.core.word.WordDraft
 import com.stanisryz.logica.puzzle.core.word.WordGameState
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
 import com.stanisryz.logica.puzzle.core.word.WordGuessRejection
@@ -60,6 +73,7 @@ import com.stanisryz.logica.word.WordGameLaunch
 import com.stanisryz.logica.word.WordGameUiState
 import com.stanisryz.logica.word.WordGameViewModel
 import com.stanisryz.logica.word.WordGameViewModelFactory
+import kotlin.math.roundToInt
 
 @Composable
 internal fun WordGameRoute(
@@ -86,8 +100,8 @@ internal fun WordGameRoute(
     WordGameScreen(
         uiState = uiState,
         economy = economy,
-        onLetter = gameViewModel::appendLetter,
-        onBackspace = gameViewModel::removeLastLetter,
+        onLetter = gameViewModel::setLetter,
+        onClearLetter = gameViewModel::clearLetter,
         onSubmit = gameViewModel::submit,
         onDismissRejection = gameViewModel::dismissRejection,
         onRetryCompletion = gameViewModel::retryCompletion,
@@ -107,8 +121,8 @@ internal fun WordGameRoute(
 private fun WordGameScreen(
     uiState: WordGameUiState,
     economy: PlayerEconomy,
-    onLetter: (Char) -> Unit,
-    onBackspace: () -> Unit,
+    onLetter: (Int, Char) -> Unit,
+    onClearLetter: (Int) -> Unit,
     onSubmit: () -> Unit,
     onDismissRejection: () -> Unit,
     onRetryCompletion: () -> Unit,
@@ -145,10 +159,12 @@ private fun WordGameScreen(
                 puzzle = uiState.puzzle,
                 game = uiState.game,
                 rejection = uiState.rejection,
+                rejectionRevision = uiState.rejectionRevision,
+                acceptedAttemptRevision = uiState.acceptedAttemptRevision,
                 completionPersistence = uiState.completionPersistence,
                 economy = economy,
                 onLetter = onLetter,
-                onBackspace = onBackspace,
+                onClearLetter = onClearLetter,
                 onSubmit = onSubmit,
                 onDismissRejection = onDismissRejection,
                 onRetryCompletion = onRetryCompletion,
@@ -172,10 +188,12 @@ private fun WordReadyState(
     puzzle: WordPuzzle,
     game: WordGameState,
     rejection: WordGuessRejection?,
+    rejectionRevision: Int,
+    acceptedAttemptRevision: Int,
     completionPersistence: CompletionPersistence,
     economy: PlayerEconomy,
-    onLetter: (Char) -> Unit,
-    onBackspace: () -> Unit,
+    onLetter: (Int, Char) -> Unit,
+    onClearLetter: (Int) -> Unit,
     onSubmit: () -> Unit,
     onDismissRejection: () -> Unit,
     onRetryCompletion: () -> Unit,
@@ -188,10 +206,26 @@ private fun WordReadyState(
     modifier: Modifier,
 ) {
     val view = LocalView.current
+    val shakeDistance = with(LocalDensity.current) { SHAKE_DISTANCE.toPx() }
+    var selectedCellIndex by
+        rememberSaveable(puzzle.id) {
+            mutableIntStateOf(initialWordSelection(game))
+        }
+    val rejectionShake = remember { Animatable(0f) }
 
-    LaunchedEffect(rejection) {
-        if (rejection != null && hapticsEnabled) {
-            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+    LaunchedEffect(rejectionRevision) {
+        if (rejectionRevision == 0) return@LaunchedEffect
+        if (rejection == WordGuessRejection.INCOMPLETE_INPUT) {
+            game.currentDraft.firstEmptyIndex()?.let { selectedCellIndex = it }
+        }
+        if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+        rejectionShake.snapTo(0f)
+        listOf(-shakeDistance, shakeDistance, -shakeDistance * 0.6f, shakeDistance * 0.6f, 0f)
+            .forEach { target -> rejectionShake.animateTo(target, tween(SHAKE_STEP_MILLIS)) }
+    }
+    LaunchedEffect(game.attempts.size, game.status) {
+        if (game.status == WordGameStatus.IN_PROGRESS) {
+            selectedCellIndex = initialWordSelection(game)
         }
     }
     // Balance and Crowns already confirm a solve; Word additionally has a terminal failure.
@@ -226,7 +260,17 @@ private fun WordReadyState(
             )
             // The saved word stays visible and intact at zero lives; only the actions stop working.
             ZeroLivesCard(economy, onRestoreLife)
-            WordBoard(game)
+            WordBoard(
+                game = game,
+                selectedCellIndex = selectedCellIndex,
+                editableEnabled = economy.isGameplayAllowed,
+                onCellSelected = { selectedCellIndex = it },
+                acceptedAttemptRevision = acceptedAttemptRevision,
+                modifier =
+                    Modifier.offset {
+                        IntOffset(rejectionShake.value.roundToInt(), 0)
+                    },
+            )
             rejection?.let { reason ->
                 Text(
                     stringResource(reason.messageResource()),
@@ -235,7 +279,15 @@ private fun WordReadyState(
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
                 )
             }
-            if (game.status != WordGameStatus.IN_PROGRESS) {
+            AnimatedVisibility(
+                visible = game.status != WordGameStatus.IN_PROGRESS,
+                enter =
+                    fadeIn(tween(TERMINAL_APPEAR_MILLIS)) +
+                        scaleIn(
+                            animationSpec = tween(TERMINAL_APPEAR_MILLIS),
+                            initialScale = TERMINAL_INITIAL_SCALE,
+                        ),
+            ) {
                 WordTerminalCard(
                     puzzle = puzzle,
                     game = game,
@@ -257,18 +309,44 @@ private fun WordReadyState(
                 onLetter = { letter ->
                     if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                     onDismissRejection()
-                    onLetter(letter)
+                    val editedPosition = selectedCellIndex
+                    onLetter(editedPosition, letter)
+                    selectedCellIndex = nextWordSelection(game.currentDraft, editedPosition)
                 },
                 onBackspace = {
                     if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                     onDismissRejection()
-                    onBackspace()
+                    positionToClear(game.currentDraft, selectedCellIndex)?.let { position ->
+                        onClearLetter(position)
+                        selectedCellIndex = position
+                    }
                 },
                 onSubmit = onSubmit,
             )
         }
     }
 }
+
+private fun initialWordSelection(game: WordGameState): Int = game.currentDraft.firstEmptyIndex() ?: game.wordLength - 1
+
+private fun nextWordSelection(
+    draft: WordDraft,
+    editedPosition: Int,
+): Int {
+    ((editedPosition + 1) until draft.wordLength).firstOrNull { draft[it] == null }?.let { return it }
+    (0 until editedPosition).firstOrNull { draft[it] == null }?.let { return it }
+    return editedPosition
+}
+
+private fun positionToClear(
+    draft: WordDraft,
+    selectedPosition: Int,
+): Int? =
+    if (draft[selectedPosition] != null) {
+        selectedPosition
+    } else {
+        (selectedPosition - 1 downTo 0).firstOrNull { draft[it] != null }
+    }
 
 @Composable
 private fun WordTerminalCard(
@@ -357,3 +435,8 @@ private fun WordGuessRejection.messageResource(): Int =
         WordGuessRejection.NORMALIZATION_FAILED -> R.string.word_rejection_invalid_letters
         WordGuessRejection.GAME_FINISHED -> R.string.word_rejection_finished
     }
+
+private val SHAKE_DISTANCE = 8.dp
+private const val SHAKE_STEP_MILLIS = 35
+private const val TERMINAL_APPEAR_MILLIS = 180
+private const val TERMINAL_INITIAL_SCALE = 0.98f

@@ -212,6 +212,8 @@
     <string name="word_feedback_absent">нет в слове</string>
     <string name="word_feedback_unknown">не проверена</string>
     <string name="word_attempt_row_description">Попытка %1$d: %2$s</string>
+    <string name="word_editable_cell_empty">Позиция %1$d из %2$d, пусто</string>
+    <string name="word_editable_cell_letter">Позиция %1$d из %2$d, буква %3$s</string>
     <string name="word_key_description">Буква %1$s, %2$s</string>
     <string name="word_enter">Ввод</string>
     <string name="word_backspace">Стереть букву</string>

@@ -1,5 +1,7 @@
 package com.stanisryz.logica.ui.word
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -95,20 +98,32 @@ private fun LetterKey(
     modifier: Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
-    val container =
+    val targetContainer =
         when (feedback) {
             WordLetterFeedback.CORRECT -> colors.primary
             WordLetterFeedback.PRESENT -> colors.tertiaryContainer
             WordLetterFeedback.ABSENT -> colors.surfaceVariant.copy(alpha = ABSENT_ALPHA)
             null -> colors.surfaceVariant
         }
-    val content =
+    val targetContent =
         when (feedback) {
             WordLetterFeedback.CORRECT -> colors.onPrimary
             WordLetterFeedback.PRESENT -> colors.onTertiaryContainer
             WordLetterFeedback.ABSENT -> colors.onSurfaceVariant.copy(alpha = ABSENT_ALPHA)
             null -> colors.onSurfaceVariant
         }
+    val container by
+        animateColorAsState(
+            targetValue = targetContainer,
+            animationSpec = tween(KEY_FEEDBACK_MILLIS),
+            label = "wordKeyContainer",
+        )
+    val content by
+        animateColorAsState(
+            targetValue = targetContent,
+            animationSpec = tween(KEY_FEEDBACK_MILLIS),
+            label = "wordKeyContent",
+        )
     val description =
         stringResource(
             R.string.word_key_description,
@@ -180,3 +195,4 @@ private val PRESENT_BORDER_WIDTH = 2.dp
 private val ACTION_PADDING = 8.dp
 private val KEY_FONT_SIZE = 15.sp
 private const val ABSENT_ALPHA = 0.35f
+private const val KEY_FEEDBACK_MILLIS = 160

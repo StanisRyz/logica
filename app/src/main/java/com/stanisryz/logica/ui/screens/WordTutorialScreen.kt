@@ -97,7 +97,10 @@ private fun exampleGame(): WordGameState {
             answer = EXAMPLE_ANSWER,
         )
     val engine = WordGameEngine(puzzle, WordLexiconV1.allowedGuesses)
-    val started = EXAMPLE_GUESS.fold(engine.start(), engine::appendLetter)
+    val started =
+        EXAMPLE_GUESS.foldIndexed(engine.start()) { index, state, letter ->
+            engine.setLetter(state, index, letter)
+        }
     return (engine.submit(started) as? WordSubmitResult.Accepted)?.state ?: started
 }
 

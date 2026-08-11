@@ -4,38 +4,48 @@ class WordGameEngine(
     private val puzzle: WordPuzzle,
     private val allowedGuesses: WordAllowedGuesses,
 ) {
-    fun start(): WordGameState = createState(currentInput = "", attempts = emptyList())
+    fun start(): WordGameState = createState(currentDraft = WordDraft.empty(puzzle.wordLength), attempts = emptyList())
 
-    /** Ignored when the game is finished or the current input is already complete. */
-    fun appendLetter(
+    /** Sets or replaces one position. Ignored only when the game is finished. */
+    fun setLetter(
         state: WordGameState,
+        position: Int,
         letter: Char,
     ): WordGameState {
         requireCompatible(state)
+        require(position in 0 until puzzle.wordLength) { "Word draft position $position is out of bounds." }
         require(RussianWordNormalizer.isSupportedLetter(letter)) { "Letter '$letter' is not a supported Russian letter." }
-        if (state.isFinished || state.currentInput.length == puzzle.wordLength) return state
+        if (state.isFinished) return state
         return createState(
-            currentInput = state.currentInput + RussianWordNormalizer.normalizeLetter(letter),
+            currentDraft = state.currentDraft.withLetter(position, letter),
             attempts = state.attempts,
         )
     }
 
-    /** Ignored when the game is finished or the current input is empty. */
-    fun removeLastLetter(state: WordGameState): WordGameState {
+    /** Clears one position. Ignored only when the game is finished or that position is empty. */
+    fun clearLetter(
+        state: WordGameState,
+        position: Int,
+    ): WordGameState {
         requireCompatible(state)
-        if (state.isFinished || state.currentInput.isEmpty()) return state
-        return createState(currentInput = state.currentInput.dropLast(1), attempts = state.attempts)
+        require(position in 0 until puzzle.wordLength) { "Word draft position $position is out of bounds." }
+        if (state.isFinished) return state
+        return createState(
+            currentDraft = state.currentDraft.withoutLetter(position),
+            attempts = state.attempts,
+        )
     }
 
     fun submit(state: WordGameState): WordSubmitResult {
         requireCompatible(state)
         if (state.isFinished) return WordSubmitResult.Rejected(state, WordGuessRejection.GAME_FINISHED)
-        if (state.currentInput.length != puzzle.wordLength) {
+        val completedDraft = state.currentDraft.completedWordOrNull()
+        if (completedDraft == null) {
             return WordSubmitResult.Rejected(state, WordGuessRejection.INCOMPLETE_INPUT)
         }
 
         val guess =
-            when (val normalization = WordRules.normalize(state.currentInput, puzzle.wordLength)) {
+            when (val normalization = WordRules.normalize(completedDraft, puzzle.wordLength)) {
                 is WordNormalization.Normalized -> normalization.word
                 is WordNormalization.Rejected ->
                     return WordSubmitResult.Rejected(
@@ -51,16 +61,17 @@ class WordGameEngine(
 
         val attempt = WordAttempt(guess, WordRules.evaluate(puzzle.answer, guess))
         return WordSubmitResult.Accepted(
-            state = createState(currentInput = "", attempts = state.attempts + attempt),
+            state = createState(currentDraft = WordDraft.empty(puzzle.wordLength), attempts = state.attempts + attempt),
             attempt = attempt,
         )
     }
 
     /** Rebuilds gameplay from identity plus the submitted words; feedback is always recomputed. */
     fun restore(
-        currentInput: String,
+        currentDraft: WordDraft,
         submittedWords: List<String>,
     ): WordGameState {
+        require(currentDraft.wordLength == puzzle.wordLength) { "Saved Word draft has the wrong length." }
         require(submittedWords.size <= WordRules.MAXIMUM_ATTEMPTS) { "Too many submitted attempts." }
         val attempts =
             submittedWords.map { submitted ->
@@ -71,18 +82,19 @@ class WordGameEngine(
         require(attempts.none { it.isCorrect } || attempts.last().isCorrect) {
             "A solved game cannot contain attempts after the correct guess."
         }
-        val restoredInput = if (attempts.lastOrNull()?.isCorrect == true) "" else currentInput
-        return createState(currentInput = restoredInput, attempts = attempts)
+        val restoredDraft =
+            if (attempts.lastOrNull()?.isCorrect == true) WordDraft.empty(puzzle.wordLength) else currentDraft
+        return createState(currentDraft = restoredDraft, attempts = attempts)
     }
 
     private fun createState(
-        currentInput: String,
+        currentDraft: WordDraft,
         attempts: List<WordAttempt>,
     ): WordGameState =
         WordGameState(
             puzzleId = puzzle.id,
             wordLength = puzzle.wordLength,
-            currentInput = currentInput,
+            currentDraft = currentDraft,
             attempts = attempts,
             status = statusOf(attempts),
         )

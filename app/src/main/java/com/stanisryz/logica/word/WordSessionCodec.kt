@@ -2,6 +2,7 @@ package com.stanisryz.logica.word
 
 import com.stanisryz.logica.puzzle.core.word.RussianWordNormalizer
 import com.stanisryz.logica.puzzle.core.word.WordAllowedGuesses
+import com.stanisryz.logica.puzzle.core.word.WordDraft
 import com.stanisryz.logica.puzzle.core.word.WordGameEngine
 import com.stanisryz.logica.puzzle.core.word.WordGameState
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
@@ -15,12 +16,12 @@ internal data class EncodedWordSession(
 )
 
 /**
- * Persists only the current unfinished input and the submitted words. Letter feedback is never
- * stored: it is recomputed from the regenerated puzzle during restore, so the answer stays the single
- * source of truth.
+ * V2 persists the positional unfinished draft and submitted words. V1 prefix saves remain readable.
+ * Letter feedback is always recomputed from the regenerated puzzle.
  */
-internal object WordSessionCodec {
-    const val SESSION_FORMAT_VERSION = 1
+internal object WordSessionCodecV2 {
+    const val SESSION_FORMAT_VERSION = 2
+    private const val V1_SESSION_FORMAT_VERSION = 1
 
     fun encode(
         puzzle: WordPuzzle,
@@ -31,7 +32,7 @@ internal object WordSessionCodec {
         val gameplayPayload =
             buildString {
                 appendLine("length=${puzzle.wordLength}")
-                append("input=${game.currentInput.ifEmpty { EMPTY_MARKER }}")
+                append("draft=${game.currentDraft.positions.joinToString(separator = "") { it?.toString() ?: EMPTY_MARKER }}")
             }
         return EncodedWordSession(
             gameplayPayload = gameplayPayload,
@@ -51,20 +52,29 @@ internal object WordSessionCodec {
         hintsUsed: Int,
         status: String,
     ): WordGameState {
-        require(sessionFormatVersion == SESSION_FORMAT_VERSION) {
+        require(sessionFormatVersion == V1_SESSION_FORMAT_VERSION || sessionFormatVersion == SESSION_FORMAT_VERSION) {
             "Unsupported Word session format version: $sessionFormatVersion."
         }
         require(hintsUsed == 0) { "Word sessions never record hint usage." }
 
-        val gameplay = gameplayPayload.parseGameplayPayload()
+        val gameplay =
+            gameplayPayload.parseGameplayPayload(
+                if (sessionFormatVersion == V1_SESSION_FORMAT_VERSION) setOf("length", "input") else setOf("length", "draft"),
+            )
         val length = gameplay.getValue("length").toIntOrNull() ?: error("Invalid saved word length.")
         require(length == puzzle.wordLength) { "Saved word length does not match the regenerated puzzle." }
 
-        val savedInput = gameplay.getValue("input")
-        val currentInput = if (savedInput == EMPTY_MARKER) "" else savedInput.requireInputPrefix(puzzle.wordLength)
+        val currentDraft =
+            if (sessionFormatVersion == V1_SESSION_FORMAT_VERSION) {
+                val savedInput = gameplay.getValue("input")
+                val prefix = if (savedInput == EMPTY_MARKER) "" else savedInput.requireInputPrefix(puzzle.wordLength)
+                WordDraft.fromPrefix(prefix, puzzle.wordLength)
+            } else {
+                gameplay.getValue("draft").requireDraft(puzzle.wordLength)
+            }
         val submittedWords = moveHistoryPayload.decodeSubmittedWords(puzzle.wordLength)
 
-        val game = WordGameEngine(puzzle, allowedGuesses).restore(currentInput, submittedWords)
+        val game = WordGameEngine(puzzle, allowedGuesses).restore(currentDraft, submittedWords)
         val savedStatus =
             runCatching { WordGameStatus.valueOf(status) }
                 .getOrElse { error("Invalid saved game status.") }
@@ -72,7 +82,7 @@ internal object WordSessionCodec {
         return game
     }
 
-    private fun String.parseGameplayPayload(): Map<String, String> {
+    private fun String.parseGameplayPayload(expectedFields: Set<String>): Map<String, String> {
         val entries =
             lineSequence()
                 .filter(String::isNotBlank)
@@ -83,17 +93,31 @@ internal object WordSessionCodec {
                 }.toList()
         val values = entries.toMap()
         require(entries.size == values.size) { "Gameplay payload contains duplicate fields." }
-        require(values.keys == setOf("length", "input")) { "Invalid gameplay payload fields." }
+        require(values.keys == expectedFields) { "Invalid gameplay payload fields." }
         return values
     }
 
-    /** A partial guess is any normalized prefix shorter than a full word. */
+    /** V1 stored a normalized left-to-right prefix, including a fully typed unsubmitted word. */
     private fun String.requireInputPrefix(expectedLength: Int): String {
-        require(length in 1 until expectedLength) { "Saved current input has an invalid length." }
+        require(length in 1..expectedLength) { "Saved current input has an invalid length." }
         require(all { RussianWordNormalizer.isSupportedLetter(it) && RussianWordNormalizer.normalizeLetter(it) == it }) {
             "Saved current input is not normalized."
         }
         return this
+    }
+
+    private fun String.requireDraft(expectedLength: Int): WordDraft {
+        require(length == expectedLength) { "Saved Word draft has an invalid length." }
+        return WordDraft.fromPositions(
+            map { saved ->
+                when {
+                    saved == EMPTY_MARKER.single() -> null
+                    RussianWordNormalizer.isSupportedLetter(saved) &&
+                        RussianWordNormalizer.normalizeLetter(saved) == saved -> saved
+                    else -> error("Saved Word draft contains an invalid position.")
+                }
+            },
+        )
     }
 
     private fun String.decodeSubmittedWords(expectedLength: Int): List<String> {

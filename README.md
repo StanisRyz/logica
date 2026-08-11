@@ -88,7 +88,8 @@ Each wrong value you commit costs one mistake, and the third one ends the attemp
 
 Word (Слово) is the third playable puzzle: EASY uses four letters, MEDIUM five, HARD six, and
 EXPERT seven, with six valid attempts at every difficulty. It is available from the Game tab's catalog with an
-on-screen Russian keyboard, accessible non-color feedback, independent version-aware save/restore,
+on-screen Russian keyboard, position-by-position editing of the current attempt, accessible non-color feedback,
+short interaction animations, independent version-aware save/restore,
 and a short onboarding. Like the other puzzles a Word game is terminal on both outcomes — solved, or failed after six
 attempts — and both are recorded.
 
