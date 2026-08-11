@@ -41,6 +41,7 @@ import com.stanisryz.logica.puzzle.core.sudoku.SudokuPuzzleId
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.settings.ThemeMode
+import com.stanisryz.logica.sudoku.SudokuGameContext
 import com.stanisryz.logica.sudoku.SudokuGameError
 import com.stanisryz.logica.sudoku.SudokuGameLaunch
 import com.stanisryz.logica.sudoku.SudokuGameUiState
@@ -96,6 +97,7 @@ internal fun SudokuGameRoute(
     SudokuGameScreen(
         uiState = uiState,
         economy = economy,
+        isDaily = launch.context is SudokuGameContext.Daily,
         onSelectCell = gameViewModel::selectCell,
         onDigit = gameViewModel::inputDigit,
         onTogglePencil = gameViewModel::togglePencilMode,
@@ -117,6 +119,7 @@ internal fun SudokuGameRoute(
 private fun SudokuGameScreen(
     uiState: SudokuGameUiState,
     economy: PlayerEconomy,
+    isDaily: Boolean,
     onSelectCell: (SudokuPosition) -> Unit,
     onDigit: (Int) -> Unit,
     onTogglePencil: () -> Unit,
@@ -141,8 +144,20 @@ private fun SudokuGameScreen(
                     uiState.reason == SudokuGameError.PUZZLE_NOT_FOUND
             RetryableErrorState(
                 message = uiState.reason.message(),
-                retryLabel = stringResource(if (canReload) R.string.retry else R.string.try_another),
-                onRetry = if (canReload) onRetryLoad else onStartNew,
+                retryLabel =
+                    stringResource(
+                        when {
+                            canReload -> R.string.retry
+                            isDaily -> R.string.to_games
+                            else -> R.string.try_another
+                        },
+                    ),
+                onRetry =
+                    when {
+                        canReload -> onRetryLoad
+                        isDaily -> onGameHub
+                        else -> onStartNew
+                    },
                 modifier = modifier,
                 secondaryLabel = stringResource(R.string.back),
                 onSecondary = onBack,
@@ -152,6 +167,7 @@ private fun SudokuGameScreen(
             SudokuReadyState(
                 uiState = uiState,
                 economy = economy,
+                isDaily = isDaily,
                 onSelectCell = onSelectCell,
                 onDigit = onDigit,
                 onTogglePencil = onTogglePencil,
@@ -176,6 +192,7 @@ private fun SudokuGameScreen(
 private fun SudokuReadyState(
     uiState: SudokuGameUiState.Ready,
     economy: PlayerEconomy,
+    isDaily: Boolean,
     onSelectCell: (SudokuPosition) -> Unit,
     onDigit: (Int) -> Unit,
     onTogglePencil: () -> Unit,
@@ -284,12 +301,13 @@ private fun SudokuReadyState(
                 uiState.puzzle.id.difficulty
                     .toDifficulty(),
             isRetryAllowed = economy.isGameplayAllowed,
-            isDaily = false,
+            isDaily = isDaily,
             onRetryCompletion = onRetryCompletion,
             onRetryPuzzle = onRetry,
             onNewPuzzle = onNewPuzzle,
             onGameHub = onGameHub,
-            preferSamePuzzleRetry = true,
+            // A solved Daily entry is finished for the day; only the catalog replays the same puzzle.
+            preferSamePuzzleRetry = !isDaily,
         )
     }
 }
@@ -353,6 +371,7 @@ private fun SudokuGamePreview() {
         SudokuGameScreen(
             uiState = SudokuGameUiState.Ready(puzzle, game, selectedCell = SudokuPosition(0, 4)),
             economy = PlayerEconomy(),
+            isDaily = false,
             onSelectCell = {},
             onDigit = {},
             onTogglePencil = {},

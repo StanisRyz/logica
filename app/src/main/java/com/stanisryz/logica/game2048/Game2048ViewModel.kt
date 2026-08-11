@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
+import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.game2048.EncodedGame2048Session
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Direction
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Engine
@@ -22,6 +23,7 @@ import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletion
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.result.GameOutcome
+import com.stanisryz.logica.session.DailyGameSessionIdentity
 import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.session.GameSessionScope
 import com.stanisryz.logica.session.SavedGameSession
@@ -33,17 +35,44 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.util.UUID
 
+/** Where a 2048 attempt belongs. The context alone decides its session scope and Daily identity. */
+internal sealed interface Game2048GameContext {
+    val sessionScope: GameSessionScope
+
+    data object Catalog : Game2048GameContext {
+        override val sessionScope = GameSessionScope.CATALOG
+    }
+
+    data class Daily(
+        val challengeDate: LocalDate,
+        val policyVersion: DailyPolicyVersion,
+    ) : Game2048GameContext {
+        override val sessionScope = GameSessionScope.DAILY
+    }
+}
+
+internal val Game2048GameContext.dailyIdentity: DailyGameSessionIdentity?
+    get() =
+        (this as? Game2048GameContext.Daily)?.let {
+            DailyGameSessionIdentity(it.challengeDate, it.policyVersion.value)
+        }
+
 internal sealed interface Game2048Launch {
+    val context: Game2048GameContext
+
     /** A brand-new attempt: selected difficulty, fresh seed, and the current rules version. */
     data class New(
         val difficulty: Difficulty,
         val seed: PuzzleSeed,
         val generatorVersion: GeneratorVersion = NEW_GAME_VERSION,
+        override val context: Game2048GameContext = Game2048GameContext.Catalog,
     ) : Game2048Launch
 
     data class Restore(
+        override val context: Game2048GameContext = Game2048GameContext.Catalog,
         val expectedPuzzleId: Game2048PuzzleId? = null,
     ) : Game2048Launch
 
@@ -163,7 +192,7 @@ internal class Game2048ViewModel(
                 LoadedSession(
                     engine = gameEngine,
                     game = game,
-                    activeSession = ActiveSession(sessionIdFactory(), puzzleId),
+                    activeSession = ActiveSession(sessionIdFactory(), puzzleId, requested.context),
                     isNew = true,
                 )
             }
@@ -172,7 +201,7 @@ internal class Game2048ViewModel(
 
     private suspend fun restore(requested: Game2048Launch.Restore): LoadedSession {
         val saved =
-            sessionRepository.readActiveSession(PuzzleType.GAME_2048, GameSessionScope.CATALOG)
+            sessionRepository.readActiveSession(PuzzleType.GAME_2048, requested.context.sessionScope)
                 ?: throw MissingSavedSessionException()
         if (!saved.hasRequestedIdentity(requested)) throw InvalidSavedSessionException()
         return try {
@@ -191,7 +220,7 @@ internal class Game2048ViewModel(
             LoadedSession(
                 engine = Game2048Engine(expectedId),
                 game = game,
-                activeSession = ActiveSession(saved.sessionId, expectedId),
+                activeSession = ActiveSession(saved.sessionId, expectedId, requested.context),
                 isNew = false,
             )
         } catch (exception: CancellationException) {
@@ -199,7 +228,7 @@ internal class Game2048ViewModel(
         } catch (_: Exception) {
             sessionRepository.deleteActiveSession(
                 PuzzleType.GAME_2048,
-                GameSessionScope.CATALOG,
+                requested.context.sessionScope,
                 saved.sessionId,
             )
             throw InvalidSavedSessionException()
@@ -208,12 +237,13 @@ internal class Game2048ViewModel(
 
     /**
      * A saved attempt is restored under the rules version it was persisted with, so an existing V1
-     * game keeps its target-tile contract and is never silently converted to V2.
+     * game keeps its target-tile contract and is never silently converted to V2. A save belonging to
+     * the other scope or to another Daily definition is never restored in its place.
      */
     private fun SavedGameSession.hasRequestedIdentity(requested: Game2048Launch.Restore): Boolean =
         puzzleType == PuzzleType.GAME_2048 &&
-            sessionScope == GameSessionScope.CATALOG &&
-            dailyIdentity == null &&
+            sessionScope == requested.context.sessionScope &&
+            dailyIdentity == requested.context.dailyIdentity &&
             generatorVersion.value > 0 &&
             Game2048Ruleset.isSupported(Game2048GeneratorVersion(generatorVersion.value)) &&
             (requested.expectedPuzzleId == null || toGame2048PuzzleId() == requested.expectedPuzzleId)
@@ -276,6 +306,7 @@ internal class Game2048ViewModel(
     private data class ActiveSession(
         val sessionId: String,
         val puzzleId: Game2048PuzzleId,
+        val context: Game2048GameContext,
     ) {
         fun saved(game: Game2048State): SavedGameSession {
             require(game.puzzleId == puzzleId)
@@ -283,10 +314,11 @@ internal class Game2048ViewModel(
             return SavedGameSession(
                 sessionId = sessionId,
                 puzzleType = PuzzleType.GAME_2048,
-                sessionScope = GameSessionScope.CATALOG,
+                sessionScope = context.sessionScope,
                 difficulty = puzzleId.difficulty,
                 puzzleSeed = puzzleId.seed,
                 generatorVersion = GeneratorVersion(puzzleId.generatorVersion.value),
+                dailyIdentity = context.dailyIdentity,
                 sessionFormatVersion = encoded.formatVersion,
                 gameplayPayload = encoded.payload,
                 moveHistoryPayload = "",
@@ -297,15 +329,18 @@ internal class Game2048ViewModel(
 
         fun completion(game: Game2048State): GameCompletion {
             require(game.puzzleId == puzzleId && game.status.isTerminal)
+            val dailyContext = context as? Game2048GameContext.Daily
             return GameCompletion(
                 resultId = sessionId,
                 puzzleType = PuzzleType.GAME_2048,
                 difficulty = puzzleId.difficulty,
                 puzzleSeed = puzzleId.seed,
                 generatorVersion = GeneratorVersion(puzzleId.generatorVersion.value),
-                sessionScope = GameSessionScope.CATALOG,
+                sessionScope = context.sessionScope,
                 hintsUsed = 0,
                 outcome = if (game.status == Game2048Status.SOLVED) GameOutcome.SOLVED else GameOutcome.FAILED,
+                challengeDate = dailyContext?.challengeDate,
+                dailyPolicyVersion = dailyContext?.policyVersion,
             )
         }
     }

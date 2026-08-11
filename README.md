@@ -4,15 +4,16 @@ Native Android application with playable Balance, Crowns, Word, Sudoku, and 2048
 
 Sudoku uses a frozen, validated Puzzle Bank corpus bundled offline; puzzles are never generated or
 downloaded at runtime. It is the fourth Catalog game, with EASY, MEDIUM, HARD, and EXPERT selection,
-independent save/restore, onboarding, economy/results, and Profile statistics. Sudoku remains outside
-the three-game Daily challenge until the later five-game Daily stage.
+independent save/restore, onboarding, economy/results, and Profile statistics, and it is also part of
+the Daily challenge.
 
 2048 is the fifth Catalog game. New games are scored: Легко, Средне, Сложно, and Эксперт ask for
 12 000, 30 000, 100 000, and 250 000 points. Reaching the goal does not end the game — you keep
 playing until no move is left, and the final score decides victory or defeat. Games saved under the
 earlier target-tile rules (256/512/1024/2048, won the moment the tile appears) keep playing by those
 rules. Deterministic spawning and all other rules are identical in both. It has independent
-save/restore, onboarding, results/economy, and Profile statistics, and remains outside Daily.
+save/restore, onboarding, results/economy, and Profile statistics, and it is also part of the Daily
+challenge.
 
 Requires JDK 17 and Android SDK Platform 36.
 
@@ -83,7 +84,7 @@ Balance is playable from the Game tab's catalog with optional interactive onboar
 
 Balance and Crowns use explicit input rather than cycling taps: you pick the value to place (● or ○ in Balance, a crown or a × mark in Crowns) and tap a cell. A correct value is confirmed and fixed for the rest of the game; a wrong one stays on the board, marked as an error, until you replace it or tap it again with the same value to remove it — the app never shows you what the right value was. The separate Pencil toggle writes small unchecked notes in a cell's upper-right corner; committing a value clears that cell's notes. There is no Undo, no eraser, and no reset.
 
-Each wrong value you commit costs one mistake, and the third one ends the attempt: the board freezes with your answers still visible and you can replay the very same puzzle from scratch. Pencil notes are never checked and never cost a mistake. Word keeps its six attempts and can be replayed the same way. Every finished attempt is recorded whether it was solved or failed, but a Daily puzzle only counts as done once you actually solve it — a failed Daily attempt leaves the entry open for another try and never advances progress or the streak. The Game tab provides a deterministic, resumable Daily challenge that contains Balance, Crowns, and Word (Policy V4, with Word Generator V2): each puzzle is started, resumed, and completed independently in any order, aggregate progress is shown as `0 / 3` … `3 / 3`, and unfinished Catalog progress stays separate. A puzzle that ends in failure leaves its Daily entry open, so the run reaches 3/3 only once all three are solved. Earlier Daily runs keep their immutable V1, V2, or V3 definitions.
+Each wrong value you commit costs one mistake, and the third one ends the attempt: the board freezes with your answers still visible and you can replay the very same puzzle from scratch. Pencil notes are never checked and never cost a mistake. Word keeps its six attempts and can be replayed the same way. Every finished attempt is recorded whether it was solved or failed, but a Daily puzzle only counts as done once you actually solve it — a failed Daily attempt leaves the entry open for another try and never advances progress or the streak. The Game tab provides a deterministic, resumable Daily challenge that contains all five games — Balance, Crowns, Word, Sudoku, and 2048, every one of them at Medium (Policy V5): each puzzle is started, resumed, and completed independently in any order, aggregate progress is shown as `0 / 5` … `5 / 5`, and unfinished Catalog progress stays separate. Solving any one of the five keeps your streak for that day; solving all five completes the Daily itself. A puzzle that ends in failure leaves its Daily entry open for another try. Daily runs created earlier keep their immutable V1–V4 definitions and their original streak rule.
 
 Word (Слово) is the third playable puzzle: EASY uses four letters, MEDIUM five, HARD six, and
 EXPERT seven, with six valid attempts at every difficulty. It is available from the Game tab's catalog with an
@@ -91,7 +92,7 @@ on-screen Russian keyboard, accessible non-color feedback, independent version-a
 and a short onboarding. Like the other puzzles a Word game is terminal on both outcomes — solved, or failed after six
 attempts — and both are recorded.
 
-Completed games are persisted as durable results with a typed outcome and, for Word, the attempts used. The app reports core gameplay statistics and derives current and best Daily streaks from completed Daily history. Once a Daily run is fully completed, the Game tab offers a spoiler-free plain-text share of that run's per-puzzle results (each puzzle's solved result and, for Word, the attempts it took, never the Word answer), progress, and current streak through the standard Android Sharesheet.
+Completed games are persisted as durable results with a typed outcome and, for Word, the attempts used. The app reports core gameplay statistics and derives current and best Daily streaks from durable Daily history — never from a stored counter. Once a Daily run is fully completed, the Game tab offers a spoiler-free plain-text share of that run's five per-puzzle results (each puzzle's solved result and, for Word, the attempts it took, never the Word answer, the Sudoku board, or the 2048 seed), progress, and current streak through the standard Android Sharesheet. A day that only kept the streak is not shareable.
 
 The app has an offline economy of gems and lives. You start with five lives and no gems: a solved
 attempt earns gems according to its difficulty — 1 for Легко, 2 for Средне, 3 for Сложно, 4 for

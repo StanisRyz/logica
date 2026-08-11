@@ -1,6 +1,7 @@
 package com.stanisryz.logica.statistics
 
 import com.stanisryz.logica.daily.DailyStreakCalculator
+import com.stanisryz.logica.daily.DailyStreakQualification
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordRules
@@ -85,8 +86,11 @@ internal object StatisticsAggregator {
         results: List<GameResult>,
         completedDailyDates: Iterable<LocalDate>,
     ): StatisticsSnapshot {
-        val dailyDates = completedDailyDates.filterNot { it.isAfter(currentDate) }.toSet()
-        val streak = DailyStreakCalculator.calculate(currentDate, dailyDates)
+        // Two different concepts: how many Dailies were finished in full, and which dates keep the
+        // streak alive. From Policy V5 on one solved entry qualifies a date without completing it.
+        val fullyCompletedDailyDates = completedDailyDates.filterNot { it.isAfter(currentDate) }.toSet()
+        val streakDates = DailyStreakQualification.qualifiedDates(fullyCompletedDailyDates, results)
+        val streak = DailyStreakCalculator.calculate(currentDate, streakDates)
         // Every "solved" metric counts solved attempts only; a failed attempt stays durable but
         // never inflates them. Word keeps its own played/solved/failed breakdown below.
         val solvedResults = results.filter { it.outcome == GameOutcome.SOLVED }
@@ -112,7 +116,7 @@ internal object StatisticsAggregator {
             statistics =
                 GameStatistics(
                     totalCompletedResults = solvedResults.size,
-                    completedDailyCount = dailyDates.size,
+                    completedDailyCount = fullyCompletedDailyDates.size,
                     totalHintsUsed = results.sumOf(GameResult::hintsUsed),
                     currentDailyStreak = streak.current,
                     bestDailyStreak = streak.best,

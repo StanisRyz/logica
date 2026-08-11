@@ -6,6 +6,7 @@ import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV1
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV2
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV3
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV4
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV5
 import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
@@ -31,6 +32,8 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.time.Instant
@@ -85,23 +88,53 @@ class TodayViewModelTest {
         }
 
     @Test
-    fun newRunsUseV4WhilePersistedV1AndV2RunsKeepTheirOriginalEntries() =
+    fun newRunsUseV5WhilePersistedOlderRunsKeepTheirOriginalEntries() =
         runBlocking {
             val fresh = viewModel(FakeDailyChallengeRepository(), FakeGameSessionRepository()).awaitContent()
 
-            assertEquals(DailyChallengePolicyV4.VERSION, fresh.definition.policyVersion)
+            assertEquals(DailyChallengePolicyV5.VERSION, fresh.definition.policyVersion)
             assertEquals(
-                listOf(PuzzleType.BALANCE, PuzzleType.CROWNS, PuzzleType.WORD),
+                listOf(
+                    PuzzleType.BALANCE,
+                    PuzzleType.CROWNS,
+                    PuzzleType.WORD,
+                    PuzzleType.SUDOKU,
+                    PuzzleType.GAME_2048,
+                ),
                 fresh.entries.map { it.puzzleType },
             )
             assertEquals(0, fresh.completedCount)
-            assertEquals(3, fresh.totalCount)
+            assertEquals(5, fresh.totalCount)
             assertEquals(
                 GeneratorVersion(2),
                 fresh.definition.entries
                     .single { it.puzzleType == PuzzleType.WORD }
                     .generatorVersion,
             )
+
+            // A run created before V5 keeps its own policy: it is never extended to five entries.
+            val v4Definition = DailyChallengePolicyV4.definitionFor(date)
+            val persistedV4 =
+                viewModel(
+                    FakeDailyChallengeRepository(
+                        run = savedRun(DailyChallengePolicyV4.VERSION.value, DailyRunStatus.IN_PROGRESS),
+                        entries =
+                            v4Definition.entries.associate { entry ->
+                                entry.puzzleType to v4Definition.savedChallenge(entry, DailyChallengeStatus.IN_PROGRESS)
+                            },
+                    ),
+                    FakeGameSessionRepository(),
+                ).awaitContent()
+
+            assertEquals(DailyChallengePolicyV4.VERSION, persistedV4.definition.policyVersion)
+            assertEquals(3, persistedV4.totalCount)
+            assertEquals(
+                listOf(PuzzleType.BALANCE, PuzzleType.CROWNS, PuzzleType.WORD),
+                persistedV4.entries.map { it.puzzleType },
+            )
+            // The historical streak rule travels with the policy version, not with the build.
+            assertFalse(persistedV4.streak.anySolvedQualifies)
+            assertTrue(fresh.streak.anySolvedQualifies)
 
             val v1Definition = DailyChallengePolicyV1.definitionFor(date)
             val v1Entry = v1Definition.entryFor(PuzzleType.BALANCE)

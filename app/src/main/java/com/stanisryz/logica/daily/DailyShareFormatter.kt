@@ -40,6 +40,9 @@ internal object DailyShareFormatter {
             PuzzleType.BALANCE -> "Баланс"
             PuzzleType.CROWNS -> "Короны"
             PuzzleType.WORD -> "Слово"
+            PuzzleType.SUDOKU -> "Судоку"
+            // The 2048 score is deliberately absent: a generic result does not carry that metric.
+            PuzzleType.GAME_2048 -> "2048"
             else -> error("Daily sharing does not support $puzzleType.")
         }
 

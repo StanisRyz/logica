@@ -27,6 +27,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
+import com.stanisryz.logica.game2048.Game2048GameContext
 import com.stanisryz.logica.game2048.Game2048GameError
 import com.stanisryz.logica.game2048.Game2048Launch
 import com.stanisryz.logica.game2048.Game2048UiState
@@ -83,6 +84,7 @@ internal fun Game2048Route(
     Game2048Screen(
         uiState = uiState,
         economy = economy,
+        isDaily = launch.context is Game2048GameContext.Daily,
         onMove = gameViewModel::move,
         onRetry = gameViewModel::retry,
         onRetryCompletion = gameViewModel::retryCompletion,
@@ -99,6 +101,7 @@ internal fun Game2048Route(
 private fun Game2048Screen(
     uiState: Game2048UiState,
     economy: PlayerEconomy,
+    isDaily: Boolean,
     onMove: (Game2048Direction) -> Unit,
     onRetry: () -> Unit,
     onRetryCompletion: () -> Unit,
@@ -114,8 +117,8 @@ private fun Game2048Screen(
         is Game2048UiState.Error ->
             RetryableErrorState(
                 message = uiState.reason.message(),
-                retryLabel = stringResource(R.string.new_game),
-                onRetry = onStartNew,
+                retryLabel = stringResource(if (isDaily) R.string.to_games else R.string.new_game),
+                onRetry = if (isDaily) onGameHub else onStartNew,
                 modifier = modifier,
                 secondaryLabel = stringResource(R.string.back),
                 onSecondary = onBack,
@@ -124,6 +127,7 @@ private fun Game2048Screen(
             Game2048ReadyState(
                 uiState = uiState,
                 economy = economy,
+                isDaily = isDaily,
                 onMove = onMove,
                 onRetry = onRetry,
                 onRetryCompletion = onRetryCompletion,
@@ -139,6 +143,7 @@ private fun Game2048Screen(
 private fun Game2048ReadyState(
     uiState: Game2048UiState.Ready,
     economy: PlayerEconomy,
+    isDaily: Boolean,
     onMove: (Game2048Direction) -> Unit,
     onRetry: () -> Unit,
     onRetryCompletion: () -> Unit,
@@ -193,6 +198,7 @@ private fun Game2048ReadyState(
             game = game,
             completionPersistence = uiState.completionPersistence,
             economy = economy,
+            isDaily = isDaily,
             onRetry = onRetry,
             onRetryCompletion = onRetryCompletion,
             onGameHub = onGameHub,
@@ -205,12 +211,15 @@ private fun Game2048TerminalDialog(
     game: Game2048State,
     completionPersistence: CompletionPersistence,
     economy: PlayerEconomy,
+    isDaily: Boolean,
     onRetry: () -> Unit,
     onRetryCompletion: () -> Unit,
     onGameHub: () -> Unit,
 ) {
     val solved = game.status == Game2048Status.SOLVED
     val isSaved = completionPersistence == CompletionPersistence.Saved
+    // A solved Daily entry is done for the day: the only way on is back to the hub.
+    val isDailySolved = isDaily && solved
     val targetScore = game.puzzleId.rules.targetScore
     val targetTile = game.puzzleId.rules.targetTile
     AlertDialog(
@@ -253,18 +262,20 @@ private fun Game2048TerminalDialog(
             }
         },
         confirmButton = {
-            when (completionPersistence) {
-                CompletionPersistence.Error ->
+            when {
+                completionPersistence == CompletionPersistence.Error ->
                     TextButton(onClick = onRetryCompletion) { Text(stringResource(R.string.retry)) }
-                CompletionPersistence.Saved ->
+                completionPersistence != CompletionPersistence.Saved ->
+                    TextButton(onClick = {}, enabled = false) { Text(stringResource(R.string.saving)) }
+                isDailySolved -> TextButton(onClick = onGameHub) { Text(stringResource(R.string.to_games)) }
+                else ->
                     TextButton(onClick = onRetry, enabled = economy.isGameplayAllowed) {
                         Text(stringResource(R.string.retry_puzzle))
                     }
-                else -> TextButton(onClick = {}, enabled = false) { Text(stringResource(R.string.saving)) }
             }
         },
         dismissButton = {
-            if (isSaved) TextButton(onClick = onGameHub) { Text(stringResource(R.string.to_games)) }
+            if (isSaved && !isDailySolved) TextButton(onClick = onGameHub) { Text(stringResource(R.string.to_games)) }
         },
     )
 }
@@ -311,6 +322,7 @@ private fun Game2048Preview() {
         Game2048Screen(
             uiState = Game2048UiState.Ready(engine.start()),
             economy = PlayerEconomy(),
+            isDaily = false,
             onMove = {},
             onRetry = {},
             onRetryCompletion = {},

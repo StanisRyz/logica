@@ -16,8 +16,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.HighlightOff
+import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Timelapse
 import androidx.compose.material3.Button
@@ -46,6 +48,7 @@ import com.stanisryz.logica.daily.DailyShareFormatter
 import com.stanisryz.logica.daily.TodayCompletionUiState
 import com.stanisryz.logica.daily.TodayEntryUiState
 import com.stanisryz.logica.daily.TodayError
+import com.stanisryz.logica.daily.TodayStreakUiState
 import com.stanisryz.logica.daily.TodayUiState
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordRules
@@ -93,6 +96,9 @@ internal fun DailySection(
             }
             is TodayUiState.Content -> {
                 DailyHeader(uiState)
+                // Streak status is its own line: from Policy V5 on it is answered by the first solved
+                // game, while the completion card below still belongs to a full Daily.
+                if (uiState.streak.anySolvedQualifies) DailyStreakChip(uiState.streak)
                 DailyEntryRow(
                     entries = uiState.entries,
                     gameplayAllowed = gameplayAllowed,
@@ -166,6 +172,27 @@ private fun DailyHeader(uiState: TodayUiState.Content) {
             drawStopIndicator = {},
         )
     }
+}
+
+/**
+ * One line of streak semantics, deliberately separate from the progress bar above it: before the
+ * first solved game it says what keeps the streak, afterwards it says the day is already secured —
+ * without waiting for 5/5 and without hiding the four entries that are still playable.
+ */
+@Composable
+private fun DailyStreakChip(streak: TodayStreakUiState) {
+    val palette = LocalLogicaPalette.current
+    StatusChip(
+        icon = if (streak.qualifiedToday) Icons.Filled.LocalFireDepartment else Icons.Filled.Bolt,
+        label =
+            stringResource(
+                if (streak.qualifiedToday) R.string.daily_streak_secured else R.string.daily_streak_hint,
+            ),
+        containerColor =
+            if (streak.qualifiedToday) palette.successContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+        contentColor =
+            if (streak.qualifiedToday) palette.onSuccessContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable

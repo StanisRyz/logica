@@ -243,6 +243,10 @@ internal fun LogicaNavigation(
                                                         AppDestination.CrownsGame(dailyLaunch.launch)
                                                     is DailyGameLaunch.Word ->
                                                         AppDestination.WordGame(dailyLaunch.launch)
+                                                    is DailyGameLaunch.Sudoku ->
+                                                        AppDestination.SudokuGame(dailyLaunch.launch)
+                                                    is DailyGameLaunch.Game2048 ->
+                                                        AppDestination.Game2048Game(dailyLaunch.launch)
                                                 },
                                             )
                                         },
