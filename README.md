@@ -2,6 +2,9 @@
 
 Native Android application with playable Balance, Crowns, and Word puzzles. The stack is Kotlin, Jetpack Compose, Navigation 3, DataStore, Room, and Gradle Kotlin DSL.
 
+Sudoku content foundation is bundled offline as a frozen, validated Puzzle Bank corpus; puzzles are
+not generated or downloaded at runtime. Gameplay and catalog integration are intentionally deferred.
+
 Requires JDK 17 and Android SDK Platform 36.
 
 Crowns, the second puzzle type, now has a pure-Kotlin domain model, deterministic solving and generation, solve-based difficulty evaluation, and unique/multiple-solution detection in `puzzle-core/`.

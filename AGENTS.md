@@ -133,3 +133,7 @@
 - Invalid, non-unique, non-deterministic, misclassified, or branching gameplay puzzles are hard generator failures.
 - Avoid unrelated refactors, speculative abstractions, excessive tests, and large documentation changes.
 - Daily sharing is generated only from the persisted Daily definition (resolved via its saved policy version) plus terminal Daily `GameResult`s matched by challenge date and policy; a completed run with a missing/mismatched result disables sharing rather than producing an incomplete summary. The share text/model must stay spoiler-free: no Word answer, guesses, letter feedback, board/solution, seed, or `PuzzleId`.
+- Sudoku Dataset V1 provenance and the reproducible import report live in `datasets/sudoku/`; V1 is immutable, versioned bundled content sourced only from the pinned Sudoku Exchange Puzzle Bank revision.
+- Sudoku is never generated or downloaded at runtime: Android reads the prevalidated assets and their precomputed unique solutions, and Room is not used for this immutable content.
+- `SudokuPuzzleId` is dataset version + application difficulty + the full SHA-256 fingerprint of canonical givens; selection is the explicit stable V1 SHA-256 selector mapping, never a persisted positional index.
+- Stage 33 is dataset/domain infrastructure only; Sudoku gameplay, sessions, UI, Catalog/Daily/platform integration, and hints belong to Stage 34 or later.

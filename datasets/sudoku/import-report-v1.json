@@ -1,0 +1,73 @@
+{
+  "datasetVersion": 1,
+  "importerVersion": 1,
+  "importDate": "2026-08-11",
+  "upstreamRepository": "https://github.com/grantm/sudoku-exchange-puzzle-bank",
+  "upstreamRevision": "d8c8ebaee0c08c412cfba96af1923dfa61c83317",
+  "selection": "first N valid globally unique records in upstream file order; assets sorted by SHA-256 fingerprint",
+  "limits": {
+    "EASY": 10000,
+    "MEDIUM": 10000,
+    "HARD": 10000,
+    "EXPERT": 10000
+  },
+  "workers": 4,
+  "buckets": {
+    "EASY": {
+      "source_records_read": 100000,
+      "malformed_rejected": 0,
+      "invalid_givens_rejected": 0,
+      "unsolved_rejected": 0,
+      "multi_solution_rejected": 0,
+      "duplicate_rejected": 0,
+      "valid_records": 100000,
+      "records_selected": 10000,
+      "requested": 10000,
+      "shortfall": 0,
+      "asset_bytes": 1160016,
+      "asset_sha256": "80291fa53ff95a89b17be8b20393bbd9622d1cce55cb6f01d0eb63e39c25ae8e"
+    },
+    "MEDIUM": {
+      "source_records_read": 352643,
+      "malformed_rejected": 0,
+      "invalid_givens_rejected": 0,
+      "unsolved_rejected": 0,
+      "multi_solution_rejected": 0,
+      "duplicate_rejected": 0,
+      "valid_records": 352643,
+      "records_selected": 10000,
+      "requested": 10000,
+      "shortfall": 0,
+      "asset_bytes": 1160016,
+      "asset_sha256": "18acc662f254ab557eb90be8e3c328c3fc35de5fddfbea8d87e0afcb7a7bfcd7"
+    },
+    "HARD": {
+      "source_records_read": 321592,
+      "malformed_rejected": 0,
+      "invalid_givens_rejected": 0,
+      "unsolved_rejected": 0,
+      "multi_solution_rejected": 0,
+      "duplicate_rejected": 0,
+      "valid_records": 321592,
+      "records_selected": 10000,
+      "requested": 10000,
+      "shortfall": 0,
+      "asset_bytes": 1160016,
+      "asset_sha256": "a3b2179a17471c5a2555099369db17bb479ddb4921eab866db76182b4f8b8ce3"
+    },
+    "EXPERT": {
+      "source_records_read": 119681,
+      "malformed_rejected": 0,
+      "invalid_givens_rejected": 0,
+      "unsolved_rejected": 0,
+      "multi_solution_rejected": 0,
+      "duplicate_rejected": 0,
+      "valid_records": 119681,
+      "records_selected": 10000,
+      "requested": 10000,
+      "shortfall": 0,
+      "asset_bytes": 1160016,
+      "asset_sha256": "cfe08c88da1e58e4b85526429d4d3c9d033b681e2db60b30a070bbfb66162160"
+    }
+  }
+}
