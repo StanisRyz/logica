@@ -6,6 +6,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.stanisryz.logica.ads.RewardedLifeController
+import com.stanisryz.logica.ads.RewardedLifeControllerFactory
 import com.stanisryz.logica.catalog.CatalogViewModel
 import com.stanisryz.logica.catalog.CatalogViewModelFactory
 import com.stanisryz.logica.economy.EconomyViewModel
@@ -45,6 +47,12 @@ fun LogicaApp() {
         }
     val economyViewModel: EconomyViewModel = viewModel(factory = economyViewModelFactory)
     val economy by economyViewModel.economy.collectAsStateWithLifecycle()
+    val rewardedControllerFactory =
+        remember(economyRepository) {
+            RewardedLifeControllerFactory(application, economyRepository)
+        }
+    val rewardedController: RewardedLifeController = viewModel(factory = rewardedControllerFactory)
+    val rewardedState by rewardedController.state.collectAsStateWithLifecycle()
 
     LogicaTheme(themeMode = settings.themeMode) {
         LogicaNavigation(
@@ -60,7 +68,12 @@ fun LogicaApp() {
             hasActiveBalanceSession = hasActiveBalanceSession,
             hasActiveCrownsSession = hasActiveCrownsSession,
             hasActiveWordSession = hasActiveWordSession,
+            rewardedState = rewardedState,
             onRestoreLife = economyViewModel::refillLife,
+            onPreloadRewardedAd = rewardedController::preload,
+            onReleaseRewardedAd = rewardedController::release,
+            onWatchRewardedAd = rewardedController::show,
+            onRetryRewardedAd = rewardedController::retry,
             onThemeModeChanged = settingsViewModel::setThemeMode,
             onSoundEnabledChanged = settingsViewModel::setSoundEnabled,
             onHapticsEnabledChanged = settingsViewModel::setHapticsEnabled,

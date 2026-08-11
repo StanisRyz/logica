@@ -1,13 +1,16 @@
 package com.stanisryz.logica.economy
 
 /**
- * Why the wallet changed. New sources — a rewarded ad life or a purchased gem pack — are added as
- * further constants later; the ledger and the wallet do not change shape for them.
+ * Why the wallet changed. New sources — a purchased gem pack — are added as further constants later;
+ * the ledger and the wallet do not change shape for them.
  */
 internal enum class EconomyEventType {
     SOLVED_REWARD,
     FAILED_PENALTY,
     GEM_LIFE_REFILL,
+
+    /** One rewarded ad the player chose to watch at zero lives, credited once. */
+    REWARDED_AD_LIFE,
 }
 
 /**
@@ -32,6 +35,12 @@ internal data class EconomyEvent(
 
         /** One intentional purchase gets one action ID, so a repeated callback is a no-op. */
         fun refillEventId(actionId: String): String = "refill:$actionId"
+
+        /**
+         * One rewarded-ad show gets one action ID, allocated before the ad is shown rather than
+         * inside the reward callback, so a callback delivered twice for that show is a no-op.
+         */
+        fun rewardedAdEventId(actionId: String): String = "rewarded_ad:$actionId"
     }
 }
 
@@ -65,6 +74,18 @@ internal fun PlayerEconomy.gemLifeRefill(actionId: String): EconomyEffect =
         updated = withGemsSpent(EconomyRules.LIFE_REFILL_GEM_COST).withLifeRestored(),
         eventId = EconomyEvent.refillEventId(actionId),
         type = EconomyEventType.GEM_LIFE_REFILL,
+        sourceId = actionId,
+    )
+
+/**
+ * One watched rewarded ad. It restores a life exactly like the gem refill does — the running
+ * countdown is preserved and a full wallet simply gains nothing — but costs no gems.
+ */
+internal fun PlayerEconomy.rewardedAdLife(actionId: String): EconomyEffect =
+    effect(
+        updated = withLifeRestored(),
+        eventId = EconomyEvent.rewardedAdEventId(actionId),
+        type = EconomyEventType.REWARDED_AD_LIFE,
         sourceId = actionId,
     )
 

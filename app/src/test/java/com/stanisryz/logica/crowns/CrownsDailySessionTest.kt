@@ -2,6 +2,7 @@ package com.stanisryz.logica.crowns
 
 import com.stanisryz.logica.economy.EconomyRefill
 import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.economy.EconomyRewardedLife
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV2
 import com.stanisryz.logica.puzzle.core.model.Difficulty
@@ -182,5 +183,7 @@ class CrownsDailySessionTest {
         override suspend fun refresh(): PlayerEconomy = PlayerEconomy()
 
         override suspend fun refillLifeWithGems(actionId: String): EconomyRefill = error("Unused.")
+
+        override suspend fun grantRewardedLife(actionId: String): EconomyRewardedLife = error("Unused.")
     }
 }

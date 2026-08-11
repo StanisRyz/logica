@@ -1,5 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+        Gameplay, generation, and persistence are entirely offline; the only network user is the
+        rewarded ad. The three permissions below arrive with the Yandex Mobile Ads SDK and are
+        declared here so the merged manifest stays intentional rather than inherited by accident.
+        INTERNET and ACCESS_NETWORK_STATE are what an ad request needs. AD_ID is deliberately kept:
+        the rewarded placement is served by the Yandex Advertising Network, which uses the
+        advertising identifier for frequency capping and fraud checks, so removing it would mean
+        denying an advertising integration the app actually has.
+
+        The merge also pulls in AppMetrica's BIND_GET_INSTALL_REFERRER_SERVICE and the AndroidX
+        DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION from the SDK's own dependencies, plus the SDK's ad
+        activity and its initialization ContentProvider. That provider only bootstraps the SDK;
+        consent and `YandexAds.initialize` are driven manually from `YandexAdsInitializer` so the
+        privacy state is always set before any ad request.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
+
     <application
         android:name=".LogicaApplication"
         android:allowBackup="true"

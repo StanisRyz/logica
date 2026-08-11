@@ -1,3 +1,6 @@
+/** The official Yandex rewarded demo unit; it always fills and never bills a real placement. */
+val demoRewardedAdUnitId = "demo-rewarded-yandex"
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -5,6 +8,20 @@ plugins {
     alias(libs.plugins.androidx.room)
     alias(libs.plugins.ktlint)
 }
+
+/**
+ * The Yandex rewarded placement for release builds. It is an ad unit identifier, not a credential,
+ * but it is still never committed: set `logica.rewardedAdUnitId` in `local.properties`, in a private
+ * `gradle.properties`, or as `ORG_GRADLE_PROJECT_logica.rewardedAdUnitId` on the build machine. When
+ * it is missing the release build falls back to the demo unit, which is loud in the build log and
+ * safe, instead of silently shipping someone else's placement.
+ */
+val releaseRewardedAdUnitId: String =
+    (providers.gradleProperty("logica.rewardedAdUnitId").orNull ?: demoRewardedAdUnitId).also {
+        if (it == demoRewardedAdUnitId) {
+            logger.warn("logica.rewardedAdUnitId is not set: release builds would use the Yandex demo rewarded unit.")
+        }
+    }
 
 android {
     namespace = "com.stanisryz.logica"
@@ -20,7 +37,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Development and local testing never touch the production placement.
+            buildConfigField("String", "REWARDED_AD_UNIT_ID", "\"$demoRewardedAdUnitId\"")
+        }
         release {
+            buildConfigField("String", "REWARDED_AD_UNIT_ID", "\"$releaseRewardedAdUnitId\"")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -36,6 +58,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -60,6 +83,7 @@ dependencies {
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.sqlite.bundled)
+    implementation(libs.yandex.mobileads)
 
     ksp(libs.androidx.room.compiler)
 

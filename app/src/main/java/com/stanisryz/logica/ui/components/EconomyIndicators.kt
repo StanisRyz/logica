@@ -2,12 +2,15 @@ package com.stanisryz.logica.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.HeartBroken
+import androidx.compose.material.icons.filled.Slideshow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -29,6 +32,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.R
+import com.stanisryz.logica.ads.RewardedAdState
 import com.stanisryz.logica.economy.EconomyClock
 import com.stanisryz.logica.economy.EconomyRules
 import com.stanisryz.logica.economy.PlayerEconomy
@@ -82,11 +86,18 @@ internal fun EconomyBar(
 /**
  * The lives detail: how many are left, when the next one comes back, and what a gem refill costs.
  * Deliberately a small dialog rather than a store screen.
+ *
+ * At zero lives it also carries the one advertising offer in the product: an optional rewarded ad
+ * worth `+1` life. The offer is the last thing added and the first thing that may fail, so the
+ * countdown and the gem refill above it stay readable and usable whether or not an ad exists.
  */
 @Composable
 internal fun LivesDialog(
     economy: PlayerEconomy,
+    rewardedState: RewardedAdState,
     onRestoreLife: () -> Unit,
+    onWatchRewardedAd: () -> Unit,
+    onRetryRewardedAd: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val countdown = rememberLifeCountdown(economy)
@@ -95,31 +106,37 @@ internal fun LivesDialog(
         icon = { Icon(Icons.Filled.Favorite, contentDescription = null) },
         title = { Text(stringResource(R.string.economy_lives_title)) },
         text = {
-            Text(
-                text =
-                    buildString {
-                        appendLine(
-                            stringResource(R.string.economy_lives_value, economy.lives, EconomyRules.MAX_LIVES),
-                        )
-                        if (economy.isFull) {
-                            append(stringResource(R.string.economy_lives_full))
-                        } else {
-                            appendLine(stringResource(R.string.economy_next_life_in, countdown.orEmpty()))
-                            append(
-                                if (economy.canRefillLifeWithGems) {
-                                    stringResource(R.string.economy_refill_cost, EconomyRules.LIFE_REFILL_GEM_COST)
-                                } else {
-                                    stringResource(
-                                        R.string.economy_not_enough_gems,
-                                        EconomyRules.LIFE_REFILL_GEM_COST,
-                                        economy.gems,
-                                    )
-                                },
+            Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
+                Text(
+                    text =
+                        buildString {
+                            appendLine(
+                                stringResource(R.string.economy_lives_value, economy.lives, EconomyRules.MAX_LIVES),
                             )
-                        }
-                    },
-                style = MaterialTheme.typography.bodyMedium,
-            )
+                            if (economy.isFull) {
+                                append(stringResource(R.string.economy_lives_full))
+                            } else {
+                                appendLine(stringResource(R.string.economy_next_life_in, countdown.orEmpty()))
+                                append(
+                                    if (economy.canRefillLifeWithGems) {
+                                        stringResource(R.string.economy_refill_cost, EconomyRules.LIFE_REFILL_GEM_COST)
+                                    } else {
+                                        stringResource(
+                                            R.string.economy_not_enough_gems,
+                                            EconomyRules.LIFE_REFILL_GEM_COST,
+                                            economy.gems,
+                                        )
+                                    },
+                                )
+                            }
+                        },
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                // Only at zero lives: the offer exists to unblock gameplay, never to top a wallet up.
+                if (!economy.isGameplayAllowed) {
+                    RewardedLifeOffer(rewardedState, onWatchRewardedAd, onRetryRewardedAd)
+                }
+            }
         },
         confirmButton = {
             if (!economy.isFull) {
@@ -130,6 +147,44 @@ internal fun LivesDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) } },
     )
+}
+
+/**
+ * The rewarded offer, one state at a time: loading is announced and disabled, a loaded ad is the
+ * only enabled action, a showing ad refuses a second request, and an unavailable one says so and
+ * offers a single deliberate retry instead of hammering the network.
+ */
+@Composable
+private fun RewardedLifeOffer(
+    state: RewardedAdState,
+    onWatch: () -> Unit,
+    onRetry: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
+        Text(
+            text =
+                stringResource(
+                    when (state) {
+                        RewardedAdState.UNAVAILABLE -> R.string.economy_rewarded_ad_unavailable
+                        RewardedAdState.SHOWING -> R.string.economy_rewarded_ad_showing
+                        RewardedAdState.READY -> R.string.economy_rewarded_ad_offer
+                        RewardedAdState.IDLE, RewardedAdState.LOADING -> R.string.economy_rewarded_ad_loading
+                    },
+                ),
+            style = MaterialTheme.typography.bodySmall,
+        )
+        if (state == RewardedAdState.UNAVAILABLE) {
+            TextButton(onClick = onRetry) { Text(stringResource(R.string.economy_rewarded_ad_retry)) }
+        } else {
+            Button(onClick = onWatch, enabled = state == RewardedAdState.READY) {
+                Icon(Icons.Filled.Slideshow, contentDescription = null, modifier = Modifier.size(ICON_SIZE))
+                Text(
+                    text = stringResource(R.string.economy_rewarded_ad_watch),
+                    modifier = Modifier.padding(start = LogicaSpacing.text),
+                )
+            }
+        }
+    }
 }
 
 /**

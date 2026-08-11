@@ -30,6 +30,28 @@ internal sealed interface EconomyRefill {
     ) : EconomyRefill
 }
 
+/**
+ * The outcome of persisting one rewarded ad. It is never a rejection: the player already watched the
+ * ad, so the only questions are whether this action ID was new and whether the wallet had room.
+ */
+internal sealed interface EconomyRewardedLife {
+    val economy: PlayerEconomy
+
+    /**
+     * The action ID reached the ledger for the first time. [lifeGranted] is false only when the
+     * wallet was already full by the time the reward callback arrived.
+     */
+    data class Granted(
+        override val economy: PlayerEconomy,
+        val lifeGranted: Boolean,
+    ) : EconomyRewardedLife
+
+    /** The same rewarded show already moved through the ledger, so this callback changed nothing. */
+    data class AlreadyGranted(
+        override val economy: PlayerEconomy,
+    ) : EconomyRewardedLife
+}
+
 @Dao
 internal interface EconomyDao {
     // The wallet is a singleton row; `PlayerEconomyEntity.SINGLETON_ID` is that ID.
@@ -85,5 +107,28 @@ internal interface EconomyDao {
         }
         upsert(effect.economy.toEntity(nowEpochMillis))
         return EconomyRefill.Applied(effect.economy)
+    }
+
+    /**
+     * Credits one rewarded ad. The wallet is re-read here, so regeneration that completed while the
+     * ad was on screen is applied first and the earned life is added on top of it rather than
+     * replacing it; the cap still holds. The ledger insert is the safety boundary: a reward callback
+     * delivered twice for the same [actionId] is a no-op, and a full wallet still records the event
+     * so the consumed ad is never owed a second life.
+     */
+    @Transaction
+    suspend fun grantRewardedLife(
+        actionId: String,
+        nowEpochMillis: Long,
+    ): EconomyRewardedLife {
+        val current = find().toPlayerEconomy(nowEpochMillis).regenerated(nowEpochMillis)
+        val effect = current.rewardedAdLife(actionId)
+        if (insertEvent(effect.event.toEntity(nowEpochMillis)) == -1L) {
+            // Whatever regeneration is due is still worth persisting; the reward itself is spent.
+            upsert(current.toEntity(nowEpochMillis))
+            return EconomyRewardedLife.AlreadyGranted(current)
+        }
+        upsert(effect.economy.toEntity(nowEpochMillis))
+        return EconomyRewardedLife.Granted(effect.economy, lifeGranted = effect.event.lifeDelta > 0)
     }
 }

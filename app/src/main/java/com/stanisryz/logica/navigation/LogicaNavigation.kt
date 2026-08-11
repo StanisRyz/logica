@@ -1,5 +1,7 @@
 package com.stanisryz.logica.navigation
 
+import android.app.Activity
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -17,6 +19,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +33,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.stanisryz.logica.R
+import com.stanisryz.logica.ads.RewardedAdState
 import com.stanisryz.logica.balance.BalanceGameLaunch
 import com.stanisryz.logica.crowns.CrownsGameLaunch
 import com.stanisryz.logica.daily.DailyChallengeRepository
@@ -132,7 +136,12 @@ internal fun LogicaNavigation(
     hasActiveBalanceSession: Boolean,
     hasActiveCrownsSession: Boolean,
     hasActiveWordSession: Boolean,
+    rewardedState: RewardedAdState,
     onRestoreLife: () -> Unit,
+    onPreloadRewardedAd: () -> Unit,
+    onReleaseRewardedAd: () -> Unit,
+    onWatchRewardedAd: (Activity) -> Unit,
+    onRetryRewardedAd: () -> Unit,
     onThemeModeChanged: (ThemeMode) -> Unit,
     onSoundEnabledChanged: (Boolean) -> Unit,
     onHapticsEnabledChanged: (Boolean) -> Unit,
@@ -144,6 +153,21 @@ internal fun LogicaNavigation(
     val currentDestination = backStack.last()
     val isPrimaryDestination = currentDestination in primaryDestinations
     var showLivesDialog by rememberSaveable { mutableStateOf(false) }
+    val activity = LocalActivity.current
+
+    /*
+     * The rewarded ad is loaded only where it can actually be offered: the player is out of lives
+     * and is standing on a screen that carries the wallet. Tutorials, Settings, and Statistics never
+     * trigger a load, and a wallet with lives in it releases whatever was loaded instead of rotating
+     * ads in the background. A failed load stays failed until the player asks for a retry.
+     */
+    val rewardedOfferVisible = !economy.isGameplayAllowed && currentDestination.showsEconomy()
+    LaunchedEffect(rewardedOfferVisible, rewardedState) {
+        when {
+            rewardedOfferVisible && rewardedState == RewardedAdState.IDLE -> onPreloadRewardedAd()
+            !rewardedOfferVisible -> onReleaseRewardedAd()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -402,7 +426,10 @@ internal fun LogicaNavigation(
     if (showLivesDialog) {
         LivesDialog(
             economy = economy,
+            rewardedState = rewardedState,
             onRestoreLife = onRestoreLife,
+            onWatchRewardedAd = { activity?.let(onWatchRewardedAd) },
+            onRetryRewardedAd = onRetryRewardedAd,
             onDismiss = { showLivesDialog = false },
         )
     }

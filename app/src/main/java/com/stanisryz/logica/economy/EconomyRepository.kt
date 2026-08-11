@@ -16,6 +16,12 @@ internal interface EconomyRepository {
     suspend fun refresh(): PlayerEconomy
 
     suspend fun refillLifeWithGems(actionId: String): EconomyRefill
+
+    /**
+     * Credits the life earned by one rewarded ad. [actionId] belongs to the ad-show attempt, not to
+     * the callback, so calling this again with the same value is deliberately a no-op.
+     */
+    suspend fun grantRewardedLife(actionId: String): EconomyRewardedLife
 }
 
 internal class RoomEconomyRepository(
@@ -31,4 +37,6 @@ internal class RoomEconomyRepository(
     override suspend fun refresh(): PlayerEconomy = dao.refresh(clock.nowEpochMillis())
 
     override suspend fun refillLifeWithGems(actionId: String): EconomyRefill = dao.refillLifeWithGems(actionId, clock.nowEpochMillis())
+
+    override suspend fun grantRewardedLife(actionId: String): EconomyRewardedLife = dao.grantRewardedLife(actionId, clock.nowEpochMillis())
 }

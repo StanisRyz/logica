@@ -238,4 +238,10 @@
     <string name="economy_no_lives_short">Нет жизней: игровые действия недоступны.</string>
     <string name="economy_reward_gem">+%1$d кристалл</string>
     <string name="economy_penalty_life">−1 жизнь. Осталось: %1$d из %2$d</string>
+    <string name="economy_rewarded_ad_offer">Или посмотрите рекламу и получите +1 жизнь.</string>
+    <string name="economy_rewarded_ad_watch">Посмотреть рекламу: +1 жизнь</string>
+    <string name="economy_rewarded_ad_loading">Реклама загружается…</string>
+    <string name="economy_rewarded_ad_showing">Реклама открывается…</string>
+    <string name="economy_rewarded_ad_unavailable">Реклама сейчас недоступна. Жизнь всё равно восстановится по таймеру.</string>
+    <string name="economy_rewarded_ad_retry">Попробовать снова</string>
 </resources>
