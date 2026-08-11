@@ -22,6 +22,16 @@ internal interface EconomyRepository {
      * the callback, so calling this again with the same value is deliberately a no-op.
      */
     suspend fun grantRewardedLife(actionId: String): EconomyRewardedLife
+
+    /**
+     * Credits one confirmed store purchase. Both arguments are plain identifiers on purpose: the
+     * economy never sees a billing SDK type, and RuStore's purchase ID is what makes the grant
+     * idempotent.
+     */
+    suspend fun grantPurchasedGems(
+        purchaseId: String,
+        productId: String,
+    ): EconomyGemPurchase
 }
 
 internal class RoomEconomyRepository(
@@ -39,4 +49,9 @@ internal class RoomEconomyRepository(
     override suspend fun refillLifeWithGems(actionId: String): EconomyRefill = dao.refillLifeWithGems(actionId, clock.nowEpochMillis())
 
     override suspend fun grantRewardedLife(actionId: String): EconomyRewardedLife = dao.grantRewardedLife(actionId, clock.nowEpochMillis())
+
+    override suspend fun grantPurchasedGems(
+        purchaseId: String,
+        productId: String,
+    ): EconomyGemPurchase = dao.grantPurchasedGems(purchaseId, productId, clock.nowEpochMillis())
 }

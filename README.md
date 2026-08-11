@@ -75,8 +75,13 @@ attempt earns one gem, every failed attempt costs one life, and a missing life c
 after 15 minutes (the countdown keeps running while the app is closed and never restarts when you
 lose another life). With no lives left you can still open and look at a saved puzzle, but playing,
 starting, and replaying wait until a life is available; five gems restore one life immediately.
-Tutorials never touch gems or lives, and everything is stored locally — there is no account, server,
-or purchase.
+Tutorials never touch gems or lives, and everything is stored locally — there is no account and no
+server.
+
+Gems can also be bought, entirely optionally, through RuStore: tapping the gem balance opens a small
+store with three packs (50, 250, and 600 gems) at RuStore's own prices. Nothing else is for sale —
+no lives, no hints, no subscriptions, no removing ads — and every puzzle stays fully playable without
+ever opening it.
 
 Only when you are completely out of lives, the lives dialog adds one more optional way back in: watch
 a rewarded ad and get one life. It is never forced and never shown anywhere else — no banners, no

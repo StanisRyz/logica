@@ -1,5 +1,6 @@
 package com.stanisryz.logica.ads
 
+import com.stanisryz.logica.economy.EconomyGemPurchase
 import com.stanisryz.logica.economy.EconomyRefill
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.EconomyRewardedLife
@@ -105,6 +106,11 @@ private class FakeEconomyRepository(
         }
         return dao.grantRewardedLife(actionId, NOW)
     }
+
+    override suspend fun grantPurchasedGems(
+        purchaseId: String,
+        productId: String,
+    ): EconomyGemPurchase = dao.grantPurchasedGems(purchaseId, productId, NOW)
 
     private companion object {
         const val NOW = 1_700_000_000_000L

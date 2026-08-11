@@ -14,6 +14,11 @@
         activity and its initialization ContentProvider. That provider only bootstraps the SDK;
         consent and `YandexAds.initialize` are driven manually from `YandexAdsInitializer` so the
         privacy state is always set before any ad request.
+
+        The RuStore Pay SDK adds INTERNET (already declared), RECEIVE_BOOT_COMPLETED from its
+        analytics dependency, its own payment activity, an initialization ContentProvider, and a
+        large `<queries>` block naming the banking apps its payment sheet can hand off to. None of
+        that is something the application itself asks for or uses.
     -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -33,5 +38,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+            How the RuStore Pay SDK initializes itself: its ContentProvider reads both values at
+            process start. The console application ID comes from private build configuration and is
+            empty in a checkout that has not set it, which only makes the Gem Store unavailable. The
+            scheme is the deeplink RuStore returns to after payment.
+        -->
+        <meta-data
+            android:name="console_app_id_value"
+            android:value="${rustoreConsoleAppId}" />
+        <meta-data
+            android:name="sdk_pay_scheme_value"
+            android:value="${rustorePayScheme}" />
     </application>
 </manifest>

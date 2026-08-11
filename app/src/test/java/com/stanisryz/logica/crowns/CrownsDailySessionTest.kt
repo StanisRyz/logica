@@ -1,5 +1,6 @@
 package com.stanisryz.logica.crowns
 
+import com.stanisryz.logica.economy.EconomyGemPurchase
 import com.stanisryz.logica.economy.EconomyRefill
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.EconomyRewardedLife
@@ -185,5 +186,10 @@ class CrownsDailySessionTest {
         override suspend fun refillLifeWithGems(actionId: String): EconomyRefill = error("Unused.")
 
         override suspend fun grantRewardedLife(actionId: String): EconomyRewardedLife = error("Unused.")
+
+        override suspend fun grantPurchasedGems(
+            purchaseId: String,
+            productId: String,
+        ): EconomyGemPurchase = error("Unused.")
     }
 }

@@ -11,6 +11,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // RuStore publishes its SDKs only here, never to Maven Central.
+        maven("https://artifactory-external.vkpartner.ru/artifactory/maven-rustore-exposed/") {
+            content { includeGroup("ru.rustore.sdk") }
+        }
     }
 }
 

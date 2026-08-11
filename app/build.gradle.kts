@@ -23,6 +23,21 @@ val releaseRewardedAdUnitId: String =
         }
     }
 
+/**
+ * The RuStore Console application ID the Pay SDK initializes from. It is per-developer configuration
+ * rather than committed source: set `logica.rustoreConsoleAppId` in `local.properties`, in a private
+ * `gradle.properties`, or as `ORG_GRADLE_PROJECT_logica.rustoreConsoleAppId`. Leaving it unset is a
+ * supported build: the Pay SDK simply never becomes usable and the Gem Store reports itself
+ * unavailable, which changes nothing else in the application.
+ */
+val rustoreConsoleAppId: String =
+    (providers.gradleProperty("logica.rustoreConsoleAppId").orNull ?: "").also {
+        if (it.isEmpty()) logger.warn("logica.rustoreConsoleAppId is not set: RuStore purchases will be unavailable.")
+    }
+
+/** The deeplink scheme RuStore returns to after payment. A public identifier, not a credential. */
+val rustorePayScheme = "logicapay"
+
 android {
     namespace = "com.stanisryz.logica"
     compileSdk = 36
@@ -34,6 +49,9 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Read by the Pay SDK's own ContentProvider; see the manifest for what each one does.
+        manifestPlaceholders["rustoreConsoleAppId"] = rustoreConsoleAppId
+        manifestPlaceholders["rustorePayScheme"] = rustorePayScheme
     }
 
     buildTypes {
@@ -84,6 +102,8 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.sqlite.bundled)
     implementation(libs.yandex.mobileads)
+    implementation(platform(libs.rustore.bom))
+    implementation(libs.rustore.pay)
 
     ksp(libs.androidx.room.compiler)
 

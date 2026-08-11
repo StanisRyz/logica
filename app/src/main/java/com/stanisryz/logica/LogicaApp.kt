@@ -15,6 +15,8 @@ import com.stanisryz.logica.economy.EconomyViewModelFactory
 import com.stanisryz.logica.navigation.LogicaNavigation
 import com.stanisryz.logica.settings.SettingsViewModel
 import com.stanisryz.logica.settings.SettingsViewModelFactory
+import com.stanisryz.logica.store.GemStoreViewModel
+import com.stanisryz.logica.store.GemStoreViewModelFactory
 import com.stanisryz.logica.ui.theme.LogicaTheme
 
 @Composable
@@ -53,6 +55,12 @@ fun LogicaApp() {
         }
     val rewardedController: RewardedLifeController = viewModel(factory = rewardedControllerFactory)
     val rewardedState by rewardedController.state.collectAsStateWithLifecycle()
+    val gemStoreViewModelFactory =
+        remember(economyRepository) {
+            GemStoreViewModelFactory(economyRepository, application.container.ruStorePayGateway)
+        }
+    val gemStoreViewModel: GemStoreViewModel = viewModel(factory = gemStoreViewModelFactory)
+    val gemStoreState by gemStoreViewModel.state.collectAsStateWithLifecycle()
 
     LogicaTheme(themeMode = settings.themeMode) {
         LogicaNavigation(
@@ -69,11 +77,15 @@ fun LogicaApp() {
             hasActiveCrownsSession = hasActiveCrownsSession,
             hasActiveWordSession = hasActiveWordSession,
             rewardedState = rewardedState,
+            gemStoreState = gemStoreState,
             onRestoreLife = economyViewModel::refillLife,
             onPreloadRewardedAd = rewardedController::preload,
             onReleaseRewardedAd = rewardedController::release,
             onWatchRewardedAd = rewardedController::show,
             onRetryRewardedAd = rewardedController::retry,
+            onOpenGemStore = gemStoreViewModel::open,
+            onBuyGemPack = gemStoreViewModel::buy,
+            onDismissGemPurchaseOutcome = gemStoreViewModel::dismissOutcome,
             onThemeModeChanged = settingsViewModel::setThemeMode,
             onSoundEnabledChanged = settingsViewModel::setSoundEnabled,
             onHapticsEnabledChanged = settingsViewModel::setHapticsEnabled,

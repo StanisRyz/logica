@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -42,33 +43,23 @@ import java.util.Locale
 
 /**
  * The compact wallet shown on every gameplay-relevant screen: lives out of the maximum and the gem
- * balance. Both carry a Material icon plus their number, never an emoji, and the whole row opens the
- * lives detail.
+ * balance. Both carry a Material icon plus their number, never an emoji, and each half leads to what
+ * it is about — lives to the lives detail, gems to the Gem Store.
  */
 @Composable
 internal fun EconomyBar(
     economy: PlayerEconomy,
     onOpenLives: () -> Unit,
+    onOpenGemStore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val description =
-        stringResource(
-            R.string.economy_resources_description,
-            economy.lives,
-            EconomyRules.MAX_LIVES,
-            economy.gems,
-        )
     Row(
-        modifier =
-            modifier
-                .clickable(onClick = onOpenLives)
-                .clearAndSetSemantics {
-                    contentDescription = description
-                    role = Role.Button
-                },
+        modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.text),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        val livesDescription =
+            stringResource(R.string.economy_lives_action_description, economy.lives, EconomyRules.MAX_LIVES)
         StatusChip(
             icon = if (economy.isGameplayAllowed) Icons.Filled.Favorite else Icons.Filled.HeartBroken,
             label = stringResource(R.string.economy_lives_short, economy.lives, EconomyRules.MAX_LIVES),
@@ -78,8 +69,29 @@ internal fun EconomyBar(
                 } else {
                     MaterialTheme.colorScheme.error
                 },
+            modifier =
+                Modifier
+                    // Clipped first so the tap ripple keeps the chip's shape.
+                    .clip(MaterialTheme.shapes.small)
+                    .clickable(onClick = onOpenLives)
+                    .clearAndSetSemantics {
+                        contentDescription = livesDescription
+                        role = Role.Button
+                    },
         )
-        StatusChip(icon = Icons.Filled.Diamond, label = economy.gems.toString())
+        val gemsDescription = stringResource(R.string.economy_gems_action_description, economy.gems)
+        StatusChip(
+            icon = Icons.Filled.Diamond,
+            label = economy.gems.toString(),
+            modifier =
+                Modifier
+                    .clip(MaterialTheme.shapes.small)
+                    .clickable(onClick = onOpenGemStore)
+                    .clearAndSetSemantics {
+                        contentDescription = gemsDescription
+                        role = Role.Button
+                    },
+        )
     }
 }
 
@@ -98,6 +110,7 @@ internal fun LivesDialog(
     onRestoreLife: () -> Unit,
     onWatchRewardedAd: () -> Unit,
     onRetryRewardedAd: () -> Unit,
+    onOpenGemStore: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val countdown = rememberLifeCountdown(economy)
@@ -135,6 +148,12 @@ internal fun LivesDialog(
                 // Only at zero lives: the offer exists to unblock gameplay, never to top a wallet up.
                 if (!economy.isGameplayAllowed) {
                     RewardedLifeOffer(rewardedState, onWatchRewardedAd, onRetryRewardedAd)
+                }
+                // A way to the store, offered only when the refill above is the thing out of reach.
+                if (!economy.isFull && !economy.canRefillLifeWithGems) {
+                    TextButton(onClick = onOpenGemStore) {
+                        Text(stringResource(R.string.economy_get_gems))
+                    }
                 }
             }
         },

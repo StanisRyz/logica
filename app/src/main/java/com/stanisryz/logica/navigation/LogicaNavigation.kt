@@ -40,6 +40,7 @@ import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.DailyGameLaunch
 import com.stanisryz.logica.daily.DailyResultRepository
 import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.economy.GemPack
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
@@ -49,7 +50,9 @@ import com.stanisryz.logica.settings.SettingsRepository
 import com.stanisryz.logica.settings.ThemeMode
 import com.stanisryz.logica.settings.UserSettings
 import com.stanisryz.logica.statistics.StatisticsRepository
+import com.stanisryz.logica.store.GemStoreState
 import com.stanisryz.logica.ui.components.EconomyBar
+import com.stanisryz.logica.ui.components.GemStoreDialog
 import com.stanisryz.logica.ui.components.LivesDialog
 import com.stanisryz.logica.ui.screens.BalanceGameRoute
 import com.stanisryz.logica.ui.screens.BalanceStartScreen
@@ -137,11 +140,15 @@ internal fun LogicaNavigation(
     hasActiveCrownsSession: Boolean,
     hasActiveWordSession: Boolean,
     rewardedState: RewardedAdState,
+    gemStoreState: GemStoreState,
     onRestoreLife: () -> Unit,
     onPreloadRewardedAd: () -> Unit,
     onReleaseRewardedAd: () -> Unit,
     onWatchRewardedAd: (Activity) -> Unit,
     onRetryRewardedAd: () -> Unit,
+    onOpenGemStore: () -> Unit,
+    onBuyGemPack: (GemPack) -> Unit,
+    onDismissGemPurchaseOutcome: () -> Unit,
     onThemeModeChanged: (ThemeMode) -> Unit,
     onSoundEnabledChanged: (Boolean) -> Unit,
     onHapticsEnabledChanged: (Boolean) -> Unit,
@@ -153,7 +160,15 @@ internal fun LogicaNavigation(
     val currentDestination = backStack.last()
     val isPrimaryDestination = currentDestination in primaryDestinations
     var showLivesDialog by rememberSaveable { mutableStateOf(false) }
+    var showGemStore by rememberSaveable { mutableStateOf(false) }
     val activity = LocalActivity.current
+
+    /** Opening the store is the only thing that loads prices, and it never happens by itself. */
+    val openGemStore = {
+        showLivesDialog = false
+        showGemStore = true
+        onOpenGemStore()
+    }
 
     /*
      * The rewarded ad is loaded only where it can actually be offered: the player is out of lives
@@ -177,6 +192,7 @@ internal fun LogicaNavigation(
                 onBack = { backStack.removeLastOrNull() },
                 onOpenSettings = { if (isPrimaryDestination) backStack.add(AppDestination.Settings) },
                 onOpenLives = { showLivesDialog = true },
+                onOpenGemStore = openGemStore,
             )
         },
         bottomBar = {
@@ -430,7 +446,21 @@ internal fun LogicaNavigation(
             onRestoreLife = onRestoreLife,
             onWatchRewardedAd = { activity?.let(onWatchRewardedAd) },
             onRetryRewardedAd = onRetryRewardedAd,
+            onOpenGemStore = openGemStore,
             onDismiss = { showLivesDialog = false },
+        )
+    }
+
+    if (showGemStore) {
+        GemStoreDialog(
+            economy = economy,
+            state = gemStoreState,
+            onBuy = onBuyGemPack,
+            onRetry = onOpenGemStore,
+            onDismiss = {
+                showGemStore = false
+                onDismissGemPurchaseOutcome()
+            },
         )
     }
 }
@@ -443,6 +473,7 @@ private fun AppTopBar(
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenLives: () -> Unit,
+    onOpenGemStore: () -> Unit,
 ) {
     TopAppBar(
         title = { Text(destinationTitle(destination)) },
@@ -454,7 +485,9 @@ private fun AppTopBar(
             }
         },
         actions = {
-            if (destination.showsEconomy()) EconomyBar(economy = economy, onOpenLives = onOpenLives)
+            if (destination.showsEconomy()) {
+                EconomyBar(economy = economy, onOpenLives = onOpenLives, onOpenGemStore = onOpenGemStore)
+            }
             if (destination in primaryDestinations) {
                 IconButton(onClick = onOpenSettings) {
                     Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings))

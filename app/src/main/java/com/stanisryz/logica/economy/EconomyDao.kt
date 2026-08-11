@@ -52,6 +52,31 @@ internal sealed interface EconomyRewardedLife {
     ) : EconomyRewardedLife
 }
 
+/** The outcome of crediting one RuStore purchase. Money already changed hands in every case. */
+internal sealed interface EconomyGemPurchase {
+    val economy: PlayerEconomy
+
+    /** The purchase reached the ledger for the first time and [pack] worth of gems were added. */
+    data class Granted(
+        override val economy: PlayerEconomy,
+        val pack: GemPack,
+    ) : EconomyGemPurchase
+
+    /**
+     * This purchase ID already moved through the ledger, so nothing was added. It is the normal
+     * result of reconciling a purchase that was credited before the process died.
+     */
+    data class AlreadyGranted(
+        override val economy: PlayerEconomy,
+    ) : EconomyGemPurchase
+
+    /** The store sold a product this build has no reward for; zero gems, and nothing is inferred. */
+    data class UnsupportedProduct(
+        override val economy: PlayerEconomy,
+        val productId: String,
+    ) : EconomyGemPurchase
+}
+
 @Dao
 internal interface EconomyDao {
     // The wallet is a singleton row; `PlayerEconomyEntity.SINGLETON_ID` is that ID.
@@ -130,5 +155,32 @@ internal interface EconomyDao {
         }
         upsert(effect.economy.toEntity(nowEpochMillis))
         return EconomyRewardedLife.Granted(effect.economy, lifeGranted = effect.event.lifeDelta > 0)
+    }
+
+    /**
+     * Credits one confirmed RuStore purchase. [productId] is checked against the local [GemPack]
+     * whitelist before anything else, so the gem amount is always this build's number rather than
+     * the store's. The ledger row keyed by [purchaseId] is the duplicate-protection boundary: the
+     * same payment reaching this method again — from a repeated callback, from reconciliation after
+     * a crash, or from a finalization retry — adds nothing. Lives are never touched by a purchase.
+     */
+    @Transaction
+    suspend fun grantPurchasedGems(
+        purchaseId: String,
+        productId: String,
+        nowEpochMillis: Long,
+    ): EconomyGemPurchase {
+        val current = find().toPlayerEconomy(nowEpochMillis).regenerated(nowEpochMillis)
+        val pack =
+            GemPack.forProductId(productId)
+                ?: return EconomyGemPurchase.UnsupportedProduct(current, productId)
+        val effect = current.purchasedGems(purchaseId, pack)
+        if (insertEvent(effect.event.toEntity(nowEpochMillis)) == -1L) {
+            // Whatever regeneration is due is still worth persisting; the gems already arrived.
+            upsert(current.toEntity(nowEpochMillis))
+            return EconomyGemPurchase.AlreadyGranted(current)
+        }
+        upsert(effect.economy.toEntity(nowEpochMillis))
+        return EconomyGemPurchase.Granted(effect.economy, pack)
     }
 }

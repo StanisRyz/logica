@@ -225,7 +225,6 @@
     <string name="word_attempt_bar_description">Отгадано за %1$d попыток: %2$d</string>
     <string name="close">Закрыть</string>
     <string name="economy_lives_short">%1$d/%2$d</string>
-    <string name="economy_resources_description">Жизни: %1$d из %2$d. Кристаллы: %3$d. Открыть сведения о жизнях.</string>
     <string name="economy_lives_title">Жизни</string>
     <string name="economy_lives_value">Жизни: %1$d из %2$d</string>
     <string name="economy_lives_full">Все жизни восстановлены.</string>
@@ -244,4 +243,18 @@
     <string name="economy_rewarded_ad_showing">Реклама открывается…</string>
     <string name="economy_rewarded_ad_unavailable">Реклама сейчас недоступна. Жизнь всё равно восстановится по таймеру.</string>
     <string name="economy_rewarded_ad_retry">Попробовать снова</string>
+    <string name="economy_lives_action_description">Жизни: %1$d из %2$d. Открыть сведения о жизнях.</string>
+    <string name="economy_gems_action_description">Кристаллы: %1$d. Открыть магазин кристаллов.</string>
+    <string name="economy_get_gems">Пополнить кристаллы</string>
+    <string name="gem_store_title">Магазин кристаллов</string>
+    <string name="gem_store_balance">Сейчас у вас %1$d кристаллов.</string>
+    <string name="gem_store_pack_gems">%1$d кристаллов</string>
+    <string name="gem_store_loading">Загружаем предложения…</string>
+    <string name="gem_store_purchasing">Оплата…</string>
+    <string name="gem_store_granted">+%1$d кристаллов</string>
+    <string name="gem_store_processing">Платёж обрабатывается. Кристаллы придут, как только он завершится.</string>
+    <string name="gem_store_cancelled">Покупка отменена.</string>
+    <string name="gem_store_failed">Не удалось завершить покупку.</string>
+    <string name="gem_store_unavailable">Магазин сейчас недоступен. Кристаллы по-прежнему можно получить за решённые головоломки.</string>
+    <string name="gem_store_retry">Обновить</string>
 </resources>
