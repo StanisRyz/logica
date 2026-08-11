@@ -7,6 +7,10 @@ downloaded at runtime. It is the fourth Catalog game, with EASY, MEDIUM, HARD, a
 independent save/restore, onboarding, economy/results, and Profile statistics. Sudoku remains outside
 the three-game Daily challenge until the later five-game Daily stage.
 
+2048 is currently a standalone Stage 36 gameplay slice with a deterministic pure-Kotlin engine,
+session codec, and Compose board. It is not yet a Catalog game and has no Room, results, economy,
+statistics, Daily, or production-navigation integration; those are deferred to Stage 37.
+
 Requires JDK 17 and Android SDK Platform 36.
 
 Crowns, the second puzzle type, now has a pure-Kotlin domain model, deterministic solving and generation, solve-based difficulty evaluation, and unique/multiple-solution detection in `puzzle-core/`.
@@ -69,7 +73,7 @@ the tutorials, and gameplay open on top of them with normal Back navigation.
 Modules:
 
 - `app/` — Android/Compose application shell, navigation, theme, and settings.
-- `puzzle-core/` — deterministic Balance, Crowns, Word, and Sudoku domain/gameplay code and diagnostics.
+- `puzzle-core/` — deterministic Balance, Crowns, Word, Sudoku, and standalone 2048 domain/gameplay code and diagnostics.
 - `lexicon/word/` — curated offline Word corpus sources and their provenance note.
 
 Balance is playable from the Game tab's catalog with optional interactive onboarding, selectable difficulties, conflicts, hints, and improved accessibility cues.

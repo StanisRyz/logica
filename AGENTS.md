@@ -55,10 +55,10 @@
 - `WordLexiconV2` is generated offline from pinned local `pymorphy3`/`pymorphy3-dicts-ru` dictionary entries, pinned Russian `wordfreq` ranking, and project allow/block files; Android bundles generated data and has no Python or runtime morphology dependency.
 - Word V2 difficulty is word-length-only; morphology provides broad noun guesses, `wordfreq` ranks answer commonness without misusing pymorphy parse confidence, and every difficulty keeps at least 500 possible answers.
 - `WordSessionCodecV1` persists only the current input and submitted words; feedback is always recomputed from the regenerated answer, which stays the single source of truth.
-- A Word game is terminal on `SOLVED` and on `FAILED`; both produce exactly one durable `GameResult` and both complete the Word Daily entry.
-- Results carry typed `GameOutcome` plus nullable `attemptsUsed`; Balance/Crowns are always `SOLVED` with a null attempt count, and Word records `1..6`.
+- A Word game is terminal on `SOLVED` and on `FAILED`; both produce exactly one durable `GameResult`, but only `SOLVED` completes its Daily entry.
+- Results carry typed `GameOutcome` plus nullable `attemptsUsed`; Balance, Crowns, and Sudoku may be `SOLVED` or `FAILED` with a null attempt count, while Word records `1..6`.
 - Room v5 adds `outcome` and `attempts_used` to `game_results`; `MIGRATION_4_5` backfills historical results to `SOLVED` with a null attempt count and preserves everything else.
-- Daily lifecycle tracks participation, not success: a `FAILED` Word entry completes like a solved one, so a Daily run still reaches `3/3` and the streak stays valid.
+- Daily completion tracks success: only `SOLVED` entries advance a run or its streak, while `FAILED` attempts remain durable results.
 - Daily policies are immutable: V1 is Balance, V2 adds Crowns, V3 adds Word Medium/Generator V1, and V4 changes only Word to Medium/Generator V2; new runs use V4 and persisted runs keep their original version.
 - The six `BALANCE|CROWNS|WORD` × `CATALOG|DAILY` sessions plus `SUDOKU/CATALOG` coexist independently; creating, restoring, corrupting, or completing one never touches another.
 - Change shared puzzle abstractions only when multiple concrete puzzle implementations prove the need.
@@ -144,4 +144,8 @@
 - Sudoku Pencil candidates are per-cell 9-bit masks on empty editable cells only; a given, correct entry, or hint confirmation removes its digit from row/column/block peers, while incorrect entries never do.
 - Sudoku hints deterministically apply Naked Single, then Hidden Single by row/column/block, then a lowest-index safe reveal; a hint confirms one correct value and never costs a mistake.
 - Sudoku Session Codec V1 stores puzzle identity, player values, candidate masks, mistake events, and hint count only; givens, solution, and derived correct/incorrect flags are rebuilt from Dataset V1.
-- Stage 34 is a standalone gameplay/Compose-preview slice; production `PuzzleType`, Game Hub, persistence, Daily, economy, statistics, sharing, and navigation integration remain Stage 35 work.
+- 2048 Stage 36 is a standalone pure-core and Compose gameplay slice; production `PuzzleType`, Game Hub, Room/results, economy, statistics, Daily, sharing, and navigation integration remain Stage 37 work.
+- `Game2048GeneratorVersion.V1` is frozen: it uses unsigned SplitMix64 finalization with `base = seed + 0x9e3779b97f4a7c15 * (spawnIndex + 1)`, position sample `mix(base)`, and value sample `mix(base + 0xd1b54a32d192ed03)`; row-major empty selection reduces the position sample modulo the empty count, and value modulo 10 yields `4` only for zero and `2` otherwise.
+- 2048 starts with spawns 0 and 1, then every valid non-winning move consumes exactly one seed-plus-spawn-index sample; invalid and terminal moves are no-ops, and a target-producing move ends before spawning.
+- 2048 uses one classic compact/merge primitive in all four directions, scores the value of every merged tile, targets 256/512/1024/2048 for EASY/MEDIUM/HARD/EXPERT, solves at the target, and fails only when no legal move remains.
+- `Game2048SessionCodecV1` stores puzzle identity, the 16-cell board, score, and `nextSpawnIndex`; restored status and all future spawns are derived deterministically, and same-puzzle Retry recreates the original two tiles.

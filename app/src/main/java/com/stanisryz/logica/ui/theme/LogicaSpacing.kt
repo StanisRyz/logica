@@ -36,4 +36,10 @@ object LogicaSpacing {
 
     /** Between sibling actions in an action row. */
     val action = 12.dp
+
+    /** Padding around a puzzle board's cells. */
+    val boardPadding = 8.dp
+
+    /** Gap between cells inside a puzzle board. */
+    val boardGap = 8.dp
 }

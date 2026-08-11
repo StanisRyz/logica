@@ -294,4 +294,20 @@
     <string name="sudoku_dataset_corrupt">Встроенный набор судоку повреждён.</string>
     <string name="sudoku_puzzle_missing">Это судоку не найдено во встроенном наборе.</string>
     <string name="sudoku_session_invalid">Сохранённую попытку судоку не удалось открыть.</string>
+    <string name="game_2048_title">2048</string>
+    <string name="game_2048_target">Цель</string>
+    <string name="game_2048_score">Счёт</string>
+    <string name="game_2048_swipe_help">Смахивайте по полю, чтобы объединять одинаковые плитки.</string>
+    <string name="game_2048_board_description">Поле 2048. Доступны действия движения в четырёх направлениях.</string>
+    <string name="game_2048_move_left">Поле 2048: сдвинуть влево</string>
+    <string name="game_2048_move_right">Поле 2048: сдвинуть вправо</string>
+    <string name="game_2048_move_up">Поле 2048: сдвинуть вверх</string>
+    <string name="game_2048_move_down">Поле 2048: сдвинуть вниз</string>
+    <string name="game_2048_tile_description">Строка %1$d, столбец %2$d. Плитка %3$d.</string>
+    <string name="game_2048_empty_cell_description">Строка %1$d, столбец %2$d. Пустая клетка.</string>
+    <string name="game_2048_solved_title">Цель достигнута</string>
+    <string name="game_2048_solved_body">Собрана плитка %1$d.</string>
+    <string name="game_2048_failed_title">Ходов больше нет</string>
+    <string name="game_2048_failed_body">Максимальная плитка: %1$d.</string>
+    <string name="game_2048_final_score">Итоговый счёт: %1$d</string>
 </resources>
