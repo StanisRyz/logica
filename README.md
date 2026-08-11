@@ -12,8 +12,8 @@ the Daily challenge.
 playing until no move is left, and the final score decides victory or defeat. Games saved under the
 earlier target-tile rules (256/512/1024/2048, won the moment the tile appears) keep playing by those
 rules. Deterministic spawning and all other rules are identical in both. It has independent
-save/restore, onboarding, results/economy, and Profile statistics, and it is also part of the Daily
-challenge.
+save/restore, animated tile movement, merges and spawning, onboarding, results/economy, and Profile
+statistics, and it is also part of the Daily challenge.
 
 Requires JDK 17 and Android SDK Platform 36.
 

@@ -5,6 +5,7 @@ import com.stanisryz.logica.economy.EconomyRefill
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.EconomyRewardedLife
 import com.stanisryz.logica.economy.PlayerEconomy
+import com.stanisryz.logica.puzzle.core.game2048.EncodedGame2048Session
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Direction
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Engine
 import com.stanisryz.logica.puzzle.core.game2048.Game2048GeneratorVersion
@@ -72,6 +73,7 @@ class Game2048CatalogIntegrationTest {
             repeat(8) {
                 val direction = validDirection(gameEngine, uninterrupted)
                 original.move(direction)
+                original.finishCurrentMotion()
                 uninterrupted = original.ready().game
             }
             val saved = requireNotNull(sessions.readActiveSession(PuzzleType.GAME_2048, GameSessionScope.CATALOG))
@@ -86,6 +88,7 @@ class Game2048CatalogIntegrationTest {
             val expectedNext = gameEngine.move(uninterrupted, nextDirection)
             restoredViewModel.move(nextDirection)
             assertEquals(expectedNext, restoredViewModel.ready().game)
+            restoredViewModel.finishCurrentMotion()
             assertNotNull(sessions.readActiveSession(PuzzleType.BALANCE, GameSessionScope.CATALOG))
 
             economy.wallet.value = PlayerEconomy(lives = 0, nextLifeAtEpochMillis = 1_000L)
@@ -105,6 +108,58 @@ class Game2048CatalogIntegrationTest {
             val blockedStart = viewModel(Game2048Launch.New(Difficulty.EASY, PuzzleSeed(99L)), sessions, economy)
             assertEquals(Game2048GameError.NO_LIVES, blockedStart.awaitError().reason)
             assertNull(sessions.readActiveSession(PuzzleType.GAME_2048, GameSessionScope.CATALOG))
+        }
+
+    @Test
+    fun `valid move exposes transient trace and persists its authoritative final state`() =
+        runBlocking {
+            val puzzleId = Game2048PuzzleId(SEED, Difficulty.MEDIUM, Game2048GeneratorVersion.V2)
+            val gameEngine = Game2048Engine(puzzleId)
+            val initial = gameEngine.start()
+            val sessions = FakeSessions(saved("motion", initial))
+            val viewModel = viewModel(Game2048Launch.Restore(), sessions, MutableEconomy())
+            assertNull(viewModel.awaitReady().motionEvent)
+
+            val direction = validDirection(gameEngine, initial)
+            val expected = gameEngine.moveWithTrace(initial, direction)
+            viewModel.move(direction)
+            val moving = viewModel.ready()
+            val event = requireNotNull(moving.motionEvent)
+            assertEquals(expected.state, moving.game)
+            assertEquals(expected.trace, event.trace)
+            val persisted = requireNotNull(sessions.readActiveSession(PuzzleType.GAME_2048, GameSessionScope.CATALOG))
+            assertEquals(
+                expected.state,
+                Game2048SessionCodecV1.decode(
+                    EncodedGame2048Session(
+                        persisted.sessionFormatVersion,
+                        persisted.gameplayPayload,
+                    ),
+                ),
+            )
+            viewModel.finishMotion(event.revision)
+            assertNull(viewModel.ready().motionEvent)
+        }
+
+    @Test
+    fun `no op move exposes no motion event and writes nothing`() =
+        runBlocking {
+            val puzzleId = Game2048PuzzleId(SEED, Difficulty.MEDIUM, Game2048GeneratorVersion.V2)
+            val gameEngine = Game2048Engine(puzzleId)
+            val aligned =
+                gameEngine.restore(
+                    board = listOf(2, 0, 0, 0, 4, 0, 0, 0) + List(8) { 0 },
+                    score = 12L,
+                    nextSpawnIndex = 9L,
+                )
+            val noOpSessions = FakeSessions(saved("no-op", aligned))
+            val noOpViewModel = viewModel(Game2048Launch.Restore(), noOpSessions, MutableEconomy())
+            val writesBefore = noOpSessions.updateCount
+            noOpViewModel.awaitReady()
+            noOpViewModel.move(Game2048Direction.LEFT)
+            assertEquals(aligned, noOpViewModel.ready().game)
+            assertNull(noOpViewModel.ready().motionEvent)
+            assertEquals(writesBefore, noOpSessions.updateCount)
         }
 
     /**
@@ -237,6 +292,10 @@ class Game2048CatalogIntegrationTest {
         uiState.first { it !is Game2048UiState.Loading } as Game2048UiState.Error
 
     private fun Game2048ViewModel.ready(): Game2048UiState.Ready = uiState.value as Game2048UiState.Ready
+
+    private fun Game2048ViewModel.finishCurrentMotion() {
+        ready().motionEvent?.revision?.let(::finishMotion)
+    }
 
     private fun validDirection(
         engine: Game2048Engine,

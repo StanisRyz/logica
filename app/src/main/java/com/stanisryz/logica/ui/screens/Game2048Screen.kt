@@ -14,9 +14,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
@@ -86,6 +84,7 @@ internal fun Game2048Route(
         economy = economy,
         isDaily = launch.context is Game2048GameContext.Daily,
         onMove = gameViewModel::move,
+        onMotionFinished = gameViewModel::finishMotion,
         onRetry = gameViewModel::retry,
         onRetryCompletion = gameViewModel::retryCompletion,
         onBack = onBack,
@@ -103,6 +102,7 @@ private fun Game2048Screen(
     economy: PlayerEconomy,
     isDaily: Boolean,
     onMove: (Game2048Direction) -> Unit,
+    onMotionFinished: (Long) -> Unit,
     onRetry: () -> Unit,
     onRetryCompletion: () -> Unit,
     onBack: () -> Unit,
@@ -129,6 +129,7 @@ private fun Game2048Screen(
                 economy = economy,
                 isDaily = isDaily,
                 onMove = onMove,
+                onMotionFinished = onMotionFinished,
                 onRetry = onRetry,
                 onRetryCompletion = onRetryCompletion,
                 onGameHub = onGameHub,
@@ -145,6 +146,7 @@ private fun Game2048ReadyState(
     economy: PlayerEconomy,
     isDaily: Boolean,
     onMove: (Game2048Direction) -> Unit,
+    onMotionFinished: (Long) -> Unit,
     onRetry: () -> Unit,
     onRetryCompletion: () -> Unit,
     onGameHub: () -> Unit,
@@ -153,17 +155,12 @@ private fun Game2048ReadyState(
     modifier: Modifier,
 ) {
     val game = uiState.game
+    val motionEvent = uiState.motionEvent
     val view = LocalView.current
-    var previousGame by remember(game.puzzleId) { mutableStateOf(game) }
-    LaunchedEffect(game) {
-        if (hapticsEnabled && game != previousGame) {
-            when {
-                game.status == Game2048Status.SOLVED -> view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                game.status == Game2048Status.FAILED -> view.performHapticFeedback(HapticFeedbackConstants.REJECT)
-                game.board != previousGame.board -> view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-            }
+    LaunchedEffect(motionEvent?.revision) {
+        if (hapticsEnabled && motionEvent != null && !game.status.isTerminal) {
+            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
         }
-        previousGame = game
     }
 
     ScreenColumn(
@@ -184,7 +181,20 @@ private fun Game2048ReadyState(
         ZeroLivesCard(economy, onRestoreLife)
         Game2048Board(
             game = game,
+            motionEvent = motionEvent,
             onMove = onMove,
+            onMotionFinished = { revision ->
+                if (hapticsEnabled && game.status.isTerminal) {
+                    view.performHapticFeedback(
+                        if (game.status == Game2048Status.SOLVED) {
+                            HapticFeedbackConstants.CONFIRM
+                        } else {
+                            HapticFeedbackConstants.REJECT
+                        },
+                    )
+                }
+                onMotionFinished(revision)
+            },
             inputEnabled = economy.isGameplayAllowed,
         )
         Text(
@@ -193,7 +203,7 @@ private fun Game2048ReadyState(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
-    if (game.status.isTerminal) {
+    if (game.status.isTerminal && motionEvent == null) {
         Game2048TerminalDialog(
             game = game,
             completionPersistence = uiState.completionPersistence,
@@ -324,6 +334,7 @@ private fun Game2048Preview() {
             economy = PlayerEconomy(),
             isDaily = false,
             onMove = {},
+            onMotionFinished = {},
             onRetry = {},
             onRetryCompletion = {},
             onBack = {},

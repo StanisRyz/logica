@@ -10,6 +10,7 @@ import com.stanisryz.logica.puzzle.core.game2048.EncodedGame2048Session
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Direction
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Engine
 import com.stanisryz.logica.puzzle.core.game2048.Game2048GeneratorVersion
+import com.stanisryz.logica.puzzle.core.game2048.Game2048MoveTrace
 import com.stanisryz.logica.puzzle.core.game2048.Game2048PuzzleId
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Ruleset
 import com.stanisryz.logica.puzzle.core.game2048.Game2048SessionCodecV1
@@ -87,6 +88,7 @@ internal sealed interface Game2048UiState {
 
     data class Ready(
         val game: Game2048State,
+        val motionEvent: Game2048MotionEvent? = null,
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
     ) : Game2048UiState
 
@@ -94,6 +96,12 @@ internal sealed interface Game2048UiState {
         val reason: Game2048GameError,
     ) : Game2048UiState
 }
+
+/** One transient delivery of a deterministic core trace; it is never written to a game session. */
+internal data class Game2048MotionEvent(
+    val revision: Long,
+    val trace: Game2048MoveTrace,
+)
 
 internal enum class Game2048GameError {
     MISSING_SAVED_SESSION,
@@ -126,6 +134,7 @@ internal class Game2048ViewModel(
     private var engine: Game2048Engine? = null
     private var activeSession: ActiveSession? = null
     private var completionJob: Job? = null
+    private var nextMotionRevision = 0L
 
     init {
         viewModelScope.launch {
@@ -153,10 +162,23 @@ internal class Game2048ViewModel(
     fun move(direction: Game2048Direction) {
         if (!economy.value.isGameplayAllowed) return
         val current = mutableUiState.value as? Game2048UiState.Ready ?: return
-        val updated = engine?.move(current.game, direction) ?: return
-        if (updated == current.game) return
-        mutableUiState.value = current.copy(game = updated)
-        persist(updated)
+        if (current.motionEvent != null) return
+        val transition = engine?.moveWithTrace(current.game, direction) ?: return
+        val trace = transition.trace ?: return
+        nextMotionRevision += 1L
+        mutableUiState.value =
+            current.copy(
+                game = transition.state,
+                motionEvent = Game2048MotionEvent(nextMotionRevision, trace),
+            )
+        persist(transition.state)
+    }
+
+    fun finishMotion(revision: Long) {
+        val current = mutableUiState.value as? Game2048UiState.Ready ?: return
+        if (current.motionEvent?.revision == revision) {
+            mutableUiState.value = current.copy(motionEvent = null)
+        }
     }
 
     fun retry() {
