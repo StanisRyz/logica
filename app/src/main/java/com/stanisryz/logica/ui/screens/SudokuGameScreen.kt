@@ -280,6 +280,9 @@ private fun SudokuReadyState(
             hintsUsed = game.hintsUsed,
             maxMistakes = SudokuGameState.MAX_MISTAKES,
             lives = economy.lives,
+            difficulty =
+                uiState.puzzle.id.difficulty
+                    .toDifficulty(),
             isRetryAllowed = economy.isGameplayAllowed,
             isDaily = false,
             onRetryCompletion = onRetryCompletion,

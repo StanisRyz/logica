@@ -1,5 +1,7 @@
 package com.stanisryz.logica.economy
 
+import com.stanisryz.logica.puzzle.core.model.Difficulty
+
 /** Why the wallet changed. The ledger and the wallet do not change shape for a new source. */
 internal enum class EconomyEventType {
     SOLVED_REWARD,
@@ -56,9 +58,13 @@ internal data class EconomyEffect(
     val event: EconomyEvent,
 )
 
-internal fun PlayerEconomy.solvedReward(resultId: String): EconomyEffect =
+/** The gem reward is derived from the completed difficulty, never from the puzzle type or scope. */
+internal fun PlayerEconomy.solvedReward(
+    resultId: String,
+    difficulty: Difficulty,
+): EconomyEffect =
     effect(
-        updated = withGemsGranted(EconomyRules.SOLVED_GEM_REWARD),
+        updated = withGemsGranted(EconomyRules.solvedGemReward(difficulty)),
         eventId = EconomyEvent.resultEventId(resultId),
         type = EconomyEventType.SOLVED_REWARD,
         sourceId = resultId,

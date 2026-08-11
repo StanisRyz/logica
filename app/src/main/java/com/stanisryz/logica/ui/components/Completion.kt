@@ -26,6 +26,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.R
+import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
@@ -75,6 +76,7 @@ internal fun PuzzleTerminalDialog(
     hintsUsed: Int,
     maxMistakes: Int,
     lives: Int,
+    difficulty: Difficulty,
     isRetryAllowed: Boolean,
     isDaily: Boolean,
     onRetryCompletion: () -> Unit,
@@ -121,7 +123,9 @@ internal fun PuzzleTerminalDialog(
                         else -> stringResource(R.string.puzzle_failed_body, maxMistakes)
                     },
                 )
-                if (isSaved) EconomyResultFeedback(isSolved = isSolved, lives = lives)
+                if (isSaved) {
+                    EconomyResultFeedback(isSolved = isSolved, lives = lives, difficulty = difficulty)
+                }
             }
         },
         confirmButton = {

@@ -103,7 +103,7 @@ internal fun Difficulty.wordDifficultyResource(): Int =
         Difficulty.EXPERT -> R.string.word_difficulty_expert
     }
 
-/** 2048 difficulty changes only the target tile, so the target is part of every label. */
+/** 2048 difficulty changes only the score goal of a new game, so the goal is part of every label. */
 internal fun Difficulty.game2048DifficultyResource(): Int =
     when (this) {
         Difficulty.EASY -> R.string.game_2048_difficulty_easy

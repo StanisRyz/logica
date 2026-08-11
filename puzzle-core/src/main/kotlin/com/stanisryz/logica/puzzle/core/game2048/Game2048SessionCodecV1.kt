@@ -8,12 +8,18 @@ data class EncodedGame2048Session(
     val payload: String,
 )
 
-/** Stores only identity, board, score, and spawn progression; status is derived when restored. */
+/**
+ * Stores only identity — including the rules version — board, score, and spawn progression; status
+ * is derived from the persisted version when the session is restored. That payload is everything
+ * both V1 and V2 need, so the serialized format stays at version 1 across the rules change.
+ */
 object Game2048SessionCodecV1 {
     const val FORMAT_VERSION = 1
 
     fun encode(state: Game2048State): EncodedGame2048Session {
-        require(state.puzzleId.generatorVersion == Game2048GeneratorVersion.V1)
+        require(Game2048Ruleset.isSupported(state.puzzleId.generatorVersion)) {
+            "Unsupported 2048 generator version: ${state.puzzleId.generatorVersion.value}."
+        }
         require(state.nextSpawnIndex >= INITIAL_SPAWN_COUNT) {
             "Saved 2048 spawn index predates the two initial spawns."
         }
@@ -56,7 +62,7 @@ object Game2048SessionCodecV1 {
             runCatching { Difficulty.valueOf(identity[1]) }
                 .getOrElse { error("Saved 2048 difficulty is invalid.") }
         val generatorVersion = identity[2].toIntOrNull() ?: error("Saved 2048 generator version is invalid.")
-        require(generatorVersion == Game2048GeneratorVersion.V1.value) {
+        require(generatorVersion > 0 && Game2048Ruleset.isSupported(Game2048GeneratorVersion(generatorVersion))) {
             "Saved 2048 generator version is unsupported."
         }
         val boardParts = lines[1].requiredValue("board").split(',')

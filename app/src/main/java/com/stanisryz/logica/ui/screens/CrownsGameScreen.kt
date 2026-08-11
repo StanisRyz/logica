@@ -263,6 +263,7 @@ private fun CrownsReadyState(
             hintsUsed = game.hintsUsed,
             maxMistakes = PuzzleMistakes.MAX_MISTAKES,
             lives = economy.lives,
+            difficulty = difficulty,
             isRetryAllowed = economy.isGameplayAllowed,
             isDaily = isDaily,
             onRetryCompletion = onRetryCompletion,

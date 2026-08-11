@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -37,6 +38,7 @@ import com.stanisryz.logica.ads.RewardedAdState
 import com.stanisryz.logica.economy.EconomyClock
 import com.stanisryz.logica.economy.EconomyRules
 import com.stanisryz.logica.economy.PlayerEconomy
+import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import kotlinx.coroutines.delay
 import java.util.Locale
@@ -258,12 +260,14 @@ internal fun ZeroLivesCard(
 
 /**
  * What one finished attempt did to the wallet. It is only ever rendered once the Room transaction
- * that persisted the result reported success.
+ * that persisted the result reported success, and it reports the same difficulty-based reward the
+ * transaction applied.
  */
 @Composable
 internal fun EconomyResultFeedback(
     isSolved: Boolean,
     lives: Int,
+    difficulty: Difficulty,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -276,10 +280,11 @@ internal fun EconomyResultFeedback(
             contentDescription = null,
             modifier = Modifier.size(ICON_SIZE),
         )
+        val reward = EconomyRules.solvedGemReward(difficulty)
         Text(
             text =
                 if (isSolved) {
-                    stringResource(R.string.economy_reward_gem, EconomyRules.SOLVED_GEM_REWARD)
+                    pluralStringResource(R.plurals.economy_reward_gems, reward, reward)
                 } else {
                     stringResource(R.string.economy_penalty_life, lives, EconomyRules.MAX_LIVES)
                 },

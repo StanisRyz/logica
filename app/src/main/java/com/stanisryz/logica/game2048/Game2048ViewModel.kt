@@ -10,6 +10,7 @@ import com.stanisryz.logica.puzzle.core.game2048.Game2048Direction
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Engine
 import com.stanisryz.logica.puzzle.core.game2048.Game2048GeneratorVersion
 import com.stanisryz.logica.puzzle.core.game2048.Game2048PuzzleId
+import com.stanisryz.logica.puzzle.core.game2048.Game2048Ruleset
 import com.stanisryz.logica.puzzle.core.game2048.Game2048SessionCodecV1
 import com.stanisryz.logica.puzzle.core.game2048.Game2048State
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Status
@@ -35,10 +36,11 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 internal sealed interface Game2048Launch {
+    /** A brand-new attempt: selected difficulty, fresh seed, and the current rules version. */
     data class New(
         val difficulty: Difficulty,
         val seed: PuzzleSeed,
-        val generatorVersion: GeneratorVersion = GENERATOR_VERSION,
+        val generatorVersion: GeneratorVersion = NEW_GAME_VERSION,
     ) : Game2048Launch
 
     data class Restore(
@@ -46,7 +48,8 @@ internal sealed interface Game2048Launch {
     ) : Game2048Launch
 
     companion object {
-        val GENERATOR_VERSION = GeneratorVersion(Game2048GeneratorVersion.V1.value)
+        /** New games are V2 (score targets); persisted V1 attempts keep playing as V1. */
+        val NEW_GAME_VERSION = GeneratorVersion(Game2048GeneratorVersion.V2.value)
     }
 }
 
@@ -69,7 +72,10 @@ internal enum class Game2048GameError {
     NO_LIVES,
 }
 
-/** Production Catalog lifecycle around the frozen Stage 36 engine. */
+/**
+ * Production Catalog lifecycle around the deterministic engine. New games are created as V2; a
+ * restored game plays under the rules version that was persisted with it.
+ */
 internal class Game2048ViewModel(
     private val launch: Game2048Launch,
     private val sessionRepository: GameSessionRepository,
@@ -146,12 +152,11 @@ internal class Game2048ViewModel(
         when (val requested = launch) {
             is Game2048Launch.New -> {
                 if (!economyRepository.refresh().isGameplayAllowed) throw NoLivesException()
-                require(requested.generatorVersion == Game2048Launch.GENERATOR_VERSION)
                 val puzzleId =
                     Game2048PuzzleId(
                         seed = requested.seed,
                         difficulty = requested.difficulty,
-                        generatorVersion = Game2048GeneratorVersion.V1,
+                        generatorVersion = requested.generatorVersion.toGame2048Version(),
                     )
                 val gameEngine = Game2048Engine(puzzleId)
                 val game = gameEngine.start()
@@ -201,11 +206,16 @@ internal class Game2048ViewModel(
         }
     }
 
+    /**
+     * A saved attempt is restored under the rules version it was persisted with, so an existing V1
+     * game keeps its target-tile contract and is never silently converted to V2.
+     */
     private fun SavedGameSession.hasRequestedIdentity(requested: Game2048Launch.Restore): Boolean =
         puzzleType == PuzzleType.GAME_2048 &&
             sessionScope == GameSessionScope.CATALOG &&
             dailyIdentity == null &&
-            generatorVersion == Game2048Launch.GENERATOR_VERSION &&
+            generatorVersion.value > 0 &&
+            Game2048Ruleset.isSupported(Game2048GeneratorVersion(generatorVersion.value)) &&
             (requested.expectedPuzzleId == null || toGame2048PuzzleId() == requested.expectedPuzzleId)
 
     private fun SavedGameSession.toGame2048PuzzleId(): Game2048PuzzleId =
@@ -214,6 +224,12 @@ internal class Game2048ViewModel(
             difficulty = difficulty,
             generatorVersion = Game2048GeneratorVersion(generatorVersion.value),
         )
+
+    private fun GeneratorVersion.toGame2048Version(): Game2048GeneratorVersion {
+        val version = Game2048GeneratorVersion(value)
+        require(Game2048Ruleset.isSupported(version)) { "Unsupported 2048 rules version: $value." }
+        return version
+    }
 
     private fun persist(game: Game2048State) {
         val session = activeSession ?: return

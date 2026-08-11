@@ -46,12 +46,15 @@ class EconomyRefillAndGateTest {
     @Test
     fun anUnaffordableOrPointlessRefillChangesNothing() =
         runBlocking {
-            val poor = FakeEconomyDao(PlayerEconomy(gems = 4, lives = 0, nextLifeAtEpochMillis = NOW + MINUTE))
+            // One gem short of the centralized price is still short, whatever that price is.
+            assertEquals(10, EconomyRules.LIFE_REFILL_GEM_COST)
+            val almost = EconomyRules.LIFE_REFILL_GEM_COST - 1
+            val poor = FakeEconomyDao(PlayerEconomy(gems = almost, lives = 0, nextLifeAtEpochMillis = NOW + MINUTE))
 
             val rejected = poor.refillLifeWithGems("action-1", NOW) as EconomyRefill.Rejected
 
             assertEquals(EconomyRefillRejection.NOT_ENOUGH_GEMS, rejected.reason)
-            assertEquals(4, poor.wallet(NOW).gems)
+            assertEquals(almost, poor.wallet(NOW).gems)
             assertEquals(0, poor.wallet(NOW).lives)
             assertEquals(0, poor.events.size)
 

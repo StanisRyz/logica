@@ -316,7 +316,12 @@ private fun WordTerminalCard(
                     style = MaterialTheme.typography.bodyMedium,
                 )
             // The wallet effect is only reported once the result is durably stored.
-            CompletionPersistence.Saved -> EconomyResultFeedback(isSolved = isSolved, lives = economy.lives)
+            CompletionPersistence.Saved ->
+                EconomyResultFeedback(
+                    isSolved = isSolved,
+                    lives = economy.lives,
+                    difficulty = puzzle.id.difficulty,
+                )
             else -> Unit
         }
 

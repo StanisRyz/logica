@@ -34,6 +34,7 @@ import com.stanisryz.logica.game2048.Game2048ViewModel
 import com.stanisryz.logica.game2048.Game2048ViewModelFactory
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Direction
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Engine
+import com.stanisryz.logica.puzzle.core.game2048.Game2048GeneratorVersion
 import com.stanisryz.logica.puzzle.core.game2048.Game2048PuzzleId
 import com.stanisryz.logica.puzzle.core.game2048.Game2048State
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Status
@@ -53,7 +54,7 @@ import com.stanisryz.logica.ui.components.PuzzleTitle
 import com.stanisryz.logica.ui.components.RetryableErrorState
 import com.stanisryz.logica.ui.components.ScreenColumn
 import com.stanisryz.logica.ui.components.ZeroLivesCard
-import com.stanisryz.logica.ui.components.difficultyLabel
+import com.stanisryz.logica.ui.components.russianLabel
 import com.stanisryz.logica.ui.game2048.Game2048Board
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
@@ -166,11 +167,13 @@ private fun Game2048ReadyState(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         PuzzleTitle(stringResource(R.string.game_2048_title), puzzleType = PuzzleType.GAME_2048)
-        DifficultyBadge(difficultyLabel(PuzzleType.GAME_2048, game.puzzleId.difficulty))
+        // The gameplay badge is the plain difficulty: what the goal actually is lives in the metrics
+        // below, because a V1 attempt targets a tile while a V2 attempt targets a score.
+        DifficultyBadge(game.puzzleId.difficulty.russianLabel())
         MetricGrid(
             listOf(
-                Metric(stringResource(R.string.game_2048_target), game.puzzleId.targetTile.toString()),
-                Metric(stringResource(R.string.game_2048_score), game.score.toString()),
+                Metric(stringResource(R.string.game_2048_target), game.targetMetricValue()),
+                Metric(stringResource(R.string.game_2048_score), formatGame2048Number(game.score)),
             ),
         )
         ZeroLivesCard(economy, onRestoreLife)
@@ -208,6 +211,8 @@ private fun Game2048TerminalDialog(
 ) {
     val solved = game.status == Game2048Status.SOLVED
     val isSaved = completionPersistence == CompletionPersistence.Saved
+    val targetScore = game.puzzleId.rules.targetScore
+    val targetTile = game.puzzleId.rules.targetTile
     AlertDialog(
         onDismissRequest = {},
         icon = {
@@ -223,16 +228,26 @@ private fun Game2048TerminalDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
                 Text(
-                    stringResource(
-                        if (solved) R.string.game_2048_solved_body else R.string.game_2048_failed_body,
-                        if (solved) game.puzzleId.targetTile else game.maximumTile,
-                    ),
+                    // A V2 attempt is judged on its final score; a restored V1 attempt still reports
+                    // the target tile it was actually playing for.
+                    if (targetScore != null) {
+                        stringResource(
+                            if (solved) R.string.game_2048_solved_body_score else R.string.game_2048_failed_body_score,
+                            formatGame2048Number(targetScore),
+                        )
+                    } else {
+                        stringResource(
+                            if (solved) R.string.game_2048_solved_body else R.string.game_2048_failed_body,
+                            if (solved) requireNotNull(targetTile) else game.maximumTile,
+                        )
+                    },
                 )
-                Text(stringResource(R.string.game_2048_final_score, game.score))
+                Text(stringResource(R.string.game_2048_final_score, formatGame2048Number(game.score)))
                 when (completionPersistence) {
                     CompletionPersistence.Error -> Text(stringResource(R.string.completion_save_error_body))
                     CompletionPersistence.Saving -> Text(stringResource(R.string.saving_completion))
-                    CompletionPersistence.Saved -> EconomyResultFeedback(solved, economy.lives)
+                    CompletionPersistence.Saved ->
+                        EconomyResultFeedback(solved, economy.lives, game.puzzleId.difficulty)
                     CompletionPersistence.NotRequired -> Unit
                 }
             }
@@ -254,6 +269,26 @@ private fun Game2048TerminalDialog(
     )
 }
 
+/**
+ * The goal tile for a restored V1 attempt, or the V2 score target. Once a V2 target is reached the
+ * value is marked as met, which is informational only: the game keeps running until the last move.
+ */
+@Composable
+private fun Game2048State.targetMetricValue(): String {
+    val targetScore = puzzleId.rules.targetScore ?: return requireNotNull(puzzleId.rules.targetTile).toString()
+    val target = formatGame2048Number(targetScore)
+    return if (goalReached) stringResource(R.string.game_2048_target_reached, target) else target
+}
+
+/** Grouped thousands, so a six-digit score stays readable at a glance. */
+private fun formatGame2048Number(value: Long): String =
+    value
+        .toString()
+        .reversed()
+        .chunked(GROUP_SIZE)
+        .joinToString(GROUP_SEPARATOR)
+        .reversed()
+
 @Composable
 private fun Game2048GameError.message(): String =
     stringResource(
@@ -264,10 +299,13 @@ private fun Game2048GameError.message(): String =
         },
     )
 
+private const val GROUP_SIZE = 3
+private const val GROUP_SEPARATOR = "\u00A0"
+
 @Preview(name = "2048", widthDp = 360, heightDp = 760, showBackground = true)
 @Composable
 private fun Game2048Preview() {
-    val puzzleId = Game2048PuzzleId(PuzzleSeed(36L), Difficulty.MEDIUM)
+    val puzzleId = Game2048PuzzleId(PuzzleSeed(36L), Difficulty.MEDIUM, Game2048GeneratorVersion.V2)
     val engine = Game2048Engine(puzzleId)
     LogicaTheme(ThemeMode.LIGHT) {
         Game2048Screen(

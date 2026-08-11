@@ -7,6 +7,7 @@ import com.stanisryz.logica.economy.EconomyRewardedLife
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Direction
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Engine
+import com.stanisryz.logica.puzzle.core.game2048.Game2048GeneratorVersion
 import com.stanisryz.logica.puzzle.core.game2048.Game2048PuzzleId
 import com.stanisryz.logica.puzzle.core.game2048.Game2048SessionCodecV1
 import com.stanisryz.logica.puzzle.core.game2048.Game2048State
@@ -37,6 +38,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.time.Instant
@@ -60,10 +62,12 @@ class Game2048CatalogIntegrationTest {
         runBlocking {
             val sessions = FakeSessions(balanceSave())
             val economy = MutableEconomy()
-            val puzzleId = Game2048PuzzleId(SEED, Difficulty.MEDIUM)
+            // A new Catalog game is V2: selected difficulty, fresh seed, current rules version.
+            val puzzleId = Game2048PuzzleId(SEED, Difficulty.MEDIUM, Game2048GeneratorVersion.V2)
             val gameEngine = Game2048Engine(puzzleId)
             val original = viewModel(Game2048Launch.New(Difficulty.MEDIUM, SEED), sessions, economy)
             var uninterrupted = original.awaitReady().game
+            assertEquals(puzzleId, uninterrupted.puzzleId)
 
             repeat(8) {
                 val direction = validDirection(gameEngine, uninterrupted)
@@ -103,10 +107,14 @@ class Game2048CatalogIntegrationTest {
             assertNull(sessions.readActiveSession(PuzzleType.GAME_2048, GameSessionScope.CATALOG))
         }
 
+    /**
+     * A persisted V1 attempt keeps the target-tile contract it was created with: it restores as V1,
+     * it is already SOLVED at tile 256, and its Retry stays V1 on the same seed and difficulty.
+     */
     @Test
     fun `terminal outcomes persist before same puzzle retry starts a new session`() =
         runBlocking {
-            val puzzleId = Game2048PuzzleId(PuzzleSeed(37L), Difficulty.EASY)
+            val puzzleId = Game2048PuzzleId(PuzzleSeed(37L), Difficulty.EASY, Game2048GeneratorVersion.V1)
             val gameEngine = Game2048Engine(puzzleId)
             val solved = gameEngine.restore(listOf(256) + List(15) { 0 }, score = 512L, nextSpawnIndex = 12L)
             val sessions = FakeSessions(saved("attempt-1", solved))
@@ -121,6 +129,8 @@ class Game2048CatalogIntegrationTest {
                 )
 
             val terminal = viewModel.awaitReady()
+            assertEquals(Game2048GeneratorVersion.V1, terminal.game.puzzleId.generatorVersion)
+            assertEquals(Game2048Status.SOLVED, terminal.game.status)
             assertEquals(CompletionPersistence.Saved, terminal.completionPersistence)
             assertEquals(GameOutcome.SOLVED, completions.results.single().outcome)
             assertEquals(PuzzleType.GAME_2048, completions.results.single().puzzleType)
@@ -153,6 +163,59 @@ class Game2048CatalogIntegrationTest {
                 )
             assertEquals(CompletionPersistence.Saved, failedViewModel.awaitReady().completionPersistence)
             assertEquals(GameOutcome.FAILED, failedCompletions.results.single().outcome)
+        }
+
+    @Test
+    fun `a v2 attempt only completes when it runs out of moves and retries as v2`() =
+        runBlocking {
+            val puzzleId = Game2048PuzzleId(PuzzleSeed(38L), Difficulty.EASY, Game2048GeneratorVersion.V2)
+            val gameEngine = Game2048Engine(puzzleId)
+
+            // Past the goal with moves left: informational only, so no result is produced at all.
+            val past = gameEngine.restore(listOf(2, 4, 8, 16) + List(12) { 0 }, score = 20_000L, nextSpawnIndex = 40L)
+            assertEquals(Game2048Status.IN_PROGRESS, past.status)
+            assertTrue(past.goalReached)
+            val liveCompletions = RecordingCompletions(FakeSessions(saved("v2-live", past)))
+            val live =
+                Game2048ViewModel(
+                    Game2048Launch.Restore(),
+                    FakeSessions(saved("v2-live", past)),
+                    liveCompletions,
+                    MutableEconomy(),
+                )
+            assertEquals(CompletionPersistence.NotRequired, live.awaitReady().completionPersistence)
+            assertTrue(liveCompletions.results.isEmpty())
+
+            val deadBoard = listOf(2, 4, 2, 4, 4, 2, 4, 2, 2, 4, 2, 4, 4, 2, 4, 2)
+            val solved = gameEngine.restore(deadBoard, score = 12_000L, nextSpawnIndex = 60L)
+            assertEquals(Game2048Status.SOLVED, solved.status)
+            // The very same dead board one point short of the target is a defeat instead.
+            assertEquals(Game2048Status.FAILED, gameEngine.restore(deadBoard, 11_999L, 60L).status)
+
+            val sessions = FakeSessions(saved("v2-attempt-1", solved))
+            val completions = RecordingCompletions(sessions)
+            val viewModel =
+                Game2048ViewModel(
+                    launch = Game2048Launch.Restore(),
+                    sessionRepository = sessions,
+                    completionRepository = completions,
+                    economyRepository = MutableEconomy(),
+                    sessionIdFactory = { "v2-attempt-2" },
+                )
+
+            assertEquals(CompletionPersistence.Saved, viewModel.awaitReady().completionPersistence)
+            val result = completions.results.single()
+            assertEquals(GameOutcome.SOLVED, result.outcome)
+            assertEquals(Difficulty.EASY, result.difficulty)
+            assertEquals(V2_VERSION, result.generatorVersion)
+
+            viewModel.retry()
+            val retried = viewModel.ready().game
+            assertEquals(puzzleId, retried.puzzleId)
+            assertEquals(gameEngine.start(), retried)
+            val active = requireNotNull(sessions.readActiveSession(PuzzleType.GAME_2048, GameSessionScope.CATALOG))
+            assertEquals("v2-attempt-2", active.sessionId)
+            assertEquals(V2_VERSION, active.generatorVersion)
         }
 
     private fun viewModel(
@@ -277,6 +340,7 @@ class Game2048CatalogIntegrationTest {
 
     private companion object {
         val SEED = PuzzleSeed(0x2048_0037)
+        val V2_VERSION = GeneratorVersion(Game2048GeneratorVersion.V2.value)
 
         fun balanceSave() =
             SavedGameSession(

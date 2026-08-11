@@ -44,7 +44,9 @@ internal class FakeGameCompletionDao(
         private set
 
     init {
-        listOf(PuzzleType.BALANCE, PuzzleType.CROWNS, PuzzleType.SUDOKU, PuzzleType.GAME_2048).forEach { puzzleType ->
+        // Every production puzzle type gets a Catalog session, so the economy can be exercised for
+        // each of them without the transaction rejecting a result whose session is missing.
+        PRODUCTION_PUZZLE_TYPES.forEach { puzzleType ->
             sessions[puzzleType.name to GameSessionScope.CATALOG.name] =
                 GameSessionEntity(
                     puzzleType = puzzleType.name,
@@ -219,21 +221,44 @@ internal class FakeGameCompletionDao(
             )
     }
 
+    /**
+     * One Catalog attempt of [puzzleType]. Asking for a difficulty also retunes the seeded active
+     * session, because the completion transaction refuses a result its session does not match.
+     */
     fun catalogCompletion(
         puzzleType: PuzzleType,
         outcome: GameOutcome = GameOutcome.SOLVED,
-    ): GameCompletion =
-        GameCompletion(
+        difficulty: Difficulty = Difficulty.EASY,
+    ): GameCompletion {
+        val key = puzzleType.name to GameSessionScope.CATALOG.name
+        sessions[key]?.let { sessions[key] = it.copy(difficulty = difficulty.name) }
+        return GameCompletion(
             resultId = "catalog-$puzzleType",
             puzzleType = puzzleType,
-            difficulty = Difficulty.EASY,
+            difficulty = difficulty,
             puzzleSeed = PuzzleSeed(4242),
             generatorVersion = GeneratorVersion(1),
             sessionScope = GameSessionScope.CATALOG,
             hintsUsed = 0,
             outcome = outcome,
+            attemptsUsed = if (puzzleType == PuzzleType.WORD) WORD_ATTEMPTS else null,
         )
+    }
 
     fun challenge(result: GameResultEntity): DailyChallengeEntity =
         requireNotNull(challenges[requireNotNull(result.challengeDate) to result.puzzleType])
+
+    private companion object {
+        val PRODUCTION_PUZZLE_TYPES =
+            listOf(
+                PuzzleType.BALANCE,
+                PuzzleType.CROWNS,
+                PuzzleType.WORD,
+                PuzzleType.SUDOKU,
+                PuzzleType.GAME_2048,
+            )
+
+        /** Word is the only type that records attempts; the exact count is irrelevant to economy. */
+        const val WORD_ATTEMPTS = 3
+    }
 }

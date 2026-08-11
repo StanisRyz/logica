@@ -51,7 +51,8 @@ class Game2048DeterminismTest {
         assertRejected(encoded.copy(payload = encoded.payload.replace("spawn=${restored.nextSpawnIndex}", "spawn=-1")))
         assertRejected(encoded.copy(payload = encoded.payload.replace("score=${restored.score}", "score=-1")))
         assertRejected(encoded.copy(payload = encoded.payload.replaceFirst(Regex("board=[^,]+"), "board=3")))
-        assertRejected(encoded.copy(payload = encoded.payload.replace("|1\n", "|2\n")))
+        // V1 and V2 are both supported identities; anything beyond them is still refused.
+        assertRejected(encoded.copy(payload = encoded.payload.replace("|1\n", "|3\n")))
     }
 
     private fun assertRejected(encoded: EncodedGame2048Session) {

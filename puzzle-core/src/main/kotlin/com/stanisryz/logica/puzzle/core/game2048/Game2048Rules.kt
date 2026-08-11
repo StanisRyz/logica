@@ -70,6 +70,7 @@ object Game2048Rules {
         return false
     }
 
+    /** V1 terminal evaluation: the target tile wins immediately, a dead board loses. */
     fun status(
         board: List<Int>,
         targetTile: Int,
@@ -77,6 +78,21 @@ object Game2048Rules {
         when {
             board.any { it >= targetTile } -> Game2048Status.SOLVED
             hasLegalMove(board) -> Game2048Status.IN_PROGRESS
+            else -> Game2048Status.FAILED
+        }
+
+    /**
+     * V2 terminal evaluation: play continues while any legal move remains, however far past the
+     * target the score already is, and the final score alone decides victory or defeat.
+     */
+    fun scoreStatus(
+        board: List<Int>,
+        score: Long,
+        targetScore: Long,
+    ): Game2048Status =
+        when {
+            hasLegalMove(board) -> Game2048Status.IN_PROGRESS
+            score >= targetScore -> Game2048Status.SOLVED
             else -> Game2048Status.FAILED
         }
 

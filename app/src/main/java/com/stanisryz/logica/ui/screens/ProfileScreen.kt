@@ -37,7 +37,7 @@ import com.stanisryz.logica.ui.components.ScreenColumn
 import com.stanisryz.logica.ui.components.ScreenSection
 import com.stanisryz.logica.ui.components.SectionTitle
 import com.stanisryz.logica.ui.components.difficultyResource
-import com.stanisryz.logica.ui.components.game2048DifficultyResource
+import com.stanisryz.logica.ui.components.russianLabel
 import com.stanisryz.logica.ui.components.titleResource
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 
@@ -140,7 +140,8 @@ private fun Game2048StatisticsCard(statistics: Game2048Statistics) {
         LabelledValue(stringResource(R.string.game_2048_failed_count), statistics.failed.toString())
         Difficulty.entries.forEach { difficulty ->
             LabelledValue(
-                label = stringResource(difficulty.game2048DifficultyResource()),
+                // Plain difficulty: these counters span attempts played under both rules versions.
+                label = difficulty.russianLabel(),
                 value = statistics.solvedByDifficulty.getValue(difficulty).toString(),
             )
         }

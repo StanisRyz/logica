@@ -7,9 +7,12 @@ downloaded at runtime. It is the fourth Catalog game, with EASY, MEDIUM, HARD, a
 independent save/restore, onboarding, economy/results, and Profile statistics. Sudoku remains outside
 the three-game Daily challenge until the later five-game Daily stage.
 
-2048 is the fifth Catalog game. Its EASY, MEDIUM, HARD, and EXPERT difficulties target 256, 512,
-1024, and 2048 respectively, while deterministic spawning and all other rules stay identical. It has
-independent save/restore, onboarding, results/economy, and Profile statistics, and remains outside Daily.
+2048 is the fifth Catalog game. New games are scored: Легко, Средне, Сложно, and Эксперт ask for
+12 000, 30 000, 100 000, and 250 000 points. Reaching the goal does not end the game — you keep
+playing until no move is left, and the final score decides victory or defeat. Games saved under the
+earlier target-tile rules (256/512/1024/2048, won the moment the tile appears) keep playing by those
+rules. Deterministic spawning and all other rules are identical in both. It has independent
+save/restore, onboarding, results/economy, and Profile statistics, and remains outside Daily.
 
 Requires JDK 17 and Android SDK Platform 36.
 
@@ -90,11 +93,12 @@ attempts — and both are recorded.
 
 Completed games are persisted as durable results with a typed outcome and, for Word, the attempts used. The app reports core gameplay statistics and derives current and best Daily streaks from completed Daily history. Once a Daily run is fully completed, the Game tab offers a spoiler-free plain-text share of that run's per-puzzle results (each puzzle's solved result and, for Word, the attempts it took, never the Word answer), progress, and current streak through the standard Android Sharesheet.
 
-The app has an offline economy of gems and lives. You start with five lives and no gems: every solved
-attempt earns one gem, every failed attempt costs one life, and a missing life comes back on its own
-after 15 minutes (the countdown keeps running while the app is closed and never restarts when you
-lose another life). With no lives left you can still open and look at a saved puzzle, but playing,
-starting, and replaying wait until a life is available; five gems restore one life immediately.
+The app has an offline economy of gems and lives. You start with five lives and no gems: a solved
+attempt earns gems according to its difficulty — 1 for Легко, 2 for Средне, 3 for Сложно, 4 for
+Эксперт — every failed attempt costs one life whatever the difficulty, and a missing life comes back
+on its own after 15 minutes (the countdown keeps running while the app is closed and never restarts
+when you lose another life). With no lives left you can still open and look at a saved puzzle, but
+playing, starting, and replaying wait until a life is available; ten gems restore one life immediately.
 Tutorials never touch gems or lives, and everything is stored locally — there is no account and no
 server.
 
@@ -106,7 +110,7 @@ ever opening it.
 Only when you are completely out of lives, the lives dialog adds one more optional way back in: watch
 a rewarded ad and get one life. It is never forced and never shown anywhere else — no banners, no
 interstitials, nothing after a solved or failed game — and if there is no network or no ad to show,
-the 15-minute timer and the five-gem refill work exactly as before.
+the 15-minute timer and the ten-gem refill work exactly as before.
 
 All five Catalog puzzles share one calm Material 3 shell: a single Light/Dark colour scheme, one spacing and text hierarchy, one difficulty selector, and one loading/error/completion presentation, while each board keeps its own specialised gameplay. Puzzle states are always readable without colour, and the shared UI pieces live in `app/src/main/java/com/stanisryz/logica/ui/components/` and `.../ui/theme/`.
 

@@ -16,6 +16,7 @@ import com.stanisryz.logica.economy.failedPenalty
 import com.stanisryz.logica.economy.solvedReward
 import com.stanisryz.logica.economy.toEntity
 import com.stanisryz.logica.economy.toPlayerEconomy
+import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.session.GameSessionEntity
 import com.stanisryz.logica.session.GameSessionScope
 
@@ -161,14 +162,16 @@ internal interface GameCompletionDao {
 
     /**
      * One result produces exactly zero or one economy effect. Regeneration that is already due is
-     * applied first, so the reward or the penalty always lands on an up-to-date wallet.
+     * applied first, so the reward or the penalty always lands on an up-to-date wallet. The gem
+     * reward comes from the difficulty the result already carries; the life penalty is flat.
      */
     private suspend fun applyResultEconomy(result: GameResultEntity) {
         val now = result.completedAtEpochMillis
         val current = findEconomy().toPlayerEconomy(now).regenerated(now)
         val effect: EconomyEffect =
             when (result.outcome) {
-                GameOutcome.SOLVED.name -> current.solvedReward(result.resultId)
+                GameOutcome.SOLVED.name ->
+                    current.solvedReward(result.resultId, Difficulty.valueOf(result.difficulty))
                 GameOutcome.FAILED.name -> current.failedPenalty(result.resultId, now)
                 else -> return
             }
