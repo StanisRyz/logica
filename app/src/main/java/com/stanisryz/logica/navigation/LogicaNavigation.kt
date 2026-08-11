@@ -41,6 +41,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.stanisryz.logica.R
+import com.stanisryz.logica.ads.InterstitialOpportunity
 import com.stanisryz.logica.ads.RewardedAdState
 import com.stanisryz.logica.balance.BalanceGameLaunch
 import com.stanisryz.logica.crowns.CrownsGameLaunch
@@ -104,12 +105,16 @@ internal fun LogicaNavigation(
     hasActiveSudokuSession: Boolean,
     hasActiveGame2048Session: Boolean,
     rewardedState: RewardedAdState,
+    interstitialOpportunity: InterstitialOpportunity?,
     gemStoreState: GemStoreState,
     onRestoreLife: () -> Unit,
     onPreloadRewardedAd: () -> Unit,
     onReleaseRewardedAd: () -> Unit,
     onWatchRewardedAd: (Activity) -> Unit,
     onRetryRewardedAd: () -> Unit,
+    onGameplayStarted: () -> Unit,
+    onGameplayStopped: () -> Unit,
+    onInterstitialOpportunity: (InterstitialOpportunity, Activity?) -> Unit,
     onOpenGemStore: () -> Unit,
     onBuyGemPack: (GemPack) -> Unit,
     onDismissGemPurchaseOutcome: () -> Unit,
@@ -155,6 +160,26 @@ internal fun LogicaNavigation(
             rewardedOfferVisible && rewardedState == RewardedAdState.IDLE -> onPreloadRewardedAd()
             !rewardedOfferVisible -> onReleaseRewardedAd()
         }
+    }
+
+    /*
+     * The interstitial preloads while a game is actually being played, and only then: the hub, the
+     * Store, Profile, Settings, the start screens, and the tutorials never download an ad. Leaving
+     * gameplay drops whatever preload was still waiting for the cooldown to run out.
+     */
+    val gameplayActive = currentDestination.isGameplay()
+    LaunchedEffect(gameplayActive) {
+        if (gameplayActive) onGameplayStarted() else onGameplayStopped()
+    }
+
+    /*
+     * The one place an interstitial may appear. The opportunity exists only because a terminal
+     * result and its economy transaction are already durable, it is consumed as soon as it is seen,
+     * and an ad that is not loaded is skipped instead of waited for — the terminal dialog behind
+     * this is already on screen either way.
+     */
+    LaunchedEffect(interstitialOpportunity) {
+        interstitialOpportunity?.let { onInterstitialOpportunity(it, activity) }
     }
 
     Scaffold(

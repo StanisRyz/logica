@@ -115,3 +115,19 @@ internal fun AppDestination.showsWallet(): Boolean =
  */
 internal fun AppDestination.allowsRewardedOffer(tab: PrimaryTab): Boolean =
     showsWallet() && (this != AppDestination.Home || tab == PrimaryTab.GAME)
+
+/**
+ * An actual production gameplay destination, and nothing else: the interstitial preloads only while
+ * one of these is on screen. The Game hub, the Store, Profile, Settings, the start screens, and
+ * every tutorial deliberately answer `false`.
+ */
+internal fun AppDestination.isGameplay(): Boolean =
+    when (this) {
+        is AppDestination.BalanceGame,
+        is AppDestination.CrownsGame,
+        is AppDestination.WordGame,
+        is AppDestination.SudokuGame,
+        is AppDestination.Game2048Game,
+        -> true
+        else -> false
+    }

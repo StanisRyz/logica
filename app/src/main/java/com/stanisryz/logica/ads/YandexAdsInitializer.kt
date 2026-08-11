@@ -15,11 +15,16 @@ import kotlin.coroutines.resume
  *
  * The SDK is initialized manually rather than left to its own bootstrap so the ordering is
  * guaranteed: consent, location tracking, and the age declaration are set before `initialize`, and
- * no ad request can happen before that returns. Nothing here runs at application startup — the first
- * caller is the rewarded preload, which only happens once the player is at zero lives.
+ * no ad request can happen before that returns.
+ *
+ * There is one initializer for both placements. Nothing here runs at application startup: the first
+ * caller is whichever preload happens first — the rewarded one, which only happens at zero lives, or
+ * the interstitial one, which only happens from an active gameplay destination — and every later
+ * caller of either format reuses the initialization this one completed.
  *
  * Every failure is contained: a refused or timed-out initialization leaves the application, the
- * wallet, regeneration, and the gem refill untouched, and simply reports that ads are unavailable.
+ * wallet, regeneration, the gem refill, and every terminal result untouched, and simply reports that
+ * ads are unavailable.
  */
 internal object YandexAdsInitializer {
     /**
@@ -32,7 +37,7 @@ internal object YandexAdsInitializer {
     private const val TRACKS_LOCATION = false
     private const val IS_AGE_RESTRICTED_AUDIENCE = false
 
-    /** A hung initialization must not hold the rewarded UI in a loading state forever. */
+    /** A hung initialization must not hold the rewarded UI, or any preload, waiting forever. */
     private const val INITIALIZATION_TIMEOUT_MILLIS = 10_000L
 
     private val mutex = Mutex()

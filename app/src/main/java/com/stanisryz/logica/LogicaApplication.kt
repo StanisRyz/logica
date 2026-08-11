@@ -6,6 +6,10 @@ import android.content.res.Configuration
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.stanisryz.logica.ads.DataStoreInterstitialCooldownStore
+import com.stanisryz.logica.ads.InterstitialAwareGameCompletionRepository
+import com.stanisryz.logica.ads.InterstitialCooldownPolicy
+import com.stanisryz.logica.ads.InterstitialOpportunities
 import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.DailyResultRepository
 import com.stanisryz.logica.daily.RoomDailyChallengeRepository
@@ -26,6 +30,14 @@ import ru.rustore.sdk.pay.model.SdkTheme
 
 private val Context.userSettingsDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "user_settings",
+)
+
+/**
+ * Advertising state is kept apart from user settings and out of Room: the interstitial cooldown is
+ * one preference-shaped timestamp, and it must survive a restart without a database migration.
+ */
+private val Context.advertisingDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "advertising",
 )
 
 class LogicaApplication : Application() {
@@ -54,8 +66,23 @@ internal class AppContainer(
         gamePersistenceRepository
     }
 
+    /**
+     * Ephemeral by design: an opportunity exists only between a completion succeeding and the live
+     * UI acting on it, so a process death loses it and no missed advertisement is ever replayed.
+     */
+    val interstitialOpportunities: InterstitialOpportunities = InterstitialOpportunities()
+
+    val interstitialCooldownPolicy: InterstitialCooldownPolicy by lazy {
+        InterstitialCooldownPolicy(DataStoreInterstitialCooldownStore(context.advertisingDataStore))
+    }
+
+    /**
+     * Completion is wrapped rather than reimplemented, which is what makes the ordering structural:
+     * the result and its economy transaction are durable before an interstitial can even be offered,
+     * and a failed completion never reaches the advertising layer at all.
+     */
     val gameCompletionRepository: GameCompletionRepository by lazy {
-        gamePersistenceRepository
+        InterstitialAwareGameCompletionRepository(gamePersistenceRepository, interstitialOpportunities)
     }
 
     val dailyChallengeRepository: DailyChallengeRepository by lazy {

@@ -6,6 +6,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.stanisryz.logica.ads.InterstitialAdController
+import com.stanisryz.logica.ads.InterstitialAdControllerFactory
 import com.stanisryz.logica.ads.RewardedLifeController
 import com.stanisryz.logica.ads.RewardedLifeControllerFactory
 import com.stanisryz.logica.catalog.CatalogViewModel
@@ -57,6 +59,16 @@ fun LogicaApp() {
         }
     val rewardedController: RewardedLifeController = viewModel(factory = rewardedControllerFactory)
     val rewardedState by rewardedController.state.collectAsStateWithLifecycle()
+    val interstitialControllerFactory =
+        remember(application) {
+            InterstitialAdControllerFactory(
+                context = application,
+                opportunities = application.container.interstitialOpportunities,
+                cooldown = application.container.interstitialCooldownPolicy,
+            )
+        }
+    val interstitialController: InterstitialAdController = viewModel(factory = interstitialControllerFactory)
+    val interstitialOpportunity by interstitialController.pendingOpportunity.collectAsStateWithLifecycle()
     val gemStoreViewModelFactory =
         remember(economyRepository) {
             GemStoreViewModelFactory(economyRepository, application.container.ruStorePayGateway)
@@ -81,12 +93,16 @@ fun LogicaApp() {
             hasActiveSudokuSession = hasActiveSudokuSession,
             hasActiveGame2048Session = hasActiveGame2048Session,
             rewardedState = rewardedState,
+            interstitialOpportunity = interstitialOpportunity,
             gemStoreState = gemStoreState,
             onRestoreLife = economyViewModel::refillLife,
             onPreloadRewardedAd = rewardedController::preload,
             onReleaseRewardedAd = rewardedController::release,
             onWatchRewardedAd = rewardedController::show,
             onRetryRewardedAd = rewardedController::retry,
+            onGameplayStarted = interstitialController::onGameplayStarted,
+            onGameplayStopped = interstitialController::onGameplayStopped,
+            onInterstitialOpportunity = interstitialController::onOpportunity,
             onOpenGemStore = gemStoreViewModel::open,
             onBuyGemPack = gemStoreViewModel::buy,
             onDismissGemPurchaseOutcome = gemStoreViewModel::dismissOutcome,

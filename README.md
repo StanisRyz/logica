@@ -109,9 +109,15 @@ no lives, no hints, no subscriptions, no removing ads — and every puzzle stays
 ever opening it.
 
 Only when you are completely out of lives, the lives dialog adds one more optional way back in: watch
-a rewarded ad and get one life. It is never forced and never shown anywhere else — no banners, no
-interstitials, nothing after a solved or failed game — and if there is no network or no ad to show,
-the 15-minute timer and the ten-gem refill work exactly as before.
+a rewarded ad and get one life. It is never forced and never shown anywhere else, and if there is no
+network or no ad to show, the 15-minute timer and the ten-gem refill work exactly as before.
+
+Separately from that, a fullscreen ad may appear after a game attempt is finished — whether you
+solved it or not — with at least five minutes between two of them. It never appears at startup, in
+the Game hub, in the Store, in Profile, in Settings, in a tutorial, or while you are playing, it
+never affects gems, lives, your result, the Daily challenge, or your statistics, and when it closes
+you are back on exactly the same result screen. If there is no ad ready, nothing waits and nothing
+changes. There are no banners.
 
 All five Catalog puzzles share one calm Material 3 shell: a single Light/Dark colour scheme, one spacing and text hierarchy, one difficulty selector, and one loading/error/completion presentation, while each board keeps its own specialised gameplay. Puzzle states are always readable without colour, and the shared UI pieces live in `app/src/main/java/com/stanisryz/logica/ui/components/` and `.../ui/theme/`.
 

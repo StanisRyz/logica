@@ -37,8 +37,9 @@ internal enum class RewardedAdState {
 }
 
 /**
- * The only advertising placement in the product: `LIFE_REFILL_REWARDED`, one rewarded ad that
- * restores one life at zero lives.
+ * The rewarded placement: `LIFE_REFILL_REWARDED`, one rewarded ad that restores one life at zero
+ * lives. It is the player's own explicit choice, and it is the only ad format that pays anything —
+ * the terminal interstitial in [InterstitialAdController] is a separate placement with no economy.
  *
  * It owns the Yandex loader and the loaded ad — the SDK requires both references to stay alive — and
  * lives in a ViewModel so a rotation or a recomposition never drops an ad that is being shown. The
@@ -53,6 +54,7 @@ internal enum class RewardedAdState {
 internal class RewardedLifeController(
     context: Context,
     private val reward: RewardedLifeReward,
+    private val gate: FullscreenAdGate = FullscreenAdGate.SHARED,
     private val adUnitId: String = BuildConfig.REWARDED_AD_UNIT_ID,
 ) : ViewModel() {
     private val appContext = context.applicationContext
@@ -101,6 +103,8 @@ internal class RewardedLifeController(
     fun show(activity: Activity) {
         if (_state.value != RewardedAdState.READY) return
         val ad = loadedAd ?: return
+        // No two fullscreen formats at once; an interstitial already on screen simply defers this.
+        if (!gate.tryAcquire()) return
         loadedAd = null
         shownAd = ad
         _state.value = RewardedAdState.SHOWING
@@ -126,6 +130,7 @@ internal class RewardedLifeController(
         shownAd = null
         loader?.cancelLoading()
         loader = null
+        if (_state.value == RewardedAdState.SHOWING) gate.release()
     }
 
     private fun retryUnpersistedReward() {
@@ -172,6 +177,7 @@ internal class RewardedLifeController(
         shownAd?.setAdEventListener(null)
         shownAd = null
         _state.value = RewardedAdState.IDLE
+        gate.release()
         retryUnpersistedReward()
     }
 }

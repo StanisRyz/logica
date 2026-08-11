@@ -1,6 +1,9 @@
 /** The official Yandex rewarded demo unit; it always fills and never bills a real placement. */
 val demoRewardedAdUnitId = "demo-rewarded-yandex"
 
+/** The official Yandex interstitial demo unit. Same idea, different format and different placement. */
+val demoInterstitialAdUnitId = "demo-interstitial-yandex"
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -20,6 +23,20 @@ val releaseRewardedAdUnitId: String =
     (providers.gradleProperty("logica.rewardedAdUnitId").orNull ?: demoRewardedAdUnitId).also {
         if (it == demoRewardedAdUnitId) {
             logger.warn("logica.rewardedAdUnitId is not set: release builds would use the Yandex demo rewarded unit.")
+        }
+    }
+
+/**
+ * The Yandex interstitial placement for release builds. It is a separate placement from the rewarded
+ * one and is configured separately: set `logica.interstitialAdUnitId` in `local.properties`, in a
+ * private `gradle.properties`, or as `ORG_GRADLE_PROJECT_logica.interstitialAdUnitId`. A missing
+ * property falls back to the demo unit loudly rather than shipping an unrelated placement, exactly
+ * like the rewarded configuration above.
+ */
+val releaseInterstitialAdUnitId: String =
+    (providers.gradleProperty("logica.interstitialAdUnitId").orNull ?: demoInterstitialAdUnitId).also {
+        if (it == demoInterstitialAdUnitId) {
+            logger.warn("logica.interstitialAdUnitId is not set: release builds would use the Yandex demo interstitial unit.")
         }
     }
 
@@ -56,11 +73,13 @@ android {
 
     buildTypes {
         debug {
-            // Development and local testing never touch the production placement.
+            // Development and local testing never touch the production placements.
             buildConfigField("String", "REWARDED_AD_UNIT_ID", "\"$demoRewardedAdUnitId\"")
+            buildConfigField("String", "INTERSTITIAL_AD_UNIT_ID", "\"$demoInterstitialAdUnitId\"")
         }
         release {
             buildConfigField("String", "REWARDED_AD_UNIT_ID", "\"$releaseRewardedAdUnitId\"")
+            buildConfigField("String", "INTERSTITIAL_AD_UNIT_ID", "\"$releaseInterstitialAdUnitId\"")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
