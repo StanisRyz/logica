@@ -5,6 +5,7 @@ enum class PuzzleType {
     ROUTE,
     CROWNS,
     SUDOKU,
+    GAME_2048,
     MOSAIC,
     WATER_JUGS,
     WORD,

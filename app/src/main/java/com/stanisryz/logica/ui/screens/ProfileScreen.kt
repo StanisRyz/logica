@@ -16,6 +16,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.statistics.Game2048Statistics
 import com.stanisryz.logica.statistics.GameStatistics
 import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.statistics.StatisticsUiState
@@ -36,6 +37,7 @@ import com.stanisryz.logica.ui.components.ScreenColumn
 import com.stanisryz.logica.ui.components.ScreenSection
 import com.stanisryz.logica.ui.components.SectionTitle
 import com.stanisryz.logica.ui.components.difficultyResource
+import com.stanisryz.logica.ui.components.game2048DifficultyResource
 import com.stanisryz.logica.ui.components.titleResource
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 
@@ -96,7 +98,11 @@ private fun ProfileScreen(
 
 /** Nothing has been completed yet, so every metric would read zero. */
 private fun GameStatistics.isEmpty(): Boolean =
-    totalCompletedResults == 0 && completedDailyCount == 0 && word.played == 0 && sudoku.played == 0
+    totalCompletedResults == 0 &&
+        completedDailyCount == 0 &&
+        word.played == 0 &&
+        sudoku.played == 0 &&
+        game2048.played == 0
 
 @Composable
 private fun ProfileContent(
@@ -119,7 +125,24 @@ private fun ProfileContent(
             PuzzleStatisticsCard(PuzzleType.BALANCE, statistics)
             PuzzleStatisticsCard(PuzzleType.CROWNS, statistics)
             SudokuStatisticsCard(statistics.sudoku)
+            Game2048StatisticsCard(statistics.game2048)
             WordStatisticsCard(statistics.word)
+        }
+    }
+}
+
+@Composable
+private fun Game2048StatisticsCard(statistics: Game2048Statistics) {
+    LogicaCard {
+        PuzzleTitle(stringResource(PuzzleType.GAME_2048.titleResource()), puzzleType = PuzzleType.GAME_2048)
+        LabelledValue(stringResource(R.string.game_2048_played), statistics.played.toString())
+        LabelledValue(stringResource(R.string.game_2048_solved_count), statistics.solved.toString())
+        LabelledValue(stringResource(R.string.game_2048_failed_count), statistics.failed.toString())
+        Difficulty.entries.forEach { difficulty ->
+            LabelledValue(
+                label = stringResource(difficulty.game2048DifficultyResource()),
+                value = statistics.solvedByDifficulty.getValue(difficulty).toString(),
+            )
         }
     }
 }

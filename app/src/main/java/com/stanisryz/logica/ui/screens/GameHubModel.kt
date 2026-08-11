@@ -14,8 +14,8 @@ internal data class GameCatalogEntry(
 )
 
 /**
- * The catalog of regular games, in the order the hub lists them. A fourth game is one row here and
- * nothing else: neither the list nor its cards assume there are exactly three.
+ * The catalog of regular games, in the order the hub lists them. A fifth game is one row here and
+ * nothing else: neither the list nor its cards assume a fixed count.
  */
 private val CATALOG_PUZZLES: List<Pair<PuzzleType, Int>> =
     listOf(
@@ -23,6 +23,7 @@ private val CATALOG_PUZZLES: List<Pair<PuzzleType, Int>> =
         PuzzleType.CROWNS to R.string.crowns_catalog_description,
         PuzzleType.WORD to R.string.word_catalog_description,
         PuzzleType.SUDOKU to R.string.sudoku_catalog_description,
+        PuzzleType.GAME_2048 to R.string.game_2048_catalog_description,
     )
 
 internal fun gameCatalogEntries(

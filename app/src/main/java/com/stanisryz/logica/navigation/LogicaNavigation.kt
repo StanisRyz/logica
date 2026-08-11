@@ -50,6 +50,7 @@ import com.stanisryz.logica.daily.DailyResultRepository
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.GemPack
 import com.stanisryz.logica.economy.PlayerEconomy
+import com.stanisryz.logica.game2048.Game2048Launch
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.GameCompletionRepository
@@ -68,6 +69,9 @@ import com.stanisryz.logica.ui.screens.BalanceTutorialRoute
 import com.stanisryz.logica.ui.screens.CrownsGameRoute
 import com.stanisryz.logica.ui.screens.CrownsStartScreen
 import com.stanisryz.logica.ui.screens.CrownsTutorialRoute
+import com.stanisryz.logica.ui.screens.Game2048Route
+import com.stanisryz.logica.ui.screens.Game2048StartScreen
+import com.stanisryz.logica.ui.screens.Game2048TutorialRoute
 import com.stanisryz.logica.ui.screens.GameHubRoute
 import com.stanisryz.logica.ui.screens.ProfileRoute
 import com.stanisryz.logica.ui.screens.SettingsScreen
@@ -98,6 +102,7 @@ internal fun LogicaNavigation(
     hasActiveCrownsSession: Boolean,
     hasActiveWordSession: Boolean,
     hasActiveSudokuSession: Boolean,
+    hasActiveGame2048Session: Boolean,
     rewardedState: RewardedAdState,
     gemStoreState: GemStoreState,
     onRestoreLife: () -> Unit,
@@ -196,6 +201,7 @@ internal fun LogicaNavigation(
                                                         PuzzleType.CROWNS -> hasActiveCrownsSession
                                                         PuzzleType.WORD -> hasActiveWordSession
                                                         PuzzleType.SUDOKU -> hasActiveSudokuSession
+                                                        PuzzleType.GAME_2048 -> hasActiveGame2048Session
                                                         else -> error("$puzzleType is not a Catalog game.")
                                                     }
                                                 },
@@ -208,6 +214,8 @@ internal fun LogicaNavigation(
                                                                 AppDestination.CrownsGame(CrownsGameLaunch.Restore())
                                                             PuzzleType.WORD -> AppDestination.WordGame(WordGameLaunch.Restore())
                                                             PuzzleType.SUDOKU -> AppDestination.SudokuGame(SudokuGameLaunch.Restore())
+                                                            PuzzleType.GAME_2048 ->
+                                                                AppDestination.Game2048Game(Game2048Launch.Restore())
                                                             else -> error("$puzzleType is not a Catalog game.")
                                                         },
                                                     )
@@ -219,6 +227,7 @@ internal fun LogicaNavigation(
                                                             PuzzleType.CROWNS -> AppDestination.CrownsStart
                                                             PuzzleType.WORD -> AppDestination.WordStart
                                                             PuzzleType.SUDOKU -> AppDestination.SudokuStart
+                                                            PuzzleType.GAME_2048 -> AppDestination.Game2048Start
                                                             else -> error("$puzzleType is not a Catalog game.")
                                                         },
                                                     )
@@ -341,6 +350,28 @@ internal fun LogicaNavigation(
                             onDone = { backStack.removeLastOrNull() },
                         )
                     }
+                    entry<AppDestination.Game2048Start> {
+                        Game2048StartScreen(
+                            hasActiveSession = hasActiveGame2048Session,
+                            tutorialCompleted = settings.game2048TutorialCompleted,
+                            economy = economy,
+                            onOpenTutorial = { backStack.add(AppDestination.Game2048Tutorial) },
+                            onStart = { difficulty ->
+                                backStack.add(
+                                    AppDestination.Game2048Game(
+                                        Game2048Launch.New(difficulty, catalogSeedSource.nextSeed()),
+                                    ),
+                                )
+                            },
+                            onRestoreLife = onRestoreLife,
+                        )
+                    }
+                    entry<AppDestination.Game2048Tutorial> {
+                        Game2048TutorialRoute(
+                            settingsRepository = settingsRepository,
+                            onDone = { backStack.removeLastOrNull() },
+                        )
+                    }
                     entry<AppDestination.BalanceGame> { destination ->
                         BalanceGameRoute(
                             launch = destination.launch,
@@ -428,6 +459,22 @@ internal fun LogicaNavigation(
                             onStartNew = {
                                 backStack.removeLastOrNull()
                                 backStack.add(AppDestination.SudokuStart)
+                            },
+                            onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                            onRestoreLife = onRestoreLife,
+                        )
+                    }
+                    entry<AppDestination.Game2048Game> { destination ->
+                        Game2048Route(
+                            launch = destination.launch,
+                            sessionRepository = gameSessionRepository,
+                            completionRepository = gameCompletionRepository,
+                            economyRepository = economyRepository,
+                            hapticsEnabled = settings.hapticsEnabled,
+                            onBack = { backStack.removeLastOrNull() },
+                            onStartNew = {
+                                backStack.removeLastOrNull()
+                                backStack.add(AppDestination.Game2048Start)
                             },
                             onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
                             onRestoreLife = onRestoreLife,
@@ -556,6 +603,8 @@ private fun destinationTitle(
             AppDestination.WordTutorial -> R.string.word_tutorial_title
             AppDestination.SudokuStart, is AppDestination.SudokuGame -> R.string.sudoku
             AppDestination.SudokuTutorial -> R.string.sudoku_tutorial_title
+            AppDestination.Game2048Start, is AppDestination.Game2048Game -> R.string.game_2048_title
+            AppDestination.Game2048Tutorial -> R.string.game_2048_tutorial_title
         },
     )
 

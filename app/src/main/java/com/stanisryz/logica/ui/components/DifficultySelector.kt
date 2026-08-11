@@ -26,8 +26,8 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 /**
- * The one difficulty selector for Balance, Crowns, and Word. The four core difficulties never
- * change; only the supporting line differs, which is how Word shows its 4/5/6/7 letter lengths.
+ * The one difficulty selector for every Catalog game. The four core difficulties never change;
+ * callers provide puzzle-specific labels such as Word length or the 2048 target.
  */
 @Composable
 internal fun DifficultySelector(

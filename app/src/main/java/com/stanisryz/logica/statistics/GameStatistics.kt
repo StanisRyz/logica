@@ -18,6 +18,7 @@ internal data class GameStatistics(
     val byPuzzleType: Map<PuzzleType, PuzzleStatistics>,
     val word: WordStatistics,
     val sudoku: SudokuStatistics = SudokuStatistics.EMPTY,
+    val game2048: Game2048Statistics = Game2048Statistics.EMPTY,
 )
 
 internal data class PuzzleStatistics(
@@ -50,6 +51,24 @@ internal data class SudokuStatistics(
                 solved = 0,
                 failed = 0,
                 hintsUsed = 0,
+                solvedByDifficulty = Difficulty.entries.associateWith { 0 },
+            )
+    }
+}
+
+/** 2048 records terminal outcomes and solved counts by its target-based difficulty. */
+internal data class Game2048Statistics(
+    val played: Int,
+    val solved: Int,
+    val failed: Int,
+    val solvedByDifficulty: Map<Difficulty, Int>,
+) {
+    companion object {
+        val EMPTY =
+            Game2048Statistics(
+                played = 0,
+                solved = 0,
+                failed = 0,
                 solvedByDifficulty = Difficulty.entries.associateWith { 0 },
             )
     }
@@ -100,6 +119,7 @@ internal object StatisticsAggregator {
                     byPuzzleType = puzzleStatistics,
                     word = wordStatistics(results),
                     sudoku = sudokuStatistics(results),
+                    game2048 = game2048Statistics(results),
                 ),
             dailyHintsUsedByDate = dailyHints,
         )
@@ -127,6 +147,20 @@ internal object StatisticsAggregator {
             solved = solvedResults.size,
             failed = sudokuResults.count { it.outcome == GameOutcome.FAILED },
             hintsUsed = sudokuResults.sumOf(GameResult::hintsUsed),
+            solvedByDifficulty =
+                Difficulty.entries.associateWith { difficulty ->
+                    solvedResults.count { it.difficulty == difficulty }
+                },
+        )
+    }
+
+    private fun game2048Statistics(results: List<GameResult>): Game2048Statistics {
+        val gameResults = results.filter { it.puzzleType == PuzzleType.GAME_2048 }
+        val solvedResults = gameResults.filter { it.outcome == GameOutcome.SOLVED }
+        return Game2048Statistics(
+            played = gameResults.size,
+            solved = solvedResults.size,
+            failed = gameResults.count { it.outcome == GameOutcome.FAILED },
             solvedByDifficulty =
                 Difficulty.entries.associateWith { difficulty ->
                     solvedResults.count { it.difficulty == difficulty }

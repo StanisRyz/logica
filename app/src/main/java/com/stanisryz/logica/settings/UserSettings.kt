@@ -8,4 +8,5 @@ data class UserSettings(
     val crownsTutorialCompleted: Boolean = false,
     val wordTutorialCompleted: Boolean = false,
     val sudokuTutorialCompleted: Boolean = false,
+    val game2048TutorialCompleted: Boolean = false,
 )

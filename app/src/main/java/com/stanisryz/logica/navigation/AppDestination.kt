@@ -3,6 +3,7 @@ package com.stanisryz.logica.navigation
 import com.stanisryz.logica.R
 import com.stanisryz.logica.balance.BalanceGameLaunch
 import com.stanisryz.logica.crowns.CrownsGameLaunch
+import com.stanisryz.logica.game2048.Game2048Launch
 import com.stanisryz.logica.sudoku.SudokuGameLaunch
 import com.stanisryz.logica.word.WordGameLaunch
 
@@ -56,6 +57,10 @@ internal sealed interface AppDestination {
 
     data object SudokuTutorial : AppDestination
 
+    data object Game2048Start : AppDestination
+
+    data object Game2048Tutorial : AppDestination
+
     data class BalanceGame(
         val launch: BalanceGameLaunch,
     ) : AppDestination
@@ -70,6 +75,10 @@ internal sealed interface AppDestination {
 
     data class SudokuGame(
         val launch: SudokuGameLaunch,
+    ) : AppDestination
+
+    data class Game2048Game(
+        val launch: Game2048Launch,
     ) : AppDestination
 }
 
@@ -90,10 +99,12 @@ internal fun AppDestination.showsWallet(): Boolean =
         AppDestination.CrownsStart,
         AppDestination.WordStart,
         AppDestination.SudokuStart,
+        AppDestination.Game2048Start,
         is AppDestination.BalanceGame,
         is AppDestination.CrownsGame,
         is AppDestination.WordGame,
         is AppDestination.SudokuGame,
+        is AppDestination.Game2048Game,
         -> true
         else -> false
     }

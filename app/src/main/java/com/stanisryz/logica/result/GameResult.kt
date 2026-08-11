@@ -11,8 +11,8 @@ import java.time.Instant
 import java.time.LocalDate
 
 /**
- * How a terminal attempt ended. Every puzzle can now fail: Balance and Crowns after their third
- * committed mistake, Word after its sixth valid incorrect attempt.
+ * How a terminal attempt ended. Every production puzzle has typed solved and failed outcomes; each
+ * concrete engine owns the rule that reaches them.
  */
 internal enum class GameOutcome {
     SOLVED,

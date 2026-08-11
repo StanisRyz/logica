@@ -2,6 +2,8 @@ package com.stanisryz.logica.navigation
 
 import com.stanisryz.logica.balance.BalanceGameLaunch
 import com.stanisryz.logica.crowns.CrownsGameLaunch
+import com.stanisryz.logica.game2048.Game2048Launch
+import com.stanisryz.logica.sudoku.SudokuGameLaunch
 import com.stanisryz.logica.word.WordGameLaunch
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -19,9 +21,15 @@ class AppShellNavigationTest {
             AppDestination.CrownsTutorial,
             AppDestination.WordStart,
             AppDestination.WordTutorial,
+            AppDestination.SudokuStart,
+            AppDestination.SudokuTutorial,
+            AppDestination.Game2048Start,
+            AppDestination.Game2048Tutorial,
             AppDestination.BalanceGame(BalanceGameLaunch.Restore()),
             AppDestination.CrownsGame(CrownsGameLaunch.Restore()),
             AppDestination.WordGame(WordGameLaunch.Restore()),
+            AppDestination.SudokuGame(SudokuGameLaunch.Restore()),
+            AppDestination.Game2048Game(Game2048Launch.Restore()),
         )
 
     @Test
@@ -49,6 +57,7 @@ class AppShellNavigationTest {
         assertFalse(AppDestination.Home.allowsRewardedOffer(PrimaryTab.PROFILE))
         assertTrue(AppDestination.BalanceStart.allowsRewardedOffer(PrimaryTab.GAME))
         assertTrue(AppDestination.WordGame(WordGameLaunch.Restore()).allowsRewardedOffer(PrimaryTab.GAME))
+        assertTrue(AppDestination.Game2048Game(Game2048Launch.Restore()).allowsRewardedOffer(PrimaryTab.GAME))
         assertFalse(AppDestination.Settings.allowsRewardedOffer(PrimaryTab.GAME))
         assertFalse(AppDestination.CrownsTutorial.allowsRewardedOffer(PrimaryTab.GAME))
     }

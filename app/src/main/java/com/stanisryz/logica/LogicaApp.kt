@@ -44,6 +44,7 @@ fun LogicaApp() {
     val hasActiveCrownsSession by catalogViewModel.hasActiveCrownsSession.collectAsStateWithLifecycle()
     val hasActiveWordSession by catalogViewModel.hasActiveWordSession.collectAsStateWithLifecycle()
     val hasActiveSudokuSession by catalogViewModel.hasActiveSudokuSession.collectAsStateWithLifecycle()
+    val hasActiveGame2048Session by catalogViewModel.hasActiveGame2048Session.collectAsStateWithLifecycle()
     val economyViewModelFactory =
         remember(economyRepository) {
             EconomyViewModelFactory(economyRepository)
@@ -78,6 +79,7 @@ fun LogicaApp() {
             hasActiveCrownsSession = hasActiveCrownsSession,
             hasActiveWordSession = hasActiveWordSession,
             hasActiveSudokuSession = hasActiveSudokuSession,
+            hasActiveGame2048Session = hasActiveGame2048Session,
             rewardedState = rewardedState,
             gemStoreState = gemStoreState,
             onRestoreLife = economyViewModel::refillLife,

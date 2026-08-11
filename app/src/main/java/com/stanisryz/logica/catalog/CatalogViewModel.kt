@@ -40,6 +40,13 @@ internal class CatalogViewModel(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = false,
         )
+
+    val hasActiveGame2048Session: StateFlow<Boolean> =
+        sessionRepository.observeHasActiveSession(PuzzleType.GAME_2048, GameSessionScope.CATALOG).stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = false,
+        )
 }
 
 internal class CatalogViewModelFactory(

@@ -2,63 +2,316 @@ package com.stanisryz.logica.game2048
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.game2048.EncodedGame2048Session
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Direction
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Engine
+import com.stanisryz.logica.puzzle.core.game2048.Game2048GeneratorVersion
 import com.stanisryz.logica.puzzle.core.game2048.Game2048PuzzleId
 import com.stanisryz.logica.puzzle.core.game2048.Game2048SessionCodecV1
 import com.stanisryz.logica.puzzle.core.game2048.Game2048State
+import com.stanisryz.logica.puzzle.core.game2048.Game2048Status
+import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
+import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.result.CompletionPersistence
+import com.stanisryz.logica.result.GameCompletion
+import com.stanisryz.logica.result.GameCompletionRepository
+import com.stanisryz.logica.result.GameOutcome
+import com.stanisryz.logica.session.GameSessionRepository
+import com.stanisryz.logica.session.GameSessionScope
+import com.stanisryz.logica.session.SavedGameSession
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import java.util.UUID
 
-internal data class Game2048UiState(
-    val game: Game2048State,
-)
+internal sealed interface Game2048Launch {
+    data class New(
+        val difficulty: Difficulty,
+        val seed: PuzzleSeed,
+        val generatorVersion: GeneratorVersion = GENERATOR_VERSION,
+    ) : Game2048Launch
 
-/** Standalone Stage 36 presentation state: no repositories, economy, results, or navigation. */
-internal class Game2048ViewModel(
-    puzzleId: Game2048PuzzleId,
-    restoredSession: EncodedGame2048Session? = null,
-) : ViewModel() {
-    private val engine = Game2048Engine(puzzleId)
-    private val mutableUiState =
-        MutableStateFlow(
-            Game2048UiState(
-                restoredSession
-                    ?.let(Game2048SessionCodecV1::decode)
-                    ?.also { require(it.puzzleId == puzzleId) { "Restored 2048 puzzle identity does not match." } }
-                    ?: engine.start(),
-            ),
-        )
-    val uiState: StateFlow<Game2048UiState> = mutableUiState.asStateFlow()
+    data class Restore(
+        val expectedPuzzleId: Game2048PuzzleId? = null,
+    ) : Game2048Launch
 
-    fun move(direction: Game2048Direction) {
-        val current = mutableUiState.value
-        val moved = engine.move(current.game, direction)
-        if (moved != current.game) mutableUiState.value = Game2048UiState(moved)
+    companion object {
+        val GENERATOR_VERSION = GeneratorVersion(Game2048GeneratorVersion.V1.value)
     }
+}
 
-    fun retry() {
-        val current = mutableUiState.value
-        if (current.game.status.isTerminal) {
-            mutableUiState.value = Game2048UiState(engine.retry(current.game))
+internal sealed interface Game2048UiState {
+    data object Loading : Game2048UiState
+
+    data class Ready(
+        val game: Game2048State,
+        val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
+    ) : Game2048UiState
+
+    data class Error(
+        val reason: Game2048GameError,
+    ) : Game2048UiState
+}
+
+internal enum class Game2048GameError {
+    MISSING_SAVED_SESSION,
+    INVALID_SAVED_SESSION,
+    NO_LIVES,
+}
+
+/** Production Catalog lifecycle around the frozen Stage 36 engine. */
+internal class Game2048ViewModel(
+    private val launch: Game2048Launch,
+    private val sessionRepository: GameSessionRepository,
+    private val completionRepository: GameCompletionRepository,
+    private val economyRepository: EconomyRepository,
+    private val sessionIdFactory: () -> String = { UUID.randomUUID().toString() },
+) : ViewModel() {
+    private val mutableUiState = MutableStateFlow<Game2048UiState>(Game2048UiState.Loading)
+    val uiState: StateFlow<Game2048UiState> = mutableUiState.asStateFlow()
+    val economy: StateFlow<PlayerEconomy> =
+        economyRepository
+            .observe()
+            .stateIn(
+                viewModelScope,
+                SharingStarted.Eagerly,
+                PlayerEconomy(lives = 0, nextLifeAtEpochMillis = Long.MAX_VALUE),
+            )
+
+    private var engine: Game2048Engine? = null
+    private var activeSession: ActiveSession? = null
+    private var completionJob: Job? = null
+
+    init {
+        viewModelScope.launch {
+            try {
+                val loaded = loadSession()
+                engine = loaded.engine
+                activeSession = loaded.activeSession
+                mutableUiState.value = Game2048UiState.Ready(loaded.game)
+                if (loaded.isNew) {
+                    sessionRepository.replaceActiveSession(loaded.activeSession.saved(loaded.game))
+                }
+                if (loaded.game.status.isTerminal) persistCompletion(loaded.game)
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (_: MissingSavedSessionException) {
+                mutableUiState.value = Game2048UiState.Error(Game2048GameError.MISSING_SAVED_SESSION)
+            } catch (_: NoLivesException) {
+                mutableUiState.value = Game2048UiState.Error(Game2048GameError.NO_LIVES)
+            } catch (_: Exception) {
+                mutableUiState.value = Game2048UiState.Error(Game2048GameError.INVALID_SAVED_SESSION)
+            }
         }
     }
 
-    /** A local fixture for previews/host experiments; Stage 37 will own durable persistence. */
-    fun encodeSession(): EncodedGame2048Session = Game2048SessionCodecV1.encode(mutableUiState.value.game)
+    fun move(direction: Game2048Direction) {
+        if (!economy.value.isGameplayAllowed) return
+        val current = mutableUiState.value as? Game2048UiState.Ready ?: return
+        val updated = engine?.move(current.game, direction) ?: return
+        if (updated == current.game) return
+        mutableUiState.value = current.copy(game = updated)
+        persist(updated)
+    }
+
+    fun retry() {
+        if (!economy.value.isGameplayAllowed) return
+        val current = mutableUiState.value as? Game2048UiState.Ready ?: return
+        if (!current.game.status.isTerminal || current.completionPersistence != CompletionPersistence.Saved) return
+        val gameEngine = engine ?: return
+        val previous = activeSession ?: return
+        val nextSession = previous.copy(sessionId = sessionIdFactory())
+        val restarted = gameEngine.retry(current.game)
+        activeSession = nextSession
+        mutableUiState.value = Game2048UiState.Ready(restarted)
+        sessionRepository.replaceActiveSession(nextSession.saved(restarted))
+    }
+
+    fun retryCompletion() {
+        val current = mutableUiState.value as? Game2048UiState.Ready ?: return
+        if (current.game.status.isTerminal) persistCompletion(current.game)
+    }
+
+    private suspend fun loadSession(): LoadedSession =
+        when (val requested = launch) {
+            is Game2048Launch.New -> {
+                if (!economyRepository.refresh().isGameplayAllowed) throw NoLivesException()
+                require(requested.generatorVersion == Game2048Launch.GENERATOR_VERSION)
+                val puzzleId =
+                    Game2048PuzzleId(
+                        seed = requested.seed,
+                        difficulty = requested.difficulty,
+                        generatorVersion = Game2048GeneratorVersion.V1,
+                    )
+                val gameEngine = Game2048Engine(puzzleId)
+                val game = gameEngine.start()
+                LoadedSession(
+                    engine = gameEngine,
+                    game = game,
+                    activeSession = ActiveSession(sessionIdFactory(), puzzleId),
+                    isNew = true,
+                )
+            }
+            is Game2048Launch.Restore -> restore(requested)
+        }
+
+    private suspend fun restore(requested: Game2048Launch.Restore): LoadedSession {
+        val saved =
+            sessionRepository.readActiveSession(PuzzleType.GAME_2048, GameSessionScope.CATALOG)
+                ?: throw MissingSavedSessionException()
+        if (!saved.hasRequestedIdentity(requested)) throw InvalidSavedSessionException()
+        return try {
+            val expectedId = saved.toGame2048PuzzleId()
+            val game =
+                Game2048SessionCodecV1.decode(
+                    EncodedGame2048Session(
+                        formatVersion = saved.sessionFormatVersion,
+                        payload = saved.gameplayPayload,
+                    ),
+                )
+            require(game.puzzleId == expectedId)
+            require(saved.moveHistoryPayload.isEmpty())
+            require(saved.hintsUsed == 0)
+            require(saved.status == game.status.name)
+            LoadedSession(
+                engine = Game2048Engine(expectedId),
+                game = game,
+                activeSession = ActiveSession(saved.sessionId, expectedId),
+                isNew = false,
+            )
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (_: Exception) {
+            sessionRepository.deleteActiveSession(
+                PuzzleType.GAME_2048,
+                GameSessionScope.CATALOG,
+                saved.sessionId,
+            )
+            throw InvalidSavedSessionException()
+        }
+    }
+
+    private fun SavedGameSession.hasRequestedIdentity(requested: Game2048Launch.Restore): Boolean =
+        puzzleType == PuzzleType.GAME_2048 &&
+            sessionScope == GameSessionScope.CATALOG &&
+            dailyIdentity == null &&
+            generatorVersion == Game2048Launch.GENERATOR_VERSION &&
+            (requested.expectedPuzzleId == null || toGame2048PuzzleId() == requested.expectedPuzzleId)
+
+    private fun SavedGameSession.toGame2048PuzzleId(): Game2048PuzzleId =
+        Game2048PuzzleId(
+            seed = puzzleSeed,
+            difficulty = difficulty,
+            generatorVersion = Game2048GeneratorVersion(generatorVersion.value),
+        )
+
+    private fun persist(game: Game2048State) {
+        val session = activeSession ?: return
+        sessionRepository.updateActiveSession(session.saved(game))
+        if (game.status.isTerminal) persistCompletion(game)
+    }
+
+    private fun persistCompletion(game: Game2048State) {
+        if (completionJob?.isActive == true) return
+        val session = activeSession ?: return
+        val current = mutableUiState.value as? Game2048UiState.Ready ?: return
+        if (current.completionPersistence == CompletionPersistence.Saved) return
+        mutableUiState.value = current.copy(completionPersistence = CompletionPersistence.Saving)
+        completionJob =
+            viewModelScope.launch {
+                try {
+                    completionRepository.complete(session.completion(game))
+                    updateCompletionPersistence(game, CompletionPersistence.Saved)
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (_: Exception) {
+                    updateCompletionPersistence(game, CompletionPersistence.Error)
+                }
+            }
+    }
+
+    private fun updateCompletionPersistence(
+        game: Game2048State,
+        persistence: CompletionPersistence,
+    ) {
+        val current = mutableUiState.value
+        if (current is Game2048UiState.Ready && current.game == game) {
+            mutableUiState.value = current.copy(completionPersistence = persistence)
+        }
+    }
+
+    private data class LoadedSession(
+        val engine: Game2048Engine,
+        val game: Game2048State,
+        val activeSession: ActiveSession,
+        val isNew: Boolean,
+    )
+
+    private data class ActiveSession(
+        val sessionId: String,
+        val puzzleId: Game2048PuzzleId,
+    ) {
+        fun saved(game: Game2048State): SavedGameSession {
+            require(game.puzzleId == puzzleId)
+            val encoded = Game2048SessionCodecV1.encode(game)
+            return SavedGameSession(
+                sessionId = sessionId,
+                puzzleType = PuzzleType.GAME_2048,
+                sessionScope = GameSessionScope.CATALOG,
+                difficulty = puzzleId.difficulty,
+                puzzleSeed = puzzleId.seed,
+                generatorVersion = GeneratorVersion(puzzleId.generatorVersion.value),
+                sessionFormatVersion = encoded.formatVersion,
+                gameplayPayload = encoded.payload,
+                moveHistoryPayload = "",
+                hintsUsed = 0,
+                status = game.status.name,
+            )
+        }
+
+        fun completion(game: Game2048State): GameCompletion {
+            require(game.puzzleId == puzzleId && game.status.isTerminal)
+            return GameCompletion(
+                resultId = sessionId,
+                puzzleType = PuzzleType.GAME_2048,
+                difficulty = puzzleId.difficulty,
+                puzzleSeed = puzzleId.seed,
+                generatorVersion = GeneratorVersion(puzzleId.generatorVersion.value),
+                sessionScope = GameSessionScope.CATALOG,
+                hintsUsed = 0,
+                outcome = if (game.status == Game2048Status.SOLVED) GameOutcome.SOLVED else GameOutcome.FAILED,
+            )
+        }
+    }
+
+    private class MissingSavedSessionException : Exception()
+
+    private class InvalidSavedSessionException : Exception()
+
+    private class NoLivesException : Exception()
 }
 
 internal class Game2048ViewModelFactory(
-    private val puzzleId: Game2048PuzzleId,
-    private val restoredSession: EncodedGame2048Session? = null,
+    private val launch: Game2048Launch,
+    private val sessionRepository: GameSessionRepository,
+    private val completionRepository: GameCompletionRepository,
+    private val economyRepository: EconomyRepository,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(Game2048ViewModel::class.java)) {
             "Unknown ViewModel class: ${modelClass.name}"
         }
         @Suppress("UNCHECKED_CAST")
-        return Game2048ViewModel(puzzleId, restoredSession) as T
+        return Game2048ViewModel(launch, sessionRepository, completionRepository, economyRepository) as T
     }
 }

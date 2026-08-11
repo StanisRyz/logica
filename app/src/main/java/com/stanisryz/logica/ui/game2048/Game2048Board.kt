@@ -40,13 +40,14 @@ internal fun Game2048Board(
     game: Game2048State,
     onMove: (Game2048Direction) -> Unit,
     modifier: Modifier = Modifier,
+    inputEnabled: Boolean = !game.status.isTerminal,
 ) {
     val moveLeft = stringResource(R.string.game_2048_move_left)
     val moveRight = stringResource(R.string.game_2048_move_right)
     val moveUp = stringResource(R.string.game_2048_move_up)
     val moveDown = stringResource(R.string.game_2048_move_down)
     val boardDescription = stringResource(R.string.game_2048_board_description)
-    val enabled = !game.status.isTerminal
+    val enabled = inputEnabled && !game.status.isTerminal
     val actions =
         if (enabled) {
             listOf(

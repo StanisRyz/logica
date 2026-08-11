@@ -12,24 +12,30 @@ import org.junit.Test
 /** What the Game hub is made of: the Daily entries on top and the regular catalog below them. */
 class GameHubModelTest {
     @Test
-    fun `catalog lists four games and keeps continue primary while a Sudoku save exists`() {
+    fun `catalog lists five games and keeps continue primary while a 2048 save exists`() {
         val continued = mutableListOf<PuzzleType>()
         val started = mutableListOf<PuzzleType>()
         val catalog =
             gameCatalogEntries(
-                hasActiveSession = { it == PuzzleType.SUDOKU },
+                hasActiveSession = { it == PuzzleType.GAME_2048 },
                 onContinue = continued::add,
                 onNew = started::add,
             )
 
         assertEquals(
-            listOf(PuzzleType.BALANCE, PuzzleType.CROWNS, PuzzleType.WORD, PuzzleType.SUDOKU),
+            listOf(
+                PuzzleType.BALANCE,
+                PuzzleType.CROWNS,
+                PuzzleType.WORD,
+                PuzzleType.SUDOKU,
+                PuzzleType.GAME_2048,
+            ),
             catalog.map { it.puzzleType },
         )
-        val sudoku = catalog.single { it.puzzleType == PuzzleType.SUDOKU }
-        assertTrue(sudoku.hasActiveSession)
-        sudoku.onContinue()
-        assertEquals(listOf(PuzzleType.SUDOKU), continued)
+        val game2048 = catalog.single { it.puzzleType == PuzzleType.GAME_2048 }
+        assertTrue(game2048.hasActiveSession)
+        game2048.onContinue()
+        assertEquals(listOf(PuzzleType.GAME_2048), continued)
 
         val word = catalog.single { it.puzzleType == PuzzleType.WORD }
         assertFalse(word.hasActiveSession)

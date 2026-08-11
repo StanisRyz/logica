@@ -50,6 +50,21 @@ class StatisticsAggregatorTest {
                     puzzleType = PuzzleType.SUDOKU,
                     outcome = GameOutcome.FAILED,
                 ),
+                result(
+                    "2048-solved",
+                    Difficulty.MEDIUM,
+                    GameSessionScope.CATALOG,
+                    hintsUsed = 0,
+                    puzzleType = PuzzleType.GAME_2048,
+                ),
+                result(
+                    "2048-failed",
+                    Difficulty.HARD,
+                    GameSessionScope.CATALOG,
+                    hintsUsed = 0,
+                    puzzleType = PuzzleType.GAME_2048,
+                    outcome = GameOutcome.FAILED,
+                ),
             )
         val completedDailyDates =
             listOf(
@@ -64,7 +79,7 @@ class StatisticsAggregatorTest {
         val snapshot = StatisticsAggregator.aggregate(today, results, completedDailyDates)
         val statistics = snapshot.statistics
 
-        assertEquals(5, statistics.totalCompletedResults)
+        assertEquals(6, statistics.totalCompletedResults)
         assertEquals(5, statistics.completedDailyCount)
         assertEquals(15, statistics.totalHintsUsed)
         assertEquals(2, statistics.currentDailyStreak)
@@ -93,6 +108,11 @@ class StatisticsAggregatorTest {
         assertEquals(9, statistics.sudoku.hintsUsed)
         assertEquals(1, statistics.sudoku.solvedByDifficulty.getValue(Difficulty.HARD))
         assertEquals(0, statistics.sudoku.solvedByDifficulty.getValue(Difficulty.MEDIUM))
+        assertEquals(2, statistics.game2048.played)
+        assertEquals(1, statistics.game2048.solved)
+        assertEquals(1, statistics.game2048.failed)
+        assertEquals(1, statistics.game2048.solvedByDifficulty.getValue(Difficulty.MEDIUM))
+        assertEquals(0, statistics.game2048.solvedByDifficulty.getValue(Difficulty.HARD))
         assertEquals(2, snapshot.dailyHintsUsedByDate[today.minusDays(1)])
     }
 

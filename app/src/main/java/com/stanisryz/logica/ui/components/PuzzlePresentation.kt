@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Balance
 import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.Grid4x4
 import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +30,7 @@ internal fun PuzzleType.titleResource(): Int =
         PuzzleType.CROWNS -> R.string.crowns
         PuzzleType.WORD -> R.string.word
         PuzzleType.SUDOKU -> R.string.sudoku
+        PuzzleType.GAME_2048 -> R.string.game_2048_title
         else -> error("$this has no user-facing title yet.")
     }
 
@@ -40,13 +42,14 @@ internal fun PuzzleType.accentColor(): Color =
         PuzzleType.CROWNS -> MaterialTheme.colorScheme.tertiary
         PuzzleType.WORD -> MaterialTheme.colorScheme.secondary
         PuzzleType.SUDOKU -> MaterialTheme.colorScheme.primary
+        PuzzleType.GAME_2048 -> MaterialTheme.colorScheme.tertiary
         else -> MaterialTheme.colorScheme.primary
     }
 
 /**
  * The shared card artwork: the puzzle's own accent tinted behind one existing vector, so Balance,
- * Crowns, Word, and Sudoku read as one family on Daily and catalog cards alike. Deliberately icon-sized
- * rather than an illustration framework.
+ * Crowns, Word, Sudoku, and 2048 read as one family on Daily and catalog cards alike. Deliberately
+ * icon-sized rather than an illustration framework.
  */
 @Composable
 internal fun PuzzleArtwork(
@@ -72,6 +75,7 @@ internal fun PuzzleArtwork(
                     PuzzleType.BALANCE -> Icons.Filled.Balance
                     PuzzleType.WORD -> Icons.Filled.SortByAlpha
                     PuzzleType.SUDOKU -> Icons.Filled.Extension
+                    PuzzleType.GAME_2048 -> Icons.Filled.Grid4x4
                     else -> Icons.Filled.Extension
                 }
             Icon(icon, contentDescription = null, tint = accent, modifier = iconModifier)
@@ -99,14 +103,27 @@ internal fun Difficulty.wordDifficultyResource(): Int =
         Difficulty.EXPERT -> R.string.word_difficulty_expert
     }
 
-/** The label a puzzle's difficulty is presented with anywhere outside the Word start screen. */
+/** 2048 difficulty changes only the target tile, so the target is part of every label. */
+internal fun Difficulty.game2048DifficultyResource(): Int =
+    when (this) {
+        Difficulty.EASY -> R.string.game_2048_difficulty_easy
+        Difficulty.MEDIUM -> R.string.game_2048_difficulty_medium
+        Difficulty.HARD -> R.string.game_2048_difficulty_hard
+        Difficulty.EXPERT -> R.string.game_2048_difficulty_expert
+    }
+
+/** The shared difficulty label, including Word length or 2048 target where those define difficulty. */
 @Composable
 internal fun difficultyLabel(
     puzzleType: PuzzleType,
     difficulty: Difficulty,
 ): String =
     stringResource(
-        if (puzzleType == PuzzleType.WORD) difficulty.wordDifficultyResource() else difficulty.difficultyResource(),
+        when (puzzleType) {
+            PuzzleType.WORD -> difficulty.wordDifficultyResource()
+            PuzzleType.GAME_2048 -> difficulty.game2048DifficultyResource()
+            else -> difficulty.difficultyResource()
+        },
     )
 
 private val ARTWORK_SIZE = 44.dp

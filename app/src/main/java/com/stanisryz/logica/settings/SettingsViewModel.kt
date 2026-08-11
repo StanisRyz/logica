@@ -59,6 +59,12 @@ class SettingsViewModel(
             repository.setSudokuTutorialCompleted(completed)
         }
     }
+
+    fun setGame2048TutorialCompleted(completed: Boolean) {
+        viewModelScope.launch {
+            repository.setGame2048TutorialCompleted(completed)
+        }
+    }
 }
 
 class SettingsViewModelFactory(
