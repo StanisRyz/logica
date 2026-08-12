@@ -10,8 +10,6 @@ import com.stanisryz.logica.ads.InterstitialAdController
 import com.stanisryz.logica.ads.InterstitialAdControllerFactory
 import com.stanisryz.logica.ads.RewardedLifeController
 import com.stanisryz.logica.ads.RewardedLifeControllerFactory
-import com.stanisryz.logica.catalog.CatalogViewModel
-import com.stanisryz.logica.catalog.CatalogViewModelFactory
 import com.stanisryz.logica.economy.EconomyViewModel
 import com.stanisryz.logica.economy.EconomyViewModelFactory
 import com.stanisryz.logica.navigation.LogicaNavigation
@@ -23,7 +21,7 @@ import com.stanisryz.logica.ui.theme.LogicaTheme
 fun LogicaApp() {
     val application = LocalContext.current.applicationContext as LogicaApplication
     val settingsRepository = application.container.settingsRepository
-    val gameSessionRepository = application.container.gameSessionRepository
+    val catalogLevelRepository = application.container.catalogLevelRepository
     val dailyChallengeRepository = application.container.dailyChallengeRepository
     val gameCompletionRepository = application.container.gameCompletionRepository
     val statisticsRepository = application.container.statisticsRepository
@@ -35,16 +33,6 @@ fun LogicaApp() {
         }
     val settingsViewModel: SettingsViewModel = viewModel(factory = viewModelFactory)
     val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
-    val catalogViewModelFactory =
-        remember(gameSessionRepository) {
-            CatalogViewModelFactory(gameSessionRepository)
-        }
-    val catalogViewModel: CatalogViewModel = viewModel(factory = catalogViewModelFactory)
-    val hasActiveBalanceSession by catalogViewModel.hasActiveBalanceSession.collectAsStateWithLifecycle()
-    val hasActiveCrownsSession by catalogViewModel.hasActiveCrownsSession.collectAsStateWithLifecycle()
-    val hasActiveWordSession by catalogViewModel.hasActiveWordSession.collectAsStateWithLifecycle()
-    val hasActiveSudokuSession by catalogViewModel.hasActiveSudokuSession.collectAsStateWithLifecycle()
-    val hasActiveGame2048Session by catalogViewModel.hasActiveGame2048Session.collectAsStateWithLifecycle()
     val economyViewModelFactory =
         remember(economyRepository) {
             EconomyViewModelFactory(economyRepository)
@@ -72,18 +60,13 @@ fun LogicaApp() {
         LogicaNavigation(
             settings = settings,
             settingsRepository = settingsRepository,
-            gameSessionRepository = gameSessionRepository,
+            catalogLevelRepository = catalogLevelRepository,
             gameCompletionRepository = gameCompletionRepository,
             dailyChallengeRepository = dailyChallengeRepository,
             statisticsRepository = statisticsRepository,
             dailyResultRepository = dailyResultRepository,
             economyRepository = economyRepository,
             economy = economy,
-            hasActiveBalanceSession = hasActiveBalanceSession,
-            hasActiveCrownsSession = hasActiveCrownsSession,
-            hasActiveWordSession = hasActiveWordSession,
-            hasActiveSudokuSession = hasActiveSudokuSession,
-            hasActiveGame2048Session = hasActiveGame2048Session,
             rewardedState = rewardedState,
             interstitialOpportunity = interstitialOpportunity,
             ruStorePayGateway = application.container.ruStorePayGateway,

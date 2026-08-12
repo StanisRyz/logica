@@ -1,11 +1,7 @@
 package com.stanisryz.logica.navigation
 
 import com.stanisryz.logica.R
-import com.stanisryz.logica.balance.BalanceGameLaunch
-import com.stanisryz.logica.crowns.CrownsGameLaunch
-import com.stanisryz.logica.game2048.Game2048Launch
-import com.stanisryz.logica.sudoku.SudokuGameLaunch
-import com.stanisryz.logica.word.WordGameLaunch
+import com.stanisryz.logica.catalog.GameAttemptLaunch
 
 /**
  * The three primary sections of the application. Everything the player can reach is either one of
@@ -62,23 +58,23 @@ internal sealed interface AppDestination {
     data object Game2048Tutorial : AppDestination
 
     data class BalanceGame(
-        val launch: BalanceGameLaunch,
+        val launch: GameAttemptLaunch,
     ) : AppDestination
 
     data class CrownsGame(
-        val launch: CrownsGameLaunch,
+        val launch: GameAttemptLaunch,
     ) : AppDestination
 
     data class WordGame(
-        val launch: WordGameLaunch,
+        val launch: GameAttemptLaunch,
     ) : AppDestination
 
     data class SudokuGame(
-        val launch: SudokuGameLaunch,
+        val launch: GameAttemptLaunch,
     ) : AppDestination
 
     data class Game2048Game(
-        val launch: Game2048Launch,
+        val launch: GameAttemptLaunch,
     ) : AppDestination
 }
 

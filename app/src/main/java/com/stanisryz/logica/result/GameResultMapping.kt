@@ -1,5 +1,8 @@
 package com.stanisryz.logica.result
 
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
 import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
@@ -23,15 +26,19 @@ internal fun GameCompletion.toEntity(completedAtEpochMillis: Long): GameResultEn
         attemptsUsed = attemptsUsed,
         challengeDate = challengeDate?.toString(),
         dailyPolicyVersion = dailyPolicyVersion?.value,
+        catalogLevelNumber = catalogLevel?.levelNumber?.value,
+        catalogLevelPackVersion = catalogLevel?.packVersion?.value,
     )
 
 internal fun GameResultEntity.toGameResultOrNull(): GameResult? =
     runCatching {
         val scope = GameSessionScope.valueOf(sessionScope)
+        val type = PuzzleType.valueOf(puzzleType)
+        val puzzleDifficulty = Difficulty.valueOf(difficulty)
         GameResult(
             resultId = resultId.also { require(it.isNotBlank()) },
-            puzzleType = PuzzleType.valueOf(puzzleType),
-            difficulty = Difficulty.valueOf(difficulty),
+            puzzleType = type,
+            difficulty = puzzleDifficulty,
             puzzleSeed = PuzzleSeed(puzzleSeed),
             generatorVersion = GeneratorVersion(generatorVersion),
             sessionScope = scope,
@@ -41,6 +48,23 @@ internal fun GameResultEntity.toGameResultOrNull(): GameResult? =
             attemptsUsed = attemptsUsed,
             challengeDate = challengeDate?.let(LocalDate::parse),
             dailyPolicyVersion = dailyPolicyVersion?.let(::DailyPolicyVersion),
+            // Level metadata is diagnostic: a historical or partially written pair is simply dropped
+            // rather than invalidating an otherwise valid durable result.
+            catalogLevel =
+                catalogLevelNumber
+                    ?.takeIf { scope == GameSessionScope.CATALOG }
+                    ?.let { level ->
+                        catalogLevelPackVersion?.let { packVersion ->
+                            runCatching {
+                                CatalogLevelId(
+                                    puzzleType = type,
+                                    difficulty = puzzleDifficulty,
+                                    levelNumber = CatalogLevelNumber(level),
+                                    packVersion = CatalogLevelPackVersion(packVersion),
+                                )
+                            }.getOrNull()
+                        }
+                    },
         ).also { result ->
             require(
                 (scope == GameSessionScope.DAILY) ==

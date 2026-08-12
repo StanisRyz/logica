@@ -23,6 +23,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
+import com.stanisryz.logica.catalog.GameAttemptFactory
+import com.stanisryz.logica.catalog.GameAttemptLaunch
+import com.stanisryz.logica.catalog.levelNumberOrNull
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.Difficulty
@@ -39,18 +42,17 @@ import com.stanisryz.logica.puzzle.core.sudoku.SudokuPosition
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuPuzzle
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuPuzzleId
 import com.stanisryz.logica.result.GameCompletionRepository
-import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.settings.ThemeMode
-import com.stanisryz.logica.sudoku.SudokuGameContext
 import com.stanisryz.logica.sudoku.SudokuGameError
-import com.stanisryz.logica.sudoku.SudokuGameLaunch
 import com.stanisryz.logica.sudoku.SudokuGameUiState
 import com.stanisryz.logica.sudoku.SudokuGameViewModel
 import com.stanisryz.logica.sudoku.SudokuGameViewModelFactory
 import com.stanisryz.logica.ui.components.BodyText
-import com.stanisryz.logica.ui.components.DifficultyBadge
 import com.stanisryz.logica.ui.components.GameAction
 import com.stanisryz.logica.ui.components.GameActionBar
+import com.stanisryz.logica.ui.components.GameHeaderBadges
+import com.stanisryz.logica.ui.components.GameplayExitGuard
+import com.stanisryz.logica.ui.components.LeaveLevelGuard
 import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.components.LogicaCard
 import com.stanisryz.logica.ui.components.MistakeIndicator
@@ -68,14 +70,14 @@ import com.stanisryz.logica.ui.theme.LogicaTheme
 
 @Composable
 internal fun SudokuGameRoute(
-    launch: SudokuGameLaunch,
-    sessionRepository: GameSessionRepository,
+    launch: GameAttemptLaunch,
+    attemptFactory: GameAttemptFactory,
     completionRepository: GameCompletionRepository,
     economyRepository: EconomyRepository,
+    exitGuard: GameplayExitGuard,
     hapticsEnabled: Boolean,
     onBack: () -> Unit,
-    onNewPuzzle: (Difficulty) -> Unit,
-    onStartNew: () -> Unit,
+    onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
     onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
@@ -83,11 +85,11 @@ internal fun SudokuGameRoute(
 ) {
     val assets = LocalContext.current.assets
     val factory =
-        remember(launch, assets, sessionRepository, completionRepository, economyRepository) {
+        remember(launch, assets, attemptFactory, completionRepository, economyRepository) {
             SudokuGameViewModelFactory(
                 launch,
                 assets,
-                sessionRepository,
+                attemptFactory,
                 completionRepository,
                 economyRepository,
             )
@@ -95,22 +97,23 @@ internal fun SudokuGameRoute(
     val gameViewModel: SudokuGameViewModel = viewModel(factory = factory)
     val uiState by gameViewModel.uiState.collectAsStateWithLifecycle()
     val economy by gameViewModel.economy.collectAsStateWithLifecycle()
+    LeaveLevelGuard(exitGuard, (uiState as? SudokuGameUiState.Ready)?.hasMeaningfulProgress == true)
     SudokuGameScreen(
         uiState = uiState,
         economy = economy,
-        isDaily = launch.context is SudokuGameContext.Daily,
+        isDaily = launch is GameAttemptLaunch.Daily,
+        levelNumber = launch.levelNumberOrNull(),
         onSelectCell = gameViewModel::selectCell,
         onDigit = gameViewModel::inputDigit,
         onTogglePencil = gameViewModel::togglePencilMode,
         onHint = gameViewModel::requestHint,
-        onRetry = { onTerminalAction(gameViewModel::retry) },
+        onRetryLevel = { onTerminalAction(gameViewModel::retry) },
         onRetryCompletion = gameViewModel::retryCompletion,
         onRetryLoad = gameViewModel::reload,
         onRestoreLife = onRestoreLife,
         hapticsEnabled = hapticsEnabled,
         onBack = onBack,
-        onNewPuzzle = { difficulty -> onTerminalAction { onNewPuzzle(difficulty) } },
-        onStartNew = { onTerminalAction(onStartNew) },
+        onNextLevel = { onTerminalAction(onNextLevel) },
         onGameHub = { onTerminalAction(onGameHub) },
         modifier = modifier,
     )
@@ -121,18 +124,18 @@ private fun SudokuGameScreen(
     uiState: SudokuGameUiState,
     economy: PlayerEconomy,
     isDaily: Boolean,
+    levelNumber: Int?,
     onSelectCell: (SudokuPosition) -> Unit,
     onDigit: (Int) -> Unit,
     onTogglePencil: () -> Unit,
     onHint: () -> Unit,
-    onRetry: () -> Unit,
+    onRetryLevel: () -> Unit,
     onRetryCompletion: () -> Unit,
     onRetryLoad: () -> Unit,
     onRestoreLife: () -> Unit,
     hapticsEnabled: Boolean,
     onBack: () -> Unit,
-    onNewPuzzle: (Difficulty) -> Unit,
-    onStartNew: () -> Unit,
+    onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -145,20 +148,8 @@ private fun SudokuGameScreen(
                     uiState.reason == SudokuGameError.PUZZLE_NOT_FOUND
             RetryableErrorState(
                 message = uiState.reason.message(),
-                retryLabel =
-                    stringResource(
-                        when {
-                            canReload -> R.string.retry
-                            isDaily -> R.string.to_games
-                            else -> R.string.try_another
-                        },
-                    ),
-                onRetry =
-                    when {
-                        canReload -> onRetryLoad
-                        isDaily -> onGameHub
-                        else -> onStartNew
-                    },
+                retryLabel = stringResource(if (canReload) R.string.retry else R.string.to_games),
+                onRetry = if (canReload) onRetryLoad else onGameHub,
                 modifier = modifier,
                 secondaryLabel = stringResource(R.string.back),
                 onSecondary = onBack,
@@ -169,20 +160,16 @@ private fun SudokuGameScreen(
                 uiState = uiState,
                 economy = economy,
                 isDaily = isDaily,
+                levelNumber = levelNumber,
                 onSelectCell = onSelectCell,
                 onDigit = onDigit,
                 onTogglePencil = onTogglePencil,
                 onHint = onHint,
-                onRetry = onRetry,
+                onRetryLevel = onRetryLevel,
                 onRetryCompletion = onRetryCompletion,
                 onRestoreLife = onRestoreLife,
                 hapticsEnabled = hapticsEnabled,
-                onNewPuzzle = {
-                    onNewPuzzle(
-                        uiState.puzzle.id.difficulty
-                            .toDifficulty(),
-                    )
-                },
+                onNextLevel = onNextLevel,
                 onGameHub = onGameHub,
                 modifier = modifier,
             )
@@ -194,15 +181,16 @@ private fun SudokuReadyState(
     uiState: SudokuGameUiState.Ready,
     economy: PlayerEconomy,
     isDaily: Boolean,
+    levelNumber: Int?,
     onSelectCell: (SudokuPosition) -> Unit,
     onDigit: (Int) -> Unit,
     onTogglePencil: () -> Unit,
     onHint: () -> Unit,
-    onRetry: () -> Unit,
+    onRetryLevel: () -> Unit,
     onRetryCompletion: () -> Unit,
     onRestoreLife: () -> Unit,
     hapticsEnabled: Boolean,
-    onNewPuzzle: () -> Unit,
+    onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -242,12 +230,13 @@ private fun SudokuReadyState(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         PuzzleTitle(stringResource(R.string.sudoku), puzzleType = PuzzleType.SUDOKU)
-        DifficultyBadge(
+        GameHeaderBadges(
             difficultyLabel(
                 PuzzleType.SUDOKU,
                 uiState.puzzle.id.difficulty
                     .toDifficulty(),
             ),
+            levelNumber,
         )
         MistakeIndicator(game.mistakesUsed, SudokuGameState.MAX_MISTAKES)
         ZeroLivesCard(economy, onRestoreLife)
@@ -306,11 +295,9 @@ private fun SudokuReadyState(
             isRetryAllowed = economy.isGameplayAllowed,
             isDaily = isDaily,
             onRetryCompletion = onRetryCompletion,
-            onRetryPuzzle = onRetry,
-            onNewPuzzle = onNewPuzzle,
+            onRetryLevel = onRetryLevel,
+            onNextLevel = onNextLevel,
             onGameHub = onGameHub,
-            // A solved Daily entry is finished for the day; only the catalog replays the same puzzle.
-            preferSamePuzzleRetry = !isDaily,
         )
     }
 }
@@ -350,8 +337,7 @@ private fun SudokuHint.presentationText(): String =
 private fun SudokuGameError.message(): String =
     stringResource(
         when (this) {
-            SudokuGameError.MISSING_SAVED_SESSION -> R.string.missing_saved_game
-            SudokuGameError.INVALID_SAVED_SESSION -> R.string.invalid_saved_game
+            SudokuGameError.LEVEL_UNAVAILABLE -> R.string.level_content_error
             SudokuGameError.MISSING_DATASET -> R.string.sudoku_dataset_missing
             SudokuGameError.CORRUPT_DATASET -> R.string.sudoku_dataset_corrupt
             SudokuGameError.PUZZLE_NOT_FOUND -> R.string.sudoku_puzzle_missing
@@ -375,18 +361,18 @@ private fun SudokuGamePreview() {
             uiState = SudokuGameUiState.Ready(puzzle, game, selectedCell = SudokuPosition(0, 4)),
             economy = PlayerEconomy(),
             isDaily = false,
+            levelNumber = 12,
             onSelectCell = {},
             onDigit = {},
             onTogglePencil = {},
             onHint = {},
-            onRetry = {},
+            onRetryLevel = {},
             onRetryCompletion = {},
             onRetryLoad = {},
             onRestoreLife = {},
             hapticsEnabled = true,
             onBack = {},
-            onNewPuzzle = {},
-            onStartNew = {},
+            onNextLevel = {},
             onGameHub = {},
         )
     }

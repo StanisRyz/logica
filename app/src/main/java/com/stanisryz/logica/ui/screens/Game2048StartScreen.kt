@@ -12,7 +12,7 @@ import com.stanisryz.logica.ui.components.game2048DifficultyResource
 
 @Composable
 internal fun Game2048StartScreen(
-    hasActiveSession: Boolean,
+    levels: Map<Difficulty, Int>,
     tutorialCompleted: Boolean,
     economy: PlayerEconomy,
     onOpenTutorial: () -> Unit,
@@ -25,7 +25,7 @@ internal fun Game2048StartScreen(
         introResource = R.string.game_2048_rules_intro,
         tutorialOfferBodyResource = R.string.game_2048_tutorial_offer_body,
         tutorialCompleted = tutorialCompleted,
-        hasActiveSession = hasActiveSession,
+        levels = levels,
         economy = economy,
         onOpenTutorial = onOpenTutorial,
         onStart = onStart,

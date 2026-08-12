@@ -99,16 +99,7 @@ class BinarySudokuDataset(
                 "Sudoku dataset $version/$difficulty contains no puzzles.",
             )
         }
-        // V1 contract: SHA-256 of this exact UTF-8 material, then the unsigned big-endian first
-        // 32 bits modulo the fingerprint-sorted bucket size. Changes require a new dataset version.
-        val selectorMaterial = "logica:sudoku:selector:v1|${version.value}|${difficulty.name}|$selector"
-        val digest = sha256(selectorMaterial.toByteArray(StandardCharsets.UTF_8))
-        val unsignedPrefix =
-            ((digest[0].toLong() and 0xFF) shl 24) or
-                ((digest[1].toLong() and 0xFF) shl 16) or
-                ((digest[2].toLong() and 0xFF) shl 8) or
-                (digest[3].toLong() and 0xFF)
-        return bucket.parseRecord((unsignedPrefix % bucket.count).toInt())
+        return bucket.parseRecord(SudokuSelectorV1.index(version, difficulty, selector, bucket.count))
     }
 
     @Synchronized

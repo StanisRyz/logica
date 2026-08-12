@@ -9,19 +9,21 @@ import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.economy.PlayerEconomyEntity
 import com.stanisryz.logica.economy.toEntity
 import com.stanisryz.logica.economy.toPlayerEconomy
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengeDefinition
-import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
-import com.stanisryz.logica.session.GameSessionEntity
 import com.stanisryz.logica.session.GameSessionScope
 
 /**
  * An in-memory stand-in for the Room tables the completion transaction touches, so the real
- * [GameCompletionDao.complete] logic — results, Daily lifecycle, sessions, and the wallet — can be
- * exercised without a device.
+ * [GameCompletionDao.complete] logic — results, Daily lifecycle, Catalog level progression, and the
+ * wallet — can be exercised without a device. Attempts are transient now, so there is no session
+ * table here at all.
  */
 internal class FakeGameCompletionDao(
     definition: DailyChallengeDefinition,
@@ -29,8 +31,8 @@ internal class FakeGameCompletionDao(
 ) : GameCompletionDao {
     val results = mutableMapOf<String, GameResultEntity>()
     val economyEvents = mutableMapOf<String, EconomyEventEntity>()
-    private val sessions = mutableMapOf<Pair<String, String>, GameSessionEntity>()
     private val challenges = mutableMapOf<Pair<String, String>, DailyChallengeEntity>()
+    private val progress = mutableMapOf<Triple<String, String, Int>, Int>()
     private var economy: PlayerEconomyEntity? = startingEconomy.toEntity(0)
     var run =
         DailyRunEntity(
@@ -44,49 +46,7 @@ internal class FakeGameCompletionDao(
         private set
 
     init {
-        // Every production puzzle type gets a Catalog session, so the economy can be exercised for
-        // each of them without the transaction rejecting a result whose session is missing.
-        PRODUCTION_PUZZLE_TYPES.forEach { puzzleType ->
-            sessions[puzzleType.name to GameSessionScope.CATALOG.name] =
-                GameSessionEntity(
-                    puzzleType = puzzleType.name,
-                    sessionScope = GameSessionScope.CATALOG.name,
-                    sessionId = "catalog-$puzzleType",
-                    difficulty = Difficulty.EASY.name,
-                    puzzleSeed = 4242,
-                    generatorVersion = 1,
-                    challengeDate = null,
-                    dailyPolicyVersion = null,
-                    sessionFormatVersion = 1,
-                    gameplayPayload = "payload",
-                    moveHistoryPayload = "",
-                    hintsUsed = 0,
-                    status = "IN_PROGRESS",
-                    createdAtEpochMillis = 100,
-                    updatedAtEpochMillis = 100,
-                )
-        }
-        definition.entries.forEachIndexed { index, entry ->
-            val resultId = "daily-$index"
-            val key = entry.puzzleType.name to GameSessionScope.DAILY.name
-            sessions[key] =
-                GameSessionEntity(
-                    puzzleType = entry.puzzleType.name,
-                    sessionScope = GameSessionScope.DAILY.name,
-                    sessionId = resultId,
-                    difficulty = entry.difficulty.name,
-                    puzzleSeed = entry.seed.value,
-                    generatorVersion = entry.generatorVersion.value,
-                    challengeDate = definition.challengeDate.toString(),
-                    dailyPolicyVersion = definition.policyVersion.value,
-                    sessionFormatVersion = 1,
-                    gameplayPayload = "payload",
-                    moveHistoryPayload = "",
-                    hintsUsed = index + 1,
-                    status = "IN_PROGRESS",
-                    createdAtEpochMillis = 100,
-                    updatedAtEpochMillis = 100,
-                )
+        definition.entries.forEach { entry ->
             challenges[definition.challengeDate.toString() to entry.puzzleType.name] =
                 DailyChallengeEntity(
                     challengeDate = definition.challengeDate.toString(),
@@ -105,22 +65,6 @@ internal class FakeGameCompletionDao(
     override suspend fun findResult(resultId: String): GameResultEntity? = results[resultId]
 
     override suspend fun insertResult(result: GameResultEntity): Long = if (results.putIfAbsent(result.resultId, result) == null) 1 else -1
-
-    override suspend fun findSession(
-        puzzleType: String,
-        sessionScope: String,
-    ): GameSessionEntity? = sessions[puzzleType to sessionScope]
-
-    override suspend fun deleteSession(
-        puzzleType: String,
-        sessionScope: String,
-        sessionId: String,
-    ): Int {
-        val key = puzzleType to sessionScope
-        if (sessions[key]?.sessionId != sessionId) return 0
-        sessions.remove(key)
-        return 1
-    }
 
     override suspend fun findDailyChallenge(
         challengeDate: String,
@@ -192,48 +136,49 @@ internal class FakeGameCompletionDao(
     override suspend fun insertEconomyEvent(event: EconomyEventEntity): Long =
         if (economyEvents.putIfAbsent(event.eventId, event) == null) 1 else -1
 
-    fun wallet(nowEpochMillis: Long): PlayerEconomy = economy.toPlayerEconomy(nowEpochMillis)
-
-    /** A retry is a brand-new session for the very same Daily entry identity. */
-    fun startRetrySession(
-        definition: DailyChallengeDefinition,
-        entry: DailyPuzzleEntry,
-        sessionId: String,
-        hintsUsed: Int,
+    override suspend fun insertCatalogProgressIfAbsent(
+        puzzleType: String,
+        difficulty: String,
+        packVersion: Int,
+        nextLevel: Int,
+        updatedAt: Long,
     ) {
-        sessions[entry.puzzleType.name to GameSessionScope.DAILY.name] =
-            GameSessionEntity(
-                puzzleType = entry.puzzleType.name,
-                sessionScope = GameSessionScope.DAILY.name,
-                sessionId = sessionId,
-                difficulty = entry.difficulty.name,
-                puzzleSeed = entry.seed.value,
-                generatorVersion = entry.generatorVersion.value,
-                challengeDate = definition.challengeDate.toString(),
-                dailyPolicyVersion = definition.policyVersion.value,
-                sessionFormatVersion = 3,
-                gameplayPayload = "payload",
-                moveHistoryPayload = "",
-                hintsUsed = hintsUsed,
-                status = "IN_PROGRESS",
-                createdAtEpochMillis = 100,
-                updatedAtEpochMillis = 100,
-            )
+        progress.putIfAbsent(Triple(puzzleType, difficulty, packVersion), nextLevel)
     }
 
-    /**
-     * One Catalog attempt of [puzzleType]. Asking for a difficulty also retunes the seeded active
-     * session, because the completion transaction refuses a result its session does not match.
-     */
+    override suspend fun advanceCatalogProgress(
+        puzzleType: String,
+        difficulty: String,
+        packVersion: Int,
+        nextLevel: Int,
+        updatedAt: Long,
+    ): Int {
+        val key = Triple(puzzleType, difficulty, packVersion)
+        val current = progress[key] ?: return 0
+        if (current >= nextLevel) return 0
+        progress[key] = nextLevel
+        return 1
+    }
+
+    fun wallet(nowEpochMillis: Long): PlayerEconomy = economy.toPlayerEconomy(nowEpochMillis)
+
+    /** The stored next level to play, or null while the bucket has never been completed. */
+    fun currentLevel(
+        puzzleType: PuzzleType,
+        difficulty: Difficulty = Difficulty.EASY,
+        packVersion: CatalogLevelPackVersion = CatalogLevelPackVersion.V1,
+    ): Int? = progress[Triple(puzzleType.name, difficulty.name, packVersion.value)]
+
+    /** One Catalog attempt of [puzzleType] at one public level. */
     fun catalogCompletion(
         puzzleType: PuzzleType,
         outcome: GameOutcome = GameOutcome.SOLVED,
         difficulty: Difficulty = Difficulty.EASY,
-    ): GameCompletion {
-        val key = puzzleType.name to GameSessionScope.CATALOG.name
-        sessions[key]?.let { sessions[key] = it.copy(difficulty = difficulty.name) }
-        return GameCompletion(
-            resultId = "catalog-$puzzleType",
+        levelNumber: Int = 1,
+        attemptId: String = "attempt",
+    ): GameCompletion =
+        GameCompletion(
+            resultId = "catalog:1:$puzzleType:$difficulty:$levelNumber:$attemptId",
             puzzleType = puzzleType,
             difficulty = difficulty,
             puzzleSeed = PuzzleSeed(4242),
@@ -242,22 +187,14 @@ internal class FakeGameCompletionDao(
             hintsUsed = 0,
             outcome = outcome,
             attemptsUsed = if (puzzleType == PuzzleType.WORD) WORD_ATTEMPTS else null,
+            catalogLevel =
+                CatalogLevelId(puzzleType, difficulty, CatalogLevelNumber(levelNumber), CatalogLevelPackVersion.V1),
         )
-    }
 
     fun challenge(result: GameResultEntity): DailyChallengeEntity =
         requireNotNull(challenges[requireNotNull(result.challengeDate) to result.puzzleType])
 
     private companion object {
-        val PRODUCTION_PUZZLE_TYPES =
-            listOf(
-                PuzzleType.BALANCE,
-                PuzzleType.CROWNS,
-                PuzzleType.WORD,
-                PuzzleType.SUDOKU,
-                PuzzleType.GAME_2048,
-            )
-
         /** Word is the only type that records attempts; the exact count is irrelevant to economy. */
         const val WORD_ATTEMPTS = 3
     }

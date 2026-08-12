@@ -1,5 +1,6 @@
 package com.stanisryz.logica.result
 
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
 import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
@@ -46,6 +47,11 @@ internal data class GameCompletion(
     val attemptsUsed: Int? = null,
     val challengeDate: LocalDate? = null,
     val dailyPolicyVersion: DailyPolicyVersion? = null,
+    /**
+     * The public Catalog level this attempt belongs to. Present for Catalog results only: a Daily
+     * result stays a Daily result and never pretends to be a Catalog level.
+     */
+    val catalogLevel: CatalogLevelId? = null,
 ) {
     init {
         require(resultId.isNotBlank()) { "Result ID must not be blank." }
@@ -54,6 +60,12 @@ internal data class GameCompletion(
             (sessionScope == GameSessionScope.DAILY) ==
                 (challengeDate != null && dailyPolicyVersion != null),
         ) { "Daily identity must be present only for Daily results." }
+        require(catalogLevel == null || sessionScope == GameSessionScope.CATALOG) {
+            "Only a Catalog result may carry Catalog level identity."
+        }
+        require(catalogLevel == null || (catalogLevel.puzzleType == puzzleType && catalogLevel.difficulty == difficulty)) {
+            "The Catalog level identity does not match the completed puzzle."
+        }
         requireOutcomeMetadata(puzzleType, attemptsUsed)
     }
 }
@@ -71,6 +83,8 @@ internal data class GameResult(
     val attemptsUsed: Int? = null,
     val challengeDate: LocalDate? = null,
     val dailyPolicyVersion: DailyPolicyVersion? = null,
+    /** Null for Daily results and for Catalog results recorded before the frozen level system. */
+    val catalogLevel: CatalogLevelId? = null,
 ) {
     init {
         require(resultId.isNotBlank()) { "Result ID must not be blank." }
@@ -79,6 +93,9 @@ internal data class GameResult(
             (sessionScope == GameSessionScope.DAILY) ==
                 (challengeDate != null && dailyPolicyVersion != null),
         ) { "Daily identity must be present only for Daily results." }
+        require(catalogLevel == null || sessionScope == GameSessionScope.CATALOG) {
+            "Only a Catalog result may carry Catalog level identity."
+        }
         requireOutcomeMetadata(puzzleType, attemptsUsed)
     }
 }

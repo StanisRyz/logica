@@ -4,17 +4,19 @@ import com.stanisryz.logica.R
 import com.stanisryz.logica.daily.DailyEntryState
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 
-/** One regular (non-Daily) game as the Game hub catalog presents it. */
+/**
+ * One regular (non-Daily) game as the Game hub catalog presents it. There is no saved-game state to
+ * show any more: a card simply leads to the game's difficulty screen, where each difficulty carries
+ * its own current level.
+ */
 internal data class GameCatalogEntry(
     val puzzleType: PuzzleType,
     val descriptionResource: Int,
-    val hasActiveSession: Boolean,
-    val onContinue: () -> Unit,
-    val onNew: () -> Unit,
+    val onPlay: () -> Unit,
 )
 
 /**
- * The catalog of regular games, in the order the hub lists them. A fifth game is one row here and
+ * The catalog of regular games, in the order the hub lists them. A sixth game is one row here and
  * nothing else: neither the list nor its cards assume a fixed count.
  */
 private val CATALOG_PUZZLES: List<Pair<PuzzleType, Int>> =
@@ -26,40 +28,30 @@ private val CATALOG_PUZZLES: List<Pair<PuzzleType, Int>> =
         PuzzleType.GAME_2048 to R.string.game_2048_catalog_description,
     )
 
-internal fun gameCatalogEntries(
-    hasActiveSession: (PuzzleType) -> Boolean,
-    onContinue: (PuzzleType) -> Unit,
-    onNew: (PuzzleType) -> Unit,
-): List<GameCatalogEntry> =
+internal fun gameCatalogEntries(onPlay: (PuzzleType) -> Unit): List<GameCatalogEntry> =
     CATALOG_PUZZLES.map { (puzzleType, description) ->
         GameCatalogEntry(
             puzzleType = puzzleType,
             descriptionResource = description,
-            hasActiveSession = hasActiveSession(puzzleType),
-            onContinue = { onContinue(puzzleType) },
-            onNew = { onNew(puzzleType) },
+            onPlay = { onPlay(puzzleType) },
         )
     }
 
 /**
  * The one action a Daily card performs when it is tapped, or `null` for an entry that is done. The
- * card itself is the target, so a state maps to exactly one label.
+ * card itself is the target, so a state maps to exactly one label. An unfinished Daily attempt is
+ * transient, so there is no Continue.
  */
 internal fun DailyEntryState.primaryActionResource(): Int? =
     when (this) {
         DailyEntryState.AVAILABLE -> R.string.start
-        DailyEntryState.IN_PROGRESS -> R.string.continue_game
         DailyEntryState.RETRY -> R.string.retry_puzzle
         DailyEntryState.COMPLETED -> null
     }
 
-/**
- * Whether tapping the card does anything. A finished entry never acts, a saved one always opens —
- * at zero lives too, with its gameplay actions disabled — and starting an attempt needs a life.
- */
+/** Whether tapping the card does anything. A finished entry never acts; starting needs a life. */
 internal fun DailyEntryState.isActionable(gameplayAllowed: Boolean): Boolean =
     when (this) {
         DailyEntryState.COMPLETED -> false
-        DailyEntryState.IN_PROGRESS -> true
         DailyEntryState.AVAILABLE, DailyEntryState.RETRY -> gameplayAllowed
     }

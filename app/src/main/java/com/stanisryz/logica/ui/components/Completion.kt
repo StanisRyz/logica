@@ -62,9 +62,9 @@ internal fun CompletionCard(
 }
 
 /**
- * Balance, Crowns, and Sudoku share one terminal dialog for both endings. A failed attempt leads
- * with Retry on the same puzzle; a solved Daily returns to the Game hub, while each Catalog game
- * chooses new-puzzle or same-puzzle replay as its primary action. The board stays visible behind it.
+ * Balance, Crowns, Word, and Sudoku share one terminal dialog for both endings. A failed attempt
+ * leads with Retry on the very same level; a solved Catalog level leads to the next level, and a
+ * solved Daily returns to the Game hub. The board stays visible behind it.
  *
  * The wallet effect is reported only once the result is durably stored, and a retry is offered only
  * while a life is available.
@@ -80,10 +80,9 @@ internal fun PuzzleTerminalDialog(
     isRetryAllowed: Boolean,
     isDaily: Boolean,
     onRetryCompletion: () -> Unit,
-    onRetryPuzzle: () -> Unit,
-    onNewPuzzle: () -> Unit,
+    onRetryLevel: () -> Unit,
+    onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
-    preferSamePuzzleRetry: Boolean = false,
 ) {
     val isError = completionPersistence == CompletionPersistence.Error
     val isSaved = completionPersistence == CompletionPersistence.Saved
@@ -133,12 +132,12 @@ internal fun PuzzleTerminalDialog(
                 completionPersistence == CompletionPersistence.Error ->
                     TextButton(onClick = onRetryCompletion) { Text(stringResource(R.string.retry)) }
                 !isSaved -> TextButton(onClick = {}, enabled = false) { Text(stringResource(R.string.saving)) }
-                !isSolved || preferSamePuzzleRetry ->
-                    TextButton(onClick = onRetryPuzzle, enabled = isRetryAllowed) {
+                !isSolved ->
+                    TextButton(onClick = onRetryLevel, enabled = isRetryAllowed) {
                         Text(stringResource(R.string.retry_puzzle))
                     }
                 isDaily -> TextButton(onClick = onGameHub) { Text(stringResource(R.string.to_games)) }
-                else -> TextButton(onClick = onNewPuzzle) { Text(stringResource(R.string.new_puzzle)) }
+                else -> TextButton(onClick = onNextLevel) { Text(stringResource(R.string.next_level)) }
             }
         },
         dismissButton = {

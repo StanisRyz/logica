@@ -73,6 +73,29 @@ tasks.register<JavaExec>("wordQualityCheck") {
     }
 }
 
+/**
+ * Developer-only offline freeze of the Catalog Level Packs. It is never part of a normal build and
+ * never runs on a device: it writes the compact bucket assets the application reads read-only.
+ */
+tasks.register<JavaExec>("buildCatalogLevelPacks") {
+    group = "build"
+    description = "Regenerates the frozen Catalog Level Pack V1 assets from the shipped generators."
+    dependsOn(qualitySourceSet.classesTaskName)
+    classpath = qualitySourceSet.runtimeClasspath
+    mainClass.set("com.stanisryz.logica.puzzle.core.catalog.quality.CatalogLevelPackBuilder")
+    maxHeapSize = "2g"
+
+    doFirst {
+        args(
+            rootProject.layout.projectDirectory
+                .dir("app/src/main/assets")
+                .asFile.path,
+            providers.gradleProperty("levelPackGames").orElse("all").get(),
+            providers.gradleProperty("levelPackSlots").orElse("10000").get(),
+        )
+    }
+}
+
 tasks.register<JavaExec>("wordLexiconPrepare") {
     group = "build"
     description = "Regenerates the bundled Word V1 lexicon from the curated offline sources."

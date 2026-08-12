@@ -32,9 +32,16 @@
     <string name="difficulty_hard">Сложно</string>
     <string name="difficulty_expert">Эксперт</string>
     <string name="start">Начать</string>
-    <string name="start_new_game_title">Начать новую игру?</string>
-    <string name="start_new_game_body">Текущий прогресс будет заменён.</string>
     <string name="cancel">Отмена</string>
+    <!-- Frozen Catalog levels: the same level number is the same puzzle for everyone. -->
+    <string name="catalog_difficulty_level">%1$s · Уровень %2$d</string>
+    <string name="catalog_level">Уровень %1$d</string>
+    <string name="next_level">Следующий уровень</string>
+    <string name="level_content_error">Содержимое уровня недоступно.</string>
+    <string name="leave_level_title">Выйти из уровня?</string>
+    <string name="leave_level_body">Незавершённый уровень не сохраняется: прогресс этой попытки будет потерян.</string>
+    <string name="leave_level_confirm">Выйти</string>
+    <string name="leave_level_stay">Остаться</string>
     <string name="creating_puzzle">Создаём головоломку…</string>
     <string name="try_another">Попробовать другую</string>
     <string name="hint">Подсказка</string>
@@ -84,12 +91,12 @@
     <string name="cell_one">единица</string>
     <string name="puzzles">Головоломки</string>
     <string name="balance_catalog_description">Заполните поле нулями и единицами, соблюдая баланс и уникальность линий.</string>
-    <string name="continue_game">Продолжить</string>
     <string name="new_game">Новая игра</string>
+    <!-- Generic "next step" label used by the tutorial steppers. -->
+    <string name="continue_game">Продолжить</string>
     <string name="play">Играть</string>
     <string name="daily_challenge">Задача дня</string>
     <string name="daily_available">Не начата</string>
-    <string name="daily_in_progress">В процессе</string>
     <string name="daily_entry_solved">Решено</string>
     <string name="daily_entry_failed">Не пройдено</string>
     <string name="daily_completed">Задача дня выполнена</string>
@@ -103,8 +110,6 @@
     <string name="saving_completion">Сохраняем результат…</string>
     <string name="completion_save_error_title">Не удалось сохранить результат</string>
     <string name="completion_save_error_body">Прогресс не потерян. Повторите сохранение результата.</string>
-    <string name="missing_saved_game">Сохранённая игра не найдена. Начните новую игру.</string>
-    <string name="invalid_saved_game">Сохранение повреждено или несовместимо. Начните новую игру.</string>
     <string name="puzzle_generation_error">Не удалось создать головоломку.</string>
     <string name="daily_load_error">Не удалось загрузить задачу дня.</string>
     <string name="daily_start_error">Не удалось начать задачу дня.</string>
@@ -125,7 +130,6 @@
     <string name="statistics_overall">Всего</string>
     <string name="statistics_empty_title">Пока нет завершённых игр</string>
     <string name="statistics_empty_body">Сыграйте задачу дня или головоломку из каталога — здесь появится статистика.</string>
-    <string name="catalog_active_session">Есть сохранение</string>
     <string name="settings_appearance">Оформление</string>
     <string name="settings_gameplay">Игра</string>
     <string name="settings_theme">Тема</string>
@@ -302,7 +306,6 @@
     <string name="sudoku_dataset_missing">Встроенный набор судоку недоступен.</string>
     <string name="sudoku_dataset_corrupt">Встроенный набор судоку повреждён.</string>
     <string name="sudoku_puzzle_missing">Это судоку не найдено во встроенном наборе.</string>
-    <string name="sudoku_session_invalid">Сохранённую попытку судоку не удалось открыть.</string>
     <string name="game_2048_title">2048</string>
     <string name="game_2048_target">Цель</string>
     <string name="game_2048_score">Счёт</string>
@@ -342,7 +345,12 @@
     <string name="game_2048_tutorial_goal_title">Наберите очки</string>
     <string name="game_2048_tutorial_goal_body">Каждое объединение приносит очки. Цель зависит от сложности: от 12 000 до 250 000. Игра продолжается, пока остаётся хотя бы один ход, даже после достижения цели. Когда ходов не остаётся, итоговый счёт решает: цель набрана — победа, нет — поражение.</string>
     <string name="game_2048_loading">Загружаем 2048…</string>
-    <string name="game_2048_session_invalid">Сохранённую попытку 2048 не удалось открыть.</string>
+    <string name="game_2048_start_error">Не удалось начать игру 2048.</string>
+    <!-- Catalog 2048 clears at the score target and then keeps running as freeplay. -->
+    <string name="game_2048_level_cleared">Уровень %1$d ✓</string>
+    <string name="game_2048_level_cleared_hint">Цель достигнута — можно продолжать игру</string>
+    <string name="game_2048_cleared_title">Уровень пройден</string>
+    <string name="game_2048_cleared_body">Цель достигнута, уровень зачтён. Ходов больше нет.</string>
     <string name="game_2048_played">Сыграно</string>
     <string name="game_2048_solved_count">Цель достигнута</string>
     <string name="game_2048_failed_count">Ходы закончились</string>

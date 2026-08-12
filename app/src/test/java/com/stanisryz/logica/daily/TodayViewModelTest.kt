@@ -12,10 +12,6 @@ import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.GameResult
-import com.stanisryz.logica.session.DailyGameSessionIdentity
-import com.stanisryz.logica.session.GameSessionRepository
-import com.stanisryz.logica.session.GameSessionScope
-import com.stanisryz.logica.session.SavedGameSession
 import com.stanisryz.logica.statistics.GameStatistics
 import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.statistics.StatisticsSnapshot
@@ -23,7 +19,6 @@ import com.stanisryz.logica.statistics.WordStatistics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
@@ -68,20 +63,15 @@ class TodayViewModelTest {
                             PuzzleType.CROWNS to definition.savedChallenge(crowns, DailyChallengeStatus.IN_PROGRESS),
                         ),
                 )
-            // Only Crowns has an active DAILY session; Balance is finished, so no session remains.
-            val sessions =
-                FakeGameSessionRepository(
-                    mapOf(PuzzleType.CROWNS to definition.savedSession(crowns)),
-                )
-
-            val content = viewModel(dailyRepository, sessions).awaitContent()
+            // Attempts are transient, so an unfinished Crowns entry is simply open again.
+            val content = viewModel(dailyRepository).awaitContent()
 
             assertEquals(2, content.totalCount)
             assertEquals(1, content.completedCount)
             assertEquals(
                 listOf(
                     TodayEntryUiState(PuzzleType.BALANCE, balance.difficulty, DailyEntryState.COMPLETED),
-                    TodayEntryUiState(PuzzleType.CROWNS, crowns.difficulty, DailyEntryState.IN_PROGRESS),
+                    TodayEntryUiState(PuzzleType.CROWNS, crowns.difficulty, DailyEntryState.AVAILABLE),
                 ),
                 content.entries,
             )
@@ -90,7 +80,7 @@ class TodayViewModelTest {
     @Test
     fun newRunsUseV5WhilePersistedOlderRunsKeepTheirOriginalEntries() =
         runBlocking {
-            val fresh = viewModel(FakeDailyChallengeRepository(), FakeGameSessionRepository()).awaitContent()
+            val fresh = viewModel(FakeDailyChallengeRepository()).awaitContent()
 
             assertEquals(DailyChallengePolicyV5.VERSION, fresh.definition.policyVersion)
             assertEquals(
@@ -123,7 +113,6 @@ class TodayViewModelTest {
                                 entry.puzzleType to v4Definition.savedChallenge(entry, DailyChallengeStatus.IN_PROGRESS)
                             },
                     ),
-                    FakeGameSessionRepository(),
                 ).awaitContent()
 
             assertEquals(DailyChallengePolicyV4.VERSION, persistedV4.definition.policyVersion)
@@ -148,12 +137,11 @@ class TodayViewModelTest {
                                     v1Definition.savedChallenge(v1Entry, DailyChallengeStatus.IN_PROGRESS),
                             ),
                     ),
-                    FakeGameSessionRepository(mapOf(PuzzleType.BALANCE to v1Definition.savedSession(v1Entry))),
                 ).awaitContent()
 
             assertEquals(DailyChallengePolicyV1.VERSION, legacyV1.definition.policyVersion)
             assertEquals(
-                listOf(TodayEntryUiState(PuzzleType.BALANCE, v1Entry.difficulty, DailyEntryState.IN_PROGRESS)),
+                listOf(TodayEntryUiState(PuzzleType.BALANCE, v1Entry.difficulty, DailyEntryState.AVAILABLE)),
                 legacyV1.entries,
             )
             assertEquals(1, legacyV1.totalCount)
@@ -169,7 +157,6 @@ class TodayViewModelTest {
                                     v2Definition.savedChallenge(entry, DailyChallengeStatus.IN_PROGRESS)
                             },
                     ),
-                    FakeGameSessionRepository(),
                 ).awaitContent()
 
             assertEquals(DailyChallengePolicyV2.VERSION, legacyV2.definition.policyVersion)
@@ -192,7 +179,6 @@ class TodayViewModelTest {
                                 entry.puzzleType to definition.savedChallenge(entry, DailyChallengeStatus.COMPLETED)
                             },
                     ),
-                    FakeGameSessionRepository(),
                 ).awaitContent()
 
             assertEquals(DailyRunStatus.COMPLETED, content.runStatus)
@@ -206,13 +192,9 @@ class TodayViewModelTest {
 
     // Construction loads nothing: the hub route is the one owner of the initial refresh, so the tests
     // ask for it the same way the route does.
-    private fun viewModel(
-        dailyChallengeRepository: DailyChallengeRepository,
-        gameSessionRepository: GameSessionRepository,
-    ): TodayViewModel =
+    private fun viewModel(dailyChallengeRepository: DailyChallengeRepository): TodayViewModel =
         TodayViewModel(
             dailyChallengeRepository = dailyChallengeRepository,
-            gameSessionRepository = gameSessionRepository,
             statisticsRepository = EmptyStatisticsRepository,
             dailyResultRepository = EmptyDailyResultRepository,
             dateProvider = { date },
@@ -251,22 +233,6 @@ class TodayViewModelTest {
             status = status,
         )
 
-    private fun DailyChallengeDefinition.savedSession(entry: DailyPuzzleEntry): SavedGameSession =
-        SavedGameSession(
-            sessionId = "session-${entry.puzzleType}",
-            puzzleType = entry.puzzleType,
-            sessionScope = GameSessionScope.DAILY,
-            difficulty = entry.difficulty,
-            puzzleSeed = entry.seed,
-            generatorVersion = entry.generatorVersion,
-            dailyIdentity = DailyGameSessionIdentity(challengeDate, policyVersion.value),
-            sessionFormatVersion = 1,
-            gameplayPayload = "",
-            moveHistoryPayload = "",
-            hintsUsed = 0,
-            status = "IN_PROGRESS",
-        )
-
     private class FakeDailyChallengeRepository(
         private val run: SavedDailyRun? = null,
         private val entries: Map<PuzzleType, SavedDailyChallenge> = emptyMap(),
@@ -279,30 +245,6 @@ class TodayViewModelTest {
         override suspend fun readRun(challengeDate: LocalDate): SavedDailyRun? = run?.takeIf { it.challengeDate == challengeDate }
 
         override suspend fun createRun(definition: DailyChallengeDefinition): SavedDailyRun = error("Unused.")
-    }
-
-    private class FakeGameSessionRepository(
-        private val dailySessions: Map<PuzzleType, SavedGameSession> = emptyMap(),
-    ) : GameSessionRepository {
-        override suspend fun readActiveSession(
-            puzzleType: PuzzleType,
-            sessionScope: GameSessionScope,
-        ): SavedGameSession? = dailySessions[puzzleType]?.takeIf { it.sessionScope == sessionScope }
-
-        override fun replaceActiveSession(session: SavedGameSession) = error("Unused.")
-
-        override fun updateActiveSession(session: SavedGameSession) = error("Unused.")
-
-        override fun deleteActiveSession(
-            puzzleType: PuzzleType,
-            sessionScope: GameSessionScope,
-            sessionId: String,
-        ) = error("Unused.")
-
-        override fun observeHasActiveSession(
-            puzzleType: PuzzleType,
-            sessionScope: GameSessionScope,
-        ): Flow<Boolean> = MutableStateFlow(dailySessions.containsKey(puzzleType))
     }
 
     private object EmptyStatisticsRepository : StatisticsRepository {

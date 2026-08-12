@@ -30,4 +30,12 @@ internal data class GameResultEntity(
     val challengeDate: String?,
     @ColumnInfo(name = "daily_policy_version")
     val dailyPolicyVersion: Int?,
+    /**
+     * The public Catalog level this result belongs to. Both columns are nullable: Daily results never
+     * carry them, and historical results recorded before the frozen level system have no level.
+     */
+    @ColumnInfo(name = "catalog_level_number")
+    val catalogLevelNumber: Int? = null,
+    @ColumnInfo(name = "catalog_level_pack_version")
+    val catalogLevelPackVersion: Int? = null,
 )

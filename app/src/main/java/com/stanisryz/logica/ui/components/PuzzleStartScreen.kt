@@ -3,7 +3,6 @@ package com.stanisryz.logica.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Text
@@ -24,9 +23,11 @@ import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 /**
  * The shared structure of the Catalog start screens: puzzle title, short explanation, difficulty
- * section, primary Start, and a secondary way into the tutorial. Puzzle-specific rule text and
- * difficulty details are supplied by the caller. Starting an attempt needs a life, so the zero-life
- * state replaces Start with its own explanation and gem refill.
+ * section, primary Start, and a secondary way into the tutorial. Each difficulty carries the level it
+ * currently stands on, because progression is per game and per difficulty. Puzzle-specific rule text
+ * and difficulty details are supplied by the caller.
+ *
+ * There is no saved-progress branch any more: Start always opens that difficulty's current level.
  */
 @Composable
 internal fun PuzzleStartScreen(
@@ -34,7 +35,7 @@ internal fun PuzzleStartScreen(
     introResource: Int,
     tutorialOfferBodyResource: Int,
     tutorialCompleted: Boolean,
-    hasActiveSession: Boolean,
+    levels: Map<Difficulty, Int>,
     economy: PlayerEconomy,
     onOpenTutorial: () -> Unit,
     onStart: (Difficulty) -> Unit,
@@ -46,8 +47,6 @@ internal fun PuzzleStartScreen(
     difficultySupportingText: @Composable (Difficulty) -> String? = { null },
 ) {
     var selectedDifficulty by rememberSaveable { mutableStateOf(Difficulty.EASY) }
-    var showReplaceConfirmation by rememberSaveable { mutableStateOf(false) }
-    val start = { if (hasActiveSession) showReplaceConfirmation = true else onStart(selectedDifficulty) }
 
     ScreenColumn(modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
@@ -72,7 +71,12 @@ internal fun PuzzleStartScreen(
             DifficultySelector(
                 selected = selectedDifficulty,
                 onSelected = { selectedDifficulty = it },
-                label = difficultyLabel,
+                label = { difficulty ->
+                    val base = difficultyLabel(difficulty)
+                    levels[difficulty]
+                        ?.let { level -> stringResource(R.string.catalog_difficulty_level, base, level) }
+                        ?: base
+                },
                 supportingText = difficultySupportingText,
             )
         }
@@ -84,31 +88,16 @@ internal fun PuzzleStartScreen(
             verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Button(onClick = start, enabled = economy.isGameplayAllowed, modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = { onStart(selectedDifficulty) },
+                enabled = economy.isGameplayAllowed,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 Text(stringResource(R.string.start))
             }
             if (tutorialCompleted) {
                 TextButton(onClick = onOpenTutorial) { Text(stringResource(R.string.how_to_play)) }
             }
         }
-    }
-
-    if (showReplaceConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showReplaceConfirmation = false },
-            title = { Text(stringResource(R.string.start_new_game_title)) },
-            text = { Text(stringResource(R.string.start_new_game_body)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showReplaceConfirmation = false
-                        onStart(selectedDifficulty)
-                    },
-                ) { Text(stringResource(R.string.start)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showReplaceConfirmation = false }) { Text(stringResource(R.string.cancel)) }
-            },
-        )
     }
 }

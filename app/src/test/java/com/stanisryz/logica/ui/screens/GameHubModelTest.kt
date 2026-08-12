@@ -12,15 +12,9 @@ import org.junit.Test
 /** What the Game hub is made of: the Daily entries on top and the regular catalog below them. */
 class GameHubModelTest {
     @Test
-    fun `catalog lists five games and keeps continue primary while a 2048 save exists`() {
-        val continued = mutableListOf<PuzzleType>()
-        val started = mutableListOf<PuzzleType>()
-        val catalog =
-            gameCatalogEntries(
-                hasActiveSession = { it == PuzzleType.GAME_2048 },
-                onContinue = continued::add,
-                onNew = started::add,
-            )
+    fun `catalog lists five games and every card simply opens its difficulty screen`() {
+        val opened = mutableListOf<PuzzleType>()
+        val catalog = gameCatalogEntries(onPlay = opened::add)
 
         assertEquals(
             listOf(
@@ -32,21 +26,14 @@ class GameHubModelTest {
             ),
             catalog.map { it.puzzleType },
         )
-        val game2048 = catalog.single { it.puzzleType == PuzzleType.GAME_2048 }
-        assertTrue(game2048.hasActiveSession)
-        game2048.onContinue()
-        assertEquals(listOf(PuzzleType.GAME_2048), continued)
-
-        val word = catalog.single { it.puzzleType == PuzzleType.WORD }
-        assertFalse(word.hasActiveSession)
-        word.onNew()
-        assertEquals(listOf(PuzzleType.WORD), started)
+        catalog.single { it.puzzleType == PuzzleType.GAME_2048 }.onPlay()
+        catalog.single { it.puzzleType == PuzzleType.WORD }.onPlay()
+        assertEquals(listOf(PuzzleType.GAME_2048, PuzzleType.WORD), opened)
     }
 
     @Test
     fun `every daily state maps to one card action and respects the zero-life gate`() {
         assertEquals(R.string.start, DailyEntryState.AVAILABLE.primaryActionResource())
-        assertEquals(R.string.continue_game, DailyEntryState.IN_PROGRESS.primaryActionResource())
         assertEquals(R.string.retry_puzzle, DailyEntryState.RETRY.primaryActionResource())
         assertNull(DailyEntryState.COMPLETED.primaryActionResource())
 
@@ -55,8 +42,7 @@ class GameHubModelTest {
         assertTrue(DailyEntryState.RETRY.isActionable(gameplayAllowed = true))
         assertFalse(DailyEntryState.COMPLETED.isActionable(gameplayAllowed = true))
 
-        // At zero lives a saved puzzle still opens; starting an attempt waits for a life.
-        assertTrue(DailyEntryState.IN_PROGRESS.isActionable(gameplayAllowed = false))
+        // At zero lives starting an attempt waits for a life; there is no saved attempt to reopen.
         assertFalse(DailyEntryState.AVAILABLE.isActionable(gameplayAllowed = false))
         assertFalse(DailyEntryState.RETRY.isActionable(gameplayAllowed = false))
     }

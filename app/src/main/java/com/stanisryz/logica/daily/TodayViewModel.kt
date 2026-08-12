@@ -3,33 +3,18 @@ package com.stanisryz.logica.daily
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.stanisryz.logica.balance.BalanceGameContext
-import com.stanisryz.logica.balance.BalanceGameLaunch
-import com.stanisryz.logica.crowns.CrownsGameContext
-import com.stanisryz.logica.crowns.CrownsGameLaunch
-import com.stanisryz.logica.game2048.Game2048GameContext
-import com.stanisryz.logica.game2048.Game2048Launch
+import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengeDefinition
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV5
 import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
-import com.stanisryz.logica.puzzle.core.game2048.Game2048GeneratorVersion
-import com.stanisryz.logica.puzzle.core.game2048.Game2048PuzzleId
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.result.GameResult
-import com.stanisryz.logica.session.DailyGameSessionIdentity
-import com.stanisryz.logica.session.GameSessionRepository
-import com.stanisryz.logica.session.GameSessionScope
-import com.stanisryz.logica.session.SavedGameSession
 import com.stanisryz.logica.statistics.GameStatistics
 import com.stanisryz.logica.statistics.StatisticsRepository
-import com.stanisryz.logica.sudoku.SudokuGameContext
-import com.stanisryz.logica.sudoku.SudokuGameLaunch
-import com.stanisryz.logica.word.WordGameContext
-import com.stanisryz.logica.word.WordGameLaunch
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -43,33 +28,20 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /** A typed request to open one Daily puzzle on its own gameplay destination. */
-internal sealed interface DailyGameLaunch {
-    data class Balance(
-        val launch: BalanceGameLaunch,
-    ) : DailyGameLaunch
-
-    data class Crowns(
-        val launch: CrownsGameLaunch,
-    ) : DailyGameLaunch
-
-    data class Word(
-        val launch: WordGameLaunch,
-    ) : DailyGameLaunch
-
-    data class Sudoku(
-        val launch: SudokuGameLaunch,
-    ) : DailyGameLaunch
-
-    data class Game2048(
-        val launch: Game2048Launch,
-    ) : DailyGameLaunch
+internal data class DailyGameLaunch(
+    val launch: GameAttemptLaunch.Daily,
+) {
+    val puzzleType: PuzzleType get() = launch.puzzleType
 }
 
+/**
+ * How one Daily entry stands today. There is no in-progress state any more: an unfinished attempt is
+ * transient, so an entry is either open (for a first or a repeat attempt) or durably solved.
+ */
 internal enum class DailyEntryState {
     AVAILABLE,
-    IN_PROGRESS,
 
-    /** Derived only: no active session, but this entry already has at least one failed attempt. */
+    /** Derived only: this entry already has at least one durable failed attempt. */
     RETRY,
     COMPLETED,
 }
@@ -125,7 +97,6 @@ internal enum class TodayError {
 
 internal class TodayViewModel(
     private val dailyChallengeRepository: DailyChallengeRepository,
-    private val gameSessionRepository: GameSessionRepository,
     private val statisticsRepository: StatisticsRepository,
     private val dailyResultRepository: DailyResultRepository,
     private val dateProvider: () -> LocalDate = LocalDate::now,
@@ -160,8 +131,8 @@ internal class TodayViewModel(
                         run
                             ?.let { dailyResultRepository.readResults(challengeDate, it.policyVersion) }
                             .orEmpty()
-                    // Failed attempts stay durable, so an entry with no active session can still be
-                    // a retry rather than an untouched start.
+                    // Failed attempts stay durable, so an open entry can still be a retry rather than
+                    // an untouched start.
                     val failedPuzzleTypes =
                         results
                             .filter { it.outcome == GameOutcome.FAILED }
@@ -230,7 +201,10 @@ internal class TodayViewModel(
         )
     }
 
-    /** Starts a first or a repeat attempt: a retry after a failure is just a new attempt. */
+    /**
+     * Opens that day's puzzle as a fresh attempt. A repeat after a failure is just another attempt at
+     * the same deterministic puzzle; a solved entry is never reopened.
+     */
     fun start(puzzleType: PuzzleType) {
         val content = mutableUiState.value as? TodayUiState.Content ?: return
         val entry = content.definition.entryFor(puzzleType) ?: return
@@ -241,20 +215,13 @@ internal class TodayViewModel(
         viewModelScope.launch {
             try {
                 if (needsRun) dailyChallengeRepository.createRun(definition)
-                mutableLaunches.emit(definition.newLaunch(entry))
+                mutableLaunches.emit(definition.launchFor(entry))
             } catch (exception: CancellationException) {
                 throw exception
             } catch (_: Exception) {
                 mutableUiState.value = TodayUiState.Error(TodayError.START)
             }
         }
-    }
-
-    fun continueGame(puzzleType: PuzzleType) {
-        val content = mutableUiState.value as? TodayUiState.Content ?: return
-        val entry = content.definition.entryFor(puzzleType) ?: return
-        if (content.entries.stateOf(puzzleType) != DailyEntryState.IN_PROGRESS) return
-        mutableLaunches.tryEmit(content.definition.restoreLaunch(entry))
     }
 
     private suspend fun entryState(
@@ -268,32 +235,14 @@ internal class TodayViewModel(
                 .read(definition.challengeDate, entry.puzzleType)
                 ?.takeIf { it.matches(definition, entry) }
         if (run != null) requireNotNull(lifecycle) { "The Daily run is missing the ${entry.puzzleType} entry." }
-        // All policy entries are materialized when the run is created, so `daily_challenges.status`
-        // alone cannot tell "not started" from "started": an active session decides that.
         val state =
             when {
                 lifecycle?.status == DailyChallengeStatus.COMPLETED -> DailyEntryState.COMPLETED
-                matchingDailySession(definition, entry) != null -> DailyEntryState.IN_PROGRESS
                 entry.puzzleType in failedPuzzleTypes -> DailyEntryState.RETRY
                 else -> DailyEntryState.AVAILABLE
             }
         return TodayEntryUiState(entry.puzzleType, entry.difficulty, state)
     }
-
-    private suspend fun matchingDailySession(
-        definition: DailyChallengeDefinition,
-        entry: DailyPuzzleEntry,
-    ): SavedGameSession? =
-        gameSessionRepository
-            .readActiveSession(entry.puzzleType, GameSessionScope.DAILY)
-            ?.takeIf { session ->
-                session.dailyIdentity ==
-                    DailyGameSessionIdentity(definition.challengeDate, definition.policyVersion.value) &&
-                    session.puzzleType == entry.puzzleType &&
-                    session.difficulty == entry.difficulty &&
-                    session.puzzleSeed == entry.seed &&
-                    session.generatorVersion == entry.generatorVersion
-            }
 
     private fun List<TodayEntryUiState>.stateOf(puzzleType: PuzzleType): DailyEntryState? =
         firstOrNull { it.puzzleType == puzzleType }?.state
@@ -301,107 +250,35 @@ internal class TodayViewModel(
     private fun DailyChallengeDefinition.entryFor(puzzleType: PuzzleType): DailyPuzzleEntry? =
         entries.firstOrNull { it.puzzleType == puzzleType }
 
-    private fun DailyChallengeDefinition.newLaunch(entry: DailyPuzzleEntry): DailyGameLaunch =
-        when (entry.puzzleType) {
-            PuzzleType.BALANCE ->
-                DailyGameLaunch.Balance(
-                    BalanceGameLaunch.New(
-                        difficulty = entry.difficulty,
-                        seed = entry.seed,
-                        generatorVersion = entry.generatorVersion,
-                        context = BalanceGameContext.Daily(challengeDate, policyVersion),
-                    ),
-                )
-            PuzzleType.CROWNS ->
-                DailyGameLaunch.Crowns(
-                    CrownsGameLaunch.New(
-                        difficulty = entry.difficulty,
-                        seed = entry.seed,
-                        generatorVersion = entry.generatorVersion,
-                        context = CrownsGameContext.Daily(challengeDate, policyVersion),
-                    ),
-                )
-            PuzzleType.WORD ->
-                DailyGameLaunch.Word(
-                    WordGameLaunch.New(
-                        difficulty = entry.difficulty,
-                        seed = entry.seed,
-                        generatorVersion = entry.generatorVersion,
-                        context = WordGameContext.Daily(challengeDate, policyVersion),
-                    ),
-                )
-            PuzzleType.SUDOKU ->
-                DailyGameLaunch.Sudoku(
-                    SudokuGameLaunch.New(
-                        difficulty = entry.difficulty,
-                        selectorSeed = entry.seed,
-                        providerVersion = entry.generatorVersion,
-                        context = SudokuGameContext.Daily(challengeDate, policyVersion),
-                    ),
-                )
-            PuzzleType.GAME_2048 ->
-                DailyGameLaunch.Game2048(
-                    Game2048Launch.New(
-                        difficulty = entry.difficulty,
-                        seed = entry.seed,
-                        generatorVersion = entry.generatorVersion,
-                        context = Game2048GameContext.Daily(challengeDate, policyVersion),
-                    ),
-                )
-            else -> error("Daily does not support ${entry.puzzleType}.")
-        }
+    /** Every Daily game opens through the same attempt launch; only its identity differs. */
+    private fun DailyChallengeDefinition.launchFor(entry: DailyPuzzleEntry): DailyGameLaunch {
+        require(entry.puzzleType in DAILY_PUZZLE_TYPES) { "Daily does not support ${entry.puzzleType}." }
+        return DailyGameLaunch(
+            GameAttemptLaunch.Daily(
+                puzzleType = entry.puzzleType,
+                challengeDate = challengeDate,
+                policyVersion = policyVersion,
+                difficulty = entry.difficulty,
+                seed = entry.seed,
+                generatorVersion = entry.generatorVersion,
+            ),
+        )
+    }
 
-    private fun DailyChallengeDefinition.restoreLaunch(entry: DailyPuzzleEntry): DailyGameLaunch =
-        when (entry.puzzleType) {
-            PuzzleType.BALANCE ->
-                DailyGameLaunch.Balance(
-                    BalanceGameLaunch.Restore(
-                        context = BalanceGameContext.Daily(challengeDate, policyVersion),
-                        expectedPuzzleId = entry.puzzleId,
-                    ),
-                )
-            PuzzleType.CROWNS ->
-                DailyGameLaunch.Crowns(
-                    CrownsGameLaunch.Restore(
-                        context = CrownsGameContext.Daily(challengeDate, policyVersion),
-                        expectedPuzzleId = entry.puzzleId,
-                    ),
-                )
-            PuzzleType.WORD ->
-                DailyGameLaunch.Word(
-                    WordGameLaunch.Restore(
-                        context = WordGameContext.Daily(challengeDate, policyVersion),
-                        expectedPuzzleId = entry.puzzleId,
-                    ),
-                )
-            // The Daily identity selects the record; the save's own dataset fingerprint still has to
-            // agree with it, so the exact Dataset V1 puzzle is what gets restored.
-            PuzzleType.SUDOKU ->
-                DailyGameLaunch.Sudoku(
-                    SudokuGameLaunch.Restore(
-                        context = SudokuGameContext.Daily(challengeDate, policyVersion),
-                        expectedSelectorId = entry.puzzleId,
-                    ),
-                )
-            PuzzleType.GAME_2048 ->
-                DailyGameLaunch.Game2048(
-                    Game2048Launch.Restore(
-                        context = Game2048GameContext.Daily(challengeDate, policyVersion),
-                        expectedPuzzleId =
-                            Game2048PuzzleId(
-                                seed = entry.seed,
-                                difficulty = entry.difficulty,
-                                generatorVersion = Game2048GeneratorVersion(entry.generatorVersion.value),
-                            ),
-                    ),
-                )
-            else -> error("Daily does not support ${entry.puzzleType}.")
-        }
+    private companion object {
+        val DAILY_PUZZLE_TYPES =
+            setOf(
+                PuzzleType.BALANCE,
+                PuzzleType.CROWNS,
+                PuzzleType.WORD,
+                PuzzleType.SUDOKU,
+                PuzzleType.GAME_2048,
+            )
+    }
 }
 
 internal class TodayViewModelFactory(
     private val dailyChallengeRepository: DailyChallengeRepository,
-    private val gameSessionRepository: GameSessionRepository,
     private val statisticsRepository: StatisticsRepository,
     private val dailyResultRepository: DailyResultRepository,
 ) : ViewModelProvider.Factory {
@@ -412,7 +289,6 @@ internal class TodayViewModelFactory(
         @Suppress("UNCHECKED_CAST")
         return TodayViewModel(
             dailyChallengeRepository,
-            gameSessionRepository,
             statisticsRepository,
             dailyResultRepository,
         ) as T

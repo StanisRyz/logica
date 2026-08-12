@@ -10,7 +10,7 @@ import com.stanisryz.logica.ui.components.PuzzleStartScreen
 
 @Composable
 internal fun SudokuStartScreen(
-    hasActiveSession: Boolean,
+    levels: Map<Difficulty, Int>,
     tutorialCompleted: Boolean,
     economy: PlayerEconomy,
     onOpenTutorial: () -> Unit,
@@ -23,7 +23,7 @@ internal fun SudokuStartScreen(
         introResource = R.string.sudoku_rules_intro,
         tutorialOfferBodyResource = R.string.sudoku_tutorial_offer_body,
         tutorialCompleted = tutorialCompleted,
-        hasActiveSession = hasActiveSession,
+        levels = levels,
         economy = economy,
         onOpenTutorial = onOpenTutorial,
         onStart = onStart,

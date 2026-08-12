@@ -3,10 +3,18 @@
 - Stack: Kotlin, Jetpack Compose, Material 3, AGP, and Gradle Kotlin DSL.
 - Work VS Code/CLI-first; the Gradle Wrapper is the build source of truth.
 - Dependency versions are managed in `gradle/libs.versions.toml`; keep dependencies minimal.
-- `:app` owns Android UI, Navigation 3, DataStore preferences, and Room game-session persistence; it may depend on `:puzzle-core`.
+- `:app` owns Android UI, Navigation 3, DataStore preferences, and Room durable persistence; it may depend on `:puzzle-core`.
 - `:puzzle-core` contains platform-independent puzzle domain and algorithms; it must never depend on Android, Compose, or `:app`.
-- DataStore stores user preferences; Room stores game sessions, and ViewModels use `GameSessionRepository` rather than Room DAOs.
-- Saved puzzles are rebuilt from deterministic identity; `generatorVersion` and `sessionFormatVersion` are separate compatibility concepts.
+- DataStore stores user preferences; Room stores durable results, economy, Daily lifecycle, and Catalog level progression, and ViewModels use repositories rather than Room DAOs.
+- Catalog and Daily gameplay is sessionless: an unfinished attempt lives only in its gameplay ViewModel and is discarded on leaving.
+- Catalog Level Pack V1 is frozen: `(puzzleType, difficulty, contentSlot)` maps to one accepted seed forever, and incompatible curation needs a new `CatalogLevelPackVersion`.
+- One bucket holds exactly 10 000 slots; a displayed level resolves through `((level - 1) % 10 000) + 1`, so level 10 001 replays slot 1 while staying a distinct level and a distinct completion.
+- Level packs are compact read-only binary assets under `app/src/main/assets/levels/v1/`; the runtime streams the single record it needs and never parses a whole bucket at cold start.
+- Missing or corrupt level content fails the attempt cleanly; it never falls back to a randomly seeded puzzle.
+- `:puzzle-core:buildCatalogLevelPacks` is the developer-only offline freeze; it reuses the shipped generators, solvers, datasets, and lexicons and never runs on a device.
+- Level content per game: Balance and Crowns freeze accepted Generator V1 seeds, Sudoku freezes a selector permutation over the unchanged Dataset V1, Word freezes a Generator V2 seed scan that uses every available answer before repeating, and 2048 freezes seeds for the existing deterministic spawn and V2 score targets.
+- A bucket whose distinct content is smaller than 10 000 (EASY Balance) repeats deterministically once the offline scan exhausts it; uniqueness is best effort, determinism is not.
+- Level progression is one compact `catalog_level_progress` row per game/difficulty/pack version holding the next level to play; new users and migrated users start at level 1 and every bucket advances on its own.
 - Puzzle identity is type + difficulty + seed + `generatorVersion`; concrete generators own their version.
 - Generators use project-owned random infrastructure and never system time, platform randomness, or Android APIs.
 - Daily seed derivation is deterministic and receives dates explicitly; concrete engines implement the shared `:puzzle-core` contracts.
@@ -34,17 +42,14 @@
 - Incorrect player crowns are allowed and reported through centralized structured violations.
 - User marks are annotations checked only for hint/error reasoning, never Crowns domain violations.
 - Crowns hints reuse deterministic logic and a confirmed unique solution; reset preserves session-level hint usage.
-- Crowns gameplay is context-aware like Balance: `Catalog` is the default, and `Daily(challengeDate, policyVersion)` drives session scope, Daily identity, completion metadata, and the return to the Game hub.
-- `BALANCE/CATALOG`, `CROWNS/CATALOG`, `BALANCE/DAILY`, and `CROWNS/DAILY` saves coexist and are keyed by puzzle type plus scope; every read, write, and delete targets exactly one of them.
-- Restore separates identity from payload: a save belonging to another scope or Daily definition is reported as inconsistent and kept, while only undecodable gameplay of the requested identity is discarded.
-- Balance and Crowns keep separate UI/gameplay adapters while sharing session, completion, and result infrastructure.
-- Active saves are isolated by puzzle type plus session scope; each puzzle owns its explicit session codec version.
-- Android ViewModels regenerate definitions from puzzle identity and restore gameplay through the corresponding core engine.
+- Crowns gameplay is context-aware like Balance: a `Catalog` level or a `Daily(challengeDate, policyVersion)` entry drives result scope, level or Daily identity, completion metadata, and the return to the Game hub.
+- Balance and Crowns keep separate UI/gameplay adapters while sharing the attempt, completion, and result infrastructure.
+- Android ViewModels regenerate definitions from the frozen level definition (or the Daily identity) through the corresponding core engine on every open.
 - Word is the third playable puzzle: core in `:puzzle-core`, Android gameplay, Catalog, Daily, results, statistics, and onboarding in `:app`.
 - Sudoku is the fourth Catalog puzzle and uses `PuzzleType.SUDOKU`; it is excluded from immutable Daily Policies V1–V4 and enters Daily with Policy V5.
 - Sudoku Catalog identity is app difficulty plus selector `PuzzleSeed` plus content-provider `GeneratorVersion(1)`; the adapter deterministically selects Dataset V1 while the full `SudokuPuzzleId` fingerprint remains authoritative.
-- `SUDOKU/CATALOG` and `SUDOKU/DAILY` are independent Room v6 session slots. `SudokuSessionCodecV1` stores exact identity, player values, candidates, mistakes, and hints; restore reselects and verifies the exact dataset puzzle, so a Daily restore keeps its exact Dataset V1 fingerprint even though the generic Daily identity is what selects it.
-- Terminal Sudoku attempts use the shared idempotent result/economy transaction (`SOLVED` grants the difficulty reward, `FAILED` costs one life); same-puzzle Retry waits for durable completion and starts a new `sessionId`. Profile includes Sudoku played/solved/failed, difficulty, and hint statistics.
+- A Sudoku level slot always reselects exactly the same Dataset V1 record through the frozen selector seed; a Daily Sudoku keeps being selected by the Daily identity.
+- Terminal Sudoku attempts use the shared idempotent result/economy transaction (`SOLVED` grants the difficulty reward, `FAILED` costs one life); same-level Retry waits for durable completion and starts a new attempt. Profile includes Sudoku played/solved/failed, difficulty, and hint statistics.
 - Word V1 stays frozen at five normalized Russian letters for every difficulty; Word V2 maps EASY/MEDIUM/HARD/EXPERT to 4/5/6/7 letters, and both versions keep six attempts with no Undo, Reset, or hints.
 - `RussianWordNormalizer` is the single normalization contract for corpus preparation, lexicon lookup, gameplay submission, and tests: lower case, `Ё -> Е`, Russian Cyrillic only, and explicit puzzle-specific length validation.
 - Incomplete input, failed normalization, and unknown words consume no attempt and are reported as structured rejections; localized Word text belongs in `:app`.
@@ -55,7 +60,7 @@
 - `WordLexiconV2` is generated offline from pinned local `pymorphy3`/`pymorphy3-dicts-ru` dictionary entries, pinned Russian `wordfreq` ranking, and project allow/block files; Android bundles generated data and has no Python or runtime morphology dependency.
 - Word V2 difficulty is word-length-only; morphology provides broad noun guesses, `wordfreq` ranks answer commonness without misusing pymorphy parse confidence, and every difficulty keeps at least 500 possible answers.
 - An unfinished Word attempt is an immutable position-aware `WordDraft`; the engine owns per-position set, replace, clear, and submit operations while submitted attempts stay immutable.
-- `WordSessionCodecV2` persists the positional draft and submitted words, continues to restore V1 prefix inputs into the leading draft positions, and always recomputes feedback from the regenerated answer. Cell selection and animation state are transient UI state and are never persisted.
+- Word input, submitted attempts, cell selection, and animation state are all transient attempt state and none of it is persisted.
 - A Word game is terminal on `SOLVED` and on `FAILED`; both produce exactly one durable `GameResult`, but only `SOLVED` completes its Daily entry.
 - Results carry typed `GameOutcome` plus nullable `attemptsUsed`; Balance, Crowns, and Sudoku may be `SOLVED` or `FAILED` with a null attempt count, while Word records `1..6`.
 - Room v5 adds `outcome` and `attempts_used` to `game_results`; `MIGRATION_4_5` backfills historical results to `SOLVED` with a null attempt count and preserves everything else.
@@ -63,7 +68,7 @@
 - Daily policies are immutable: V1 is Balance, V2 adds Crowns, V3 adds Word Medium/Generator V1, V4 changes only Word to Medium/Generator V2, and V5 is all five games at Medium — Balance Generator V1, Crowns Generator V1, Word Generator V2, Sudoku Provider V1, 2048 Rules V2 — in that stable order. New runs use V5; a persisted run always resolves through its own version, so a V4 run stays three entries and is never extended.
 - V5 progress is `0/5..5/5` and stays full-completion based: only `SOLVED` completes an entry, `FAILED` leaves it open for Retry, and `DailyRun.COMPLETED` still means all five entries solved. Five Medium solves already pay `5 × 2` gems, so there is no separate full-Daily bonus.
 - Streak qualification and full Daily completion are separate concepts. `DailyChallengePolicyResolver.qualifiesStreakOnAnySolvedEntry` answers which rule a policy uses: from V5 on one `SOLVED` Daily result qualifies its date exactly once however many games are solved, while V1–V4 keep their historical completed-run rule and never become qualified retroactively. Streaks stay derived from durable history — no counter, no table.
-- All ten `BALANCE|CROWNS|WORD|SUDOKU|GAME_2048` × `CATALOG|DAILY` sessions coexist independently; creating, restoring, corrupting, or completing one never touches another. Sudoku and 2048 are context-aware like the other three: `Catalog` is the default and `Daily(challengeDate, policyVersion)` drives session scope, Daily identity, and completion metadata.
+- One shared `GameAttemptLaunch` opens every game: `Level(CatalogLevelId)` for the Catalog and `Daily(date, policy, …)` for the Daily, and the resolved `GameAttempt` alone decides result scope, level identity, and completion metadata.
 - Change shared puzzle abstractions only when multiple concrete puzzle implementations prove the need.
 - Balance solving is deterministic and reuses the validator rules; logical steps are data-driven for future hints and difficulty analysis.
 - Partial `BalanceState` and completed `BalanceSolution` are distinct; puzzle rules stay UI-independent and reusable.
@@ -76,13 +81,14 @@
 - Balance and Crowns input is explicit: the player selects a value (`ZERO`/`ONE`, crown/blocked mark) and taps a cell; there is no tap cycle, no Undo, and no Eraser, and tapping the selected value again removes it.
 - A committed placement is validated at once against the puzzle's single answer: correct becomes `CORRECT` and is permanently locked, wrong becomes `INCORRECT` and stays visible and editable; the correct value is never revealed by the wrong-state presentation. A puzzle without a unique answer stays `UNVERIFIED` and locks nothing.
 - Pencil marks are a separate unvalidated layer on empty cells only: they never lock, any committed placement clears them, and they render small in the cell's upper-right corner.
-- Balance/Crowns session codecs are V2 (committed values plus pencil marks); V1 saves still decode, keep their values, gain no pencil marks, and drop their obsolete Undo history. Correct/wrong is always recomputed from the regenerated puzzle, never stored.
 - Tool selection and Pencil mode are transient presentation state and are never persisted.
 - Balance and Crowns end an attempt at `PuzzleMistakes.MAX_MISTAKES` (3): every newly committed incorrect value costs one mistake, the third sets `FAILED`, and a terminal attempt is read-only for input, pencil, and hints. Pencil marks, tool changes, removing or fixing a wrong value, hints, and restores never change the count.
 - `mistakesUsed` is an event count, never derived from the incorrect cells currently on the board, and Balance/Crowns have no Reset.
-- Balance/Crowns session codecs are V3 (committed values + pencil marks + mistakes); V1 and V2 saves still decode and restore with `mistakesUsed = 0`, never a retroactive penalty.
-- Every terminal attempt — `SOLVED` or `FAILED` — produces exactly one durable `GameResult`; `attemptsUsed` stays Word-only. One attempt is one `sessionId` with at most one result, and a session is never reused once its result is durable.
-- Retry keeps the `PuzzleId` and the Catalog/Daily context but starts a new `sessionId` with a clean board and zero mistakes; it is allowed only after the finished attempt's result is durably persisted.
+- The per-puzzle session codecs are retained legacy code that nothing calls at runtime; correct/wrong and mistakes are always recomputed from the regenerated puzzle, never stored.
+- Every terminal attempt — `SOLVED` or `FAILED` — produces exactly one durable `GameResult`; `attemptsUsed` stays Word-only. Completion identity is `catalog:<pack>:<type>:<difficulty>:<level>:<attemptId>` for the Catalog and the attempt ID for Daily, so a repeated callback is an idempotent no-op.
+- Retry restarts the very same level from its initial deterministic state under a new attempt ID; it is allowed only after the finished attempt's result is durably persisted.
+- Catalog completion is one atomic transaction: the durable result, its gem reward or life penalty, and the progression step to the next level all land together, and the monotonic `current_level < next` update makes advancing exactly-once.
+- A failed Catalog attempt records its result and its life penalty and leaves progression on the same level; leaving an unfinished attempt costs nothing at all.
 - Daily entries and runs complete on `SOLVED` only: a `FAILED` attempt stays durable, leaves the entry open for another attempt, and never advances progress, the run, or the streak. Historical runs already `COMPLETED` are never rewritten.
 - Solved-labelled statistics and Daily sharing read `SOLVED` results only; a completed run with no solved result for an entry disables sharing rather than showing a failure.
 - `EconomyRules` is the only place economy numbers live: 0 starting gems, 5 starting and maximum lives, `EconomyRules.solvedGemReward` of `1/2/3/4` gems for a SOLVED EASY/MEDIUM/HARD/EXPERT attempt, `-1` life per FAILED at any difficulty, one regenerated life every 15 minutes, and 10 gems per refilled life.
@@ -91,7 +97,7 @@
 - Reward and penalty happen inside the existing terminal-completion transaction and are keyed by `result:<resultId>`: one durable result causes exactly zero or one wallet change, and a repeated insert is a safe no-op. The economy never observes or backfills old `GameResult`s.
 - Lives regenerate from a stored anchor instead of a repeating worker: elapsed whole intervals are applied whenever the wallet is refreshed, another loss or a purchase never restarts a running countdown, reaching 5/5 clears the anchor, and backwards clock movement restores nothing.
 - `EconomyRepository` observes/refreshes the wallet and buys a life for gems; the refill re-checks the balance inside the transaction and carries a generated action ID so a repeated tap cannot buy twice. `EconomyClock` is the only time source for economy math.
-- `0 lives` blocks starting, retrying, and active Balance/Crowns/Word interaction everywhere, including Daily; saved sessions are never touched, stay viewable, and continue once a life is back. Starting or resuming a game costs nothing by itself.
+- `0 lives` blocks starting, retrying, and active gameplay interaction everywhere, including Daily; the board stays visible and playable again once a life is back. Starting a game costs nothing by itself, and a level that already advanced progression stays completed at zero lives.
 - Tutorials produce no durable results, so they never grant gems or spend lives; Daily, statistics, and sharing semantics are unchanged by the economy.
 - Yandex Mobile Ads has exactly two placements: the rewarded life refill and the terminal interstitial. No banners, app-open, native, rewarded-interstitial, mediation, or forced ads, and nothing is ever shown or preloaded at startup, in the Game hub, in the Store, in Profile, in Settings, or in a tutorial.
 - The rewarded offer exists only at `0 lives`, lives in the shared Lives dialog rather than per-screen ad buttons, and is worth exactly `+1 life`; regeneration and the 10-gem refill stay the unconditional alternatives.
@@ -119,26 +125,28 @@
 - Missing configuration is decided from the build, not from a failed call: `BuildConfig.RUSTORE_CONSOLE_APP_ID` picks `UnconfiguredRuStorePayGateway`, which makes no `RuStorePayClient` call at all.
 - `MainActivity` is `singleTask` and hands a pay-scheme `ACTION_VIEW` deeplink to `IntentInteractor.proceedIntent`; that is the whole payment-return integration, and a launch that is not a payment return never touches the SDK.
 - `EconomyRepository` takes plain `purchaseId`/`productId` strings, so no RuStore SDK type reaches the economy; `RuStorePayGateway` is the whole billing boundary and the seam tests fake.
-- Room stays v6: purchases reuse `economy_events` and add no table, column, or second wallet. The wallet stays local — no accounts, cloud balance, or server receipt verification.
+- Purchases reuse `economy_events` and add no table, column, or second wallet. The wallet stays local — no accounts, cloud balance, or server receipt verification.
 - The Gem Store is the Store primary tab, selected from the tab bar, from the gem chip in `EconomyBar`, and from the Lives dialog when a refill is unaffordable; there is no second store surface, it never opens itself, and a store that fails to load leaves gameplay, regeneration, gem refill, and rewarded ads untouched.
 - `logica.rustoreConsoleAppId` is private build configuration read into the `console_app_id_value` manifest placeholder and the `RUSTORE_CONSOLE_APP_ID` build field; unset is a supported build where the Gem Store simply reports itself unavailable.
-- Balance tutorial is application onboarding: it reuses core Balance gameplay but stays separate from Room-backed catalog sessions; completion is a DataStore preference.
-- Crowns tutorial is Crowns-only application onboarding: its fixed state never touches Catalog sessions, results, statistics, Daily state, or gameplay hint counters; its prompt state is a DataStore preference.
-- Catalog and Daily gameplay use separate session scopes, must coexist, and reuse the existing per-puzzle engines/UI rather than generic gameplay screens.
-- The Daily section derives one state per policy entry: completed from the persisted Daily entry, in progress from a matching active `DAILY` session, otherwise available; entry status alone is not enough because all entries are materialized with the run.
+- Balance tutorial is application onboarding: it reuses core Balance gameplay but stays outside Catalog levels, results, and progression; completion is a DataStore preference.
+- Crowns tutorial is Crowns-only application onboarding: its fixed state never touches Catalog levels, results, statistics, Daily state, or gameplay hint counters; its prompt state is a DataStore preference.
+- Catalog and Daily gameplay stay separate result scopes and reuse the existing per-puzzle engines/UI rather than generic gameplay screens.
+- The Daily section derives one state per policy entry: completed from the persisted Daily entry, retry from a durable failed result, otherwise available. Opening an entry always starts a fresh attempt at that day's same deterministic puzzle.
 - The Daily section operates on the current date only and targets puzzles individually; the tutorial is offered by each puzzle's start screen rather than by the Daily card.
 - Room migrations preserve existing saves and never use destructive migration.
-- Room v4 stores one aggregate `daily_runs` lifecycle per date separately from policy-defined `daily_challenges` entries, active sessions, and results.
-- Completed puzzle results are immutable Room records separate from active sessions; completion persistence is atomic and idempotent.
-- Catalog and Daily completion remain isolated by session scope; a Daily run completes atomically only after all of its entries complete.
-- Completion is keyed by session ID: it removes only its own session, produces exactly one immutable result, and a retry never inserts a duplicate or completes a Daily run twice.
+- Room v4 stores one aggregate `daily_runs` lifecycle per date separately from policy-defined `daily_challenges` entries and results.
+- Room v7 adds `catalog_level_progress` plus nullable `catalog_level_number`/`catalog_level_pack_version` on `game_results`; `MIGRATION_6_7` preserves economy, purchases, settings, Daily history, and every historical result, and clears `game_sessions` because a randomly seeded save cannot be mapped honestly onto a public level.
+- Legacy session entities, DAOs, and codecs stay physically present but unused; Stage 42.1 removes them after real-device validation.
+- Completed puzzle results are immutable Room records; completion persistence is atomic and idempotent.
+- Catalog and Daily completion remain isolated by result scope; a Daily run completes atomically only after all of its entries complete.
+- Completion is keyed by result ID: it produces exactly one immutable result, and a retry never inserts a duplicate, pays twice, advances twice, or completes a Daily run twice.
 - Full-Daily counts are derived from completed `daily_runs`; streak-qualified dates are derived from those runs plus V5+ dates holding at least one `SOLVED` Daily result. Neither is a mutable counter, and Compose never re-derives streak logic.
 - Today UI state carries streak status separately from completion, so a V5 day can be shown as streak-qualified at 1/5 while the run is still in progress and its four remaining entries stay playable; Share stays a 5/5-only affordance.
-- Statistics reads persisted results and lifecycle history, never active sessions; do not add unreliable metrics such as wall-clock solve duration.
+- Statistics reads persisted results and lifecycle history; do not add unreliable metrics such as wall-clock solve duration. Level metadata on a result is diagnostic groundwork and drives no feature yet.
 - User-facing rule and hint explanations belong in `:app`; Compose renders structured core state and UX polish must not change deterministic generation or persistence compatibility without a concrete requirement.
 - Primary navigation is exactly Game/Store/Profile, Game is the start destination, and the Settings gear is on all three; Settings, the start/tutorial screens, and gameplay are secondary destinations that hide the bottom bar and show Back.
 - The three tabs share one back-stack entry and a `SaveableStateHolder` keyed by tab, so switching tabs preserves each tab's ViewModels and saved Compose state; the selected tab is shell state, never a back-stack entry.
-- Game combines Daily and the catalog in one hub without merging their state holders: `TodayViewModel` still owns the Daily run and the shell still owns active catalog sessions. Daily is a horizontal `LazyRow` of whole-card actions; the catalog is the vertical list below it, driven by `gameCatalogEntries` so a fourth game is one row of data.
+- Game combines Daily and the catalog in one hub without merging their state holders: `TodayViewModel` owns the Daily run and the catalog card simply opens the game's start screen, where each difficulty shows its own current level. Daily is a horizontal `LazyRow` of whole-card actions; the catalog is the vertical list below it, driven by `gameCatalogEntries` so a sixth game is one row of data.
 - `GameHubRoute` is the single owner of the initial Daily load: `TodayViewModel` construction loads nothing and the route's resume observer covers both the first frame and every return from gameplay, so one visit to the hub starts one refresh.
 - Store reuses the existing RuStore flow unchanged (`GemStoreViewModel`, `GemPurchaseProcessor`, `RuStorePayGateway`); `StoreRoute` owns the ViewModel and selecting the tab is what reconciles and loads prices. Profile is the existing `StatisticsViewModel` and nothing else: no login, account, avatar, or cloud profile.
 - The wallet is visible on all three tabs, but only the Game tab and the gameplay surfaces may preload a rewarded ad; Store and Profile never trigger a load merely by showing the balance.
@@ -147,7 +155,9 @@
 - `LogicaSpacing` owns every layout value and `LogicaTheme` owns the complete Light/Dark `ColorScheme` plus shapes; do not leave Material container/surface roles at their baseline defaults.
 - `LogicaPalette` (via `LocalLogicaPalette`) holds only what Material 3 has no role for: the success family and the categorical Crowns region colors; everything else uses `MaterialTheme.colorScheme`.
 - Text hierarchy is `ScreenTitle`, `SectionTitle`, `PuzzleTitle`, `MetricValue`, `BodyText`, `SupportingText`; puzzle accents are subtle scheme colors, never separate per-puzzle themes.
-- `LoadingState`, `RetryableErrorState`, `EmptyState`, `DifficultySelector`, `PuzzleStartScreen`, `CompletionCard`, `PuzzleSolvedDialog`, `GameActionBar`, and `StatusChip` are the shared presentation contracts; extend them rather than re-implementing per screen.
+- `LoadingState`, `RetryableErrorState`, `EmptyState`, `DifficultySelector`, `PuzzleStartScreen`, `CompletionCard`, `PuzzleTerminalDialog`, `GameActionBar`, `GameHeaderBadges`, `LeaveLevelGuard`, and `StatusChip` are the shared presentation contracts; extend them rather than re-implementing per screen.
+- Every difficulty row shows its current level and gameplay shows `Уровень N`; terminal actions are Retry level, Next level, and To Games, and there is no Continue, no active-save indicator, and no new-game branch.
+- `GameplayExitGuard` is the one seam between the shell's Back handling and gameplay: leaving a non-terminal level with real progress confirms first, and nothing else — no autosave — protects it.
 - Boards stay puzzle-specific: only the surrounding chrome (header, difficulty, actions, errors, completion) is shared.
 - Board cells size their text and their inner grids from the cell the layout actually gave them, never from fixed `sp` that only looks right in a Preview; Word gameplay is one screen with no scrolling, budgeting board and keyboard against the available height, and a rejected guess is shake plus a live-region announcement rather than a text block that changes the layout height.
 - Every state must be readable without color: pair status color with an icon plus a label, and keep the existing non-color Word feedback.
@@ -163,16 +173,16 @@
 - Sudoku gameplay is cell-first: givens and correct entries are immutable, wrong committed digits stay visible/editable without revealing the answer, and the third committed mistake fails the attempt.
 - Sudoku Pencil candidates are per-cell 9-bit masks on empty editable cells only; a given, correct entry, or hint confirmation removes its digit from row/column/block peers, while incorrect entries never do.
 - Sudoku hints deterministically apply Naked Single, then Hidden Single by row/column/block, then a lowest-index safe reveal; a hint confirms one correct value and never costs a mistake.
-- Sudoku Session Codec V1 stores puzzle identity, player values, candidate masks, mistake events, and hint count only; givens, solution, and derived correct/incorrect flags are rebuilt from Dataset V1.
 - 2048 is the fifth production Catalog puzzle and uses `PuzzleType.GAME_2048`; it is excluded from immutable Daily Policies V1–V4 and enters Daily with Policy V5.
 - The deterministic spawn is frozen and shared by every rules version: unsigned SplitMix64 finalization with `base = seed + 0x9e3779b97f4a7c15 * (spawnIndex + 1)`, position sample `mix(base)`, and value sample `mix(base + 0xd1b54a32d192ed03)`; row-major empty selection reduces the position sample modulo the empty count, and value modulo 10 yields `4` only for zero and `2` otherwise.
 - 2048 starts with spawns 0 and 1, then every valid non-winning move consumes exactly one seed-plus-spawn-index sample; invalid and terminal moves are complete no-ops.
 - 2048 uses one classic compact/merge primitive in all four directions on a 4x4 board and scores the value of every merged tile. Only the win condition is versioned, and `Game2048Ruleset` is the one place that answers it.
-- Valid 2048 moves may expose a transient deterministic movement/merge/spawn trace derived inside that same canonical calculation; `Game2048State` and session persistence remain authoritative and never store trace data or tile identities.
+- Valid 2048 moves may expose a transient deterministic movement/merge/spawn trace derived inside that same canonical calculation; `Game2048State` remains authoritative and never carries trace data or tile identities.
 - Android 2048 presentation consumes only the current transient trace through short movement, merge, and spawn phases; it locks overlapping input and delays terminal UI until motion finishes without delaying result persistence.
-- `Game2048GeneratorVersion.V1` is immutable and fully supported: targets tile 256/512/1024/2048 for EASY/MEDIUM/HARD/EXPERT, solves the moment the target tile appears, and that winning move ends the attempt before spawning. Persisted V1 sessions keep playing as V1 and are never converted.
-- `Game2048GeneratorVersion.V2` targets scores 12 000 / 30 000 / 100 000 / 250 000 for EASY/MEDIUM/HARD/EXPERT. Reaching the target only sets the informational `goalReached`; the game stays `IN_PROGRESS` until no legal move remains, and only then does the final score decide `SOLVED` (>= target) or `FAILED`. Every new 2048 game is created as V2.
-- `GAME_2048/CATALOG` and `GAME_2048/DAILY` are independent Room v6 slots. `Game2048SessionCodecV1` serves both versions unchanged — it stores identity including the rules version, board, score, and `nextSpawnIndex` — and restore derives status from the persisted version while preserving the exact next spawn. Daily 2048 is V2 Medium (target score 30 000) on the deterministic Daily seed.
-- Terminal 2048 attempts use the shared idempotent result/economy transaction (`SOLVED` grants the difficulty reward, `FAILED` costs one life); crossing a V2 score target produces no result and no gems. Retry waits for durability, uses a new `sessionId`, and preserves seed, difficulty, and rules version.
+- `Game2048GeneratorVersion.V1` is immutable and still implemented — target tile 256/512/1024/2048, solved the moment the tile appears — but no level or Daily entry creates it any more.
+- `Game2048GeneratorVersion.V2` targets scores 12 000 / 30 000 / 100 000 / 250 000 for EASY/MEDIUM/HARD/EXPERT. In the core the target only sets the informational `goalReached` and the game stays `IN_PROGRESS` until no legal move remains; the Catalog level layer above it is what treats that first crossing as the level clear. Every 2048 game is V2.
+- Daily 2048 is V2 Medium (target score 30 000) on the deterministic Daily seed, and keeps the V5 rule that only the final score decides its outcome.
+- A Catalog 2048 level clears the instant `score >= targetScore`: that first crossing alone records the solved result, pays the gems, advances progression, and creates the normal deferred Interstitial opportunity. The board keeps running as freeplay under a persistent `Уровень N ✓` state, a later game over is neither a failure nor a life, and leaving keeps the level cleared.
+- 2048 game over before the target is the normal failure: it records `FAILED`, costs one life, and keeps progression on the same level.
 - 2048 onboarding is a DataStore preference and creates no gameplay records; Profile reports played/solved/failed plus solved counts by difficulty, without high-score persistence.
-- Deferred to Stage 41: consolidation. No new ad format, no mediation change, and no new Yandex dependency version belongs there by default.
+- Deferred to Stage 42.1: physically removing the retained legacy session infrastructure once the sessionless model is validated on a real device.

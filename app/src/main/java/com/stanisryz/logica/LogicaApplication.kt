@@ -9,6 +9,8 @@ import com.stanisryz.logica.ads.DataStoreInterstitialCooldownStore
 import com.stanisryz.logica.ads.InterstitialAwareGameCompletionRepository
 import com.stanisryz.logica.ads.InterstitialCooldownPolicy
 import com.stanisryz.logica.ads.InterstitialOpportunities
+import com.stanisryz.logica.catalog.CatalogLevelRepository
+import com.stanisryz.logica.catalog.createCatalogLevelRepository
 import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.DailyResultRepository
 import com.stanisryz.logica.daily.RoomDailyChallengeRepository
@@ -16,9 +18,8 @@ import com.stanisryz.logica.daily.RoomDailyResultRepository
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.RoomEconomyRepository
 import com.stanisryz.logica.result.GameCompletionRepository
-import com.stanisryz.logica.session.GameSessionRepository
+import com.stanisryz.logica.result.RoomGameCompletionRepository
 import com.stanisryz.logica.session.LogicaDatabase
-import com.stanisryz.logica.session.RoomGameSessionRepository
 import com.stanisryz.logica.settings.DataStoreSettingsRepository
 import com.stanisryz.logica.settings.SettingsRepository
 import com.stanisryz.logica.statistics.RoomStatisticsRepository
@@ -57,12 +58,16 @@ internal class AppContainer(
         LogicaDatabase.create(context)
     }
 
-    private val gamePersistenceRepository: RoomGameSessionRepository by lazy {
-        RoomGameSessionRepository(database.gameSessionDao(), database.gameCompletionDao())
+    /**
+     * Catalog progression plus the read-only frozen Level Pack V1 assets. Nothing here is touched at
+     * cold start: a bucket is streamed only when a level is actually opened.
+     */
+    val catalogLevelRepository: CatalogLevelRepository by lazy {
+        createCatalogLevelRepository(database.catalogLevelProgressDao(), context.assets)
     }
 
-    val gameSessionRepository: GameSessionRepository by lazy {
-        gamePersistenceRepository
+    private val completionPersistenceRepository: RoomGameCompletionRepository by lazy {
+        RoomGameCompletionRepository(database.gameCompletionDao())
     }
 
     /**
@@ -81,7 +86,7 @@ internal class AppContainer(
      * and a failed completion never reaches the advertising layer at all.
      */
     val gameCompletionRepository: GameCompletionRepository by lazy {
-        InterstitialAwareGameCompletionRepository(gamePersistenceRepository, interstitialOpportunities)
+        InterstitialAwareGameCompletionRepository(completionPersistenceRepository, interstitialOpportunities)
     }
 
     val dailyChallengeRepository: DailyChallengeRepository by lazy {

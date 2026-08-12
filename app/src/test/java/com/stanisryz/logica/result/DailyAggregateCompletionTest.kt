@@ -36,8 +36,6 @@ class DailyAggregateCompletionTest {
             assertEquals(DailyRunStatus.COMPLETED.name, dao.run.status)
             assertEquals(2_000L, dao.run.completedAtEpochMillis)
             assertEquals(2, dao.results.size)
-            assertNull(dao.findSession(first.puzzleType, first.sessionScope))
-            assertNull(dao.findSession(final.puzzleType, final.sessionScope))
         }
 
     @Test
@@ -51,13 +49,11 @@ class DailyAggregateCompletionTest {
 
             dao.complete(failed)
 
-            // The result is durable, the session is released for a retry, and nothing else moved.
+            // The result is durable, the entry stays open for another attempt, nothing else moved.
             assertNotNull(dao.results["daily-0"])
             assertEquals(DailyChallengeStatus.IN_PROGRESS.name, dao.challenge(failed).status)
             assertEquals(DailyRunStatus.IN_PROGRESS.name, dao.run.status)
-            assertNull(dao.findSession(failed.puzzleType, failed.sessionScope))
 
-            dao.startRetrySession(definition, entry, sessionId = "daily-0-retry", hintsUsed = 0)
             val solved = entry.completion(definition, "daily-0-retry", hintsUsed = 0).toEntity(2_000)
             dao.complete(solved)
 
@@ -72,7 +68,7 @@ class DailyAggregateCompletionTest {
         }
 
     @Test
-    fun completingOneSessionLeavesTheOtherThreePuzzleScopeSessionsIntact() =
+    fun aCatalogCompletionNeverTouchesDailyLifecycleState() =
         runBlocking {
             val definition = DailyChallengePolicyV2.definitionFor(LocalDate.of(2026, 8, 9))
             val dao = FakeGameCompletionDao(definition)
@@ -81,21 +77,16 @@ class DailyAggregateCompletionTest {
 
             dao.complete(catalogCrowns)
 
-            assertNull(dao.findSession(PuzzleType.CROWNS.name, GameSessionScope.CATALOG.name))
-            assertNotNull(dao.findSession(PuzzleType.BALANCE.name, GameSessionScope.CATALOG.name))
-            assertNotNull(dao.findSession(PuzzleType.BALANCE.name, GameSessionScope.DAILY.name))
-            assertNotNull(dao.findSession(PuzzleType.CROWNS.name, GameSessionScope.DAILY.name))
-            // A Catalog completion must not touch any Daily lifecycle state.
             assertEquals(DailyRunStatus.IN_PROGRESS.name, dao.run.status)
             assertEquals(DailyChallengeStatus.IN_PROGRESS.name, dao.challenge(dailyBalance).status)
+            // A Daily result never records Catalog level identity, and never advances progression.
+            assertNull(dao.currentLevel(PuzzleType.BALANCE))
 
             dao.complete(dailyBalance)
 
-            assertNull(dao.findSession(PuzzleType.BALANCE.name, GameSessionScope.DAILY.name))
-            assertNotNull(dao.findSession(PuzzleType.BALANCE.name, GameSessionScope.CATALOG.name))
-            assertNotNull(dao.findSession(PuzzleType.CROWNS.name, GameSessionScope.DAILY.name))
             assertEquals(DailyRunStatus.IN_PROGRESS.name, dao.run.status)
             assertEquals(2, dao.results.size)
+            assertNull(dao.currentLevel(PuzzleType.BALANCE))
         }
 
     private fun DailyPuzzleEntry.completion(

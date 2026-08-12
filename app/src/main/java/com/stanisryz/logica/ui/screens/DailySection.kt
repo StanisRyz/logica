@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.HighlightOff
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.PlayCircleOutline
-import androidx.compose.material.icons.filled.Timelapse
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
@@ -88,7 +87,6 @@ internal fun DailySection(
     uiState: TodayUiState,
     gameplayAllowed: Boolean,
     onStart: (PuzzleType) -> Unit,
-    onContinue: (PuzzleType) -> Unit,
     onRetryLoad: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -128,7 +126,6 @@ internal fun DailySection(
                             entries = state.entries,
                             gameplayAllowed = gameplayAllowed,
                             onStart = onStart,
-                            onContinue = onContinue,
                         )
                         AnimatedVisibility(
                             visible = state.completion != null,
@@ -241,7 +238,6 @@ private fun DailyEntryRow(
     entries: List<TodayEntryUiState>,
     gameplayAllowed: Boolean,
     onStart: (PuzzleType) -> Unit,
-    onContinue: (PuzzleType) -> Unit,
 ) {
     LazyRow(
         modifier = Modifier.fillMaxWidth(),
@@ -253,23 +249,21 @@ private fun DailyEntryRow(
                 entry = entry,
                 gameplayAllowed = gameplayAllowed,
                 onStart = { onStart(entry.puzzleType) },
-                onContinue = { onContinue(entry.puzzleType) },
             )
         }
     }
 }
 
 /**
- * One Daily puzzle as a compact rectangle. The card itself is the action — Start, Continue, or
- * Retry, whichever its state calls for — so nothing but the state chip competes for the tap, and a
- * finished entry simply stops being actionable.
+ * One Daily puzzle as a compact rectangle. The card itself is the action — Start or Retry, whichever
+ * its state calls for — so nothing but the state chip competes for the tap, and a finished entry
+ * simply stops being actionable. An unfinished attempt is transient, so there is no Continue.
  */
 @Composable
 private fun DailyEntryCard(
     entry: TodayEntryUiState,
     gameplayAllowed: Boolean,
     onStart: () -> Unit,
-    onContinue: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     val palette = LocalLogicaPalette.current
@@ -279,19 +273,12 @@ private fun DailyEntryCard(
     LogicaCard(
         modifier = Modifier.width(DAILY_CARD_WIDTH).heightIn(min = DAILY_CARD_MIN_HEIGHT),
         containerColor = if (isCompleted) colors.surfaceContainer else colors.surfaceContainerLow,
-        // Non-color cue: an unfinished-but-started entry is the only outlined card, and every state
-        // also carries its own status chip icon and label.
-        border = if (entry.state == DailyEntryState.IN_PROGRESS) BorderStroke(1.dp, colors.primary) else null,
+        // Non-color cue: an entry waiting for another attempt is the only outlined card, and every
+        // state also carries its own status chip icon and label.
+        border = if (entry.state == DailyEntryState.RETRY) BorderStroke(1.dp, colors.primary) else null,
         verticalSpacing = LogicaSpacing.text,
         contentPadding = LogicaSpacing.cardContent,
-        onClick =
-            if (!actionable) {
-                null
-            } else if (entry.state == DailyEntryState.IN_PROGRESS) {
-                onContinue
-            } else {
-                onStart
-            },
+        onClick = if (actionable) onStart else null,
         onClickLabel = actionLabel,
     ) {
         PuzzleArtwork(entry.puzzleType)
@@ -317,10 +304,6 @@ private fun EntryStatusChip(
         DailyEntryState.AVAILABLE -> {
             icon = Icons.Filled.PlayCircleOutline
             labelResource = R.string.daily_available
-        }
-        DailyEntryState.IN_PROGRESS -> {
-            icon = Icons.Filled.Timelapse
-            labelResource = R.string.daily_in_progress
         }
         DailyEntryState.RETRY -> {
             icon = Icons.Filled.HighlightOff

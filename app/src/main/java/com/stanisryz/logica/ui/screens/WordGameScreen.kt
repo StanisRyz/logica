@@ -45,9 +45,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
+import com.stanisryz.logica.catalog.GameAttemptFactory
+import com.stanisryz.logica.catalog.GameAttemptLaunch
+import com.stanisryz.logica.catalog.levelNumberOrNull
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
-import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordDraft
 import com.stanisryz.logica.puzzle.core.word.WordGameState
@@ -57,11 +59,12 @@ import com.stanisryz.logica.puzzle.core.word.WordPuzzle
 import com.stanisryz.logica.puzzle.core.word.WordRules
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
-import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.ui.components.CompletionActions
 import com.stanisryz.logica.ui.components.CompletionCard
-import com.stanisryz.logica.ui.components.DifficultyBadge
 import com.stanisryz.logica.ui.components.EconomyResultFeedback
+import com.stanisryz.logica.ui.components.GameHeaderBadges
+import com.stanisryz.logica.ui.components.GameplayExitGuard
+import com.stanisryz.logica.ui.components.LeaveLevelGuard
 import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.components.RetryableErrorState
 import com.stanisryz.logica.ui.components.SupportingText
@@ -73,9 +76,7 @@ import com.stanisryz.logica.ui.word.WORD_KEYBOARD_ROWS
 import com.stanisryz.logica.ui.word.WORD_KEY_SPACING
 import com.stanisryz.logica.ui.word.WordBoard
 import com.stanisryz.logica.ui.word.WordKeyboard
-import com.stanisryz.logica.word.WordGameContext
 import com.stanisryz.logica.word.WordGameError
-import com.stanisryz.logica.word.WordGameLaunch
 import com.stanisryz.logica.word.WordGameUiState
 import com.stanisryz.logica.word.WordGameViewModel
 import com.stanisryz.logica.word.WordGameViewModelFactory
@@ -83,43 +84,44 @@ import kotlin.math.roundToInt
 
 @Composable
 internal fun WordGameRoute(
-    launch: WordGameLaunch,
-    sessionRepository: GameSessionRepository,
+    launch: GameAttemptLaunch,
+    attemptFactory: GameAttemptFactory,
     completionRepository: GameCompletionRepository,
     economyRepository: EconomyRepository,
+    exitGuard: GameplayExitGuard,
     hapticsEnabled: Boolean,
     onBack: () -> Unit,
-    onNewPuzzle: (Difficulty) -> Unit,
-    onStartNew: () -> Unit,
+    onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
     onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
     onTerminalAction: (() -> Unit) -> Unit = { it() },
 ) {
     val factory =
-        remember(launch, sessionRepository, completionRepository, economyRepository) {
-            WordGameViewModelFactory(launch, sessionRepository, completionRepository, economyRepository)
+        remember(launch, attemptFactory, completionRepository, economyRepository) {
+            WordGameViewModelFactory(launch, attemptFactory, completionRepository, economyRepository)
         }
     val gameViewModel: WordGameViewModel = viewModel(factory = factory)
     val uiState by gameViewModel.uiState.collectAsStateWithLifecycle()
     val economy by gameViewModel.economy.collectAsStateWithLifecycle()
+    LeaveLevelGuard(exitGuard, (uiState as? WordGameUiState.Ready)?.hasMeaningfulProgress == true)
 
     WordGameScreen(
         uiState = uiState,
         economy = economy,
+        levelNumber = launch.levelNumberOrNull(),
         onLetter = gameViewModel::setLetter,
         onClearLetter = gameViewModel::clearLetter,
         onSubmit = gameViewModel::submit,
         onDismissRejection = gameViewModel::dismissRejection,
         onRetryCompletion = gameViewModel::retryCompletion,
-        onRetryPuzzle = { onTerminalAction(gameViewModel::retry) },
+        onRetryLevel = { onTerminalAction(gameViewModel::retry) },
         onRestoreLife = onRestoreLife,
         hapticsEnabled = hapticsEnabled,
         onBack = onBack,
-        onNewPuzzle = { difficulty -> onTerminalAction { onNewPuzzle(difficulty) } },
-        onStartNew = { onTerminalAction(onStartNew) },
+        onNextLevel = { onTerminalAction(onNextLevel) },
         onGameHub = { onTerminalAction(onGameHub) },
-        isDaily = launch.context is WordGameContext.Daily,
+        isDaily = launch is GameAttemptLaunch.Daily,
         modifier = modifier,
     )
 }
@@ -128,17 +130,17 @@ internal fun WordGameRoute(
 private fun WordGameScreen(
     uiState: WordGameUiState,
     economy: PlayerEconomy,
+    levelNumber: Int?,
     onLetter: (Int, Char) -> Unit,
     onClearLetter: (Int) -> Unit,
     onSubmit: () -> Unit,
     onDismissRejection: () -> Unit,
     onRetryCompletion: () -> Unit,
-    onRetryPuzzle: () -> Unit,
+    onRetryLevel: () -> Unit,
     onRestoreLife: () -> Unit,
     hapticsEnabled: Boolean,
     onBack: () -> Unit,
-    onNewPuzzle: (Difficulty) -> Unit,
-    onStartNew: () -> Unit,
+    onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
     isDaily: Boolean,
     modifier: Modifier,
@@ -150,13 +152,12 @@ private fun WordGameScreen(
                 message =
                     stringResource(
                         when (uiState.reason) {
-                            WordGameError.MISSING_SAVED_SESSION -> R.string.missing_saved_game
-                            WordGameError.INVALID_SAVED_SESSION -> R.string.invalid_saved_game
+                            WordGameError.LEVEL_UNAVAILABLE -> R.string.level_content_error
                             WordGameError.GENERATION -> R.string.puzzle_generation_error
                         },
                     ),
-                retryLabel = stringResource(if (isDaily) R.string.to_games else R.string.try_another),
-                onRetry = if (isDaily) onGameHub else onStartNew,
+                retryLabel = stringResource(R.string.to_games),
+                onRetry = onGameHub,
                 modifier = modifier,
                 secondaryLabel = stringResource(R.string.back),
                 onSecondary = onBack,
@@ -165,6 +166,7 @@ private fun WordGameScreen(
             WordReadyState(
                 puzzle = uiState.puzzle,
                 game = uiState.game,
+                levelNumber = levelNumber,
                 rejection = uiState.rejection,
                 rejectionRevision = uiState.rejectionRevision,
                 acceptedAttemptRevision = uiState.acceptedAttemptRevision,
@@ -175,10 +177,10 @@ private fun WordGameScreen(
                 onSubmit = onSubmit,
                 onDismissRejection = onDismissRejection,
                 onRetryCompletion = onRetryCompletion,
-                onRetryPuzzle = onRetryPuzzle,
+                onRetryLevel = onRetryLevel,
                 onRestoreLife = onRestoreLife,
                 hapticsEnabled = hapticsEnabled,
-                onNewPuzzle = { onNewPuzzle(uiState.puzzle.id.difficulty) },
+                onNextLevel = onNextLevel,
                 onGameHub = onGameHub,
                 isDaily = isDaily,
                 modifier = modifier,
@@ -196,6 +198,7 @@ private fun WordGameScreen(
 private fun WordReadyState(
     puzzle: WordPuzzle,
     game: WordGameState,
+    levelNumber: Int?,
     rejection: WordGuessRejection?,
     rejectionRevision: Int,
     acceptedAttemptRevision: Int,
@@ -206,10 +209,10 @@ private fun WordReadyState(
     onSubmit: () -> Unit,
     onDismissRejection: () -> Unit,
     onRetryCompletion: () -> Unit,
-    onRetryPuzzle: () -> Unit,
+    onRetryLevel: () -> Unit,
     onRestoreLife: () -> Unit,
     hapticsEnabled: Boolean,
-    onNewPuzzle: () -> Unit,
+    onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
     isDaily: Boolean,
     modifier: Modifier,
@@ -290,7 +293,7 @@ private fun WordReadyState(
                 horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.action, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                DifficultyBadge(difficultyLabel(PuzzleType.WORD, puzzle.id.difficulty))
+                GameHeaderBadges(difficultyLabel(PuzzleType.WORD, puzzle.id.difficulty), levelNumber)
                 SupportingText(
                     text = attemptsText,
                     modifier =
@@ -344,8 +347,8 @@ private fun WordReadyState(
                         completionPersistence = completionPersistence,
                         economy = economy,
                         onRetryCompletion = onRetryCompletion,
-                        onRetryPuzzle = onRetryPuzzle,
-                        onNewPuzzle = onNewPuzzle,
+                        onRetryLevel = onRetryLevel,
+                        onNextLevel = onNextLevel,
                         onGameHub = onGameHub,
                         isDaily = isDaily,
                     )
@@ -407,8 +410,8 @@ private fun WordTerminalCard(
     completionPersistence: CompletionPersistence,
     economy: PlayerEconomy,
     onRetryCompletion: () -> Unit,
-    onRetryPuzzle: () -> Unit,
-    onNewPuzzle: () -> Unit,
+    onRetryLevel: () -> Unit,
+    onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
     isDaily: Boolean,
 ) {
@@ -461,7 +464,7 @@ private fun WordTerminalCard(
                     // A failed attempt leads with replaying the same word; Daily stays open.
                     if (!isSolved) {
                         Button(
-                            onClick = onRetryPuzzle,
+                            onClick = onRetryLevel,
                             enabled = economy.isGameplayAllowed,
                             modifier = Modifier.weight(1f),
                         ) {
@@ -473,8 +476,8 @@ private fun WordTerminalCard(
                             Text(stringResource(R.string.to_games))
                         }
                     } else {
-                        Button(onClick = onNewPuzzle, modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.new_puzzle))
+                        Button(onClick = onNextLevel, modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.next_level))
                         }
                         TextButton(onClick = onGameHub) { Text(stringResource(R.string.to_games)) }
                     }

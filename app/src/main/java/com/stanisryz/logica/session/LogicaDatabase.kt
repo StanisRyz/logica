@@ -7,6 +7,8 @@ import androidx.room3.RoomDatabase
 import androidx.room3.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import com.stanisryz.logica.catalog.CatalogLevelProgressDao
+import com.stanisryz.logica.catalog.CatalogLevelProgressEntity
 import com.stanisryz.logica.daily.DailyChallengeDao
 import com.stanisryz.logica.daily.DailyChallengeEntity
 import com.stanisryz.logica.daily.DailyRunDao
@@ -28,11 +30,16 @@ import kotlinx.coroutines.Dispatchers
         GameResultEntity::class,
         PlayerEconomyEntity::class,
         EconomyEventEntity::class,
+        CatalogLevelProgressEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 internal abstract class LogicaDatabase : RoomDatabase() {
+    /**
+     * Legacy active-gameplay storage. Nothing writes or reads it any more — Catalog and Daily
+     * attempts are transient — and Stage 42.1 removes it after real-device validation.
+     */
     abstract fun gameSessionDao(): GameSessionDao
 
     abstract fun dailyChallengeDao(): DailyChallengeDao
@@ -45,6 +52,8 @@ internal abstract class LogicaDatabase : RoomDatabase() {
 
     abstract fun economyDao(): EconomyDao
 
+    abstract fun catalogLevelProgressDao(): CatalogLevelProgressDao
+
     companion object {
         private const val DATABASE_NAME = "logica.db"
 
@@ -56,7 +65,7 @@ internal abstract class LogicaDatabase : RoomDatabase() {
                     name = applicationContext.getDatabasePath(DATABASE_NAME).absolutePath,
                 ).setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(Dispatchers.IO)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                 .build()
         }
 
@@ -247,6 +256,34 @@ internal abstract class LogicaDatabase : RoomDatabase() {
                         )
                         """.trimIndent(),
                     )
+                }
+            }
+
+        /**
+         * Adds Catalog level progression and the nullable level metadata durable results carry.
+         * Economy, purchases, settings, Daily history, and historical results are preserved untouched;
+         * old results simply have no Catalog level. Unfinished saved sessions are cleared because a
+         * randomly seeded save cannot be mapped honestly onto a public frozen level number, and
+         * gameplay attempts are transient from this version on.
+         */
+        internal val MIGRATION_6_7 =
+            object : Migration(6, 7) {
+                override suspend fun migrate(connection: SQLiteConnection) {
+                    connection.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS `catalog_level_progress` (
+                            `puzzle_type` TEXT NOT NULL,
+                            `difficulty` TEXT NOT NULL,
+                            `level_pack_version` INTEGER NOT NULL,
+                            `current_level` INTEGER NOT NULL,
+                            `updated_at_epoch_millis` INTEGER NOT NULL,
+                            PRIMARY KEY(`puzzle_type`, `difficulty`, `level_pack_version`)
+                        )
+                        """.trimIndent(),
+                    )
+                    connection.execute("ALTER TABLE `game_results` ADD COLUMN `catalog_level_number` INTEGER")
+                    connection.execute("ALTER TABLE `game_results` ADD COLUMN `catalog_level_pack_version` INTEGER")
+                    connection.execute("DELETE FROM `game_sessions`")
                 }
             }
 

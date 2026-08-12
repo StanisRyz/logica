@@ -57,25 +57,27 @@ import com.stanisryz.logica.R
 import com.stanisryz.logica.ads.InterstitialOpportunity
 import com.stanisryz.logica.ads.RewardedAdState
 import com.stanisryz.logica.ads.TerminalActionCoordinator
-import com.stanisryz.logica.balance.BalanceGameLaunch
-import com.stanisryz.logica.crowns.CrownsGameLaunch
+import com.stanisryz.logica.catalog.CatalogLevelRepository
+import com.stanisryz.logica.catalog.GameAttemptFactory
+import com.stanisryz.logica.catalog.GameAttemptLaunch
+import com.stanisryz.logica.catalog.levelLaunch
+import com.stanisryz.logica.catalog.nextLevelLaunch
+import com.stanisryz.logica.catalog.rememberCatalogLevels
 import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.DailyGameLaunch
 import com.stanisryz.logica.daily.DailyResultRepository
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
-import com.stanisryz.logica.game2048.Game2048Launch
-import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
+import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.GameCompletionRepository
-import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.settings.SettingsRepository
 import com.stanisryz.logica.settings.ThemeMode
 import com.stanisryz.logica.settings.UserSettings
 import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.store.RuStorePayGateway
-import com.stanisryz.logica.sudoku.SudokuGameLaunch
 import com.stanisryz.logica.ui.components.EconomyBar
+import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.LivesDialog
 import com.stanisryz.logica.ui.screens.BalanceGameRoute
 import com.stanisryz.logica.ui.screens.BalanceStartScreen
@@ -99,25 +101,18 @@ import com.stanisryz.logica.ui.screens.WordTutorialRoute
 import com.stanisryz.logica.ui.screens.gameCatalogEntries
 import com.stanisryz.logica.ui.theme.LogicaMotion
 import com.stanisryz.logica.ui.theme.LogicaSpacing
-import com.stanisryz.logica.word.WordGameLaunch
-import java.security.SecureRandom
 
 @Composable
 internal fun LogicaNavigation(
     settings: UserSettings,
     settingsRepository: SettingsRepository,
-    gameSessionRepository: GameSessionRepository,
+    catalogLevelRepository: CatalogLevelRepository,
     gameCompletionRepository: GameCompletionRepository,
     dailyChallengeRepository: DailyChallengeRepository,
     statisticsRepository: StatisticsRepository,
     dailyResultRepository: DailyResultRepository,
     economyRepository: EconomyRepository,
     economy: PlayerEconomy,
-    hasActiveBalanceSession: Boolean,
-    hasActiveCrownsSession: Boolean,
-    hasActiveWordSession: Boolean,
-    hasActiveSudokuSession: Boolean,
-    hasActiveGame2048Session: Boolean,
     rewardedState: RewardedAdState,
     interstitialOpportunity: InterstitialOpportunity?,
     ruStorePayGateway: RuStorePayGateway,
@@ -143,7 +138,17 @@ internal fun LogicaNavigation(
      */
     var selectedTab by rememberSaveable { mutableStateOf(PrimaryTab.START) }
     val tabStateHolder = rememberSaveableStateHolder()
-    val catalogSeedSource = remember { CatalogSeedSource() }
+    /*
+     * Catalog levels are resolved from the frozen pack rather than from a random seed, and the
+     * attempt they produce lives only in the gameplay ViewModel.
+     */
+    val attemptFactory = remember(catalogLevelRepository) { GameAttemptFactory(catalogLevelRepository) }
+    /*
+     * Unfinished attempts are no longer saved, so both ways back out of gameplay — the header Back
+     * button and system/predictive back — ask the active gameplay screen first.
+     */
+    val exitGuard = remember { GameplayExitGuard() }
+    val goBack = { exitGuard.requestBack { backStack.removeLastOrNull() } }
     val currentDestination = backStack.last()
     var showLivesDialog by rememberSaveable { mutableStateOf(false) }
     val activity = LocalActivity.current
@@ -205,23 +210,28 @@ internal fun LogicaNavigation(
         }
     val onTerminalAction: (() -> Unit) -> Unit = terminalActions::run
 
-    val catalog =
-        gameCatalogEntries(
-            hasActiveSession = { puzzleType ->
-                when (puzzleType) {
-                    PuzzleType.BALANCE -> hasActiveBalanceSession
-                    PuzzleType.CROWNS -> hasActiveCrownsSession
-                    PuzzleType.WORD -> hasActiveWordSession
-                    PuzzleType.SUDOKU -> hasActiveSudokuSession
-                    PuzzleType.GAME_2048 -> hasActiveGame2048Session
-                    else -> error("$puzzleType is not a Catalog game.")
-                }
-            },
-            onContinue = { puzzleType -> backStack.add(puzzleType.catalogGameDestination()) },
-            onNew = { puzzleType -> backStack.add(puzzleType.startDestination()) },
-        )
+    // A game card simply leads to its difficulty screen, where the current level of each
+    // difficulty is shown; there is no saved-game branch to choose between any more.
+    val catalog = gameCatalogEntries(onPlay = { puzzleType -> backStack.add(puzzleType.startDestination()) })
     val openDaily: (DailyGameLaunch) -> Unit = { dailyLaunch ->
-        backStack.add(dailyLaunch.gameDestination())
+        backStack.add(dailyLaunch.puzzleType.gameDestination(dailyLaunch.launch))
+    }
+
+    /** Start the selected difficulty's current level; the pack decides which puzzle that is. */
+    val openLevel: (PuzzleType, Difficulty, Map<Difficulty, Int>) -> Unit = { puzzleType, difficulty, levels ->
+        val level = levels[difficulty] ?: 1
+        backStack.add(puzzleType.gameDestination(catalogLevelRepository.levelLaunch(puzzleType, difficulty, level)))
+    }
+
+    /** After a solve, progression has already advanced, so the next launch is simply level + 1. */
+    val openNextLevel: (PuzzleType, GameAttemptLaunch) -> Unit = { puzzleType, launch ->
+        val next = launch.nextLevelLaunch()
+        if (next == null) {
+            returnToGameHub(backStack) { selectedTab = it }
+        } else {
+            backStack.removeLastOrNull()
+            backStack.add(puzzleType.gameDestination(next))
+        }
     }
 
     Scaffold(
@@ -232,7 +242,7 @@ internal fun LogicaNavigation(
                 showWallet = currentDestination.showsWallet(),
                 showSettings = currentDestination.showsSettingsAction(),
                 economy = economy,
-                onBack = { backStack.removeLastOrNull() },
+                onBack = goBack,
                 onOpenSettings = { backStack.add(AppDestination.Settings) },
                 onOpenLives = { showLivesDialog = true },
                 onOpenStore = openStore,
@@ -251,7 +261,7 @@ internal fun LogicaNavigation(
         NavDisplay(
             backStack = backStack,
             modifier = Modifier.padding(contentPadding),
-            onBack = { backStack.removeLastOrNull() },
+            onBack = goBack,
             transitionSpec = {
                 (
                     fadeIn(tween(LogicaMotion.SCREEN_MILLIS)) +
@@ -298,7 +308,6 @@ internal fun LogicaNavigation(
                                         PrimaryTab.GAME ->
                                             GameHubRoute(
                                                 dailyChallengeRepository = dailyChallengeRepository,
-                                                gameSessionRepository = gameSessionRepository,
                                                 statisticsRepository = statisticsRepository,
                                                 dailyResultRepository = dailyResultRepository,
                                                 catalog = catalog,
@@ -322,14 +331,13 @@ internal fun LogicaNavigation(
                         SettingsScreen(settings, onThemeModeChanged, onSoundEnabledChanged, onHapticsEnabledChanged)
                     }
                     entry<AppDestination.BalanceStart> {
+                        val levels = rememberCatalogLevels(catalogLevelRepository, PuzzleType.BALANCE)
                         BalanceStartScreen(
-                            hasActiveSession = hasActiveBalanceSession,
+                            levels = levels,
                             tutorialCompleted = settings.balanceTutorialCompleted,
                             economy = economy,
                             onOpenTutorial = { backStack.add(AppDestination.BalanceTutorial) },
-                            onStart = { difficulty ->
-                                backStack.add(AppDestination.BalanceGame(BalanceGameLaunch.New(difficulty, catalogSeedSource.nextSeed())))
-                            },
+                            onStart = { difficulty -> openLevel(PuzzleType.BALANCE, difficulty, levels) },
                             onRestoreLife = onRestoreLife,
                         )
                     }
@@ -337,8 +345,9 @@ internal fun LogicaNavigation(
                         BalanceTutorialRoute(settingsRepository = settingsRepository, onDone = { backStack.removeLastOrNull() })
                     }
                     entry<AppDestination.CrownsStart> {
+                        val levels = rememberCatalogLevels(catalogLevelRepository, PuzzleType.CROWNS)
                         CrownsStartScreen(
-                            hasActiveSession = hasActiveCrownsSession,
+                            levels = levels,
                             tutorialCompleted = settings.crownsTutorialCompleted,
                             economy = economy,
                             onOpenTutorial = {
@@ -347,11 +356,7 @@ internal fun LogicaNavigation(
                             },
                             onStart = { difficulty ->
                                 onCrownsTutorialCompleted(true)
-                                backStack.add(
-                                    AppDestination.CrownsGame(
-                                        CrownsGameLaunch.New(difficulty, catalogSeedSource.nextSeed()),
-                                    ),
-                                )
+                                openLevel(PuzzleType.CROWNS, difficulty, levels)
                             },
                             onRestoreLife = onRestoreLife,
                         )
@@ -364,8 +369,9 @@ internal fun LogicaNavigation(
                         )
                     }
                     entry<AppDestination.WordStart> {
+                        val levels = rememberCatalogLevels(catalogLevelRepository, PuzzleType.WORD)
                         WordStartScreen(
-                            hasActiveSession = hasActiveWordSession,
+                            levels = levels,
                             tutorialCompleted = settings.wordTutorialCompleted,
                             economy = economy,
                             onOpenTutorial = {
@@ -374,11 +380,7 @@ internal fun LogicaNavigation(
                             },
                             onStart = { difficulty ->
                                 onWordTutorialCompleted(true)
-                                backStack.add(
-                                    AppDestination.WordGame(
-                                        WordGameLaunch.New(difficulty, catalogSeedSource.nextSeed()),
-                                    ),
-                                )
+                                openLevel(PuzzleType.WORD, difficulty, levels)
                             },
                             onRestoreLife = onRestoreLife,
                         )
@@ -387,18 +389,13 @@ internal fun LogicaNavigation(
                         WordTutorialRoute(settingsRepository = settingsRepository, onDone = { backStack.removeLastOrNull() })
                     }
                     entry<AppDestination.SudokuStart> {
+                        val levels = rememberCatalogLevels(catalogLevelRepository, PuzzleType.SUDOKU)
                         SudokuStartScreen(
-                            hasActiveSession = hasActiveSudokuSession,
+                            levels = levels,
                             tutorialCompleted = settings.sudokuTutorialCompleted,
                             economy = economy,
                             onOpenTutorial = { backStack.add(AppDestination.SudokuTutorial) },
-                            onStart = { difficulty ->
-                                backStack.add(
-                                    AppDestination.SudokuGame(
-                                        SudokuGameLaunch.New(difficulty, catalogSeedSource.nextSeed()),
-                                    ),
-                                )
-                            },
+                            onStart = { difficulty -> openLevel(PuzzleType.SUDOKU, difficulty, levels) },
                             onRestoreLife = onRestoreLife,
                         )
                     }
@@ -409,18 +406,13 @@ internal fun LogicaNavigation(
                         )
                     }
                     entry<AppDestination.Game2048Start> {
+                        val levels = rememberCatalogLevels(catalogLevelRepository, PuzzleType.GAME_2048)
                         Game2048StartScreen(
-                            hasActiveSession = hasActiveGame2048Session,
+                            levels = levels,
                             tutorialCompleted = settings.game2048TutorialCompleted,
                             economy = economy,
                             onOpenTutorial = { backStack.add(AppDestination.Game2048Tutorial) },
-                            onStart = { difficulty ->
-                                backStack.add(
-                                    AppDestination.Game2048Game(
-                                        Game2048Launch.New(difficulty, catalogSeedSource.nextSeed()),
-                                    ),
-                                )
-                            },
+                            onStart = { difficulty -> openLevel(PuzzleType.GAME_2048, difficulty, levels) },
                             onRestoreLife = onRestoreLife,
                         )
                     }
@@ -433,19 +425,13 @@ internal fun LogicaNavigation(
                     entry<AppDestination.BalanceGame> { destination ->
                         BalanceGameRoute(
                             launch = destination.launch,
-                            sessionRepository = gameSessionRepository,
+                            attemptFactory = attemptFactory,
                             completionRepository = gameCompletionRepository,
                             economyRepository = economyRepository,
+                            exitGuard = exitGuard,
                             hapticsEnabled = settings.hapticsEnabled,
-                            onBack = { backStack.removeLastOrNull() },
-                            onNewPuzzle = { difficulty ->
-                                backStack.removeLastOrNull()
-                                backStack.add(AppDestination.BalanceGame(BalanceGameLaunch.New(difficulty, catalogSeedSource.nextSeed())))
-                            },
-                            onStartNew = {
-                                backStack.removeLastOrNull()
-                                backStack.add(AppDestination.BalanceStart)
-                            },
+                            onBack = goBack,
+                            onNextLevel = { openNextLevel(PuzzleType.BALANCE, destination.launch) },
                             onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
                             onTerminalAction = onTerminalAction,
                             onRestoreLife = onRestoreLife,
@@ -454,23 +440,13 @@ internal fun LogicaNavigation(
                     entry<AppDestination.CrownsGame> { destination ->
                         CrownsGameRoute(
                             launch = destination.launch,
-                            sessionRepository = gameSessionRepository,
+                            attemptFactory = attemptFactory,
                             completionRepository = gameCompletionRepository,
                             economyRepository = economyRepository,
+                            exitGuard = exitGuard,
                             hapticsEnabled = settings.hapticsEnabled,
-                            onBack = { backStack.removeLastOrNull() },
-                            onNewPuzzle = { difficulty ->
-                                backStack.removeLastOrNull()
-                                backStack.add(
-                                    AppDestination.CrownsGame(
-                                        CrownsGameLaunch.New(difficulty, catalogSeedSource.nextSeed()),
-                                    ),
-                                )
-                            },
-                            onStartNew = {
-                                backStack.removeLastOrNull()
-                                backStack.add(AppDestination.CrownsStart)
-                            },
+                            onBack = goBack,
+                            onNextLevel = { openNextLevel(PuzzleType.CROWNS, destination.launch) },
                             onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
                             onTerminalAction = onTerminalAction,
                             onRestoreLife = onRestoreLife,
@@ -479,23 +455,13 @@ internal fun LogicaNavigation(
                     entry<AppDestination.WordGame> { destination ->
                         WordGameRoute(
                             launch = destination.launch,
-                            sessionRepository = gameSessionRepository,
+                            attemptFactory = attemptFactory,
                             completionRepository = gameCompletionRepository,
                             economyRepository = economyRepository,
+                            exitGuard = exitGuard,
                             hapticsEnabled = settings.hapticsEnabled,
-                            onBack = { backStack.removeLastOrNull() },
-                            onNewPuzzle = { difficulty ->
-                                backStack.removeLastOrNull()
-                                backStack.add(
-                                    AppDestination.WordGame(
-                                        WordGameLaunch.New(difficulty, catalogSeedSource.nextSeed()),
-                                    ),
-                                )
-                            },
-                            onStartNew = {
-                                backStack.removeLastOrNull()
-                                backStack.add(AppDestination.WordStart)
-                            },
+                            onBack = goBack,
+                            onNextLevel = { openNextLevel(PuzzleType.WORD, destination.launch) },
                             onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
                             onTerminalAction = onTerminalAction,
                             onRestoreLife = onRestoreLife,
@@ -504,23 +470,13 @@ internal fun LogicaNavigation(
                     entry<AppDestination.SudokuGame> { destination ->
                         SudokuGameRoute(
                             launch = destination.launch,
-                            sessionRepository = gameSessionRepository,
+                            attemptFactory = attemptFactory,
                             completionRepository = gameCompletionRepository,
                             economyRepository = economyRepository,
+                            exitGuard = exitGuard,
                             hapticsEnabled = settings.hapticsEnabled,
-                            onBack = { backStack.removeLastOrNull() },
-                            onNewPuzzle = { difficulty ->
-                                backStack.removeLastOrNull()
-                                backStack.add(
-                                    AppDestination.SudokuGame(
-                                        SudokuGameLaunch.New(difficulty, catalogSeedSource.nextSeed()),
-                                    ),
-                                )
-                            },
-                            onStartNew = {
-                                backStack.removeLastOrNull()
-                                backStack.add(AppDestination.SudokuStart)
-                            },
+                            onBack = goBack,
+                            onNextLevel = { openNextLevel(PuzzleType.SUDOKU, destination.launch) },
                             onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
                             onTerminalAction = onTerminalAction,
                             onRestoreLife = onRestoreLife,
@@ -529,15 +485,13 @@ internal fun LogicaNavigation(
                     entry<AppDestination.Game2048Game> { destination ->
                         Game2048Route(
                             launch = destination.launch,
-                            sessionRepository = gameSessionRepository,
+                            attemptFactory = attemptFactory,
                             completionRepository = gameCompletionRepository,
                             economyRepository = economyRepository,
+                            exitGuard = exitGuard,
                             hapticsEnabled = settings.hapticsEnabled,
-                            onBack = { backStack.removeLastOrNull() },
-                            onStartNew = {
-                                backStack.removeLastOrNull()
-                                backStack.add(AppDestination.Game2048Start)
-                            },
+                            onBack = goBack,
+                            onNextLevel = { openNextLevel(PuzzleType.GAME_2048, destination.launch) },
                             onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
                             onTerminalAction = onTerminalAction,
                             onRestoreLife = onRestoreLife,
@@ -569,13 +523,13 @@ private fun returnToGameHub(
     while (backStack.size > 1) backStack.removeLastOrNull()
 }
 
-private fun PuzzleType.catalogGameDestination(): AppDestination =
+private fun PuzzleType.gameDestination(launch: GameAttemptLaunch): AppDestination =
     when (this) {
-        PuzzleType.BALANCE -> AppDestination.BalanceGame(BalanceGameLaunch.Restore())
-        PuzzleType.CROWNS -> AppDestination.CrownsGame(CrownsGameLaunch.Restore())
-        PuzzleType.WORD -> AppDestination.WordGame(WordGameLaunch.Restore())
-        PuzzleType.SUDOKU -> AppDestination.SudokuGame(SudokuGameLaunch.Restore())
-        PuzzleType.GAME_2048 -> AppDestination.Game2048Game(Game2048Launch.Restore())
+        PuzzleType.BALANCE -> AppDestination.BalanceGame(launch)
+        PuzzleType.CROWNS -> AppDestination.CrownsGame(launch)
+        PuzzleType.WORD -> AppDestination.WordGame(launch)
+        PuzzleType.SUDOKU -> AppDestination.SudokuGame(launch)
+        PuzzleType.GAME_2048 -> AppDestination.Game2048Game(launch)
         else -> error("$this is not a Catalog game.")
     }
 
@@ -587,15 +541,6 @@ private fun PuzzleType.startDestination(): AppDestination =
         PuzzleType.SUDOKU -> AppDestination.SudokuStart
         PuzzleType.GAME_2048 -> AppDestination.Game2048Start
         else -> error("$this is not a Catalog game.")
-    }
-
-private fun DailyGameLaunch.gameDestination(): AppDestination =
-    when (this) {
-        is DailyGameLaunch.Balance -> AppDestination.BalanceGame(launch)
-        is DailyGameLaunch.Crowns -> AppDestination.CrownsGame(launch)
-        is DailyGameLaunch.Word -> AppDestination.WordGame(launch)
-        is DailyGameLaunch.Sudoku -> AppDestination.SudokuGame(launch)
-        is DailyGameLaunch.Game2048 -> AppDestination.Game2048Game(launch)
     }
 
 /**
@@ -699,12 +644,6 @@ private fun destinationTitle(
             AppDestination.Game2048Tutorial -> R.string.game_2048_tutorial_title
         },
     )
-
-private class CatalogSeedSource {
-    private val random = SecureRandom()
-
-    fun nextSeed(): PuzzleSeed = PuzzleSeed(random.nextLong())
-}
 
 /** Below this the title, the wallet, and the gear stop fitting on one comfortable line. */
 private val COMPACT_HEADER_WIDTH = 380.dp

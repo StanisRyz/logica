@@ -10,7 +10,7 @@ import com.stanisryz.logica.ui.components.PuzzleStartScreen
 
 @Composable
 internal fun BalanceStartScreen(
-    hasActiveSession: Boolean,
+    levels: Map<Difficulty, Int>,
     tutorialCompleted: Boolean,
     economy: PlayerEconomy,
     onOpenTutorial: () -> Unit,
@@ -23,7 +23,7 @@ internal fun BalanceStartScreen(
         introResource = R.string.balance_rules_summary,
         tutorialOfferBodyResource = R.string.balance_tutorial_offer_body,
         tutorialCompleted = tutorialCompleted,
-        hasActiveSession = hasActiveSession,
+        levels = levels,
         economy = economy,
         onOpenTutorial = onOpenTutorial,
         onStart = onStart,

@@ -12,7 +12,7 @@ import com.stanisryz.logica.ui.components.wordDifficultyResource
 
 @Composable
 internal fun WordStartScreen(
-    hasActiveSession: Boolean,
+    levels: Map<Difficulty, Int>,
     tutorialCompleted: Boolean,
     economy: PlayerEconomy,
     onOpenTutorial: () -> Unit,
@@ -25,7 +25,7 @@ internal fun WordStartScreen(
         introResource = R.string.word_rules_intro,
         tutorialOfferBodyResource = R.string.word_tutorial_offer_body,
         tutorialCompleted = tutorialCompleted,
-        hasActiveSession = hasActiveSession,
+        levels = levels,
         economy = economy,
         onOpenTutorial = onOpenTutorial,
         onStart = onStart,

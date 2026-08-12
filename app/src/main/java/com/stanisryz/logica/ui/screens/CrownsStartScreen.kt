@@ -10,7 +10,7 @@ import com.stanisryz.logica.ui.components.PuzzleStartScreen
 
 @Composable
 internal fun CrownsStartScreen(
-    hasActiveSession: Boolean,
+    levels: Map<Difficulty, Int>,
     tutorialCompleted: Boolean,
     economy: PlayerEconomy,
     onOpenTutorial: () -> Unit,
@@ -23,7 +23,7 @@ internal fun CrownsStartScreen(
         introResource = R.string.crowns_rules_intro,
         tutorialOfferBodyResource = R.string.crowns_tutorial_offer_body,
         tutorialCompleted = tutorialCompleted,
-        hasActiveSession = hasActiveSession,
+        levels = levels,
         economy = economy,
         onOpenTutorial = onOpenTutorial,
         onStart = onStart,

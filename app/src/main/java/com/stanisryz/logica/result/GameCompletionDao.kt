@@ -17,7 +17,6 @@ import com.stanisryz.logica.economy.solvedReward
 import com.stanisryz.logica.economy.toEntity
 import com.stanisryz.logica.economy.toPlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.Difficulty
-import com.stanisryz.logica.session.GameSessionEntity
 import com.stanisryz.logica.session.GameSessionScope
 
 @Dao
@@ -27,22 +26,6 @@ internal interface GameCompletionDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertResult(result: GameResultEntity): Long
-
-    @Query("SELECT * FROM game_sessions WHERE puzzle_type = :puzzleType AND session_scope = :sessionScope LIMIT 1")
-    suspend fun findSession(
-        puzzleType: String,
-        sessionScope: String,
-    ): GameSessionEntity?
-
-    @Query(
-        "DELETE FROM game_sessions " +
-            "WHERE puzzle_type = :puzzleType AND session_scope = :sessionScope AND session_id = :sessionId",
-    )
-    suspend fun deleteSession(
-        puzzleType: String,
-        sessionScope: String,
-        sessionId: String,
-    ): Int
 
     @Query("SELECT * FROM daily_challenges WHERE challenge_date = :challengeDate AND puzzle_type = :puzzleType LIMIT 1")
     suspend fun findDailyChallenge(
@@ -99,15 +82,44 @@ internal interface GameCompletionDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertEconomyEvent(event: EconomyEventEntity): Long
 
+    @Query(
+        "INSERT OR IGNORE INTO catalog_level_progress " +
+            "(puzzle_type, difficulty, level_pack_version, current_level, updated_at_epoch_millis) " +
+            "VALUES (:puzzleType, :difficulty, :packVersion, :nextLevel, :updatedAt)",
+    )
+    suspend fun insertCatalogProgressIfAbsent(
+        puzzleType: String,
+        difficulty: String,
+        packVersion: Int,
+        nextLevel: Int,
+        updatedAt: Long,
+    )
+
+    @Query(
+        "UPDATE catalog_level_progress SET current_level = :nextLevel, updated_at_epoch_millis = :updatedAt " +
+            "WHERE puzzle_type = :puzzleType AND difficulty = :difficulty " +
+            "AND level_pack_version = :packVersion AND current_level < :nextLevel",
+    )
+    suspend fun advanceCatalogProgress(
+        puzzleType: String,
+        difficulty: String,
+        packVersion: Int,
+        nextLevel: Int,
+        updatedAt: Long,
+    ): Int
+
+    /**
+     * The one atomic terminal transaction. A solved Catalog level records its durable result, pays
+     * its gem reward, and advances that game/difficulty's progression together; a failed attempt
+     * records its result and its life penalty and leaves the progression on the same level. Every
+     * step is keyed so a repeated callback or a persistence retry changes nothing a second time.
+     *
+     * It no longer needs a persisted active session: Catalog and Daily attempts are transient.
+     */
     @Transaction
     suspend fun complete(result: GameResultEntity): GameResultEntity {
         val existing = findResult(result.resultId)
         if (existing == null) {
-            val session =
-                requireNotNull(findSession(result.puzzleType, result.sessionScope)) {
-                    "The active session to complete was not found."
-                }
-            require(session.matches(result)) { "The active session does not match the completed result." }
             require(insertResult(result) != -1L) { "The completed result could not be inserted." }
         } else {
             require(existing.matchesImmutableFacts(result)) {
@@ -119,8 +131,33 @@ internal interface GameCompletionDao {
         // crash, a retried save, or a repeated callback can never pay or charge the attempt twice.
         applyResultEconomy(result)
 
+        // Progression is part of the same transaction and is monotonic per bucket: advancing to
+        // level+1 only when the stored level is still behind makes a repeated completion a no-op.
+        if (
+            result.sessionScope == GameSessionScope.CATALOG.name &&
+            result.outcome == GameOutcome.SOLVED.name &&
+            result.catalogLevelNumber != null &&
+            result.catalogLevelPackVersion != null
+        ) {
+            val nextLevel = result.catalogLevelNumber + 1
+            insertCatalogProgressIfAbsent(
+                puzzleType = result.puzzleType,
+                difficulty = result.difficulty,
+                packVersion = result.catalogLevelPackVersion,
+                nextLevel = nextLevel,
+                updatedAt = result.completedAtEpochMillis,
+            )
+            advanceCatalogProgress(
+                puzzleType = result.puzzleType,
+                difficulty = result.difficulty,
+                packVersion = result.catalogLevelPackVersion,
+                nextLevel = nextLevel,
+                updatedAt = result.completedAtEpochMillis,
+            )
+        }
+
         // Daily lifecycle now tracks success, not participation: a FAILED attempt still produces a
-        // durable result and frees the session for a retry, but leaves the entry and run untouched.
+        // durable result and leaves the entry open for a retry, but leaves the run untouched.
         if (result.sessionScope == GameSessionScope.DAILY.name && result.outcome == GameOutcome.SOLVED.name) {
             val challengeDate = requireNotNull(result.challengeDate)
             val policyVersion = requireNotNull(result.dailyPolicyVersion)
@@ -154,9 +191,6 @@ internal interface GameCompletionDao {
                 }
             }
         }
-
-        val deleted = deleteSession(result.puzzleType, result.sessionScope, result.resultId)
-        require(existing != null || deleted == 1) { "The active session could not be removed." }
         return existing ?: result
     }
 
@@ -180,17 +214,6 @@ internal interface GameCompletionDao {
         upsertEconomy(effect.economy.toEntity(now))
     }
 
-    private fun GameSessionEntity.matches(result: GameResultEntity): Boolean =
-        sessionId == result.resultId &&
-            puzzleType == result.puzzleType &&
-            sessionScope == result.sessionScope &&
-            difficulty == result.difficulty &&
-            puzzleSeed == result.puzzleSeed &&
-            generatorVersion == result.generatorVersion &&
-            hintsUsed == result.hintsUsed &&
-            challengeDate == result.challengeDate &&
-            dailyPolicyVersion == result.dailyPolicyVersion
-
     private fun DailyChallengeEntity.matches(result: GameResultEntity): Boolean =
         challengeDate == result.challengeDate &&
             puzzleType == result.puzzleType &&
@@ -209,6 +232,8 @@ internal interface GameCompletionDao {
             hintsUsed == other.hintsUsed &&
             outcome == other.outcome &&
             attemptsUsed == other.attemptsUsed &&
+            catalogLevelNumber == other.catalogLevelNumber &&
+            catalogLevelPackVersion == other.catalogLevelPackVersion &&
             challengeDate == other.challengeDate &&
             dailyPolicyVersion == other.dailyPolicyVersion
 }

@@ -4,16 +4,15 @@ import android.content.res.AssetManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.stanisryz.logica.catalog.CatalogLevelUnavailableException
+import com.stanisryz.logica.catalog.GameAttempt
+import com.stanisryz.logica.catalog.GameAttemptFactory
+import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
-import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
-import com.stanisryz.logica.puzzle.core.model.Difficulty
-import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
-import com.stanisryz.logica.puzzle.core.model.PuzzleId
-import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.sudoku.BinarySudokuDataset
-import com.stanisryz.logica.puzzle.core.sudoku.EncodedSudokuSession
+import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetError
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetResult
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameEngine
@@ -21,16 +20,9 @@ import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameState
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuPosition
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuPuzzle
-import com.stanisryz.logica.puzzle.core.sudoku.SudokuPuzzleId
-import com.stanisryz.logica.puzzle.core.sudoku.SudokuSessionCodecV1
 import com.stanisryz.logica.result.CompletionPersistence
-import com.stanisryz.logica.result.GameCompletion
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.result.GameOutcome
-import com.stanisryz.logica.session.DailyGameSessionIdentity
-import com.stanisryz.logica.session.GameSessionRepository
-import com.stanisryz.logica.session.GameSessionScope
-import com.stanisryz.logica.session.SavedGameSession
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -42,49 +34,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.LocalDate
-import java.util.UUID
-
-/** Where a Sudoku attempt belongs. The context alone decides its session scope and Daily identity. */
-internal sealed interface SudokuGameContext {
-    val sessionScope: GameSessionScope
-
-    data object Catalog : SudokuGameContext {
-        override val sessionScope = GameSessionScope.CATALOG
-    }
-
-    data class Daily(
-        val challengeDate: LocalDate,
-        val policyVersion: DailyPolicyVersion,
-    ) : SudokuGameContext {
-        override val sessionScope = GameSessionScope.DAILY
-    }
-}
-
-internal val SudokuGameContext.dailyIdentity: DailyGameSessionIdentity?
-    get() =
-        (this as? SudokuGameContext.Daily)?.let {
-            DailyGameSessionIdentity(it.challengeDate, it.policyVersion.value)
-        }
-
-internal sealed interface SudokuGameLaunch {
-    val context: SudokuGameContext
-
-    data class New(
-        val difficulty: Difficulty,
-        val selectorSeed: PuzzleSeed,
-        val providerVersion: GeneratorVersion = SudokuCatalogProvider.VERSION,
-        override val context: SudokuGameContext = SudokuGameContext.Catalog,
-    ) : SudokuGameLaunch
-
-    data class Restore(
-        override val context: SudokuGameContext = SudokuGameContext.Catalog,
-        /** Optional selector identity supplied by a caller that already knows the Daily entry. */
-        val expectedSelectorId: PuzzleId? = null,
-        /** Optional exact dataset identity supplied by a caller that knows the selected record. */
-        val expectedPuzzleId: SudokuPuzzleId? = null,
-    ) : SudokuGameLaunch
-}
 
 internal sealed interface SudokuGameUiState {
     data object Loading : SudokuGameUiState
@@ -95,7 +44,20 @@ internal sealed interface SudokuGameUiState {
         val selectedCell: SudokuPosition? = null,
         val isPencilMode: Boolean = false,
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
-    ) : SudokuGameUiState
+    ) : SudokuGameUiState {
+        val hasMeaningfulProgress: Boolean
+            get() =
+                !game.status.isTerminal &&
+                    (
+                        game.cells.any { cell ->
+                            cell.status == SudokuCellStatus.CORRECT ||
+                                cell.status == SudokuCellStatus.INCORRECT ||
+                                !cell.candidates.isEmpty
+                        } ||
+                            game.mistakesUsed > 0 ||
+                            game.hintsUsed > 0
+                    )
+    }
 
     data class Error(
         val reason: SudokuGameError,
@@ -103,22 +65,23 @@ internal sealed interface SudokuGameUiState {
 }
 
 internal enum class SudokuGameError {
-    MISSING_SAVED_SESSION,
-    INVALID_SAVED_SESSION,
+    LEVEL_UNAVAILABLE,
     MISSING_DATASET,
     CORRUPT_DATASET,
     PUZZLE_NOT_FOUND,
 }
 
-/** The one production Sudoku implementation: dataset selection plus generic platform lifecycle. */
+/**
+ * One transient Sudoku attempt. The frozen level (or Daily identity) selects exactly one Dataset V1
+ * record; the player's values, candidates, mistakes, and hints live only in this ViewModel.
+ */
 internal class SudokuGameViewModel(
-    private val launch: SudokuGameLaunch,
-    private val sessionRepository: GameSessionRepository,
+    private val launch: GameAttemptLaunch,
+    private val attemptFactory: GameAttemptFactory,
     private val completionRepository: GameCompletionRepository,
     economyRepository: EconomyRepository,
     private val provider: SudokuCatalogProvider,
     private val workDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val sessionIdFactory: () -> String = { UUID.randomUUID().toString() },
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow<SudokuGameUiState>(SudokuGameUiState.Loading)
     val uiState: StateFlow<SudokuGameUiState> = mutableUiState.asStateFlow()
@@ -126,7 +89,7 @@ internal class SudokuGameViewModel(
         economyRepository.observe().stateIn(viewModelScope, SharingStarted.Eagerly, PlayerEconomy())
 
     private var engine: SudokuGameEngine? = null
-    private var activeSession: ActiveSession? = null
+    private var attempt: GameAttempt? = null
     private var completionJob: Job? = null
 
     init {
@@ -172,18 +135,15 @@ internal class SudokuGameViewModel(
         updateGame(ready, updated, updated.currentHint?.position ?: ready.selectedCell)
     }
 
-    /** A new attempt reuses the selected record but never the finished attempt's session ID. */
+    /** A new attempt reuses the selected record and takes a new completion identity. */
     fun retry() {
         if (!economy.value.isGameplayAllowed) return
         val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
         if (!ready.game.status.isTerminal || ready.completionPersistence != CompletionPersistence.Saved) return
         val gameEngine = engine ?: return
-        val previous = activeSession ?: return
-        val session = previous.copy(sessionId = sessionIdFactory())
-        val game = gameEngine.start()
-        activeSession = session
-        mutableUiState.value = SudokuGameUiState.Ready(ready.puzzle, game)
-        sessionRepository.replaceActiveSession(session.saved(game))
+        val previous = attempt ?: return
+        attempt = previous.restarted(attemptFactory.nextAttemptId())
+        mutableUiState.value = SudokuGameUiState.Ready(ready.puzzle, gameEngine.start())
     }
 
     fun retryCompletion() {
@@ -195,104 +155,29 @@ internal class SudokuGameViewModel(
         mutableUiState.value = SudokuGameUiState.Loading
         viewModelScope.launch {
             try {
+                val resolved = attemptFactory.create(launch, PuzzleType.SUDOKU)
                 val loaded =
-                    when (val requested = launch) {
-                        is SudokuGameLaunch.New -> loadNew(requested)
-                        is SudokuGameLaunch.Restore -> restore(requested)
+                    withContext(workDispatcher) {
+                        val puzzle =
+                            provider
+                                .select(resolved.difficulty, resolved.seed, resolved.generatorVersion)
+                                .requirePuzzle()
+                        require(puzzle.id.difficulty.toPlatformDifficulty() == resolved.difficulty)
+                        val gameEngine = SudokuGameEngine(puzzle)
+                        Triple(puzzle, gameEngine, gameEngine.start())
                     }
-                engine = loaded.engine
-                activeSession = loaded.activeSession
-                mutableUiState.value = SudokuGameUiState.Ready(loaded.puzzle, loaded.game)
-                if (loaded.isNew) sessionRepository.replaceActiveSession(loaded.activeSession.saved(loaded.game))
-                if (loaded.game.status.isTerminal) persistCompletion(loaded.game)
+                engine = loaded.second
+                attempt = resolved
+                mutableUiState.value = SudokuGameUiState.Ready(loaded.first, loaded.third)
             } catch (exception: CancellationException) {
                 throw exception
+            } catch (_: CatalogLevelUnavailableException) {
+                mutableUiState.value = SudokuGameUiState.Error(SudokuGameError.LEVEL_UNAVAILABLE)
             } catch (error: LoadFailure) {
                 mutableUiState.value = SudokuGameUiState.Error(error.reason)
             } catch (_: Exception) {
-                mutableUiState.value = SudokuGameUiState.Error(SudokuGameError.INVALID_SAVED_SESSION)
+                mutableUiState.value = SudokuGameUiState.Error(SudokuGameError.CORRUPT_DATASET)
             }
-        }
-    }
-
-    private suspend fun loadNew(requested: SudokuGameLaunch.New): LoadedSession =
-        withContext(workDispatcher) {
-            val puzzle = provider.select(requested.difficulty, requested.selectorSeed, requested.providerVersion).requirePuzzle()
-            require(puzzle.id.difficulty.toPlatformDifficulty() == requested.difficulty)
-            val gameEngine = SudokuGameEngine(puzzle)
-            val game = gameEngine.start()
-            LoadedSession(
-                puzzle,
-                gameEngine,
-                game,
-                ActiveSession(
-                    sessionId = sessionIdFactory(),
-                    difficulty = requested.difficulty,
-                    selectorSeed = requested.selectorSeed,
-                    providerVersion = requested.providerVersion,
-                    context = requested.context,
-                    puzzle = puzzle,
-                ),
-                isNew = true,
-            )
-        }
-
-    private suspend fun restore(requested: SudokuGameLaunch.Restore): LoadedSession {
-        val saved =
-            sessionRepository.readActiveSession(PuzzleType.SUDOKU, requested.context.sessionScope)
-                ?: throw LoadFailure(SudokuGameError.MISSING_SAVED_SESSION)
-        // A generic identity inconsistency may be recoverable by a newer build, so retain the save.
-        if (!saved.hasSudokuIdentity(requested, provider.version)) {
-            throw LoadFailure(SudokuGameError.INVALID_SAVED_SESSION)
-        }
-
-        val encoded = EncodedSudokuSession(saved.sessionFormatVersion, saved.gameplayPayload)
-        val embeddedId =
-            try {
-                SudokuSessionCodecV1.puzzleId(encoded)
-            } catch (exception: Exception) {
-                discardUnreadable(saved, requested.context)
-                throw LoadFailure(SudokuGameError.INVALID_SAVED_SESSION)
-            }
-
-        val puzzle =
-            withContext(workDispatcher) {
-                provider.select(saved.difficulty, saved.puzzleSeed, saved.generatorVersion).requirePuzzle()
-            }
-        // This is an identity disagreement, not corrupt player state. Keep it for diagnosis/recovery.
-        if (
-            embeddedId != puzzle.id ||
-            requested.expectedPuzzleId?.let { it != puzzle.id } == true
-        ) {
-            throw LoadFailure(SudokuGameError.INVALID_SAVED_SESSION)
-        }
-
-        return try {
-            withContext(workDispatcher) {
-                val gameEngine = SudokuGameEngine(puzzle)
-                val game = SudokuSessionCodecV1.decode(puzzle, encoded, gameEngine)
-                require(game.hintsUsed == saved.hintsUsed)
-                require(game.status.name == saved.status)
-                LoadedSession(
-                    puzzle,
-                    gameEngine,
-                    game,
-                    ActiveSession(
-                        sessionId = saved.sessionId,
-                        difficulty = saved.difficulty,
-                        selectorSeed = saved.puzzleSeed,
-                        providerVersion = saved.generatorVersion,
-                        context = requested.context,
-                        puzzle = puzzle,
-                    ),
-                    isNew = false,
-                )
-            }
-        } catch (exception: CancellationException) {
-            throw exception
-        } catch (_: Exception) {
-            discardUnreadable(saved, requested.context)
-            throw LoadFailure(SudokuGameError.INVALID_SAVED_SESSION)
         }
     }
 
@@ -303,30 +188,24 @@ internal class SudokuGameViewModel(
     ) {
         if (updated == ready.game) return
         mutableUiState.value = ready.copy(game = updated, selectedCell = selectedCell)
-        persist(updated)
-    }
-
-    private fun persist(game: SudokuGameState) {
-        val session = activeSession ?: return
-        if (game.status.isTerminal) {
-            // Keep the terminal attempt recoverable until the atomic completion transaction removes it.
-            sessionRepository.updateActiveSession(session.saved(game))
-            persistCompletion(game)
-        } else {
-            sessionRepository.updateActiveSession(session.saved(game))
-        }
+        if (updated.status.isTerminal) persistCompletion(updated)
     }
 
     private fun persistCompletion(game: SudokuGameState) {
         if (completionJob?.isActive == true) return
-        val session = activeSession ?: return
+        val current = attempt ?: return
         val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
         if (ready.completionPersistence == CompletionPersistence.Saved) return
         mutableUiState.value = ready.copy(completionPersistence = CompletionPersistence.Saving)
+        val completion =
+            current.completion(
+                outcome = if (game.status == SudokuGameStatus.SOLVED) GameOutcome.SOLVED else GameOutcome.FAILED,
+                hintsUsed = game.hintsUsed,
+            )
         completionJob =
             viewModelScope.launch {
                 try {
-                    completionRepository.complete(session.completion(game))
+                    completionRepository.complete(completion)
                     updateCompletionPersistence(game, CompletionPersistence.Saved)
                 } catch (exception: CancellationException) {
                     throw exception
@@ -346,93 +225,16 @@ internal class SudokuGameViewModel(
         }
     }
 
-    private fun discardUnreadable(
-        saved: SavedGameSession,
-        context: SudokuGameContext,
-    ) {
-        sessionRepository.deleteActiveSession(PuzzleType.SUDOKU, context.sessionScope, saved.sessionId)
-    }
-
     private fun SudokuDatasetResult<SudokuPuzzle>.requirePuzzle(): SudokuPuzzle =
         when (this) {
             is SudokuDatasetResult.Success -> value
             is SudokuDatasetResult.Failure -> throw LoadFailure(error.toGameError())
         }
 
-    private data class LoadedSession(
-        val puzzle: SudokuPuzzle,
-        val engine: SudokuGameEngine,
-        val game: SudokuGameState,
-        val activeSession: ActiveSession,
-        val isNew: Boolean,
-    )
-
-    private data class ActiveSession(
-        val sessionId: String,
-        val difficulty: Difficulty,
-        val selectorSeed: PuzzleSeed,
-        val providerVersion: GeneratorVersion,
-        val context: SudokuGameContext,
-        val puzzle: SudokuPuzzle,
-    ) {
-        fun saved(game: SudokuGameState): SavedGameSession {
-            require(game.puzzleId == puzzle.id)
-            val encoded = SudokuSessionCodecV1.encode(game)
-            return SavedGameSession(
-                sessionId = sessionId,
-                puzzleType = PuzzleType.SUDOKU,
-                sessionScope = context.sessionScope,
-                difficulty = difficulty,
-                puzzleSeed = selectorSeed,
-                generatorVersion = providerVersion,
-                dailyIdentity = context.dailyIdentity,
-                sessionFormatVersion = encoded.formatVersion,
-                gameplayPayload = encoded.payload,
-                moveHistoryPayload = "",
-                hintsUsed = game.hintsUsed,
-                status = game.status.name,
-            )
-        }
-
-        fun completion(game: SudokuGameState): GameCompletion {
-            require(game.status.isTerminal)
-            val dailyContext = context as? SudokuGameContext.Daily
-            return GameCompletion(
-                resultId = sessionId,
-                puzzleType = PuzzleType.SUDOKU,
-                difficulty = difficulty,
-                puzzleSeed = selectorSeed,
-                generatorVersion = providerVersion,
-                sessionScope = context.sessionScope,
-                hintsUsed = game.hintsUsed,
-                outcome = if (game.status == SudokuGameStatus.SOLVED) GameOutcome.SOLVED else GameOutcome.FAILED,
-                challengeDate = dailyContext?.challengeDate,
-                dailyPolicyVersion = dailyContext?.policyVersion,
-            )
-        }
-    }
-
     private class LoadFailure(
         val reason: SudokuGameError,
     ) : Exception()
 }
-
-/**
- * Identity, not payload: a save from another scope, another Daily definition, another provider
- * version, or another selector belongs to a different attempt and is reported without being deleted.
- */
-private fun SavedGameSession.hasSudokuIdentity(
-    requested: SudokuGameLaunch.Restore,
-    providerVersion: GeneratorVersion,
-): Boolean =
-    puzzleType == PuzzleType.SUDOKU &&
-        sessionScope == requested.context.sessionScope &&
-        dailyIdentity == requested.context.dailyIdentity &&
-        generatorVersion == providerVersion &&
-        (
-            requested.expectedSelectorId == null ||
-                PuzzleId(puzzleType, difficulty, puzzleSeed, generatorVersion) == requested.expectedSelectorId
-        )
 
 private fun SudokuDatasetError.toGameError(): SudokuGameError =
     when (this) {
@@ -442,9 +244,9 @@ private fun SudokuDatasetError.toGameError(): SudokuGameError =
     }
 
 internal class SudokuGameViewModelFactory(
-    private val launch: SudokuGameLaunch,
+    private val launch: GameAttemptLaunch,
     private val assetManager: AssetManager,
-    private val sessionRepository: GameSessionRepository,
+    private val attemptFactory: GameAttemptFactory,
     private val completionRepository: GameCompletionRepository,
     private val economyRepository: EconomyRepository,
 ) : ViewModelProvider.Factory {
@@ -456,7 +258,7 @@ internal class SudokuGameViewModelFactory(
         @Suppress("UNCHECKED_CAST")
         return SudokuGameViewModel(
             launch,
-            sessionRepository,
+            attemptFactory,
             completionRepository,
             economyRepository,
             provider,

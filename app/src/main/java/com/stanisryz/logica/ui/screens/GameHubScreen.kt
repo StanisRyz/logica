@@ -17,10 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -43,14 +40,12 @@ import com.stanisryz.logica.daily.TodayViewModel
 import com.stanisryz.logica.daily.TodayViewModelFactory
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
-import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.ui.components.BodyText
 import com.stanisryz.logica.ui.components.LogicaCard
 import com.stanisryz.logica.ui.components.PuzzleArtwork
 import com.stanisryz.logica.ui.components.PuzzleTitle
 import com.stanisryz.logica.ui.components.SectionTitle
-import com.stanisryz.logica.ui.components.StatusChip
 import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.components.titleResource
 import com.stanisryz.logica.ui.theme.LogicaMotion
@@ -66,7 +61,6 @@ import com.stanisryz.logica.ui.theme.LogicaSpacing
 @Composable
 internal fun GameHubRoute(
     dailyChallengeRepository: DailyChallengeRepository,
-    gameSessionRepository: GameSessionRepository,
     statisticsRepository: StatisticsRepository,
     dailyResultRepository: DailyResultRepository,
     catalog: List<GameCatalogEntry>,
@@ -76,10 +70,9 @@ internal fun GameHubRoute(
     modifier: Modifier = Modifier,
 ) {
     val factory =
-        remember(dailyChallengeRepository, gameSessionRepository, statisticsRepository, dailyResultRepository) {
+        remember(dailyChallengeRepository, statisticsRepository, dailyResultRepository) {
             TodayViewModelFactory(
                 dailyChallengeRepository,
-                gameSessionRepository,
                 statisticsRepository,
                 dailyResultRepository,
             )
@@ -111,7 +104,6 @@ internal fun GameHubRoute(
         catalog = catalog,
         economy = economy,
         onStartDaily = todayViewModel::start,
-        onContinueDaily = todayViewModel::continueGame,
         onRetryDaily = todayViewModel::refresh,
         onRestoreLife = onRestoreLife,
         modifier = modifier,
@@ -129,7 +121,6 @@ private fun GameHubScreen(
     catalog: List<GameCatalogEntry>,
     economy: PlayerEconomy,
     onStartDaily: (PuzzleType) -> Unit,
-    onContinueDaily: (PuzzleType) -> Unit,
     onRetryDaily: () -> Unit,
     onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
@@ -149,7 +140,6 @@ private fun GameHubScreen(
                 uiState = dailyState,
                 gameplayAllowed = economy.isGameplayAllowed,
                 onStart = onStartDaily,
-                onContinue = onContinueDaily,
                 onRetryLoad = onRetryDaily,
             )
         }
@@ -176,9 +166,8 @@ private fun GameHubScreen(
 }
 
 /**
- * A regular game as a full-width card: bigger than a Daily card and built for vertical browsing.
- * Continue stays primary while a save exists, and New game keeps routing through the start screen,
- * which already confirms before replacing saved progress.
+ * A regular game as a full-width card: bigger than a Daily card and built for vertical browsing. It
+ * leads to the game's difficulty screen, which is where the current level of each difficulty lives.
  */
 @Composable
 private fun GameCatalogCard(
@@ -199,38 +188,8 @@ private fun GameCatalogCard(
                 BodyText(stringResource(entry.descriptionResource))
             }
         }
-        AnimatedVisibility(
-            visible = entry.hasActiveSession,
-            enter = fadeIn(tween(LogicaMotion.SHORT_MILLIS)) + expandVertically(tween(LogicaMotion.SCREEN_MILLIS)),
-            exit = fadeOut(tween(LogicaMotion.SHORT_MILLIS)) + shrinkVertically(tween(LogicaMotion.SCREEN_MILLIS)),
-        ) {
-            // Continue keeps opening the saved puzzle at zero lives; its gameplay actions are what
-            // stay disabled.
-            StatusChip(
-                icon = Icons.Filled.BookmarkBorder,
-                label = stringResource(R.string.catalog_active_session),
-            )
-        }
-        if (entry.hasActiveSession) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.action),
-            ) {
-                Button(onClick = entry.onContinue, modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.continue_game))
-                }
-                OutlinedButton(
-                    onClick = entry.onNew,
-                    enabled = gameplayAllowed,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(stringResource(R.string.new_game))
-                }
-            }
-        } else {
-            Button(onClick = entry.onNew, enabled = gameplayAllowed, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.play))
-            }
+        Button(onClick = entry.onPlay, enabled = gameplayAllowed, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.play))
         }
     }
 }

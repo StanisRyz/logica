@@ -23,11 +23,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
+import com.stanisryz.logica.catalog.GameAttemptFactory
+import com.stanisryz.logica.catalog.GameAttemptLaunch
+import com.stanisryz.logica.catalog.levelNumberOrNull
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
-import com.stanisryz.logica.game2048.Game2048GameContext
 import com.stanisryz.logica.game2048.Game2048GameError
-import com.stanisryz.logica.game2048.Game2048Launch
 import com.stanisryz.logica.game2048.Game2048UiState
 import com.stanisryz.logica.game2048.Game2048ViewModel
 import com.stanisryz.logica.game2048.Game2048ViewModelFactory
@@ -42,16 +43,18 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
-import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.settings.ThemeMode
-import com.stanisryz.logica.ui.components.DifficultyBadge
 import com.stanisryz.logica.ui.components.EconomyResultFeedback
+import com.stanisryz.logica.ui.components.GameHeaderBadges
+import com.stanisryz.logica.ui.components.GameplayExitGuard
+import com.stanisryz.logica.ui.components.LeaveLevelGuard
 import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.components.Metric
 import com.stanisryz.logica.ui.components.MetricGrid
 import com.stanisryz.logica.ui.components.PuzzleTitle
 import com.stanisryz.logica.ui.components.RetryableErrorState
 import com.stanisryz.logica.ui.components.ScreenColumn
+import com.stanisryz.logica.ui.components.StatusChip
 import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.components.russianLabel
 import com.stanisryz.logica.ui.game2048.Game2048Board
@@ -61,35 +64,39 @@ import com.stanisryz.logica.ui.theme.LogicaTheme
 
 @Composable
 internal fun Game2048Route(
-    launch: Game2048Launch,
-    sessionRepository: GameSessionRepository,
+    launch: GameAttemptLaunch,
+    attemptFactory: GameAttemptFactory,
     completionRepository: GameCompletionRepository,
     economyRepository: EconomyRepository,
+    exitGuard: GameplayExitGuard,
     hapticsEnabled: Boolean,
     onBack: () -> Unit,
-    onStartNew: () -> Unit,
+    onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
     onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
     onTerminalAction: (() -> Unit) -> Unit = { it() },
 ) {
     val factory =
-        remember(launch, sessionRepository, completionRepository, economyRepository) {
-            Game2048ViewModelFactory(launch, sessionRepository, completionRepository, economyRepository)
+        remember(launch, attemptFactory, completionRepository, economyRepository) {
+            Game2048ViewModelFactory(launch, attemptFactory, completionRepository, economyRepository)
         }
     val gameViewModel: Game2048ViewModel = viewModel(factory = factory)
     val uiState by gameViewModel.uiState.collectAsStateWithLifecycle()
     val economy by gameViewModel.economy.collectAsStateWithLifecycle()
+    // A cleared level is already durable, so only an uncleared board in progress warns on Back.
+    LeaveLevelGuard(exitGuard, (uiState as? Game2048UiState.Ready)?.hasMeaningfulProgress == true)
     Game2048Screen(
         uiState = uiState,
         economy = economy,
-        isDaily = launch.context is Game2048GameContext.Daily,
+        isDaily = launch is GameAttemptLaunch.Daily,
+        levelNumber = launch.levelNumberOrNull(),
         onMove = gameViewModel::move,
         onMotionFinished = gameViewModel::finishMotion,
-        onRetry = { onTerminalAction(gameViewModel::retry) },
+        onRetryLevel = { onTerminalAction(gameViewModel::retry) },
         onRetryCompletion = gameViewModel::retryCompletion,
         onBack = onBack,
-        onStartNew = { onTerminalAction(onStartNew) },
+        onNextLevel = { onTerminalAction(onNextLevel) },
         onGameHub = { onTerminalAction(onGameHub) },
         onRestoreLife = onRestoreLife,
         hapticsEnabled = hapticsEnabled,
@@ -102,12 +109,13 @@ private fun Game2048Screen(
     uiState: Game2048UiState,
     economy: PlayerEconomy,
     isDaily: Boolean,
+    levelNumber: Int?,
     onMove: (Game2048Direction) -> Unit,
     onMotionFinished: (Long) -> Unit,
-    onRetry: () -> Unit,
+    onRetryLevel: () -> Unit,
     onRetryCompletion: () -> Unit,
     onBack: () -> Unit,
-    onStartNew: () -> Unit,
+    onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
     onRestoreLife: () -> Unit,
     hapticsEnabled: Boolean,
@@ -118,8 +126,8 @@ private fun Game2048Screen(
         is Game2048UiState.Error ->
             RetryableErrorState(
                 message = uiState.reason.message(),
-                retryLabel = stringResource(if (isDaily) R.string.to_games else R.string.new_game),
-                onRetry = if (isDaily) onGameHub else onStartNew,
+                retryLabel = stringResource(R.string.to_games),
+                onRetry = onGameHub,
                 modifier = modifier,
                 secondaryLabel = stringResource(R.string.back),
                 onSecondary = onBack,
@@ -129,10 +137,12 @@ private fun Game2048Screen(
                 uiState = uiState,
                 economy = economy,
                 isDaily = isDaily,
+                levelNumber = levelNumber,
                 onMove = onMove,
                 onMotionFinished = onMotionFinished,
-                onRetry = onRetry,
+                onRetryLevel = onRetryLevel,
                 onRetryCompletion = onRetryCompletion,
+                onNextLevel = onNextLevel,
                 onGameHub = onGameHub,
                 onRestoreLife = onRestoreLife,
                 hapticsEnabled = hapticsEnabled,
@@ -146,10 +156,12 @@ private fun Game2048ReadyState(
     uiState: Game2048UiState.Ready,
     economy: PlayerEconomy,
     isDaily: Boolean,
+    levelNumber: Int?,
     onMove: (Game2048Direction) -> Unit,
     onMotionFinished: (Long) -> Unit,
-    onRetry: () -> Unit,
+    onRetryLevel: () -> Unit,
     onRetryCompletion: () -> Unit,
+    onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
     onRestoreLife: () -> Unit,
     hapticsEnabled: Boolean,
@@ -170,15 +182,32 @@ private fun Game2048ReadyState(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         PuzzleTitle(stringResource(R.string.game_2048_title), puzzleType = PuzzleType.GAME_2048)
-        // The gameplay badge is the plain difficulty: what the goal actually is lives in the metrics
-        // below, because a V1 attempt targets a tile while a V2 attempt targets a score.
-        DifficultyBadge(game.puzzleId.difficulty.russianLabel())
+        // The gameplay badge is the plain difficulty plus the level: what the goal actually is lives
+        // in the metrics below, because a V1 attempt targets a tile while a V2 attempt targets a score.
+        GameHeaderBadges(game.puzzleId.difficulty.russianLabel(), levelNumber)
         MetricGrid(
             listOf(
                 Metric(stringResource(R.string.game_2048_target), game.targetMetricValue()),
                 Metric(stringResource(R.string.game_2048_score), formatGame2048Number(game.score)),
             ),
         )
+        // A cleared Catalog level stays visible while freeplay continues; it never blocks the board.
+        if (uiState.levelCleared) {
+            StatusChip(
+                icon = Icons.Filled.TaskAlt,
+                label =
+                    levelNumber
+                        ?.let { stringResource(R.string.game_2048_level_cleared, it) }
+                        ?: stringResource(R.string.game_2048_solved_title),
+                containerColor = LocalLogicaPalette.current.successContainer,
+                contentColor = LocalLogicaPalette.current.onSuccessContainer,
+            )
+            Text(
+                text = stringResource(R.string.game_2048_level_cleared_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         ZeroLivesCard(economy, onRestoreLife)
         Game2048Board(
             game = game,
@@ -210,8 +239,10 @@ private fun Game2048ReadyState(
             completionPersistence = uiState.completionPersistence,
             economy = economy,
             isDaily = isDaily,
-            onRetry = onRetry,
+            levelCleared = uiState.levelCleared,
+            onRetryLevel = onRetryLevel,
             onRetryCompletion = onRetryCompletion,
+            onNextLevel = onNextLevel,
             onGameHub = onGameHub,
         )
     }
@@ -223,11 +254,15 @@ private fun Game2048TerminalDialog(
     completionPersistence: CompletionPersistence,
     economy: PlayerEconomy,
     isDaily: Boolean,
-    onRetry: () -> Unit,
+    levelCleared: Boolean,
+    onRetryLevel: () -> Unit,
     onRetryCompletion: () -> Unit,
+    onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
 ) {
-    val solved = game.status == Game2048Status.SOLVED
+    // A Catalog level that was already cleared at its score target is never a failure afterwards,
+    // however the freeplay board ends.
+    val solved = levelCleared || game.status == Game2048Status.SOLVED
     val isSaved = completionPersistence == CompletionPersistence.Saved
     // A solved Daily entry is done for the day: the only way on is back to the hub.
     val isDailySolved = isDaily && solved
@@ -243,14 +278,24 @@ private fun Game2048TerminalDialog(
             )
         },
         title = {
-            Text(stringResource(if (solved) R.string.game_2048_solved_title else R.string.game_2048_failed_title))
+            Text(
+                stringResource(
+                    when {
+                        levelCleared -> R.string.game_2048_cleared_title
+                        solved -> R.string.game_2048_solved_title
+                        else -> R.string.game_2048_failed_title
+                    },
+                ),
+            )
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
                 Text(
                     // A V2 attempt is judged on its final score; a restored V1 attempt still reports
                     // the target tile it was actually playing for.
-                    if (targetScore != null) {
+                    if (levelCleared) {
+                        stringResource(R.string.game_2048_cleared_body)
+                    } else if (targetScore != null) {
                         stringResource(
                             if (solved) R.string.game_2048_solved_body_score else R.string.game_2048_failed_body_score,
                             formatGame2048Number(targetScore),
@@ -279,8 +324,9 @@ private fun Game2048TerminalDialog(
                 completionPersistence != CompletionPersistence.Saved ->
                     TextButton(onClick = {}, enabled = false) { Text(stringResource(R.string.saving)) }
                 isDailySolved -> TextButton(onClick = onGameHub) { Text(stringResource(R.string.to_games)) }
+                solved -> TextButton(onClick = onNextLevel) { Text(stringResource(R.string.next_level)) }
                 else ->
-                    TextButton(onClick = onRetry, enabled = economy.isGameplayAllowed) {
+                    TextButton(onClick = onRetryLevel, enabled = economy.isGameplayAllowed) {
                         Text(stringResource(R.string.retry_puzzle))
                     }
             }
@@ -315,8 +361,8 @@ private fun formatGame2048Number(value: Long): String =
 private fun Game2048GameError.message(): String =
     stringResource(
         when (this) {
-            Game2048GameError.MISSING_SAVED_SESSION -> R.string.missing_saved_game
-            Game2048GameError.INVALID_SAVED_SESSION -> R.string.game_2048_session_invalid
+            Game2048GameError.LEVEL_UNAVAILABLE -> R.string.level_content_error
+            Game2048GameError.START -> R.string.game_2048_start_error
             Game2048GameError.NO_LIVES -> R.string.economy_no_lives_short
         },
     )
@@ -334,12 +380,13 @@ private fun Game2048Preview() {
             uiState = Game2048UiState.Ready(engine.start()),
             economy = PlayerEconomy(),
             isDaily = false,
+            levelNumber = 7,
             onMove = {},
             onMotionFinished = {},
-            onRetry = {},
+            onRetryLevel = {},
             onRetryCompletion = {},
             onBack = {},
-            onStartNew = {},
+            onNextLevel = {},
             onGameHub = {},
             onRestoreLife = {},
             hapticsEnabled = true,

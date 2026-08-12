@@ -3,14 +3,14 @@ package com.stanisryz.logica.word
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.stanisryz.logica.catalog.CatalogLevelUnavailableException
+import com.stanisryz.logica.catalog.GameAttempt
+import com.stanisryz.logica.catalog.GameAttemptFactory
+import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.contract.PuzzleGenerator
-import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
-import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
-import com.stanisryz.logica.puzzle.core.model.PuzzleId
-import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordAllowedGuesses
 import com.stanisryz.logica.puzzle.core.word.WordGameEngine
@@ -24,13 +24,8 @@ import com.stanisryz.logica.puzzle.core.word.WordLexiconV2
 import com.stanisryz.logica.puzzle.core.word.WordPuzzle
 import com.stanisryz.logica.puzzle.core.word.WordSubmitResult
 import com.stanisryz.logica.result.CompletionPersistence
-import com.stanisryz.logica.result.GameCompletion
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.result.GameOutcome
-import com.stanisryz.logica.session.DailyGameSessionIdentity
-import com.stanisryz.logica.session.GameSessionRepository
-import com.stanisryz.logica.session.GameSessionScope
-import com.stanisryz.logica.session.SavedGameSession
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -42,39 +37,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.LocalDate
-import java.util.UUID
-
-internal sealed interface WordGameContext {
-    val sessionScope: GameSessionScope
-
-    data object Catalog : WordGameContext {
-        override val sessionScope = GameSessionScope.CATALOG
-    }
-
-    data class Daily(
-        val challengeDate: LocalDate,
-        val policyVersion: DailyPolicyVersion,
-    ) : WordGameContext {
-        override val sessionScope = GameSessionScope.DAILY
-    }
-}
-
-internal sealed interface WordGameLaunch {
-    val context: WordGameContext
-
-    data class New(
-        val difficulty: Difficulty,
-        val seed: PuzzleSeed,
-        val generatorVersion: GeneratorVersion = GeneratorVersion(2),
-        override val context: WordGameContext = WordGameContext.Catalog,
-    ) : WordGameLaunch
-
-    data class Restore(
-        override val context: WordGameContext = WordGameContext.Catalog,
-        val expectedPuzzleId: PuzzleId? = null,
-    ) : WordGameLaunch
-}
 
 internal sealed interface WordGameUiState {
     data object Loading : WordGameUiState
@@ -86,7 +48,10 @@ internal sealed interface WordGameUiState {
         val rejectionRevision: Int = 0,
         val acceptedAttemptRevision: Int = 0,
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
-    ) : WordGameUiState
+    ) : WordGameUiState {
+        val hasMeaningfulProgress: Boolean
+            get() = !game.isFinished && game.attempts.isNotEmpty()
+    }
 
     data class Error(
         val reason: WordGameError,
@@ -94,19 +59,18 @@ internal sealed interface WordGameUiState {
 }
 
 internal enum class WordGameError {
-    MISSING_SAVED_SESSION,
-    INVALID_SAVED_SESSION,
+    LEVEL_UNAVAILABLE,
     GENERATION,
 }
 
+/** One transient Word attempt on the level's frozen answer; nothing about it is persisted. */
 internal class WordGameViewModel(
-    private val launch: WordGameLaunch,
-    private val sessionRepository: GameSessionRepository,
+    private val launch: GameAttemptLaunch,
+    private val attemptFactory: GameAttemptFactory,
     private val completionRepository: GameCompletionRepository,
     economyRepository: EconomyRepository,
     private val runtimeResolver: (GeneratorVersion) -> WordRuntime = ::resolveWordRuntime,
     private val workDispatcher: CoroutineDispatcher = Dispatchers.Default,
-    private val sessionIdFactory: () -> String = { UUID.randomUUID().toString() },
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow<WordGameUiState>(WordGameUiState.Loading)
     val uiState: StateFlow<WordGameUiState> = mutableUiState.asStateFlow()
@@ -116,23 +80,30 @@ internal class WordGameViewModel(
         economyRepository.observe().stateIn(viewModelScope, SharingStarted.Eagerly, PlayerEconomy())
 
     private var gameEngine: WordGameEngine? = null
-    private var activeSession: ActiveSession? = null
+    private var attempt: GameAttempt? = null
     private var completionJob: Job? = null
 
     init {
         viewModelScope.launch {
             try {
-                val session = loadSession()
-                gameEngine = session.engine
-                activeSession = session.activeSession
-                mutableUiState.value = WordGameUiState.Ready(session.puzzle, session.game)
-                if (session.isNew) sessionRepository.replaceActiveSession(session.activeSession.saved(session.game))
+                val resolved = attemptFactory.create(launch, PuzzleType.WORD)
+                val loaded =
+                    withContext(workDispatcher) {
+                        val runtime = runtimeResolver(resolved.generatorVersion)
+                        val puzzle = runtime.generator.generate(resolved.seed, resolved.difficulty)
+                        require(puzzle.id.generatorVersion == resolved.generatorVersion)
+                        // Load the bundled guess pool here so the first submit never parses it on the main thread.
+                        runtime.allowedGuesses.size
+                        val engine = WordGameEngine(puzzle, runtime.allowedGuesses)
+                        Triple(puzzle, engine, engine.start())
+                    }
+                gameEngine = loaded.second
+                attempt = resolved
+                mutableUiState.value = WordGameUiState.Ready(loaded.first, loaded.third)
             } catch (exception: CancellationException) {
                 throw exception
-            } catch (_: MissingSavedSessionException) {
-                mutableUiState.value = WordGameUiState.Error(WordGameError.MISSING_SAVED_SESSION)
-            } catch (_: InvalidSavedSessionException) {
-                mutableUiState.value = WordGameUiState.Error(WordGameError.INVALID_SAVED_SESSION)
+            } catch (_: CatalogLevelUnavailableException) {
+                mutableUiState.value = WordGameUiState.Error(WordGameError.LEVEL_UNAVAILABLE)
             } catch (_: Exception) {
                 mutableUiState.value = WordGameUiState.Error(WordGameError.GENERATION)
             }
@@ -172,7 +143,7 @@ internal class WordGameViewModel(
                         rejection = null,
                         acceptedAttemptRevision = current.acceptedAttemptRevision + 1,
                     )
-                persist(result.state)
+                if (result.state.isFinished) persistCompletion(result.state)
             }
         }
     }
@@ -187,98 +158,18 @@ internal class WordGameViewModel(
         if (ready.game.isFinished) persistCompletion(ready.game)
     }
 
-    /**
-     * Starts a fresh attempt at the very same word: a new session ID, empty input, and all six
-     * attempts again. The puzzle is the one already generated from the saved identity, never a new
-     * one, and the retry waits for the finished attempt's result to be durably stored.
-     */
+    /** Starts the same level again: the same word, empty input, all six attempts, new identity. */
     fun retry() {
         if (!economy.value.isGameplayAllowed) return
         val ready = mutableUiState.value as? WordGameUiState.Ready ?: return
         if (!ready.game.isFinished) return
         if (ready.completionPersistence != CompletionPersistence.Saved) return
         val engine = gameEngine ?: return
-        val previous = activeSession ?: return
+        val previous = attempt ?: return
 
-        val session = previous.copy(sessionId = sessionIdFactory())
-        val game = engine.start()
-        activeSession = session
-        mutableUiState.value = WordGameUiState.Ready(ready.puzzle, game)
-        sessionRepository.replaceActiveSession(session.saved(game))
+        attempt = previous.restarted(attemptFactory.nextAttemptId())
+        mutableUiState.value = WordGameUiState.Ready(ready.puzzle, engine.start())
     }
-
-    private suspend fun loadSession(): LoadedSession =
-        when (val requestedLaunch = launch) {
-            is WordGameLaunch.New ->
-                withContext(workDispatcher) {
-                    val runtime = runtimeResolver(requestedLaunch.generatorVersion)
-                    val puzzle = runtime.generator.generate(requestedLaunch.seed, requestedLaunch.difficulty)
-                    require(puzzle.id.generatorVersion == requestedLaunch.generatorVersion)
-                    // Load the bundled guess pool here so the first submit never parses it on the main thread.
-                    runtime.allowedGuesses.size
-                    val engine = WordGameEngine(puzzle, runtime.allowedGuesses)
-                    LoadedSession(
-                        puzzle,
-                        engine,
-                        engine.start(),
-                        ActiveSession(sessionIdFactory(), puzzle, requestedLaunch.context),
-                        isNew = true,
-                    )
-                }
-            is WordGameLaunch.Restore -> restoreSavedSession(requestedLaunch)
-        }
-
-    private suspend fun restoreSavedSession(requestedLaunch: WordGameLaunch.Restore): LoadedSession {
-        val saved =
-            sessionRepository.readActiveSession(PuzzleType.WORD, requestedLaunch.context.sessionScope)
-                ?: throw MissingSavedSessionException()
-        // A save that belongs to another Daily definition is a persistence inconsistency rather than
-        // damaged gameplay, so it is reported without discarding the stored progress.
-        if (!saved.hasRequestedIdentity(requestedLaunch)) throw InvalidSavedSessionException()
-        return try {
-            withContext(workDispatcher) {
-                val runtime = runtimeResolver(saved.generatorVersion)
-                val puzzle = runtime.generator.generate(saved.puzzleSeed, saved.difficulty)
-                require(puzzle.id.generatorVersion == saved.generatorVersion)
-                val game =
-                    WordSessionCodecV2.decode(
-                        puzzle = puzzle,
-                        allowedGuesses = runtime.allowedGuesses,
-                        sessionFormatVersion = saved.sessionFormatVersion,
-                        gameplayPayload = saved.gameplayPayload,
-                        moveHistoryPayload = saved.moveHistoryPayload,
-                        hintsUsed = saved.hintsUsed,
-                        status = saved.status,
-                    )
-                LoadedSession(
-                    puzzle,
-                    WordGameEngine(puzzle, runtime.allowedGuesses),
-                    game,
-                    ActiveSession(saved.sessionId, puzzle, requestedLaunch.context),
-                    isNew = false,
-                )
-            }
-        } catch (exception: CancellationException) {
-            throw exception
-        } catch (_: Exception) {
-            // The identity is the requested one but its gameplay cannot be restored: drop only this session.
-            sessionRepository.deleteActiveSession(
-                PuzzleType.WORD,
-                requestedLaunch.context.sessionScope,
-                saved.sessionId,
-            )
-            throw InvalidSavedSessionException()
-        }
-    }
-
-    private fun SavedGameSession.hasRequestedIdentity(requestedLaunch: WordGameLaunch.Restore): Boolean =
-        puzzleType == PuzzleType.WORD &&
-            sessionScope == requestedLaunch.context.sessionScope &&
-            matches(requestedLaunch.context) &&
-            (
-                requestedLaunch.expectedPuzzleId == null ||
-                    PuzzleId(puzzleType, difficulty, puzzleSeed, generatorVersion) == requestedLaunch.expectedPuzzleId
-            )
 
     private fun updateGame(update: (WordGameEngine, WordGameState) -> WordGameState) {
         val engine = gameEngine ?: return
@@ -289,28 +180,23 @@ internal class WordGameViewModel(
             return
         }
         mutableUiState.value = current.copy(game = updatedGame, rejection = null)
-        persist(updatedGame)
-    }
-
-    private fun persist(game: WordGameState) {
-        val session = activeSession ?: return
-        if (game.isFinished) {
-            persistCompletion(game)
-        } else {
-            sessionRepository.updateActiveSession(session.saved(game))
-        }
     }
 
     private fun persistCompletion(game: WordGameState) {
         if (completionJob?.isActive == true) return
-        val session = activeSession ?: return
+        val current = attempt ?: return
         val ready = mutableUiState.value as? WordGameUiState.Ready ?: return
         if (ready.completionPersistence == CompletionPersistence.Saved) return
         mutableUiState.value = ready.copy(completionPersistence = CompletionPersistence.Saving)
+        val completion =
+            current.completion(
+                outcome = if (game.status == WordGameStatus.SOLVED) GameOutcome.SOLVED else GameOutcome.FAILED,
+                attemptsUsed = game.attempts.size,
+            )
         completionJob =
             viewModelScope.launch {
                 try {
-                    completionRepository.complete(session.completion(game))
+                    completionRepository.complete(completion)
                     updateCompletionPersistence(game, CompletionPersistence.Saved)
                 } catch (exception: CancellationException) {
                     throw exception
@@ -329,74 +215,6 @@ internal class WordGameViewModel(
             mutableUiState.value = current.copy(completionPersistence = persistence)
         }
     }
-
-    private data class LoadedSession(
-        val puzzle: WordPuzzle,
-        val engine: WordGameEngine,
-        val game: WordGameState,
-        val activeSession: ActiveSession,
-        val isNew: Boolean,
-    )
-
-    private data class ActiveSession(
-        val sessionId: String,
-        val puzzle: WordPuzzle,
-        val context: WordGameContext,
-    ) {
-        fun saved(game: WordGameState): SavedGameSession {
-            val encoded = WordSessionCodecV2.encode(puzzle, game)
-            return SavedGameSession(
-                sessionId = sessionId,
-                puzzleType = PuzzleType.WORD,
-                sessionScope = context.sessionScope,
-                difficulty = puzzle.id.difficulty,
-                puzzleSeed = puzzle.id.seed,
-                generatorVersion = puzzle.id.generatorVersion,
-                dailyIdentity =
-                    (context as? WordGameContext.Daily)?.let {
-                        DailyGameSessionIdentity(it.challengeDate, it.policyVersion.value)
-                    },
-                sessionFormatVersion = WordSessionCodecV2.SESSION_FORMAT_VERSION,
-                gameplayPayload = encoded.gameplayPayload,
-                moveHistoryPayload = encoded.moveHistoryPayload,
-                hintsUsed = encoded.hintsUsed,
-                status = encoded.status,
-            )
-        }
-
-        fun completion(game: WordGameState): GameCompletion {
-            require(game.isFinished) { "Only a terminal Word game produces a result." }
-            val dailyContext = context as? WordGameContext.Daily
-            return GameCompletion(
-                resultId = sessionId,
-                puzzleType = PuzzleType.WORD,
-                difficulty = puzzle.id.difficulty,
-                puzzleSeed = puzzle.id.seed,
-                generatorVersion = puzzle.id.generatorVersion,
-                sessionScope = context.sessionScope,
-                hintsUsed = 0,
-                outcome =
-                    when (game.status) {
-                        WordGameStatus.SOLVED -> GameOutcome.SOLVED
-                        else -> GameOutcome.FAILED
-                    },
-                attemptsUsed = game.attempts.size,
-                challengeDate = dailyContext?.challengeDate,
-                dailyPolicyVersion = dailyContext?.policyVersion,
-            )
-        }
-    }
-
-    private class MissingSavedSessionException : Exception()
-
-    private class InvalidSavedSessionException : Exception()
-
-    private fun SavedGameSession.matches(context: WordGameContext): Boolean =
-        when (context) {
-            WordGameContext.Catalog -> dailyIdentity == null
-            is WordGameContext.Daily ->
-                dailyIdentity == DailyGameSessionIdentity(context.challengeDate, context.policyVersion.value)
-        }
 }
 
 internal data class WordRuntime(
@@ -412,8 +230,8 @@ private fun resolveWordRuntime(generatorVersion: GeneratorVersion): WordRuntime 
     }
 
 internal class WordGameViewModelFactory(
-    private val launch: WordGameLaunch,
-    private val sessionRepository: GameSessionRepository,
+    private val launch: GameAttemptLaunch,
+    private val attemptFactory: GameAttemptFactory,
     private val completionRepository: GameCompletionRepository,
     private val economyRepository: EconomyRepository,
 ) : ViewModelProvider.Factory {
@@ -422,6 +240,6 @@ internal class WordGameViewModelFactory(
             "Unknown ViewModel class: ${modelClass.name}"
         }
         @Suppress("UNCHECKED_CAST")
-        return WordGameViewModel(launch, sessionRepository, completionRepository, economyRepository) as T
+        return WordGameViewModel(launch, attemptFactory, completionRepository, economyRepository) as T
     }
 }

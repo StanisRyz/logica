@@ -50,6 +50,26 @@ internal fun DifficultyBadge(
     )
 }
 
+/**
+ * What is being played, above every board: the difficulty and — for Catalog play — the public level
+ * number, which is the same puzzle for every player.
+ */
+@Composable
+internal fun GameHeaderBadges(
+    difficultyLabel: String,
+    levelNumber: Int?,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.text),
+    ) {
+        DifficultyBadge(difficultyLabel)
+        levelNumber?.let { level -> DifficultyBadge(stringResource(R.string.catalog_level, level)) }
+    }
+}
+
 /** One gameplay action; the label is both the visible caption and the accessibility name. */
 internal data class GameAction(
     val icon: ImageVector,

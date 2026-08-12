@@ -1,10 +1,10 @@
 package com.stanisryz.logica.navigation
 
-import com.stanisryz.logica.balance.BalanceGameLaunch
-import com.stanisryz.logica.crowns.CrownsGameLaunch
-import com.stanisryz.logica.game2048.Game2048Launch
-import com.stanisryz.logica.sudoku.SudokuGameLaunch
-import com.stanisryz.logica.word.WordGameLaunch
+import com.stanisryz.logica.catalog.GameAttemptLaunch
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
+import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -25,12 +25,15 @@ class AppShellNavigationTest {
             AppDestination.SudokuTutorial,
             AppDestination.Game2048Start,
             AppDestination.Game2048Tutorial,
-            AppDestination.BalanceGame(BalanceGameLaunch.Restore()),
-            AppDestination.CrownsGame(CrownsGameLaunch.Restore()),
-            AppDestination.WordGame(WordGameLaunch.Restore()),
-            AppDestination.SudokuGame(SudokuGameLaunch.Restore()),
-            AppDestination.Game2048Game(Game2048Launch.Restore()),
+            AppDestination.BalanceGame(levelLaunch(PuzzleType.BALANCE)),
+            AppDestination.CrownsGame(levelLaunch(PuzzleType.CROWNS)),
+            AppDestination.WordGame(levelLaunch(PuzzleType.WORD)),
+            AppDestination.SudokuGame(levelLaunch(PuzzleType.SUDOKU)),
+            AppDestination.Game2048Game(levelLaunch(PuzzleType.GAME_2048)),
         )
+
+    private fun levelLaunch(puzzleType: PuzzleType) =
+        GameAttemptLaunch.Level(CatalogLevelId(puzzleType, Difficulty.EASY, CatalogLevelNumber(1)))
 
     @Test
     fun `primary navigation is exactly game, store, and profile, and starts on game`() {
@@ -56,8 +59,8 @@ class AppShellNavigationTest {
         assertFalse(AppDestination.Home.allowsRewardedOffer(PrimaryTab.STORE))
         assertFalse(AppDestination.Home.allowsRewardedOffer(PrimaryTab.PROFILE))
         assertTrue(AppDestination.BalanceStart.allowsRewardedOffer(PrimaryTab.GAME))
-        assertTrue(AppDestination.WordGame(WordGameLaunch.Restore()).allowsRewardedOffer(PrimaryTab.GAME))
-        assertTrue(AppDestination.Game2048Game(Game2048Launch.Restore()).allowsRewardedOffer(PrimaryTab.GAME))
+        assertTrue(AppDestination.WordGame(levelLaunch(PuzzleType.WORD)).allowsRewardedOffer(PrimaryTab.GAME))
+        assertTrue(AppDestination.Game2048Game(levelLaunch(PuzzleType.GAME_2048)).allowsRewardedOffer(PrimaryTab.GAME))
         assertFalse(AppDestination.Settings.allowsRewardedOffer(PrimaryTab.GAME))
         assertFalse(AppDestination.CrownsTutorial.allowsRewardedOffer(PrimaryTab.GAME))
     }

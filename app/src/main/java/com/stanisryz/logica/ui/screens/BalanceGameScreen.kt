@@ -21,12 +21,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
-import com.stanisryz.logica.balance.BalanceGameContext
 import com.stanisryz.logica.balance.BalanceGameError
-import com.stanisryz.logica.balance.BalanceGameLaunch
 import com.stanisryz.logica.balance.BalanceGameUiState
 import com.stanisryz.logica.balance.BalanceGameViewModel
 import com.stanisryz.logica.balance.BalanceGameViewModelFactory
+import com.stanisryz.logica.catalog.GameAttemptFactory
+import com.stanisryz.logica.catalog.GameAttemptLaunch
+import com.stanisryz.logica.catalog.levelNumberOrNull
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.balance.BalanceCell
@@ -43,14 +44,15 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleMistakes
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
-import com.stanisryz.logica.session.GameSessionRepository
 import com.stanisryz.logica.ui.balance.BalanceBoard
 import com.stanisryz.logica.ui.balance.symbol
 import com.stanisryz.logica.ui.components.BodyText
-import com.stanisryz.logica.ui.components.DifficultyBadge
 import com.stanisryz.logica.ui.components.GameAction
 import com.stanisryz.logica.ui.components.GameActionBar
+import com.stanisryz.logica.ui.components.GameHeaderBadges
 import com.stanisryz.logica.ui.components.GameMessage
+import com.stanisryz.logica.ui.components.GameplayExitGuard
+import com.stanisryz.logica.ui.components.LeaveLevelGuard
 import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.components.LogicaCard
 import com.stanisryz.logica.ui.components.MistakeIndicator
@@ -66,31 +68,34 @@ import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 @Composable
 internal fun BalanceGameRoute(
-    launch: BalanceGameLaunch,
-    sessionRepository: GameSessionRepository,
+    launch: GameAttemptLaunch,
+    attemptFactory: GameAttemptFactory,
     completionRepository: GameCompletionRepository,
     economyRepository: EconomyRepository,
+    exitGuard: GameplayExitGuard,
     hapticsEnabled: Boolean,
     onBack: () -> Unit,
-    onNewPuzzle: (Difficulty) -> Unit,
-    onStartNew: () -> Unit,
+    onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
     onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
     onTerminalAction: (() -> Unit) -> Unit = { it() },
 ) {
     val factory =
-        remember(launch, sessionRepository, completionRepository, economyRepository) {
-            BalanceGameViewModelFactory(launch, sessionRepository, completionRepository, economyRepository)
+        remember(launch, attemptFactory, completionRepository, economyRepository) {
+            BalanceGameViewModelFactory(launch, attemptFactory, completionRepository, economyRepository)
         }
     val gameViewModel: BalanceGameViewModel = viewModel(factory = factory)
     val uiState by gameViewModel.uiState.collectAsStateWithLifecycle()
     val economy by gameViewModel.economy.collectAsStateWithLifecycle()
+    // Unfinished levels are not saved, so the shell confirms before a live board is thrown away.
+    LeaveLevelGuard(exitGuard, (uiState as? BalanceGameUiState.Ready)?.hasMeaningfulProgress == true)
     // Every way out of a finished attempt goes through the shell's terminal gate, which is where an
     // optional interstitial fits between the tap and the action itself.
     BalanceGameScreen(
         uiState,
         economy,
+        launch.levelNumberOrNull(),
         gameViewModel::onCellTapped,
         gameViewModel::selectValue,
         gameViewModel::togglePencilMode,
@@ -100,10 +105,9 @@ internal fun BalanceGameRoute(
         onRestoreLife,
         hapticsEnabled,
         onBack,
-        { difficulty -> onTerminalAction { onNewPuzzle(difficulty) } },
-        { onTerminalAction(onStartNew) },
+        { onTerminalAction(onNextLevel) },
         { onTerminalAction(onGameHub) },
-        launch.context is BalanceGameContext.Daily,
+        launch is GameAttemptLaunch.Daily,
         modifier,
     )
 }
@@ -112,17 +116,17 @@ internal fun BalanceGameRoute(
 private fun BalanceGameScreen(
     uiState: BalanceGameUiState,
     economy: PlayerEconomy,
+    levelNumber: Int?,
     onCellTapped: (BalancePosition) -> Unit,
     onSelectValue: (BalanceCell) -> Unit,
     onTogglePencil: () -> Unit,
     onHint: () -> Unit,
-    onRetryPuzzle: () -> Unit,
+    onRetryLevel: () -> Unit,
     onRetryCompletion: () -> Unit,
     onRestoreLife: () -> Unit,
     hapticsEnabled: Boolean,
     onBack: () -> Unit,
-    onNewPuzzle: (Difficulty) -> Unit,
-    onStartNew: () -> Unit,
+    onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
     isDaily: Boolean,
     modifier: Modifier = Modifier,
@@ -134,13 +138,12 @@ private fun BalanceGameScreen(
                 message =
                     stringResource(
                         when (uiState.reason) {
-                            BalanceGameError.MISSING_SAVED_SESSION -> R.string.missing_saved_game
-                            BalanceGameError.INVALID_SAVED_SESSION -> R.string.invalid_saved_game
+                            BalanceGameError.LEVEL_UNAVAILABLE -> R.string.level_content_error
                             BalanceGameError.GENERATION -> R.string.puzzle_generation_error
                         },
                     ),
-                retryLabel = stringResource(if (isDaily) R.string.to_games else R.string.try_another),
-                onRetry = if (isDaily) onGameHub else onStartNew,
+                retryLabel = stringResource(R.string.to_games),
+                onRetry = onGameHub,
                 modifier = modifier,
                 secondaryLabel = stringResource(R.string.back),
                 onSecondary = onBack,
@@ -150,6 +153,7 @@ private fun BalanceGameScreen(
                 uiState.puzzle,
                 uiState.game,
                 uiState.puzzle.id.difficulty,
+                levelNumber,
                 uiState.selectedValue,
                 uiState.isPencilMode,
                 uiState.isHintLoading,
@@ -159,11 +163,11 @@ private fun BalanceGameScreen(
                 onSelectValue,
                 onTogglePencil,
                 onHint,
-                onRetryPuzzle,
+                onRetryLevel,
                 onRetryCompletion,
                 onRestoreLife,
                 hapticsEnabled,
-                { onNewPuzzle(uiState.puzzle.id.difficulty) },
+                onNextLevel,
                 onGameHub,
                 isDaily,
                 modifier,
@@ -176,6 +180,7 @@ private fun ReadyState(
     puzzle: BalancePuzzle,
     game: BalanceGameState,
     difficulty: Difficulty,
+    levelNumber: Int?,
     selectedValue: BalanceCell,
     isPencilMode: Boolean,
     isHintLoading: Boolean,
@@ -185,11 +190,11 @@ private fun ReadyState(
     onSelectValue: (BalanceCell) -> Unit,
     onTogglePencil: () -> Unit,
     onHint: () -> Unit,
-    onRetryPuzzle: () -> Unit,
+    onRetryLevel: () -> Unit,
     onRetryCompletion: () -> Unit,
     onRestoreLife: () -> Unit,
     hapticsEnabled: Boolean,
-    onNewPuzzle: () -> Unit,
+    onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
     isDaily: Boolean,
     modifier: Modifier,
@@ -219,9 +224,9 @@ private fun ReadyState(
         verticalSpacing = LogicaSpacing.item,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        DifficultyBadge(difficultyLabel(PuzzleType.BALANCE, difficulty))
+        GameHeaderBadges(difficultyLabel(PuzzleType.BALANCE, difficulty), levelNumber)
         MistakeIndicator(game.mistakesUsed, PuzzleMistakes.MAX_MISTAKES)
-        // The saved puzzle stays visible and intact at zero lives; only the actions stop working.
+        // The board stays visible and intact at zero lives; only the actions stop working.
         ZeroLivesCard(economy, onRestoreLife)
         BalanceBoard(
             puzzle = puzzle,
@@ -267,8 +272,8 @@ private fun ReadyState(
             isRetryAllowed = economy.isGameplayAllowed,
             isDaily = isDaily,
             onRetryCompletion = onRetryCompletion,
-            onRetryPuzzle = onRetryPuzzle,
-            onNewPuzzle = onNewPuzzle,
+            onRetryLevel = onRetryLevel,
+            onNextLevel = onNextLevel,
             onGameHub = onGameHub,
         )
     }
