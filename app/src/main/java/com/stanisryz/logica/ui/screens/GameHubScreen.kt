@@ -89,9 +89,14 @@ internal fun GameHubRoute(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(todayViewModel, onOpenDaily) {
-        todayViewModel.refresh()
         todayViewModel.launches.collect(onOpenDaily)
     }
+    /*
+     * The one owner of the Daily load. Attaching the observer replays the current resumed state, so
+     * this covers the hub's first frame as well as every later return to it — from gameplay, which
+     * re-enters this composition, and from the background — instead of the ViewModel, this effect,
+     * and the observer each starting the same load and cancelling the previous one.
+     */
     DisposableEffect(lifecycleOwner, todayViewModel) {
         val observer =
             LifecycleEventObserver { _, event ->

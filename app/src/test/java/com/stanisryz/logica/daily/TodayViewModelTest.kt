@@ -204,6 +204,8 @@ class TodayViewModelTest {
             )
         }
 
+    // Construction loads nothing: the hub route is the one owner of the initial refresh, so the tests
+    // ask for it the same way the route does.
     private fun viewModel(
         dailyChallengeRepository: DailyChallengeRepository,
         gameSessionRepository: GameSessionRepository,
@@ -215,7 +217,7 @@ class TodayViewModelTest {
             dailyResultRepository = EmptyDailyResultRepository,
             dateProvider = { date },
             definitionProvider = DailyChallengePolicyResolver::definitionFor,
-        )
+        ).also { it.refresh() }
 
     private suspend fun TodayViewModel.awaitContent(): TodayUiState.Content =
         uiState.first { it !is TodayUiState.Loading } as TodayUiState.Content

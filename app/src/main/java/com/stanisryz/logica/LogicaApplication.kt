@@ -2,7 +2,6 @@ package com.stanisryz.logica
 
 import android.app.Application
 import android.content.Context
-import android.content.res.Configuration
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
@@ -24,9 +23,9 @@ import com.stanisryz.logica.settings.DataStoreSettingsRepository
 import com.stanisryz.logica.settings.SettingsRepository
 import com.stanisryz.logica.statistics.RoomStatisticsRepository
 import com.stanisryz.logica.statistics.StatisticsRepository
-import com.stanisryz.logica.store.RuStoreGemPayGateway
 import com.stanisryz.logica.store.RuStorePayGateway
-import ru.rustore.sdk.pay.model.SdkTheme
+import com.stanisryz.logica.store.createRuStorePayGateway
+import com.stanisryz.logica.store.ruStoreSdkTheme
 
 private val Context.userSettingsDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "user_settings",
@@ -102,17 +101,21 @@ internal class AppContainer(
     }
 
     /**
+     * Whether this build has RuStore configuration at all. It is read from the build rather than
+     * discovered from a failing SDK call, and it is what keeps a checkout without
+     * `logica.rustoreConsoleAppId` from ever reaching `RuStorePayClient`.
+     */
+    val isRuStorePayConfigured: Boolean = BuildConfig.RUSTORE_CONSOLE_APP_ID.isNotBlank()
+
+    /**
      * Constructing this touches nothing: the Pay SDK is brought up by its own ContentProvider from
-     * the manifest, and every call through the gateway is allowed to fail without the application
-     * noticing. The payment sheet follows the device's night mode, which is the only theme signal
-     * available this early.
+     * the manifest, no call is made until the player opens the Store, and every call through the
+     * gateway is allowed to fail without the application noticing.
      */
     val ruStorePayGateway: RuStorePayGateway by lazy {
-        RuStoreGemPayGateway(
-            sdkTheme = {
-                val nightMode = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-                if (nightMode == Configuration.UI_MODE_NIGHT_YES) SdkTheme.DARK else SdkTheme.LIGHT
-            },
+        createRuStorePayGateway(
+            consoleApplicationId = BuildConfig.RUSTORE_CONSOLE_APP_ID,
+            sdkTheme = { context.ruStoreSdkTheme() },
         )
     }
 }

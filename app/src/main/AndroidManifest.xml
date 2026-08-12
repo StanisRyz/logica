@@ -30,12 +30,25 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.Logica">
+        <!--
+            `singleTask` plus the second filter is the payment return path: RuStore hands a finished
+            payment back as a deeplink on the configured pay scheme, which has to arrive at the
+            existing activity rather than a second copy of it. `MainActivity` passes such an intent
+            straight to the Pay SDK and does nothing else with it.
+        -->
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="${rustorePayScheme}" />
             </intent-filter>
         </activity>
 

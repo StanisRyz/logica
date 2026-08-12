@@ -63,7 +63,6 @@ import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.DailyGameLaunch
 import com.stanisryz.logica.daily.DailyResultRepository
 import com.stanisryz.logica.economy.EconomyRepository
-import com.stanisryz.logica.economy.GemPack
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.game2048.Game2048Launch
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
@@ -74,7 +73,7 @@ import com.stanisryz.logica.settings.SettingsRepository
 import com.stanisryz.logica.settings.ThemeMode
 import com.stanisryz.logica.settings.UserSettings
 import com.stanisryz.logica.statistics.StatisticsRepository
-import com.stanisryz.logica.store.GemStoreState
+import com.stanisryz.logica.store.RuStorePayGateway
 import com.stanisryz.logica.sudoku.SudokuGameLaunch
 import com.stanisryz.logica.ui.components.EconomyBar
 import com.stanisryz.logica.ui.components.LivesDialog
@@ -90,7 +89,7 @@ import com.stanisryz.logica.ui.screens.Game2048TutorialRoute
 import com.stanisryz.logica.ui.screens.GameHubRoute
 import com.stanisryz.logica.ui.screens.ProfileRoute
 import com.stanisryz.logica.ui.screens.SettingsScreen
-import com.stanisryz.logica.ui.screens.StoreScreen
+import com.stanisryz.logica.ui.screens.StoreRoute
 import com.stanisryz.logica.ui.screens.SudokuGameRoute
 import com.stanisryz.logica.ui.screens.SudokuStartScreen
 import com.stanisryz.logica.ui.screens.SudokuTutorialRoute
@@ -121,7 +120,7 @@ internal fun LogicaNavigation(
     hasActiveGame2048Session: Boolean,
     rewardedState: RewardedAdState,
     interstitialOpportunity: InterstitialOpportunity?,
-    gemStoreState: GemStoreState,
+    ruStorePayGateway: RuStorePayGateway,
     onRestoreLife: () -> Unit,
     onPreloadRewardedAd: () -> Unit,
     onReleaseRewardedAd: () -> Unit,
@@ -130,9 +129,6 @@ internal fun LogicaNavigation(
     onGameplayStarted: () -> Unit,
     onGameplayStopped: () -> Unit,
     onShowInterstitialForTerminalAction: (InterstitialOpportunity, Activity?, () -> Unit) -> Unit,
-    onOpenGemStore: () -> Unit,
-    onBuyGemPack: (GemPack) -> Unit,
-    onDismissGemPurchaseOutcome: () -> Unit,
     onThemeModeChanged: (ThemeMode) -> Unit,
     onSoundEnabledChanged: (Boolean) -> Unit,
     onHapticsEnabledChanged: (Boolean) -> Unit,
@@ -311,12 +307,10 @@ internal fun LogicaNavigation(
                                                 onRestoreLife = onRestoreLife,
                                             )
                                         PrimaryTab.STORE ->
-                                            StoreScreen(
+                                            StoreRoute(
                                                 economy = economy,
-                                                state = gemStoreState,
-                                                onOpen = onOpenGemStore,
-                                                onBuy = onBuyGemPack,
-                                                onDismissOutcome = onDismissGemPurchaseOutcome,
+                                                economyRepository = economyRepository,
+                                                ruStorePayGateway = ruStorePayGateway,
                                             )
                                         PrimaryTab.PROFILE -> ProfileRoute(statisticsRepository)
                                     }

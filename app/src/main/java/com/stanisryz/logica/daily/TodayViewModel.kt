@@ -140,10 +140,11 @@ internal class TodayViewModel(
 
     private var refreshJob: Job? = null
 
-    init {
-        refresh()
-    }
-
+    /**
+     * There is no load on construction. The hub route refreshes whenever it becomes visible — on its
+     * first frame and again on every return from gameplay — so a load started here would only be
+     * cancelled and restarted a moment later.
+     */
     fun refresh() {
         refreshJob?.cancel()
         refreshJob =

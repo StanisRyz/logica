@@ -21,24 +21,62 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
+import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.GemPack
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.store.GemPackOffer
 import com.stanisryz.logica.store.GemPurchaseOutcome
 import com.stanisryz.logica.store.GemStoreState
+import com.stanisryz.logica.store.GemStoreViewModel
+import com.stanisryz.logica.store.GemStoreViewModelFactory
+import com.stanisryz.logica.store.RuStorePayGateway
 import com.stanisryz.logica.ui.components.LogicaCard
 import com.stanisryz.logica.ui.components.ScreenColumn
 import com.stanisryz.logica.ui.components.ScreenTitle
 import com.stanisryz.logica.ui.components.SupportingText
 import com.stanisryz.logica.ui.theme.LogicaMotion
 import com.stanisryz.logica.ui.theme.LogicaSpacing
+
+/**
+ * The Store tab's state holder is created here rather than in the application shell, so a session
+ * that never opens the Store never even builds one — and RuStore work cannot start because the
+ * process, the root composition, or another tab came up. The ViewModel is scoped to the primary
+ * destination like every other tab's, so switching tabs keeps the loaded prices.
+ */
+@Composable
+internal fun StoreRoute(
+    economy: PlayerEconomy,
+    economyRepository: EconomyRepository,
+    ruStorePayGateway: RuStorePayGateway,
+    modifier: Modifier = Modifier,
+) {
+    val factory =
+        remember(economyRepository, ruStorePayGateway) {
+            GemStoreViewModelFactory(economyRepository, ruStorePayGateway)
+        }
+    val storeViewModel: GemStoreViewModel = viewModel(factory = factory)
+    val state by storeViewModel.state.collectAsStateWithLifecycle()
+
+    StoreScreen(
+        economy = economy,
+        state = state,
+        onOpen = storeViewModel::open,
+        onBuy = storeViewModel::buy,
+        onDismissOutcome = storeViewModel::dismissOutcome,
+        modifier = modifier,
+    )
+}
 
 /**
  * The one Gem Store in the product, now a primary tab rather than a dialog. It sells gem packs and

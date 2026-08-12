@@ -69,6 +69,9 @@ android {
         // Read by the Pay SDK's own ContentProvider; see the manifest for what each one does.
         manifestPlaceholders["rustoreConsoleAppId"] = rustoreConsoleAppId
         manifestPlaceholders["rustorePayScheme"] = rustorePayScheme
+        // The same ID the SDK initializes from, readable by the application itself: the Store decides
+        // it is unconfigured from the build rather than from a RuStore call that has already failed.
+        buildConfigField("String", "RUSTORE_CONSOLE_APP_ID", "\"$rustoreConsoleAppId\"")
     }
 
     buildTypes {

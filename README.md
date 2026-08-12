@@ -109,6 +109,12 @@ Store tab with three packs (50, 250, and 600 gems) at RuStore's own prices. Noth
 no lives, no hints, no subscriptions, no removing ads — and every puzzle stays fully playable without
 ever opening it.
 
+Purchases need the RuStore Console application ID in private build configuration: set
+`logica.rustoreConsoleAppId` in `local.properties`, in a private `gradle.properties`, or as
+`ORG_GRADLE_PROJECT_logica.rustoreConsoleAppId`. Leaving it unset is a supported build — it is warned
+about at configuration time, no RuStore call is ever made, and the Store simply opens with the gem
+balance and an unavailable notice. Nothing else in the application changes.
+
 Only when you are completely out of lives, the lives dialog adds one more optional way back in: watch
 a rewarded ad and get one life. It is never forced and never shown anywhere else, and if there is no
 network or no ad to show, the 15-minute timer and the ten-gem refill work exactly as before.

@@ -17,8 +17,6 @@ import com.stanisryz.logica.economy.EconomyViewModelFactory
 import com.stanisryz.logica.navigation.LogicaNavigation
 import com.stanisryz.logica.settings.SettingsViewModel
 import com.stanisryz.logica.settings.SettingsViewModelFactory
-import com.stanisryz.logica.store.GemStoreViewModel
-import com.stanisryz.logica.store.GemStoreViewModelFactory
 import com.stanisryz.logica.ui.theme.LogicaTheme
 
 @Composable
@@ -69,12 +67,6 @@ fun LogicaApp() {
         }
     val interstitialController: InterstitialAdController = viewModel(factory = interstitialControllerFactory)
     val interstitialOpportunity by interstitialController.pendingOpportunity.collectAsStateWithLifecycle()
-    val gemStoreViewModelFactory =
-        remember(economyRepository) {
-            GemStoreViewModelFactory(economyRepository, application.container.ruStorePayGateway)
-        }
-    val gemStoreViewModel: GemStoreViewModel = viewModel(factory = gemStoreViewModelFactory)
-    val gemStoreState by gemStoreViewModel.state.collectAsStateWithLifecycle()
 
     LogicaTheme(themeMode = settings.themeMode) {
         LogicaNavigation(
@@ -94,7 +86,7 @@ fun LogicaApp() {
             hasActiveGame2048Session = hasActiveGame2048Session,
             rewardedState = rewardedState,
             interstitialOpportunity = interstitialOpportunity,
-            gemStoreState = gemStoreState,
+            ruStorePayGateway = application.container.ruStorePayGateway,
             onRestoreLife = economyViewModel::refillLife,
             onPreloadRewardedAd = rewardedController::preload,
             onReleaseRewardedAd = rewardedController::release,
@@ -103,9 +95,6 @@ fun LogicaApp() {
             onGameplayStarted = interstitialController::onGameplayStarted,
             onGameplayStopped = interstitialController::onGameplayStopped,
             onShowInterstitialForTerminalAction = interstitialController::showForTerminalAction,
-            onOpenGemStore = gemStoreViewModel::open,
-            onBuyGemPack = gemStoreViewModel::buy,
-            onDismissGemPurchaseOutcome = gemStoreViewModel::dismissOutcome,
             onThemeModeChanged = settingsViewModel::setThemeMode,
             onSoundEnabledChanged = settingsViewModel::setSoundEnabled,
             onHapticsEnabledChanged = settingsViewModel::setHapticsEnabled,

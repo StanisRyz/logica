@@ -37,9 +37,12 @@ internal sealed interface GemStoreState {
  *
  * It never touches the wallet itself: a credited purchase reaches the UI through the same
  * [EconomyRepository] flow every other screen reads, so the balance is Room's number rather than a
- * count this class incremented. Reconciliation runs on construction and again whenever the store is
- * opened, so a purchase that was paid for but never credited is picked up without the player having
- * to ask for it — and without any restore button, which a consumable currency does not need.
+ * count this class incremented.
+ *
+ * Construction does nothing at all. Reconciliation and prices are RuStore work, and RuStore work
+ * happens only because the player opened the store: a launched application that never reaches the
+ * Store tab makes no payment call, and a purchase paid for but never credited is picked up on the
+ * next open — without any restore button, which a consumable currency does not need.
  */
 internal class GemStoreViewModel(
     private val purchases: GemPurchaseProcessor,
@@ -50,13 +53,11 @@ internal class GemStoreViewModel(
     private var loadJob: Job? = null
     private var purchaseJob: Job? = null
 
-    init {
-        // A quiet catch-up for anything paid for last session. Failure here is invisible and costs
-        // the application nothing: the store is simply loaded again when it is opened.
-        viewModelScope.launch { runCatching { purchases.reconcile() } }
-    }
-
-    /** Called when the store opens: reconcile first, then show the prices. */
+    /**
+     * Called when the store opens and when a failed store is retried: reconcile first, then show the
+     * prices. A load already running is left alone, so re-entering the tab, a recomposition, or a
+     * second retry tap cannot start a second reconciliation.
+     */
     fun open() {
         if (loadJob?.isActive == true) return
         _state.value = GemStoreState.Loading
