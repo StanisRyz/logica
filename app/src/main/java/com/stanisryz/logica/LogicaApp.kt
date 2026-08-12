@@ -102,7 +102,7 @@ fun LogicaApp() {
             onRetryRewardedAd = rewardedController::retry,
             onGameplayStarted = interstitialController::onGameplayStarted,
             onGameplayStopped = interstitialController::onGameplayStopped,
-            onInterstitialOpportunity = interstitialController::onOpportunity,
+            onShowInterstitialForTerminalAction = interstitialController::showForTerminalAction,
             onOpenGemStore = gemStoreViewModel::open,
             onBuyGemPack = gemStoreViewModel::buy,
             onDismissGemPurchaseOutcome = gemStoreViewModel::dismissOutcome,

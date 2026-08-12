@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -273,6 +274,20 @@ private fun CrownsCellView(
                 contentDescription = null,
                 tint = colors.error,
                 modifier = Modifier.align(Alignment.TopStart).size(pencilSize),
+            )
+        }
+        if (isConfirmed && cell != CrownsPlayerCell.EMPTY) {
+            /*
+             * A committed crown or blocked mark the puzzle's own answer agrees with, marked the same
+             * way Sudoku marks a confirmed digit. The inset ring alone reads as a colour change on a
+             * coloured region, so the confirmation is carried by an icon rather than by colour.
+             * Pencil marks and wrong values never reach this: only a `CORRECT` committed cell does.
+             */
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = null,
+                tint = palette.success,
+                modifier = Modifier.align(Alignment.TopEnd).padding(1.dp).size(pencilSize),
             )
         }
         if (pencil.isNotEmpty()) {

@@ -13,11 +13,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -35,13 +36,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -83,29 +87,46 @@ internal fun WordBoard(
         currentOnAcceptedAttemptRevealed(acceptedAttemptRevision)
     }
 
-    Column(
-        modifier = modifier.widthIn(max = BOARD_MAX_WIDTH).fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(cellSpacing),
-    ) {
-        rows.forEachIndexed { rowIndex, row ->
-            val isSubmitted = rowIndex < game.attempts.size
-            val isCurrent = !game.isFinished && rowIndex == game.attempts.size
-            WordBoardRow(
-                row = row,
-                rowIndex = rowIndex,
-                isSubmitted = isSubmitted,
-                isCurrent = isCurrent,
-                selectedCellIndex = selectedCellIndex,
-                editableEnabled = editableEnabled,
-                onCellSelected = onCellSelected,
-                revealedCells =
-                    if (isSubmitted && rowIndex == game.attempts.lastIndex && acceptedAttemptRevision > 0) {
-                        revealedCells
-                    } else {
-                        game.wordLength
-                    },
-                cellSpacing = cellSpacing,
-            )
+    /*
+     * The board is sized from the space it is actually given, in both directions: a seven-letter
+     * EXPERT grid on a short phone shrinks its cells instead of pushing the keyboard off screen.
+     * With no height limit — inside the scrollable terminal layout — width decides alone.
+     */
+    BoxWithConstraints(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+        val columns = game.wordLength
+        val widthBudget = minOf(maxWidth, BOARD_MAX_WIDTH)
+        val cellFromWidth = (widthBudget - cellSpacing * (columns - 1)) / columns
+        val cellSize =
+            if (constraints.hasBoundedHeight) {
+                minOf(cellFromWidth, (maxHeight - cellSpacing * (WordRules.MAXIMUM_ATTEMPTS - 1)) / WordRules.MAXIMUM_ATTEMPTS)
+            } else {
+                cellFromWidth
+            }.coerceAtLeast(MIN_CELL_SIZE)
+        Column(
+            modifier = Modifier.width(cellSize * columns + cellSpacing * (columns - 1)),
+            verticalArrangement = Arrangement.spacedBy(cellSpacing),
+        ) {
+            rows.forEachIndexed { rowIndex, row ->
+                val isSubmitted = rowIndex < game.attempts.size
+                val isCurrent = !game.isFinished && rowIndex == game.attempts.size
+                WordBoardRow(
+                    row = row,
+                    rowIndex = rowIndex,
+                    isSubmitted = isSubmitted,
+                    isCurrent = isCurrent,
+                    selectedCellIndex = selectedCellIndex,
+                    editableEnabled = editableEnabled,
+                    onCellSelected = onCellSelected,
+                    revealedCells =
+                        if (isSubmitted && rowIndex == game.attempts.lastIndex && acceptedAttemptRevision > 0) {
+                            revealedCells
+                        } else {
+                            game.wordLength
+                        },
+                    cellSpacing = cellSpacing,
+                    cellSize = cellSize,
+                )
+            }
         }
     }
 }
@@ -121,6 +142,7 @@ private fun WordBoardRow(
     onCellSelected: (Int) -> Unit,
     revealedCells: Int,
     cellSpacing: Dp,
+    cellSize: Dp,
 ) {
     val correctLabel = stringResource(R.string.word_feedback_correct)
     val presentLabel = stringResource(R.string.word_feedback_present)
@@ -164,8 +186,9 @@ private fun WordBoardRow(
                 isCurrent = isCurrent,
                 isSelected = isCurrent && selectedCellIndex == cellIndex,
                 editableEnabled = editableEnabled,
+                cellSize = cellSize,
                 onClick = { onCellSelected(cellIndex) },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier,
             )
         }
     }
@@ -179,6 +202,7 @@ private fun WordBoardCell(
     isCurrent: Boolean,
     isSelected: Boolean,
     editableEnabled: Boolean,
+    cellSize: Dp,
     onClick: () -> Unit,
     modifier: Modifier,
 ) {
@@ -242,7 +266,7 @@ private fun WordBoardCell(
     Box(
         modifier =
             modifier
-                .aspectRatio(1f)
+                .size(cellSize)
                 .scale(scale.value)
                 .clip(shape)
                 .background(container)
@@ -277,12 +301,29 @@ private fun WordBoardCell(
             },
             label = "wordLetter",
         ) { letter ->
+            // The letter follows the cell it lives in, so a compacted board keeps its proportions
+            // and a large system font scale cannot push the glyph past the cell edges.
+            val letterSize =
+                with(LocalDensity.current) {
+                    (cellSize * LETTER_TEXT_RATIO).coerceIn(MIN_LETTER_TEXT, MAX_LETTER_TEXT).toSp()
+                }
             Text(
                 text = letter?.uppercaseChar()?.toString().orEmpty(),
                 color = content,
-                style = MaterialTheme.typography.headlineSmall,
+                fontSize = letterSize,
+                lineHeight = letterSize,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
+                maxLines = 1,
+                style =
+                    MaterialTheme.typography.headlineSmall.copy(
+                        platformStyle = PlatformTextStyle(includeFontPadding = false),
+                        lineHeightStyle =
+                            LineHeightStyle(
+                                alignment = LineHeightStyle.Alignment.Center,
+                                trim = LineHeightStyle.Trim.Both,
+                            ),
+                    ),
             )
         }
     }
@@ -316,6 +357,10 @@ internal fun WordLetterFeedback?.descriptionResource(): Int =
 private val BOARD_MAX_WIDTH = 340.dp
 private val CELL_SPACING = 6.dp
 private val COMPACT_CELL_SPACING = 4.dp
+private val MIN_CELL_SIZE = 24.dp
+private const val LETTER_TEXT_RATIO = 0.55f
+private val MIN_LETTER_TEXT = 14.dp
+private val MAX_LETTER_TEXT = 26.dp
 private val CELL_CORNER = 6.dp
 private val CORRECT_CORNER = 12.dp
 private val PRESENT_BORDER_WIDTH = 3.dp

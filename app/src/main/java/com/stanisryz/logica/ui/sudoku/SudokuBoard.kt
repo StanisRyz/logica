@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,15 +29,19 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.stanisryz.logica.R
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellState
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
@@ -72,8 +77,20 @@ internal fun SudokuBoard(
                 },
     ) {
         val cellWidth = maxWidth / BOARD_SIZE
-        val candidateTextSize = (cellWidth.value * CANDIDATE_TEXT_RATIO).coerceIn(7f, 10f).sp
-        val valueTextSize = (cellWidth.value * VALUE_TEXT_RATIO).coerceIn(18f, 28f).sp
+        /*
+         * Both text sizes are derived from the cell the board actually got, and converted through
+         * the current density rather than written as fixed `sp`: a cell does not grow with the
+         * system font scale, so a candidate expressed in scaled units is exactly what leaves the
+         * digits clipped or hanging outside their cell on a real device.
+         */
+        val candidateTextSize =
+            with(LocalDensity.current) {
+                (cellWidth * CANDIDATE_TEXT_RATIO).coerceIn(CANDIDATE_MIN_TEXT, CANDIDATE_MAX_TEXT).toSp()
+            }
+        val valueTextSize =
+            with(LocalDensity.current) {
+                (cellWidth * VALUE_TEXT_RATIO).coerceIn(VALUE_MIN_TEXT, VALUE_MAX_TEXT).toSp()
+            }
         Column(Modifier.size(maxWidth)) {
             repeat(BOARD_SIZE) { row ->
                 Row(Modifier.fillMaxWidth().weight(1f)) {
@@ -179,8 +196,11 @@ private fun SudokuCell(
             Text(
                 text = cell.value.toString(),
                 fontSize = valueTextSize,
+                lineHeight = valueTextSize,
                 fontWeight = if (cell.status.isConfirmedValue) FontWeight.Bold else FontWeight.Medium,
                 color = if (cell.status == SudokuCellStatus.INCORRECT) colors.onErrorContainer else colors.onSurface,
+                maxLines = 1,
+                style = LocalTextStyle.current.merge(COMPACT_CELL_TEXT_STYLE),
             )
         }
         when (cell.status) {
@@ -192,12 +212,17 @@ private fun SudokuCell(
     }
 }
 
+/**
+ * The 3x3 candidate grid, kept strictly inside its own cell. Each digit is a single centred line
+ * whose line box is its own font size — the inherited body line height is taller than a third of a
+ * cell, which is what used to push the lower candidates over the grid lines and out of the cell.
+ */
 @Composable
 private fun SudokuCandidates(
     cell: SudokuCellState,
     textSize: TextUnit,
 ) {
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().padding(CANDIDATE_PADDING)) {
         repeat(BLOCK_SIZE) { candidateRow ->
             Row(Modifier.fillMaxWidth().weight(1f)) {
                 repeat(BLOCK_SIZE) { candidateColumn ->
@@ -207,7 +232,11 @@ private fun SudokuCandidates(
                             Text(
                                 text = digit.toString(),
                                 fontSize = textSize,
+                                lineHeight = textSize,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                textAlign = TextAlign.Center,
+                                style = LocalTextStyle.current.merge(COMPACT_CELL_TEXT_STYLE),
                             )
                         }
                     }
@@ -241,10 +270,26 @@ private val SudokuPosition.blockIndex: Int
 private val SudokuCellStatus.isConfirmedValue: Boolean
     get() = this == SudokuCellStatus.GIVEN || this == SudokuCellStatus.CORRECT
 
+/** No font padding and no extra leading: the glyph gets the whole box a small cell can spare. */
+private val COMPACT_CELL_TEXT_STYLE =
+    TextStyle(
+        platformStyle = PlatformTextStyle(includeFontPadding = false),
+        lineHeightStyle =
+            LineHeightStyle(
+                alignment = LineHeightStyle.Alignment.Center,
+                trim = LineHeightStyle.Trim.Both,
+            ),
+    )
+
 private const val BOARD_SIZE = 9
 private const val BLOCK_SIZE = 3
 private const val CANDIDATE_TEXT_RATIO = 0.24f
 private const val VALUE_TEXT_RATIO = 0.54f
+private val CANDIDATE_PADDING = 1.dp
+private val CANDIDATE_MIN_TEXT = 6.dp
+private val CANDIDATE_MAX_TEXT = 11.dp
+private val VALUE_MIN_TEXT = 16.dp
+private val VALUE_MAX_TEXT = 26.dp
 private val THIN_GRID_WIDTH = 0.5.dp
 private val STRONG_GRID_WIDTH = 2.dp
 private val SELECTED_WIDTH = 3.dp

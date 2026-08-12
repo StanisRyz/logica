@@ -23,13 +23,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.stanisryz.logica.R
 import com.stanisryz.logica.puzzle.core.word.WordLetterFeedback
 import com.stanisryz.logica.puzzle.core.word.WordLetterKnowledge
@@ -46,6 +47,7 @@ internal fun WordKeyboard(
     onBackspace: () -> Unit,
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier,
+    keyHeight: Dp = DEFAULT_KEY_HEIGHT,
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -61,6 +63,7 @@ internal fun WordKeyboard(
                         letter = letter,
                         feedback = knowledge[letter],
                         enabled = enabled,
+                        keyHeight = keyHeight,
                         onClick = { onLetter(letter) },
                         modifier = Modifier.weight(1f),
                     )
@@ -75,6 +78,7 @@ internal fun WordKeyboard(
                 label = { Text(stringResource(R.string.word_enter), fontWeight = FontWeight.Bold) },
                 description = stringResource(R.string.word_enter),
                 enabled = enabled,
+                keyHeight = keyHeight,
                 onClick = onSubmit,
                 modifier = Modifier.weight(2f),
             )
@@ -82,6 +86,7 @@ internal fun WordKeyboard(
                 label = { Icon(Icons.AutoMirrored.Filled.Backspace, contentDescription = null) },
                 description = stringResource(R.string.word_backspace),
                 enabled = enabled,
+                keyHeight = keyHeight,
                 onClick = onBackspace,
                 modifier = Modifier.weight(1f),
             )
@@ -94,6 +99,7 @@ private fun LetterKey(
     letter: Char,
     feedback: WordLetterFeedback?,
     enabled: Boolean,
+    keyHeight: Dp,
     onClick: () -> Unit,
     modifier: Modifier,
 ) {
@@ -134,7 +140,7 @@ private fun LetterKey(
     Box(
         modifier =
             modifier
-                .height(KEY_HEIGHT)
+                .height(keyHeight)
                 .clip(RoundedCornerShape(KEY_CORNER))
                 .background(container)
                 .then(
@@ -148,11 +154,18 @@ private fun LetterKey(
                 .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
+        // A compacted keyboard keeps its letters proportional to the keys they sit on.
+        val letterSize =
+            with(LocalDensity.current) {
+                (keyHeight * KEY_FONT_RATIO).coerceIn(MIN_KEY_FONT, MAX_KEY_FONT).toSp()
+            }
         Text(
             text = letter.uppercaseChar().toString(),
             color = content,
-            fontSize = KEY_FONT_SIZE,
+            fontSize = letterSize,
+            lineHeight = letterSize,
             fontWeight = FontWeight.Medium,
+            maxLines = 1,
         )
     }
 }
@@ -162,13 +175,14 @@ private fun ActionKey(
     label: @Composable () -> Unit,
     description: String,
     enabled: Boolean,
+    keyHeight: Dp,
     onClick: () -> Unit,
     modifier: Modifier,
 ) {
     Box(
         modifier =
             modifier
-                .height(KEY_HEIGHT)
+                .height(keyHeight)
                 .clip(RoundedCornerShape(KEY_CORNER))
                 .background(MaterialTheme.colorScheme.secondaryContainer)
                 .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
@@ -188,11 +202,19 @@ private val LETTER_ROWS =
         "ячсмитьбю".toList(),
     )
 
-private val KEY_SPACING = 4.dp
-private val KEY_HEIGHT = 48.dp
+/** Vertical gap between key rows; the screen adds it up when it budgets the keyboard's height. */
+internal val WORD_KEY_SPACING = 4.dp
+
+/** How many rows the keyboard has: three letter rows plus the action row. */
+internal const val WORD_KEYBOARD_ROWS = 4
+
+private val KEY_SPACING = WORD_KEY_SPACING
+private val DEFAULT_KEY_HEIGHT = 48.dp
 private val KEY_CORNER = 6.dp
 private val PRESENT_BORDER_WIDTH = 2.dp
 private val ACTION_PADDING = 8.dp
-private val KEY_FONT_SIZE = 15.sp
+private const val KEY_FONT_RATIO = 0.32f
+private val MIN_KEY_FONT = 12.dp
+private val MAX_KEY_FONT = 16.dp
 private const val ABSENT_ALPHA = 0.35f
 private const val KEY_FEEDBACK_MILLIS = 160

@@ -79,6 +79,7 @@ internal fun CrownsGameRoute(
     onGameHub: () -> Unit,
     onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
+    onTerminalAction: (() -> Unit) -> Unit = { it() },
 ) {
     val factory =
         remember(launch, sessionRepository, completionRepository, economyRepository) {
@@ -95,14 +96,14 @@ internal fun CrownsGameRoute(
         onSelectValue = gameViewModel::selectValue,
         onTogglePencil = gameViewModel::togglePencilMode,
         onHint = gameViewModel::requestHint,
-        onRetryPuzzle = gameViewModel::retry,
+        onRetryPuzzle = { onTerminalAction(gameViewModel::retry) },
         onRetryCompletion = gameViewModel::retryCompletion,
         onRestoreLife = onRestoreLife,
         hapticsEnabled = hapticsEnabled,
         onBack = onBack,
-        onNewPuzzle = onNewPuzzle,
-        onStartNew = onStartNew,
-        onGameHub = onGameHub,
+        onNewPuzzle = { difficulty -> onTerminalAction { onNewPuzzle(difficulty) } },
+        onStartNew = { onTerminalAction(onStartNew) },
+        onGameHub = { onTerminalAction(onGameHub) },
         isDaily = launch.context is CrownsGameContext.Daily,
         modifier = modifier,
     )

@@ -71,6 +71,9 @@ internal class InterstitialAdController(
     private var shownAd: InterstitialAd? = null
     private var gameplayPreloadJob: Job? = null
 
+    /** The terminal action waiting behind the ad currently on screen, if there is one. */
+    private var pendingTerminalAction: (() -> Unit)? = null
+
     /**
      * Gameplay-aware preloading: the download starts while the player is still playing rather than
      * at the terminal moment, and only from a real gameplay destination — never from the Game hub,
@@ -97,21 +100,30 @@ internal class InterstitialAdController(
     }
 
     /**
-     * The terminal hand-off. The opportunity is consumed synchronously so a recomposition cannot
+     * The terminal hand-off, driven by the player's first action on a finished attempt rather than
+     * by the attempt ending. The opportunity is consumed synchronously so a recomposition cannot
      * rediscover it, and the decision itself is delegated to the coordinator, which allows at most
      * one show attempt per result.
+     *
+     * [onFinished] is what continues the action the player asked for and runs exactly once: right
+     * away when no ad reaches the screen, and after the ad is dismissed or fails when one does. It
+     * is armed before the SDK is called, because `show` may report a failure synchronously.
      */
-    fun onOpportunity(
+    fun showForTerminalAction(
         opportunity: InterstitialOpportunity,
         activity: Activity?,
+        onFinished: () -> Unit,
     ) {
         opportunities.consume(opportunity)
         viewModelScope.launch {
-            coordinator.attemptShow(
-                opportunity = opportunity,
-                isReady = { mutableState.value == InterstitialAdState.READY },
-                show = { activity != null && show(activity) },
-            )
+            pendingTerminalAction = onFinished
+            val shown =
+                coordinator.attemptShow(
+                    opportunity = opportunity,
+                    isReady = { mutableState.value == InterstitialAdState.READY },
+                    show = { activity != null && show(activity) },
+                )
+            if (!shown) continueTerminalAction()
         }
     }
 
@@ -151,6 +163,8 @@ internal class InterstitialAdController(
     override fun onCleared() {
         gameplayPreloadJob?.cancel()
         gameplayPreloadJob = null
+        // The screen that asked for the action is gone; running it into a dead composition is not.
+        pendingTerminalAction = null
         loadedAd?.setAdEventListener(null)
         shownAd?.setAdEventListener(null)
         loadedAd = null
@@ -198,6 +212,15 @@ internal class InterstitialAdController(
         shownAd = null
         mutableState.value = InterstitialAdState.IDLE
         gate.release()
+        // Whatever the player asked for is what happens next, dismissal or failure alike.
+        continueTerminalAction()
+    }
+
+    /** Runs the waiting terminal action once; a second call after it has run does nothing. */
+    private fun continueTerminalAction() {
+        val action = pendingTerminalAction ?: return
+        pendingTerminalAction = null
+        action()
     }
 }
 

@@ -79,6 +79,7 @@ internal fun SudokuGameRoute(
     onGameHub: () -> Unit,
     onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
+    onTerminalAction: (() -> Unit) -> Unit = { it() },
 ) {
     val assets = LocalContext.current.assets
     val factory =
@@ -102,15 +103,15 @@ internal fun SudokuGameRoute(
         onDigit = gameViewModel::inputDigit,
         onTogglePencil = gameViewModel::togglePencilMode,
         onHint = gameViewModel::requestHint,
-        onRetry = gameViewModel::retry,
+        onRetry = { onTerminalAction(gameViewModel::retry) },
         onRetryCompletion = gameViewModel::retryCompletion,
         onRetryLoad = gameViewModel::reload,
         onRestoreLife = onRestoreLife,
         hapticsEnabled = hapticsEnabled,
         onBack = onBack,
-        onNewPuzzle = onNewPuzzle,
-        onStartNew = onStartNew,
-        onGameHub = onGameHub,
+        onNewPuzzle = { difficulty -> onTerminalAction { onNewPuzzle(difficulty) } },
+        onStartNew = { onTerminalAction(onStartNew) },
+        onGameHub = { onTerminalAction(onGameHub) },
         modifier = modifier,
     )
 }

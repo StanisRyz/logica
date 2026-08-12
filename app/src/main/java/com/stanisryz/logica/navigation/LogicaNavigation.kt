@@ -38,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -55,6 +56,7 @@ import androidx.navigation3.ui.NavDisplay
 import com.stanisryz.logica.R
 import com.stanisryz.logica.ads.InterstitialOpportunity
 import com.stanisryz.logica.ads.RewardedAdState
+import com.stanisryz.logica.ads.TerminalActionCoordinator
 import com.stanisryz.logica.balance.BalanceGameLaunch
 import com.stanisryz.logica.crowns.CrownsGameLaunch
 import com.stanisryz.logica.daily.DailyChallengeRepository
@@ -127,7 +129,7 @@ internal fun LogicaNavigation(
     onRetryRewardedAd: () -> Unit,
     onGameplayStarted: () -> Unit,
     onGameplayStopped: () -> Unit,
-    onInterstitialOpportunity: (InterstitialOpportunity, Activity?) -> Unit,
+    onShowInterstitialForTerminalAction: (InterstitialOpportunity, Activity?, () -> Unit) -> Unit,
     onOpenGemStore: () -> Unit,
     onBuyGemPack: (GemPack) -> Unit,
     onDismissGemPurchaseOutcome: () -> Unit,
@@ -186,14 +188,26 @@ internal fun LogicaNavigation(
     }
 
     /*
-     * The one place an interstitial may appear. The opportunity exists only because a terminal
-     * result and its economy transaction are already durable, it is consumed as soon as it is seen,
-     * and an ad that is not loaded is skipped instead of waited for — the terminal dialog behind
-     * this is already on screen either way.
+     * The one place an interstitial may appear, and the one place the five games route their
+     * terminal actions through. The opportunity exists only because a terminal result and its
+     * economy transaction are already durable; it waits on the finished screen until the player
+     * chooses what to do next — Retry, a new game, or the Game hub — so the result is always read
+     * before an ad, and that chosen action continues once the ad is gone. An ad that is not loaded,
+     * still cooling down, or failing to appear is skipped instead of waited for.
      */
-    LaunchedEffect(interstitialOpportunity) {
-        interstitialOpportunity?.let { onInterstitialOpportunity(it, activity) }
-    }
+    val currentOpportunity by rememberUpdatedState(interstitialOpportunity)
+    val currentActivity by rememberUpdatedState(activity)
+    val currentShowInterstitial by rememberUpdatedState(onShowInterstitialForTerminalAction)
+    val terminalActions =
+        remember {
+            TerminalActionCoordinator(
+                pendingOpportunity = { currentOpportunity },
+                present = { opportunity, onFinished ->
+                    currentShowInterstitial(opportunity, currentActivity, onFinished)
+                },
+            )
+        }
+    val onTerminalAction: (() -> Unit) -> Unit = terminalActions::run
 
     val catalog =
         gameCatalogEntries(
@@ -439,6 +453,7 @@ internal fun LogicaNavigation(
                                 backStack.add(AppDestination.BalanceStart)
                             },
                             onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                            onTerminalAction = onTerminalAction,
                             onRestoreLife = onRestoreLife,
                         )
                     }
@@ -463,6 +478,7 @@ internal fun LogicaNavigation(
                                 backStack.add(AppDestination.CrownsStart)
                             },
                             onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                            onTerminalAction = onTerminalAction,
                             onRestoreLife = onRestoreLife,
                         )
                     }
@@ -487,6 +503,7 @@ internal fun LogicaNavigation(
                                 backStack.add(AppDestination.WordStart)
                             },
                             onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                            onTerminalAction = onTerminalAction,
                             onRestoreLife = onRestoreLife,
                         )
                     }
@@ -511,6 +528,7 @@ internal fun LogicaNavigation(
                                 backStack.add(AppDestination.SudokuStart)
                             },
                             onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                            onTerminalAction = onTerminalAction,
                             onRestoreLife = onRestoreLife,
                         )
                     }
@@ -527,6 +545,7 @@ internal fun LogicaNavigation(
                                 backStack.add(AppDestination.Game2048Start)
                             },
                             onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                            onTerminalAction = onTerminalAction,
                             onRestoreLife = onRestoreLife,
                         )
                     }

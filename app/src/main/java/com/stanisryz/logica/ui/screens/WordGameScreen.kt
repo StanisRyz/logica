@@ -7,9 +7,12 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -34,6 +37,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
@@ -65,6 +69,8 @@ import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.components.difficultyLabel
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
+import com.stanisryz.logica.ui.word.WORD_KEYBOARD_ROWS
+import com.stanisryz.logica.ui.word.WORD_KEY_SPACING
 import com.stanisryz.logica.ui.word.WordBoard
 import com.stanisryz.logica.ui.word.WordKeyboard
 import com.stanisryz.logica.word.WordGameContext
@@ -88,6 +94,7 @@ internal fun WordGameRoute(
     onGameHub: () -> Unit,
     onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
+    onTerminalAction: (() -> Unit) -> Unit = { it() },
 ) {
     val factory =
         remember(launch, sessionRepository, completionRepository, economyRepository) {
@@ -105,13 +112,13 @@ internal fun WordGameRoute(
         onSubmit = gameViewModel::submit,
         onDismissRejection = gameViewModel::dismissRejection,
         onRetryCompletion = gameViewModel::retryCompletion,
-        onRetryPuzzle = gameViewModel::retry,
+        onRetryPuzzle = { onTerminalAction(gameViewModel::retry) },
         onRestoreLife = onRestoreLife,
         hapticsEnabled = hapticsEnabled,
         onBack = onBack,
-        onNewPuzzle = onNewPuzzle,
-        onStartNew = onStartNew,
-        onGameHub = onGameHub,
+        onNewPuzzle = { difficulty -> onTerminalAction { onNewPuzzle(difficulty) } },
+        onStartNew = { onTerminalAction(onStartNew) },
+        onGameHub = { onTerminalAction(onGameHub) },
         isDaily = launch.context is WordGameContext.Daily,
         modifier = modifier,
     )
@@ -180,8 +187,10 @@ private fun WordGameScreen(
 }
 
 /**
- * The board scrolls while the keyboard stays anchored to the bottom, so a seven-letter EXPERT game
- * stays playable on a small portrait screen without scrolling the keys out of reach.
+ * One screen, no scrolling: the metrics line, the board, and the keyboard are budgeted against the
+ * height the screen actually has, so a seven-letter EXPERT game on a small portrait phone compacts
+ * its cells and keys rather than moving any of them out of reach. Only the finished attempt, whose
+ * completion card can be taller than the space the keyboard leaves behind, may scroll.
  */
 @Composable
 private fun WordReadyState(
@@ -242,94 +251,130 @@ private fun WordReadyState(
         }
     }
 
-    Column(
+    val isPlaying = game.status == WordGameStatus.IN_PROGRESS
+    val attemptsText =
+        stringResource(R.string.word_attempts_left, game.remainingAttempts, WordRules.MAXIMUM_ATTEMPTS)
+    /*
+     * A rejected guess shakes the board and buzzes; it no longer inserts a line of text that moves
+     * the whole board and keyboard down and back up again. The reason still reaches a screen reader,
+     * announced through the metrics line that is on screen anyway, so nothing new is laid out.
+     */
+    val rejectionMessage = rejection?.let { stringResource(it.messageResource()) }
+
+    BoxWithConstraints(
         modifier =
             modifier
                 .fillMaxSize()
                 .padding(
                     horizontal = LogicaSpacing.gameplayHorizontal,
-                    vertical = LogicaSpacing.screenVertical,
+                    vertical = LogicaSpacing.item,
                 ),
-        verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
-        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        val compact = maxHeight < COMPACT_SCREEN_HEIGHT
+        val gap = if (compact) LogicaSpacing.text else LogicaSpacing.item
+        val keyHeight = (maxHeight * KEY_HEIGHT_RATIO).coerceIn(MIN_KEY_HEIGHT, MAX_KEY_HEIGHT)
+        /*
+         * The board keeps the height the keyboard leaves it whether the game is running or finished,
+         * so a terminal card that scrolls into view does not first resize the board underneath it.
+         */
+        val keyboardHeight = keyHeight * WORD_KEYBOARD_ROWS + WORD_KEY_SPACING * (WORD_KEYBOARD_ROWS - 1)
+        val boardHeight = (maxHeight - keyboardHeight - HEADER_HEIGHT_BUDGET).coerceAtLeast(MIN_BOARD_HEIGHT)
+
         Column(
-            modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(gap),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            DifficultyBadge(difficultyLabel(PuzzleType.WORD, puzzle.id.difficulty))
-            SupportingText(
-                stringResource(R.string.word_attempts_left, game.remainingAttempts, WordRules.MAXIMUM_ATTEMPTS),
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.action, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                DifficultyBadge(difficultyLabel(PuzzleType.WORD, puzzle.id.difficulty))
+                SupportingText(
+                    text = attemptsText,
+                    modifier =
+                        Modifier.semantics {
+                            if (rejectionMessage != null) {
+                                liveRegion = LiveRegionMode.Assertive
+                                contentDescription = rejectionMessage
+                            }
+                        },
+                )
+            }
             // The saved word stays visible and intact at zero lives; only the actions stop working.
             ZeroLivesCard(economy, onRestoreLife)
-            WordBoard(
-                game = game,
-                selectedCellIndex = selectedCellIndex,
-                editableEnabled = economy.isGameplayAllowed,
-                onCellSelected = { selectedCellIndex = it },
-                acceptedAttemptRevision = acceptedAttemptRevision,
-                onAcceptedAttemptRevealed = { revealedAttemptRevision = it },
+            Column(
                 modifier =
-                    Modifier.offset {
-                        IntOffset(rejectionShake.value.roundToInt(), 0)
-                    },
-            )
-            rejection?.let { reason ->
-                Text(
-                    stringResource(reason.messageResource()),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
-                )
-            }
-            AnimatedVisibility(
-                visible =
-                    game.status != WordGameStatus.IN_PROGRESS &&
-                        (acceptedAttemptRevision == 0 || revealedAttemptRevision >= acceptedAttemptRevision),
-                enter =
-                    fadeIn(tween(TERMINAL_APPEAR_MILLIS)) +
-                        scaleIn(
-                            animationSpec = tween(TERMINAL_APPEAR_MILLIS),
-                            initialScale = TERMINAL_INITIAL_SCALE,
-                        ),
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .then(if (isPlaying) Modifier else Modifier.verticalScroll(rememberScrollState())),
+                verticalArrangement = Arrangement.spacedBy(gap, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                WordTerminalCard(
-                    puzzle = puzzle,
+                WordBoard(
                     game = game,
-                    completionPersistence = completionPersistence,
-                    economy = economy,
-                    onRetryCompletion = onRetryCompletion,
-                    onRetryPuzzle = onRetryPuzzle,
-                    onNewPuzzle = onNewPuzzle,
-                    onGameHub = onGameHub,
-                    isDaily = isDaily,
+                    selectedCellIndex = selectedCellIndex,
+                    editableEnabled = economy.isGameplayAllowed,
+                    onCellSelected = { selectedCellIndex = it },
+                    acceptedAttemptRevision = acceptedAttemptRevision,
+                    onAcceptedAttemptRevealed = { revealedAttemptRevision = it },
+                    modifier =
+                        Modifier
+                            .heightIn(max = boardHeight)
+                            .offset {
+                                IntOffset(rejectionShake.value.roundToInt(), 0)
+                            },
+                )
+                AnimatedVisibility(
+                    visible =
+                        !isPlaying &&
+                            (acceptedAttemptRevision == 0 || revealedAttemptRevision >= acceptedAttemptRevision),
+                    enter =
+                        fadeIn(tween(TERMINAL_APPEAR_MILLIS)) +
+                            scaleIn(
+                                animationSpec = tween(TERMINAL_APPEAR_MILLIS),
+                                initialScale = TERMINAL_INITIAL_SCALE,
+                            ),
+                ) {
+                    WordTerminalCard(
+                        puzzle = puzzle,
+                        game = game,
+                        completionPersistence = completionPersistence,
+                        economy = economy,
+                        onRetryCompletion = onRetryCompletion,
+                        onRetryPuzzle = onRetryPuzzle,
+                        onNewPuzzle = onNewPuzzle,
+                        onGameHub = onGameHub,
+                        isDaily = isDaily,
+                    )
+                }
+            }
+
+            if (isPlaying) {
+                WordKeyboard(
+                    knowledge = game.letterKnowledge,
+                    enabled = economy.isGameplayAllowed,
+                    onLetter = { letter ->
+                        if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                        onDismissRejection()
+                        val editedPosition = selectedCellIndex
+                        onLetter(editedPosition, letter)
+                        selectedCellIndex = nextWordSelection(game.currentDraft, editedPosition)
+                    },
+                    onBackspace = {
+                        if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                        onDismissRejection()
+                        positionToClear(game.currentDraft, selectedCellIndex)?.let { position ->
+                            onClearLetter(position)
+                            selectedCellIndex = position
+                        }
+                    },
+                    onSubmit = onSubmit,
+                    keyHeight = keyHeight,
                 )
             }
-        }
-
-        if (game.status == WordGameStatus.IN_PROGRESS) {
-            WordKeyboard(
-                knowledge = game.letterKnowledge,
-                enabled = economy.isGameplayAllowed,
-                onLetter = { letter ->
-                    if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    onDismissRejection()
-                    val editedPosition = selectedCellIndex
-                    onLetter(editedPosition, letter)
-                    selectedCellIndex = nextWordSelection(game.currentDraft, editedPosition)
-                },
-                onBackspace = {
-                    if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    onDismissRejection()
-                    positionToClear(game.currentDraft, selectedCellIndex)?.let { position ->
-                        onClearLetter(position)
-                        selectedCellIndex = position
-                    }
-                },
-                onSubmit = onSubmit,
-            )
         }
     }
 }
@@ -455,5 +500,17 @@ private fun WordGuessRejection.messageResource(): Int =
 
 private val SHAKE_DISTANCE = 8.dp
 private const val SHAKE_STEP_MILLIS = 35
+
+/** Below this the gameplay column tightens its gaps so board and keyboard both keep their size. */
+private val COMPACT_SCREEN_HEIGHT = 620.dp
+
+/** The keyboard is four rows, so this ratio keeps it around a third of a short screen. */
+private const val KEY_HEIGHT_RATIO = 0.068f
+private val MIN_KEY_HEIGHT = 36.dp
+private val MAX_KEY_HEIGHT = 48.dp
+
+/** What the difficulty/attempts line plus the gaps around it cost the board. */
+private val HEADER_HEIGHT_BUDGET = 56.dp
+private val MIN_BOARD_HEIGHT = 180.dp
 private const val TERMINAL_APPEAR_MILLIS = 180
 private const val TERMINAL_INITIAL_SCALE = 0.98f

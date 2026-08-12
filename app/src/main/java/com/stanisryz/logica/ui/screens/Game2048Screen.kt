@@ -71,6 +71,7 @@ internal fun Game2048Route(
     onGameHub: () -> Unit,
     onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
+    onTerminalAction: (() -> Unit) -> Unit = { it() },
 ) {
     val factory =
         remember(launch, sessionRepository, completionRepository, economyRepository) {
@@ -85,11 +86,11 @@ internal fun Game2048Route(
         isDaily = launch.context is Game2048GameContext.Daily,
         onMove = gameViewModel::move,
         onMotionFinished = gameViewModel::finishMotion,
-        onRetry = gameViewModel::retry,
+        onRetry = { onTerminalAction(gameViewModel::retry) },
         onRetryCompletion = gameViewModel::retryCompletion,
         onBack = onBack,
-        onStartNew = onStartNew,
-        onGameHub = onGameHub,
+        onStartNew = { onTerminalAction(onStartNew) },
+        onGameHub = { onTerminalAction(onGameHub) },
         onRestoreLife = onRestoreLife,
         hapticsEnabled = hapticsEnabled,
         modifier = modifier,

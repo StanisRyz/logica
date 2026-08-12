@@ -77,6 +77,7 @@ internal fun BalanceGameRoute(
     onGameHub: () -> Unit,
     onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
+    onTerminalAction: (() -> Unit) -> Unit = { it() },
 ) {
     val factory =
         remember(launch, sessionRepository, completionRepository, economyRepository) {
@@ -85,6 +86,8 @@ internal fun BalanceGameRoute(
     val gameViewModel: BalanceGameViewModel = viewModel(factory = factory)
     val uiState by gameViewModel.uiState.collectAsStateWithLifecycle()
     val economy by gameViewModel.economy.collectAsStateWithLifecycle()
+    // Every way out of a finished attempt goes through the shell's terminal gate, which is where an
+    // optional interstitial fits between the tap and the action itself.
     BalanceGameScreen(
         uiState,
         economy,
@@ -92,14 +95,14 @@ internal fun BalanceGameRoute(
         gameViewModel::selectValue,
         gameViewModel::togglePencilMode,
         gameViewModel::requestHint,
-        gameViewModel::retry,
+        { onTerminalAction(gameViewModel::retry) },
         gameViewModel::retryCompletion,
         onRestoreLife,
         hapticsEnabled,
         onBack,
-        onNewPuzzle,
-        onStartNew,
-        onGameHub,
+        { difficulty -> onTerminalAction { onNewPuzzle(difficulty) } },
+        { onTerminalAction(onStartNew) },
+        { onTerminalAction(onGameHub) },
         launch.context is BalanceGameContext.Daily,
         modifier,
     )
