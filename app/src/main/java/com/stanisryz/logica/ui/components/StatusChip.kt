@@ -36,18 +36,27 @@ internal fun StatusChip(
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
     contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     animateLabel: Boolean = false,
+    compact: Boolean = false,
 ) {
     Row(
         modifier =
             modifier
                 .clip(MaterialTheme.shapes.small)
                 .background(containerColor)
-                .padding(horizontal = CHIP_HORIZONTAL_PADDING, vertical = CHIP_VERTICAL_PADDING)
+                .padding(
+                    horizontal = if (compact) COMPACT_CHIP_HORIZONTAL_PADDING else CHIP_HORIZONTAL_PADDING,
+                    vertical = if (compact) COMPACT_CHIP_VERTICAL_PADDING else CHIP_VERTICAL_PADDING,
+                )
                 .semantics(mergeDescendants = true) {},
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(CHIP_ICON_SPACING),
+        horizontalArrangement = Arrangement.spacedBy(if (compact) COMPACT_CHIP_ICON_SPACING else CHIP_ICON_SPACING),
     ) {
-        Icon(icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(CHIP_ICON_SIZE))
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = contentColor,
+            modifier = Modifier.size(if (compact) COMPACT_CHIP_ICON_SIZE else CHIP_ICON_SIZE),
+        )
         if (animateLabel) {
             AnimatedContent(
                 targetState = label,
@@ -60,12 +69,16 @@ internal fun StatusChip(
                 Text(
                     currentLabel,
                     modifier = Modifier.semantics { if (currentLabel != label) hideFromAccessibility() },
-                    style = MaterialTheme.typography.labelLarge,
+                    style = if (compact) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge,
                     color = contentColor,
                 )
             }
         } else {
-            Text(label, style = MaterialTheme.typography.labelLarge, color = contentColor)
+            Text(
+                label,
+                style = if (compact) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge,
+                color = contentColor,
+            )
         }
     }
 }
@@ -74,3 +87,7 @@ private val CHIP_HORIZONTAL_PADDING = 10.dp
 private val CHIP_VERTICAL_PADDING = 6.dp
 private val CHIP_ICON_SPACING = 6.dp
 private val CHIP_ICON_SIZE = 16.dp
+private val COMPACT_CHIP_HORIZONTAL_PADDING = 6.dp
+private val COMPACT_CHIP_VERTICAL_PADDING = 4.dp
+private val COMPACT_CHIP_ICON_SPACING = 3.dp
+private val COMPACT_CHIP_ICON_SIZE = 14.dp

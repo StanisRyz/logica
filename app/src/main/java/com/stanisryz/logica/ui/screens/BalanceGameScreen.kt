@@ -7,7 +7,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,10 +44,9 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.ui.balance.BalanceBoard
+import com.stanisryz.logica.ui.balance.BalancePiece
 import com.stanisryz.logica.ui.balance.symbol
 import com.stanisryz.logica.ui.components.BodyText
-import com.stanisryz.logica.ui.components.GameAction
-import com.stanisryz.logica.ui.components.GameActionBar
 import com.stanisryz.logica.ui.components.GameHeaderBadges
 import com.stanisryz.logica.ui.components.GameMessage
 import com.stanisryz.logica.ui.components.GameplayExitGuard
@@ -238,27 +236,19 @@ private fun ReadyState(
             },
         )
         BalanceToolBar(
-            selectedValue,
-            isPencilMode,
-            onSelectValue,
-            onTogglePencil,
+            selectedValue = selectedValue,
+            isPencilMode = isPencilMode,
+            onSelectValue = onSelectValue,
+            onTogglePencil = onTogglePencil,
+            onHint = onHint,
+            hintEnabled =
+                !isHintLoading &&
+                    game.status == BalanceGameStatus.IN_PROGRESS &&
+                    economy.isGameplayAllowed,
             enabled = economy.isGameplayAllowed,
         )
         game.currentHint?.let { hint -> HintCard(hint) }
         GameMessage(game.violations.firstOrNull()?.let { violationText(it.type) })
-        GameActionBar(
-            listOf(
-                GameAction(
-                    icon = Icons.Filled.Lightbulb,
-                    label = stringResource(R.string.hint),
-                    enabled =
-                        !isHintLoading &&
-                            game.status == BalanceGameStatus.IN_PROGRESS &&
-                            economy.isGameplayAllowed,
-                    onClick = onHint,
-                ),
-            ),
-        )
         if (isHintLoading) SupportingText(stringResource(R.string.searching_hint))
     }
     if (game.status.isTerminal) {
@@ -286,6 +276,8 @@ internal fun BalanceToolBar(
     isPencilMode: Boolean,
     onSelectValue: (BalanceCell) -> Unit,
     onTogglePencil: () -> Unit,
+    onHint: (() -> Unit)? = null,
+    hintEnabled: Boolean = false,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
@@ -301,7 +293,19 @@ internal fun BalanceToolBar(
                     onClick = onTogglePencil,
                     symbol = { Icon(Icons.Filled.Edit, contentDescription = null) },
                 ),
-            ),
+            ) +
+                listOfNotNull(
+                    onHint?.let { hint ->
+                        PuzzleTool(
+                            label = stringResource(R.string.hint),
+                            stateDescription = null,
+                            selected = null,
+                            enabled = hintEnabled,
+                            onClick = hint,
+                            symbol = { Icon(Icons.Filled.Lightbulb, contentDescription = null) },
+                        )
+                    },
+                ),
         modifier = modifier,
         enabled = enabled,
     )
@@ -320,8 +324,8 @@ private fun balanceValueTool(
             stringResource(if (selectedValue == value) R.string.tool_selected else R.string.tool_not_selected),
         selected = selectedValue == value,
         onClick = { onSelectValue(value) },
-        symbol = { Text(value.symbol(), style = MaterialTheme.typography.titleMedium) },
-    )
+    symbol = { BalancePiece(value) },
+)
 
 @Composable
 private fun HintCard(hint: BalanceHint) {

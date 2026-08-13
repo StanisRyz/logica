@@ -48,8 +48,6 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.ui.components.BodyText
-import com.stanisryz.logica.ui.components.GameAction
-import com.stanisryz.logica.ui.components.GameActionBar
 import com.stanisryz.logica.ui.components.GameHeaderBadges
 import com.stanisryz.logica.ui.components.GameMessage
 import com.stanisryz.logica.ui.components.GameplayExitGuard
@@ -243,27 +241,19 @@ private fun CrownsReadyState(
             },
         )
         CrownsToolBar(
-            selectedValue,
-            isPencilMode,
-            onSelectValue,
-            onTogglePencil,
+            selectedValue = selectedValue,
+            isPencilMode = isPencilMode,
+            onSelectValue = onSelectValue,
+            onTogglePencil = onTogglePencil,
+            onHint = onHint,
+            hintEnabled =
+                !isHintLoading &&
+                    game.status == CrownsGameStatus.IN_PROGRESS &&
+                    economy.isGameplayAllowed,
             enabled = economy.isGameplayAllowed,
         )
         game.currentHint?.let { hint -> CrownsHintCard(hint) }
         GameMessage(game.violations.firstOrNull()?.let { crownsViolationText(it.type) })
-        GameActionBar(
-            listOf(
-                GameAction(
-                    icon = Icons.Filled.Lightbulb,
-                    label = stringResource(R.string.hint),
-                    enabled =
-                        !isHintLoading &&
-                            game.status == CrownsGameStatus.IN_PROGRESS &&
-                            economy.isGameplayAllowed,
-                    onClick = onHint,
-                ),
-            ),
-        )
         if (isHintLoading) SupportingText(stringResource(R.string.searching_hint))
     }
 
@@ -292,6 +282,8 @@ internal fun CrownsToolBar(
     isPencilMode: Boolean,
     onSelectValue: (CrownsPlayerCell) -> Unit,
     onTogglePencil: () -> Unit,
+    onHint: (() -> Unit)? = null,
+    hintEnabled: Boolean = false,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
@@ -328,7 +320,19 @@ internal fun CrownsToolBar(
                     onClick = onTogglePencil,
                     symbol = { Icon(Icons.Filled.Edit, contentDescription = null) },
                 ),
-            ),
+            ) +
+                listOfNotNull(
+                    onHint?.let { hint ->
+                        PuzzleTool(
+                            label = stringResource(R.string.hint),
+                            stateDescription = null,
+                            selected = null,
+                            enabled = hintEnabled,
+                            onClick = hint,
+                            symbol = { Icon(Icons.Filled.Lightbulb, contentDescription = null) },
+                        )
+                    },
+                ),
         modifier = modifier,
         enabled = enabled,
     )

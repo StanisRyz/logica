@@ -1,5 +1,6 @@
 package com.stanisryz.logica.ui.balance
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -18,7 +20,6 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -26,10 +27,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.stanisryz.logica.R
 import com.stanisryz.logica.puzzle.core.balance.BalanceCell
 import com.stanisryz.logica.puzzle.core.balance.BalanceCellStatus
@@ -49,7 +49,8 @@ fun BalanceBoard(
     val hint = game.currentHint
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         // Pencil marks have to stay readable inside one cell of whatever board size is on screen.
-        val pencilTextSize = ((maxWidth / puzzle.size).value * PENCIL_TEXT_RATIO).coerceIn(7f, 12f).sp
+        val pencilPieceSize =
+            (maxWidth / puzzle.size * PENCIL_PIECE_RATIO).coerceIn(MIN_PENCIL_PIECE_SIZE, MAX_PENCIL_PIECE_SIZE)
         Column(modifier = Modifier.size(maxWidth)) {
             repeat(puzzle.size) { row ->
                 Row(Modifier.fillMaxWidth().weight(1f)) {
@@ -60,7 +61,7 @@ fun BalanceBoard(
                             value = game.board.cellAt(position),
                             status = game.statusAt(position),
                             pencilMarks = game.pencilMarksAt(position),
-                            pencilTextSize = pencilTextSize,
+                            pencilPieceSize = pencilPieceSize,
                             isConflict = position in conflictPositions,
                             isHintTarget = hint?.position == position,
                             isHintEvidence = position in (hint?.evidencePositions ?: emptySet()),
@@ -84,7 +85,7 @@ private fun BalanceCellView(
     value: BalanceCell,
     status: BalanceCellStatus,
     pencilMarks: Set<BalanceCell>,
-    pencilTextSize: TextUnit,
+    pencilPieceSize: androidx.compose.ui.unit.Dp,
     isConflict: Boolean,
     isHintTarget: Boolean,
     isHintEvidence: Boolean,
@@ -140,17 +141,7 @@ private fun BalanceCellView(
                 .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = value.symbol(),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = if (isFixed || isConfirmed) FontWeight.Bold else FontWeight.Normal,
-            color =
-                when {
-                    isIncorrect -> colors.onErrorContainer
-                    isFixed -> colors.onSurfaceVariant
-                    else -> colors.onSurface
-                },
-        )
+        BalancePiece(value, Modifier.fillMaxSize().padding(8.dp))
         if (isFixed) {
             Icon(
                 imageVector = Icons.Filled.Lock,
@@ -173,11 +164,7 @@ private fun BalanceCellView(
                 horizontalArrangement = Arrangement.spacedBy(1.dp),
             ) {
                 pencilMarks.sortedBy(BalanceCell::ordinal).forEach { mark ->
-                    Text(
-                        text = mark.symbol(),
-                        fontSize = pencilTextSize,
-                        color = colors.onSurfaceVariant,
-                    )
+                    BalancePiece(mark, Modifier.size(pencilPieceSize))
                 }
             }
         }
@@ -210,4 +197,24 @@ internal fun BalanceCell.symbol(): String =
         BalanceCell.ONE -> "●"
     }
 
-private const val PENCIL_TEXT_RATIO = 0.3f
+/** Game pieces are invariant: they never inherit a Material content tint or invert with the theme. */
+@Composable
+internal fun BalancePiece(
+    value: BalanceCell,
+    modifier: Modifier = Modifier,
+) {
+    if (value == BalanceCell.EMPTY) return
+    Canvas(modifier = modifier) {
+        val radius = size.minDimension / 2f
+        val pieceColor = if (value == BalanceCell.ONE) Color.Black else Color.White
+        drawCircle(color = pieceColor, radius = radius)
+        if (value == BalanceCell.ZERO) {
+            drawCircle(color = Color.Black, radius = radius, style = Stroke(width = WHITE_PIECE_OUTLINE.toPx()))
+        }
+    }
+}
+
+private const val PENCIL_PIECE_RATIO = 0.24f
+private val MIN_PENCIL_PIECE_SIZE = 7.dp
+private val MAX_PENCIL_PIECE_SIZE = 12.dp
+private val WHITE_PIECE_OUTLINE = 1.dp

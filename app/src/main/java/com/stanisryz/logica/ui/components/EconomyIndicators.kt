@@ -54,6 +54,7 @@ internal fun EconomyBar(
     onOpenLives: () -> Unit,
     onOpenGemStore: () -> Unit,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
     Row(
         modifier = modifier,
@@ -81,6 +82,7 @@ internal fun EconomyBar(
                         role = Role.Button
                     },
             animateLabel = true,
+            compact = compact,
         )
         val gemsDescription = stringResource(R.string.economy_gems_action_description, economy.gems)
         StatusChip(
@@ -95,6 +97,7 @@ internal fun EconomyBar(
                         role = Role.Button
                     },
             animateLabel = true,
+            compact = compact,
         )
     }
 }

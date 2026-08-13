@@ -264,6 +264,7 @@ internal fun LogicaNavigation(
                 title = destinationTitle(currentDestination, selectedTab),
                 showBack = currentDestination != AppDestination.Home,
                 showWallet = currentDestination.showsWallet(),
+                compactWallet = currentDestination.usesCompactGameplayHeader(),
                 showSettings = currentDestination.showsSettingsAction(),
                 economy = economy,
                 onBack = goBack,
@@ -564,8 +565,8 @@ private fun PuzzleType.startDestination(): AppDestination =
 
 /**
  * The shared header of every screen: what you are looking at, the wallet where it belongs, and the
- * Settings gear on all three primary tabs. On a narrow screen the wallet moves to its own line
- * instead of squeezing the title.
+ * Settings gear on all three primary tabs. Gameplay keeps its compact wallet on the same line so
+ * the board retains the vertical space a second header row would consume.
  */
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -573,6 +574,7 @@ private fun AppTopBar(
     title: String,
     showBack: Boolean,
     showWallet: Boolean,
+    compactWallet: Boolean,
     showSettings: Boolean,
     economy: PlayerEconomy,
     onBack: () -> Unit,
@@ -581,7 +583,7 @@ private fun AppTopBar(
     onOpenStore: () -> Unit,
 ) {
     BoxWithConstraints {
-        val walletOnOwnLine = showWallet && maxWidth < COMPACT_HEADER_WIDTH
+        val walletOnOwnLine = showWallet && !compactWallet && maxWidth < COMPACT_HEADER_WIDTH
         Column {
             TopAppBar(
                 title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
@@ -594,7 +596,12 @@ private fun AppTopBar(
                 },
                 actions = {
                     if (showWallet && !walletOnOwnLine) {
-                        EconomyBar(economy = economy, onOpenLives = onOpenLives, onOpenGemStore = onOpenStore)
+                        EconomyBar(
+                            economy = economy,
+                            onOpenLives = onOpenLives,
+                            onOpenGemStore = onOpenStore,
+                            compact = compactWallet,
+                        )
                     }
                     if (showSettings) {
                         IconButton(onClick = onOpenSettings) {

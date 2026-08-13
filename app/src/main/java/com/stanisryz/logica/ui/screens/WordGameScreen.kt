@@ -56,7 +56,6 @@ import com.stanisryz.logica.puzzle.core.word.WordGameState
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
 import com.stanisryz.logica.puzzle.core.word.WordGuessRejection
 import com.stanisryz.logica.puzzle.core.word.WordPuzzle
-import com.stanisryz.logica.puzzle.core.word.WordRules
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.ui.components.CompletionActions
@@ -67,7 +66,6 @@ import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.LeaveLevelGuard
 import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.components.RetryableErrorState
-import com.stanisryz.logica.ui.components.SupportingText
 import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.components.difficultyLabel
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
@@ -255,12 +253,10 @@ private fun WordReadyState(
     }
 
     val isPlaying = game.status == WordGameStatus.IN_PROGRESS
-    val attemptsText =
-        stringResource(R.string.word_attempts_left, game.remainingAttempts, WordRules.MAXIMUM_ATTEMPTS)
     /*
      * A rejected guess shakes the board and buzzes; it no longer inserts a line of text that moves
-     * the whole board and keyboard down and back up again. The reason still reaches a screen reader,
-     * announced through the metrics line that is on screen anyway, so nothing new is laid out.
+     * the whole board and keyboard down and back up again. The reason remains a live accessibility
+     * announcement on the compact metadata row, so nothing new is laid out.
      */
     val rejectionMessage = rejection?.let { stringResource(it.messageResource()) }
 
@@ -294,16 +290,15 @@ private fun WordReadyState(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 GameHeaderBadges(difficultyLabel(PuzzleType.WORD, puzzle.id.difficulty), levelNumber)
-                SupportingText(
-                    text = attemptsText,
-                    modifier =
-                        Modifier.semantics {
-                            if (rejectionMessage != null) {
+                if (rejectionMessage != null) {
+                    androidx.compose.foundation.layout.Box(
+                        modifier =
+                            Modifier.semantics {
                                 liveRegion = LiveRegionMode.Assertive
                                 contentDescription = rejectionMessage
-                            }
-                        },
-                )
+                            },
+                    )
+                }
             }
             // The saved word stays visible and intact at zero lives; only the actions stop working.
             ZeroLivesCard(economy, onRestoreLife)
