@@ -157,7 +157,7 @@
 - `LogicaPalette` (via `LocalLogicaPalette`) holds only what Material 3 has no role for: the success family and the categorical Crowns region colors; everything else uses `MaterialTheme.colorScheme`.
 - Text hierarchy is `ScreenTitle`, `SectionTitle`, `PuzzleTitle`, `MetricValue`, `BodyText`, `SupportingText`; puzzle accents are subtle scheme colors, never separate per-puzzle themes.
 - `LoadingState`, `RetryableErrorState`, `EmptyState`, `DifficultySelector`, `PuzzleStartScreen`, `CompletionCard`, `PuzzleTerminalDialog`, `GameActionBar`, `GameHeaderBadges`, `LeaveLevelGuard`, and `StatusChip` are the shared presentation contracts; extend them rather than re-implementing per screen.
-- Balance and Crowns use the shared icon-only `PuzzleToolBar`; Balance `ZERO`/`ONE` pieces are always explicit white-with-outline/black game colors, never theme content colors.
+- All five gameplay destinations use the shared compact TopAppBar wallet; Balance, Crowns, and Sudoku use the shared icon-only `PuzzleToolBar`. Balance `ZERO`/`ONE` pieces are always explicit white-with-outline/black game colors, never theme content colors.
 - Every difficulty row shows its current level and gameplay shows `Уровень N`; terminal actions are Retry level, Next level, and To Games, and there is no Continue, no active-save indicator, and no new-game branch.
 - `GameplayExitGuard` is the one seam between the shell's Back handling and gameplay: leaving a non-terminal level with real progress confirms first, and nothing else — no autosave — protects it.
 - Boards stay puzzle-specific: only the surrounding chrome (header, difficulty, actions, errors, completion) is shared.

@@ -2,10 +2,14 @@ package com.stanisryz.logica.ui.screens
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,6 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
@@ -48,8 +53,6 @@ import com.stanisryz.logica.sudoku.SudokuGameUiState
 import com.stanisryz.logica.sudoku.SudokuGameViewModel
 import com.stanisryz.logica.sudoku.SudokuGameViewModelFactory
 import com.stanisryz.logica.ui.components.BodyText
-import com.stanisryz.logica.ui.components.GameAction
-import com.stanisryz.logica.ui.components.GameActionBar
 import com.stanisryz.logica.ui.components.GameHeaderBadges
 import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.LeaveLevelGuard
@@ -57,14 +60,13 @@ import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.components.LogicaCard
 import com.stanisryz.logica.ui.components.MistakeIndicator
 import com.stanisryz.logica.ui.components.PuzzleTerminalDialog
-import com.stanisryz.logica.ui.components.PuzzleTitle
 import com.stanisryz.logica.ui.components.RetryableErrorState
 import com.stanisryz.logica.ui.components.ScreenColumn
 import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.components.difficultyLabel
 import com.stanisryz.logica.ui.sudoku.SudokuBoard
 import com.stanisryz.logica.ui.sudoku.SudokuNumberPad
-import com.stanisryz.logica.ui.sudoku.SudokuPencilToggle
+import com.stanisryz.logica.ui.sudoku.SudokuToolBar
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.ui.theme.LogicaTheme
 
@@ -224,63 +226,50 @@ private fun SudokuReadyState(
             } else {
                 selectedStatus == SudokuCellStatus.EMPTY || selectedStatus == SudokuCellStatus.INCORRECT
             }
-    ScreenColumn(
-        modifier = modifier,
-        verticalSpacing = LogicaSpacing.item,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        PuzzleTitle(stringResource(R.string.sudoku), puzzleType = PuzzleType.SUDOKU)
-        GameHeaderBadges(
-            difficultyLabel(
-                PuzzleType.SUDOKU,
-                uiState.puzzle.id.difficulty
-                    .toDifficulty(),
-            ),
-            levelNumber,
-        )
-        MistakeIndicator(game.mistakesUsed, SudokuGameState.MAX_MISTAKES)
-        ZeroLivesCard(economy, onRestoreLife)
-        SudokuBoard(
+    val boardInteraction: (SudokuPosition) -> Unit = {
+        if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        onSelectCell(it)
+    }
+    val hintEnabled = game.status == SudokuGameStatus.IN_PROGRESS && economy.isGameplayAllowed
+    val compactPlayable = hintEnabled && game.currentHint == null
+    if (compactPlayable) {
+        CompactSudokuGameplay(
             game = game,
             selectedCell = uiState.selectedCell,
-            enabled = economy.isGameplayAllowed,
-            onCellSelected = {
-                if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                onSelectCell(it)
-            },
+            isPencilMode = uiState.isPencilMode,
+            difficultyLabel = difficultyLabel(PuzzleType.SUDOKU, uiState.puzzle.id.difficulty.toDifficulty()),
+            levelNumber = levelNumber,
+            mistakesUsed = game.mistakesUsed,
+            inputEnabled = inputEnabled,
+            onSelectCell = boardInteraction,
+            onTogglePencil = onTogglePencil,
+            onHint = onHint,
+            onDigit = onDigit,
+            modifier = modifier,
         )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+    } else {
+        ScreenColumn(
+            modifier = modifier,
+            verticalSpacing = LogicaSpacing.item,
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            SudokuPencilToggle(
+            SudokuGameplayContent(
+                game = game,
+                selectedCell = uiState.selectedCell,
                 isPencilMode = uiState.isPencilMode,
-                enabled = game.status == SudokuGameStatus.IN_PROGRESS && economy.isGameplayAllowed,
-                onToggle = onTogglePencil,
-            )
-            Text(
-                text =
-                    stringResource(
-                        if (uiState.isPencilMode) R.string.sudoku_pencil_on_help else R.string.sudoku_select_cell_help,
-                    ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
+                difficultyLabel = difficultyLabel(PuzzleType.SUDOKU, uiState.puzzle.id.difficulty.toDifficulty()),
+                levelNumber = levelNumber,
+                mistakesUsed = game.mistakesUsed,
+                inputEnabled = inputEnabled,
+                onSelectCell = boardInteraction,
+                onTogglePencil = onTogglePencil,
+                onHint = onHint,
+                onDigit = onDigit,
+                hintEnabled = hintEnabled,
+                economy = economy,
+                onRestoreLife = onRestoreLife,
             )
         }
-        SudokuNumberPad(enabled = inputEnabled, onDigit = onDigit)
-        game.currentHint?.let { SudokuHintCard(it) }
-        GameActionBar(
-            listOf(
-                GameAction(
-                    icon = Icons.Filled.Lightbulb,
-                    label = stringResource(R.string.hint),
-                    enabled = game.status == SudokuGameStatus.IN_PROGRESS && economy.isGameplayAllowed,
-                    onClick = onHint,
-                ),
-            ),
-        )
     }
     if (game.status.isTerminal) {
         PuzzleTerminalDialog(
@@ -300,6 +289,98 @@ private fun SudokuReadyState(
             onGameHub = onGameHub,
         )
     }
+}
+
+/** The normal game uses every available pixel for a square board; expanded states may scroll. */
+@Composable
+private fun CompactSudokuGameplay(
+    game: SudokuGameState,
+    selectedCell: SudokuPosition?,
+    isPencilMode: Boolean,
+    difficultyLabel: String,
+    levelNumber: Int?,
+    mistakesUsed: Int,
+    inputEnabled: Boolean,
+    onSelectCell: (SudokuPosition) -> Unit,
+    onTogglePencil: () -> Unit,
+    onHint: () -> Unit,
+    onDigit: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    BoxWithConstraints(
+        modifier =
+            modifier
+                .fillMaxSize()
+                .padding(horizontal = LogicaSpacing.gameplayHorizontal, vertical = LogicaSpacing.text),
+    ) {
+        val boardSize = minOf(maxWidth, (maxHeight - COMPACT_CONTROLS_HEIGHT).coerceAtLeast(0.dp))
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            SudokuGameplayContent(
+                game = game,
+                selectedCell = selectedCell,
+                isPencilMode = isPencilMode,
+                difficultyLabel = difficultyLabel,
+                levelNumber = levelNumber,
+                mistakesUsed = mistakesUsed,
+                inputEnabled = inputEnabled,
+                onSelectCell = onSelectCell,
+                onTogglePencil = onTogglePencil,
+                onHint = onHint,
+                onDigit = onDigit,
+                hintEnabled = true,
+                boardModifier = Modifier.size(boardSize),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SudokuGameplayContent(
+    game: SudokuGameState,
+    selectedCell: SudokuPosition?,
+    isPencilMode: Boolean,
+    difficultyLabel: String,
+    levelNumber: Int?,
+    mistakesUsed: Int,
+    inputEnabled: Boolean,
+    onSelectCell: (SudokuPosition) -> Unit,
+    onTogglePencil: () -> Unit,
+    onHint: () -> Unit,
+    onDigit: (Int) -> Unit,
+    hintEnabled: Boolean,
+    economy: PlayerEconomy? = null,
+    onRestoreLife: (() -> Unit)? = null,
+    boardModifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        GameHeaderBadges(difficultyLabel, levelNumber)
+        MistakeIndicator(mistakesUsed, SudokuGameState.MAX_MISTAKES)
+    }
+    if (economy != null && onRestoreLife != null) ZeroLivesCard(economy, onRestoreLife)
+    SudokuBoard(
+        game = game,
+        selectedCell = selectedCell,
+        enabled = economy?.isGameplayAllowed ?: true,
+        onCellSelected = onSelectCell,
+        modifier = boardModifier,
+    )
+    SudokuToolBar(
+        isPencilMode = isPencilMode,
+        onToggle = onTogglePencil,
+        onHint = onHint,
+        hintEnabled = hintEnabled,
+        enabled = economy?.isGameplayAllowed ?: true,
+    )
+    SudokuNumberPad(enabled = inputEnabled, onDigit = onDigit)
+    game.currentHint?.let { SudokuHintCard(it) }
 }
 
 @Composable
@@ -345,6 +426,8 @@ private fun SudokuGameError.message(): String =
     )
 
 private fun SudokuDifficulty.toDifficulty(): Difficulty = Difficulty.valueOf(name)
+
+private val COMPACT_CONTROLS_HEIGHT = 144.dp
 
 @Preview(name = "Sudoku", widthDp = 360, heightDp = 800, showBackground = true)
 @Composable

@@ -74,6 +74,11 @@ internal fun SudokuBoard(
                         drawLine(color, Offset(coordinate, 0f), Offset(coordinate, size.height), stroke, StrokeCap.Square)
                         drawLine(color, Offset(0f, coordinate), Offset(size.width, coordinate), stroke, StrokeCap.Square)
                     }
+                    selectedCell?.let { position ->
+                        drawCellOutline(position, cellSize, colors.primary, SELECTED_WIDTH.toPx())
+                    } ?: game.currentHint?.position?.let { position ->
+                        drawCellOutline(position, cellSize, colors.tertiary, HINT_WIDTH.toPx())
+                    }
                 },
     ) {
         val cellWidth = maxWidth / BOARD_SIZE
@@ -180,13 +185,6 @@ private fun SudokuCell(
                 .semantics {
                     contentDescription = description
                     if (enabled) role = Role.Button
-                }.drawWithContent {
-                    drawContent()
-                    if (isSelected) {
-                        drawRect(colors.primary, style = Stroke(width = SELECTED_WIDTH.toPx()))
-                    } else if (isHintTarget) {
-                        drawRect(colors.tertiary, style = Stroke(width = HINT_WIDTH.toPx()))
-                    }
                 },
         contentAlignment = Alignment.Center,
     ) {
@@ -210,6 +208,31 @@ private fun SudokuCell(
             SudokuCellStatus.EMPTY -> Unit
         }
     }
+}
+
+/**
+ * Outlines are painted after the board grid, covering any divider beneath them. Perimeter lines
+ * move inward by half a stroke so all four selected edges retain their full visual thickness.
+ */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawCellOutline(
+    position: SudokuPosition,
+    cellSize: Float,
+    color: Color,
+    width: Float,
+) {
+    val left = position.column * cellSize
+    val top = position.row * cellSize
+    val right = left + cellSize
+    val bottom = top + cellSize
+    val halfWidth = width / 2f
+    val outlineLeft = if (position.column == 0) left + halfWidth else left
+    val outlineTop = if (position.row == 0) top + halfWidth else top
+    val outlineRight = if (position.column == BOARD_SIZE - 1) right - halfWidth else right
+    val outlineBottom = if (position.row == BOARD_SIZE - 1) bottom - halfWidth else bottom
+    drawLine(color, Offset(outlineLeft, outlineTop), Offset(outlineRight, outlineTop), width, StrokeCap.Butt)
+    drawLine(color, Offset(outlineLeft, outlineBottom), Offset(outlineRight, outlineBottom), width, StrokeCap.Butt)
+    drawLine(color, Offset(outlineLeft, outlineTop), Offset(outlineLeft, outlineBottom), width, StrokeCap.Butt)
+    drawLine(color, Offset(outlineRight, outlineTop), Offset(outlineRight, outlineBottom), width, StrokeCap.Butt)
 }
 
 /**
@@ -292,6 +315,6 @@ private val VALUE_MIN_TEXT = 16.dp
 private val VALUE_MAX_TEXT = 26.dp
 private val THIN_GRID_WIDTH = 0.5.dp
 private val STRONG_GRID_WIDTH = 2.dp
-private val SELECTED_WIDTH = 3.dp
-private val HINT_WIDTH = 2.dp
+private val SELECTED_WIDTH = 2.dp
+private val HINT_WIDTH = 1.5.dp
 private val STATUS_ICON_SIZE = 10.dp

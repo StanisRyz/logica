@@ -51,7 +51,6 @@ import com.stanisryz.logica.ui.components.LeaveLevelGuard
 import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.components.Metric
 import com.stanisryz.logica.ui.components.MetricGrid
-import com.stanisryz.logica.ui.components.PuzzleTitle
 import com.stanisryz.logica.ui.components.RetryableErrorState
 import com.stanisryz.logica.ui.components.ScreenColumn
 import com.stanisryz.logica.ui.components.StatusChip
@@ -209,7 +208,6 @@ private fun Game2048ReadyState(
         verticalSpacing = LogicaSpacing.item,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        PuzzleTitle(stringResource(R.string.game_2048_title), puzzleType = PuzzleType.GAME_2048)
         // The gameplay badge is the plain difficulty plus the level: what the goal actually is lives
         // in the metrics below, because a V1 attempt targets a tile while a V2 attempt targets a score.
         GameHeaderBadges(game.puzzleId.difficulty.russianLabel(), levelNumber)
@@ -264,11 +262,6 @@ private fun Game2048ReadyState(
                 onMotionFinished(revision)
             },
             inputEnabled = economy.isGameplayAllowed,
-        )
-        Text(
-            text = stringResource(R.string.game_2048_swipe_help),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
     if (game.status.isTerminal && motionEvent == null) {

@@ -128,6 +128,5 @@ internal fun AppDestination.isGameplay(): Boolean =
         else -> false
     }
 
-/** The three compact board games keep their wallet in the shared top row at every width. */
-internal fun AppDestination.usesCompactGameplayHeader(): Boolean =
-    this is AppDestination.BalanceGame || this is AppDestination.CrownsGame || this is AppDestination.WordGame
+/** Every production gameplay board keeps its wallet in the shared top row at every width. */
+internal fun AppDestination.usesCompactGameplayHeader(): Boolean = isGameplay()
