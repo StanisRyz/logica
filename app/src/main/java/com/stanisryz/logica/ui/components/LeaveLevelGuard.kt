@@ -37,20 +37,22 @@ internal class GameplayExitGuard {
 }
 
 /**
- * Confirms leaving a level that still has meaningful progress on it. It deliberately stays silent
- * before the first real move, after a terminal result, and for a 2048 level that is already cleared:
- * in those cases there is nothing left to lose.
+ * Confirms an unfinished exit, can block an in-flight durable completion, and can route an already
+ * durable completion through the caller's terminal-action continuation. Header and system Back use
+ * this same interceptor, so they cannot diverge.
  */
 @Composable
 internal fun LeaveLevelGuard(
     guard: GameplayExitGuard,
     hasProgress: Boolean,
     exitBlocked: Boolean = false,
+    onDurableCompletionExit: ((proceed: () -> Unit) -> Unit)? = null,
 ) {
     var pendingLeave by remember { mutableStateOf<(() -> Unit)?>(null) }
     var showBlockedNotice by remember { mutableStateOf(false) }
     val currentHasProgress by rememberUpdatedState(hasProgress)
     val currentExitBlocked by rememberUpdatedState(exitBlocked)
+    val currentDurableCompletionExit by rememberUpdatedState(onDurableCompletionExit)
     LaunchedEffect(exitBlocked) {
         if (!exitBlocked) showBlockedNotice = false
     }
@@ -59,6 +61,10 @@ internal fun LeaveLevelGuard(
             when {
                 currentExitBlocked -> {
                     showBlockedNotice = true
+                    true
+                }
+                currentDurableCompletionExit != null -> {
+                    currentDurableCompletionExit?.invoke(proceed)
                     true
                 }
                 currentHasProgress -> {

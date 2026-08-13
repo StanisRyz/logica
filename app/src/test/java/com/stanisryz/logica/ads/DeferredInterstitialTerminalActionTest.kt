@@ -11,7 +11,7 @@ import org.junit.Test
  */
 class DeferredInterstitialTerminalActionTest {
     @Test
-    fun `a pending opportunity is only spent by the first terminal action and its action continues`() {
+    fun `cleared 2048 back waits for the pending interstitial then performs that exact navigation`() {
         val world = TerminalActionWorld()
         world.pending = InterstitialOpportunity("result-1")
 
@@ -19,21 +19,21 @@ class DeferredInterstitialTerminalActionTest {
         assertEquals(0, world.presented)
         assertEquals(emptyList<String>(), world.performed)
 
-        world.coordinator.run { world.performed += "retry" }
+        world.coordinator.run { world.performed += "back" }
 
-        // The tap consumed the one opportunity, the ad went up, and the retry waited behind it.
+        // Back consumed the one opportunity, the ad went up, and navigation waited behind it.
         assertEquals(1, world.presented)
         assertEquals(emptyList<String>(), world.performed)
         assertNull(world.pending)
 
         world.dismissAd()
-        assertEquals(listOf("retry"), world.performed)
+        assertEquals(listOf("back"), world.performed)
 
         // A later action on the same finished attempt has nothing left to spend.
         world.advance(SECOND_TAP_MILLIS)
         world.coordinator.run { world.performed += "toGames" }
         assertEquals(1, world.presented)
-        assertEquals(listOf("retry", "toGames"), world.performed)
+        assertEquals(listOf("back", "toGames"), world.performed)
     }
 
     @Test

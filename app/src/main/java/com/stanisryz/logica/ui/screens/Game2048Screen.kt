@@ -85,10 +85,13 @@ internal fun Game2048Route(
     val uiState by gameViewModel.uiState.collectAsStateWithLifecycle()
     val economy by gameViewModel.economy.collectAsStateWithLifecycle()
     val ready = uiState as? Game2048UiState.Ready
+    val backBehavior = game2048BackBehavior(launch, ready)
     LeaveLevelGuard(
         guard = exitGuard,
         hasProgress = ready?.hasMeaningfulProgress == true,
-        exitBlocked = ready?.levelCleared == true && ready.completionPersistence == CompletionPersistence.Saving,
+        exitBlocked = backBehavior == Game2048BackBehavior.BLOCKED_SAVING,
+        onDurableCompletionExit =
+            onTerminalAction.takeIf { backBehavior == Game2048BackBehavior.DEFERRED_TERMINAL_ACTION },
     )
     Game2048Screen(
         uiState = uiState,
@@ -106,6 +109,27 @@ internal fun Game2048Route(
         hapticsEnabled = hapticsEnabled,
         modifier = modifier,
     )
+}
+
+/** Only a durably cleared Catalog freeplay turns Back into an eligible terminal action. */
+internal fun game2048BackBehavior(
+    launch: GameAttemptLaunch,
+    ready: Game2048UiState.Ready?,
+): Game2048BackBehavior =
+    when {
+        ready?.levelCleared == true && ready.completionPersistence == CompletionPersistence.Saving ->
+            Game2048BackBehavior.BLOCKED_SAVING
+        launch is GameAttemptLaunch.Level &&
+            ready?.levelCleared == true &&
+            ready.completionPersistence == CompletionPersistence.Saved ->
+            Game2048BackBehavior.DEFERRED_TERMINAL_ACTION
+        else -> Game2048BackBehavior.NORMAL
+    }
+
+internal enum class Game2048BackBehavior {
+    NORMAL,
+    BLOCKED_SAVING,
+    DEFERRED_TERMINAL_ACTION,
 }
 
 @Composable

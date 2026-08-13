@@ -27,6 +27,8 @@ import com.stanisryz.logica.result.GameCompletion
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.result.GameResult
+import com.stanisryz.logica.ui.screens.Game2048BackBehavior
+import com.stanisryz.logica.ui.screens.game2048BackBehavior
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -81,6 +83,7 @@ class Game2048LevelClearTest {
             var ready = viewModel.uiState.first { it !is Game2048UiState.Loading } as Game2048UiState.Ready
             assertFalse(ready.levelCleared)
             assertTrue(completions.recorded.isEmpty())
+            assertEquals(Game2048BackBehavior.NORMAL, game2048BackBehavior(GameAttemptLaunch.Level(levelId), ready))
 
             // Play up to and past the clear: the level completes the moment the target is crossed.
             while (!ready.levelCleared) {
@@ -96,6 +99,17 @@ class Game2048LevelClearTest {
             assertEquals(Game2048Status.IN_PROGRESS, ready.game.status)
             assertEquals(CompletionPersistence.Saving, ready.completionPersistence)
             assertTrue(ready.hasMeaningfulProgress)
+            assertEquals(
+                Game2048BackBehavior.BLOCKED_SAVING,
+                game2048BackBehavior(GameAttemptLaunch.Level(levelId), ready),
+            )
+            assertEquals(
+                Game2048BackBehavior.NORMAL,
+                game2048BackBehavior(
+                    GameAttemptLaunch.Level(levelId),
+                    ready.copy(completionPersistence = CompletionPersistence.Error),
+                ),
+            )
 
             val gameAtClear = ready.game
             viewModel.play(nextDirection(ready.game))
@@ -109,6 +123,10 @@ class Game2048LevelClearTest {
                     state is Game2048UiState.Ready && state.completionPersistence == CompletionPersistence.Saved
                 } as Game2048UiState.Ready
             assertFalse(ready.hasMeaningfulProgress)
+            assertEquals(
+                Game2048BackBehavior.DEFERRED_TERMINAL_ACTION,
+                game2048BackBehavior(GameAttemptLaunch.Level(levelId), ready),
+            )
 
             val scoreAtClear = ready.game.score
             while (!ready.game.status.isTerminal) {
