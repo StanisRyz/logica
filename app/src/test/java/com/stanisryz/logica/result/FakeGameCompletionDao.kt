@@ -136,6 +136,12 @@ internal class FakeGameCompletionDao(
     override suspend fun insertEconomyEvent(event: EconomyEventEntity): Long =
         if (economyEvents.putIfAbsent(event.eventId, event) == null) 1 else -1
 
+    override suspend fun findCatalogCurrentLevel(
+        puzzleType: String,
+        difficulty: String,
+        packVersion: Int,
+    ): Int? = progress[Triple(puzzleType, difficulty, packVersion)]
+
     override suspend fun insertCatalogProgressIfAbsent(
         puzzleType: String,
         difficulty: String,
@@ -168,6 +174,15 @@ internal class FakeGameCompletionDao(
         difficulty: Difficulty = Difficulty.EASY,
         packVersion: CatalogLevelPackVersion = CatalogLevelPackVersion.V1,
     ): Int? = progress[Triple(puzzleType.name, difficulty.name, packVersion.value)]
+
+    fun setCurrentLevel(
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+        level: Int,
+        packVersion: CatalogLevelPackVersion = CatalogLevelPackVersion.V1,
+    ) {
+        progress[Triple(puzzleType.name, difficulty.name, packVersion.value)] = level
+    }
 
     /** One Catalog attempt of [puzzleType] at one public level. */
     fun catalogCompletion(

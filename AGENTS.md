@@ -7,14 +7,15 @@
 - `:puzzle-core` contains platform-independent puzzle domain and algorithms; it must never depend on Android, Compose, or `:app`.
 - DataStore stores user preferences; Room stores durable results, economy, Daily lifecycle, and Catalog level progression, and ViewModels use repositories rather than Room DAOs.
 - Catalog and Daily gameplay is sessionless: an unfinished attempt lives only in its gameplay ViewModel and is discarded on leaving.
-- Catalog Level Pack V1 is frozen: `(puzzleType, difficulty, contentSlot)` maps to one accepted seed forever, and incompatible curation needs a new `CatalogLevelPackVersion`.
+- Catalog Level Pack V1 is frozen: `(puzzleType, difficulty, contentSlot)` maps to one accepted seed forever, developer tooling must reject a content-changing overwrite, and incompatible curation needs a new `CatalogLevelPackVersion`.
 - One bucket holds exactly 10 000 slots; a displayed level resolves through `((level - 1) % 10 000) + 1`, so level 10 001 replays slot 1 while staying a distinct level and a distinct completion.
 - Level packs are compact read-only binary assets under `app/src/main/assets/levels/v1/`; the runtime streams the single record it needs and never parses a whole bucket at cold start.
+- Frozen Level Pack binary difficulty codes are explicit and stable: EASY/MEDIUM/HARD/EXPERT are 1/2/3/4 and never enum ordinals.
 - Missing or corrupt level content fails the attempt cleanly; it never falls back to a randomly seeded puzzle.
 - `:puzzle-core:buildCatalogLevelPacks` is the developer-only offline freeze; it reuses the shipped generators, solvers, datasets, and lexicons and never runs on a device.
 - Level content per game: Balance and Crowns freeze accepted Generator V1 seeds, Sudoku freezes a selector permutation over the unchanged Dataset V1, Word freezes a Generator V2 seed scan that uses every available answer before repeating, and 2048 freezes seeds for the existing deterministic spawn and V2 score targets.
 - A bucket whose distinct content is smaller than 10 000 (EASY Balance) repeats deterministically once the offline scan exhausts it; uniqueness is best effort, determinism is not.
-- Level progression is one compact `catalog_level_progress` row per game/difficulty/pack version holding the next level to play; new users and migrated users start at level 1 and every bucket advances on its own.
+- Level progression is one compact `catalog_level_progress` row per game/difficulty/pack version holding the next level to play; new users and migrated users start at level 1 and every bucket advances on its own. Gameplay launch resolves this authoritative repository identity on demand and never substitutes a level from an unloaded UI map.
 - Puzzle identity is type + difficulty + seed + `generatorVersion`; concrete generators own their version.
 - Generators use project-owned random infrastructure and never system time, platform randomness, or Android APIs.
 - Daily seed derivation is deterministic and receives dates explicitly; concrete engines implement the shared `:puzzle-core` contracts.
@@ -87,7 +88,7 @@
 - The per-puzzle session codecs are retained legacy code that nothing calls at runtime; correct/wrong and mistakes are always recomputed from the regenerated puzzle, never stored.
 - Every terminal attempt — `SOLVED` or `FAILED` — produces exactly one durable `GameResult`; `attemptsUsed` stays Word-only. Completion identity is `catalog:<pack>:<type>:<difficulty>:<level>:<attemptId>` for the Catalog and the attempt ID for Daily, so a repeated callback is an idempotent no-op.
 - Retry restarts the very same level from its initial deterministic state under a new attempt ID; it is allowed only after the finished attempt's result is durably persisted.
-- Catalog completion is one atomic transaction: the durable result, its gem reward or life penalty, and the progression step to the next level all land together, and the monotonic `current_level < next` update makes advancing exactly-once.
+- Catalog completion first validates puzzle, difficulty, pack version, and level number against current progression; only then may the atomic result, gem reward or life penalty, and solved progression step land, while repeated matching durable callbacks remain no-ops.
 - A failed Catalog attempt records its result and its life penalty and leaves progression on the same level; leaving an unfinished attempt costs nothing at all.
 - Daily entries and runs complete on `SOLVED` only: a `FAILED` attempt stays durable, leaves the entry open for another attempt, and never advances progress, the run, or the streak. Historical runs already `COMPLETED` are never rewritten.
 - Solved-labelled statistics and Daily sharing read `SOLVED` results only; a completed run with no solved result for an entry disables sharing rather than showing a failure.
@@ -182,7 +183,7 @@
 - `Game2048GeneratorVersion.V1` is immutable and still implemented — target tile 256/512/1024/2048, solved the moment the tile appears — but no level or Daily entry creates it any more.
 - `Game2048GeneratorVersion.V2` targets scores 12 000 / 30 000 / 100 000 / 250 000 for EASY/MEDIUM/HARD/EXPERT. In the core the target only sets the informational `goalReached` and the game stays `IN_PROGRESS` until no legal move remains; the Catalog level layer above it is what treats that first crossing as the level clear. Every 2048 game is V2.
 - Daily 2048 is V2 Medium (target score 30 000) on the deterministic Daily seed, and keeps the V5 rule that only the final score decides its outcome.
-- A Catalog 2048 level clears the instant `score >= targetScore`: that first crossing alone records the solved result, pays the gems, advances progression, and creates the normal deferred Interstitial opportunity. The board keeps running as freeplay under a persistent `Уровень N ✓` state, a later game over is neither a failure nor a life, and leaving keeps the level cleared.
+- A Catalog 2048 level reaches its target the instant `score >= targetScore`, but target-reached and completion-durable are distinct states: persistence follows the attempt identity while freeplay continues, leaving stays guarded until durability, and later game over can neither fail nor repay the cleared level.
 - 2048 game over before the target is the normal failure: it records `FAILED`, costs one life, and keeps progression on the same level.
 - 2048 onboarding is a DataStore preference and creates no gameplay records; Profile reports played/solved/failed plus solved counts by difficulty, without high-score persistence.
 - Deferred to Stage 42.1: physically removing the retained legacy session infrastructure once the sessionless model is validated on a real device.

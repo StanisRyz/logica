@@ -9,6 +9,7 @@ import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.result.toEntity
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.time.LocalDate
 
@@ -20,9 +21,36 @@ class AtomicCatalogCompletionTest {
     private val definition = DailyChallengePolicyV5.definitionFor(LocalDate.of(2026, 8, 12))
 
     @Test
-    fun aSolvedLevelPaysAndAdvancesExactlyOnceHoweverOftenTheCallbackRepeats() =
+    fun staleAndFutureLevelsAreRejectedWhileTheCurrentLevelCompletesIdempotently() =
         runBlocking {
             val dao = FakeGameCompletionDao(definition)
+            dao.setCurrentLevel(PuzzleType.BALANCE, Difficulty.MEDIUM, 41)
+            val stale =
+                dao
+                    .catalogCompletion(
+                        PuzzleType.BALANCE,
+                        outcome = GameOutcome.FAILED,
+                        difficulty = Difficulty.MEDIUM,
+                        levelNumber = 1,
+                        attemptId = "stale",
+                    ).toEntity(500)
+            val future =
+                dao
+                    .catalogCompletion(
+                        PuzzleType.BALANCE,
+                        difficulty = Difficulty.MEDIUM,
+                        levelNumber = 42,
+                        attemptId = "future",
+                    ).toEntity(600)
+
+            assertThrows(IllegalArgumentException::class.java) { runBlocking { dao.complete(stale) } }
+            assertThrows(IllegalArgumentException::class.java) { runBlocking { dao.complete(future) } }
+            assertEquals(0, dao.results.size)
+            assertEquals(0, dao.economyEvents.size)
+            assertEquals(EconomyRules.STARTING_GEMS, dao.wallet(600).gems)
+            assertEquals(EconomyRules.STARTING_LIVES, dao.wallet(600).lives)
+            assertEquals(41, dao.currentLevel(PuzzleType.BALANCE, Difficulty.MEDIUM))
+
             val solved =
                 dao
                     .catalogCompletion(PuzzleType.BALANCE, difficulty = Difficulty.MEDIUM, levelNumber = 41)

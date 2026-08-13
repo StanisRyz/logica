@@ -84,8 +84,12 @@ internal fun Game2048Route(
     val gameViewModel: Game2048ViewModel = viewModel(factory = factory)
     val uiState by gameViewModel.uiState.collectAsStateWithLifecycle()
     val economy by gameViewModel.economy.collectAsStateWithLifecycle()
-    // A cleared level is already durable, so only an uncleared board in progress warns on Back.
-    LeaveLevelGuard(exitGuard, (uiState as? Game2048UiState.Ready)?.hasMeaningfulProgress == true)
+    val ready = uiState as? Game2048UiState.Ready
+    LeaveLevelGuard(
+        guard = exitGuard,
+        hasProgress = ready?.hasMeaningfulProgress == true,
+        exitBlocked = ready?.levelCleared == true && ready.completionPersistence == CompletionPersistence.Saving,
+    )
     Game2048Screen(
         uiState = uiState,
         economy = economy,
@@ -207,6 +211,16 @@ private fun Game2048ReadyState(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            when (uiState.completionPersistence) {
+                CompletionPersistence.Saving -> Text(stringResource(R.string.saving_completion))
+                CompletionPersistence.Error -> {
+                    Text(stringResource(R.string.completion_save_error_body))
+                    TextButton(onClick = onRetryCompletion) { Text(stringResource(R.string.retry)) }
+                }
+                CompletionPersistence.NotRequired,
+                CompletionPersistence.Saved,
+                -> Unit
+            }
         }
         ZeroLivesCard(economy, onRestoreLife)
         Game2048Board(

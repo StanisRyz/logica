@@ -5,6 +5,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,16 +45,27 @@ internal class GameplayExitGuard {
 internal fun LeaveLevelGuard(
     guard: GameplayExitGuard,
     hasProgress: Boolean,
+    exitBlocked: Boolean = false,
 ) {
     var pendingLeave by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var showBlockedNotice by remember { mutableStateOf(false) }
     val currentHasProgress by rememberUpdatedState(hasProgress)
+    val currentExitBlocked by rememberUpdatedState(exitBlocked)
+    LaunchedEffect(exitBlocked) {
+        if (!exitBlocked) showBlockedNotice = false
+    }
     DisposableEffect(guard) {
         val interceptor: (() -> Unit) -> Boolean = { proceed ->
-            if (currentHasProgress) {
-                pendingLeave = proceed
-                true
-            } else {
-                false
+            when {
+                currentExitBlocked -> {
+                    showBlockedNotice = true
+                    true
+                }
+                currentHasProgress -> {
+                    pendingLeave = proceed
+                    true
+                }
+                else -> false
             }
         }
         guard.install(interceptor)
@@ -75,6 +87,17 @@ internal fun LeaveLevelGuard(
             },
             dismissButton = {
                 TextButton(onClick = { pendingLeave = null }) { Text(stringResource(R.string.leave_level_stay)) }
+            },
+        )
+    }
+
+    if (showBlockedNotice) {
+        AlertDialog(
+            onDismissRequest = { showBlockedNotice = false },
+            title = { Text(stringResource(R.string.saving_completion)) },
+            text = { Text(stringResource(R.string.completion_exit_saving_body)) },
+            confirmButton = {
+                TextButton(onClick = { showBlockedNotice = false }) { Text(stringResource(R.string.leave_level_stay)) }
             },
         )
     }

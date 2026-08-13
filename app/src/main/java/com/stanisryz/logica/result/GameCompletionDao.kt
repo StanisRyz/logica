@@ -83,6 +83,17 @@ internal interface GameCompletionDao {
     suspend fun insertEconomyEvent(event: EconomyEventEntity): Long
 
     @Query(
+        "SELECT current_level FROM catalog_level_progress " +
+            "WHERE puzzle_type = :puzzleType AND difficulty = :difficulty " +
+            "AND level_pack_version = :packVersion LIMIT 1",
+    )
+    suspend fun findCatalogCurrentLevel(
+        puzzleType: String,
+        difficulty: String,
+        packVersion: Int,
+    ): Int?
+
+    @Query(
         "INSERT OR IGNORE INTO catalog_level_progress " +
             "(puzzle_type, difficulty, level_pack_version, current_level, updated_at_epoch_millis) " +
             "VALUES (:puzzleType, :difficulty, :packVersion, :nextLevel, :updatedAt)",
@@ -119,13 +130,27 @@ internal interface GameCompletionDao {
     @Transaction
     suspend fun complete(result: GameResultEntity): GameResultEntity {
         val existing = findResult(result.resultId)
-        if (existing == null) {
-            require(insertResult(result) != -1L) { "The completed result could not be inserted." }
-        } else {
+        if (existing != null) {
             require(existing.matchesImmutableFacts(result)) {
                 "The result ID already belongs to a different completion."
             }
+            return existing
         }
+
+        if (result.sessionScope == GameSessionScope.CATALOG.name) {
+            val levelNumber = requireNotNull(result.catalogLevelNumber) { "A Catalog result must name its level." }
+            val packVersion =
+                requireNotNull(result.catalogLevelPackVersion) { "A Catalog result must name its level pack." }
+            val authoritativeLevel =
+                findCatalogCurrentLevel(result.puzzleType, result.difficulty, packVersion)
+                    ?.takeIf { it >= FIRST_CATALOG_LEVEL }
+                    ?: FIRST_CATALOG_LEVEL
+            require(levelNumber == authoritativeLevel) {
+                "Catalog completion level $levelNumber is not the current level $authoritativeLevel."
+            }
+        }
+
+        require(insertResult(result) != -1L) { "The completed result could not be inserted." }
 
         // The wallet moves in the very same transaction as the result, keyed by that result, so a
         // crash, a retried save, or a repeated callback can never pay or charge the attempt twice.
@@ -236,4 +261,8 @@ internal interface GameCompletionDao {
             catalogLevelPackVersion == other.catalogLevelPackVersion &&
             challengeDate == other.challengeDate &&
             dailyPolicyVersion == other.dailyPolicyVersion
+
+    private companion object {
+        const val FIRST_CATALOG_LEVEL = 1
+    }
 }

@@ -108,6 +108,7 @@
     <string name="retry">Повторить</string>
     <string name="saving">Сохраняем…</string>
     <string name="saving_completion">Сохраняем результат…</string>
+    <string name="completion_exit_saving_body">Дождитесь сохранения уровня перед выходом.</string>
     <string name="completion_save_error_title">Не удалось сохранить результат</string>
     <string name="completion_save_error_body">Прогресс не потерян. Повторите сохранение результата.</string>
     <string name="puzzle_generation_error">Не удалось создать головоломку.</string>

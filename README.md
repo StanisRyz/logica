@@ -69,10 +69,10 @@ The frozen Catalog levels are built offline and committed as compact assets:
 .\gradlew.bat :puzzle-core:buildCatalogLevelPacks -PlevelPackGames=balance,crowns
 ```
 
-It reuses the shipped generators, solvers, dataset, and lexicon to freeze 10 000 accepted puzzles
-for every game and difficulty into `app/src/main/assets/levels/v1/`. Level Pack V1 is frozen: the
-application only reads it, and past level 10 000 the content cycles while the level number keeps
-counting up.
+It reuses the shipped generators, solvers, dataset, and lexicon to regenerate candidate buckets for
+the 10 000 accepted puzzles per game and difficulty. Level Pack V1 is frozen: matching candidates
+verify successfully, changed content requires a new pack version, and past level 10 000 the content
+cycles while the level number keeps counting up.
 
 `wordLexiconPrepare` regenerates `puzzle-core/src/main/resources/word/v1/` from the offline curated
 sources in `lexicon/word/`; V1 is frozen and changing an existing V1 seed-to-answer mapping is not

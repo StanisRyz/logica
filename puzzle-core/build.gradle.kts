@@ -79,7 +79,7 @@ tasks.register<JavaExec>("wordQualityCheck") {
  */
 tasks.register<JavaExec>("buildCatalogLevelPacks") {
     group = "build"
-    description = "Regenerates the frozen Catalog Level Pack V1 assets from the shipped generators."
+    description = "Regenerates candidates and verifies they match the frozen Catalog Level Pack V1 assets."
     dependsOn(qualitySourceSet.classesTaskName)
     classpath = qualitySourceSet.runtimeClasspath
     mainClass.set("com.stanisryz.logica.puzzle.core.catalog.quality.CatalogLevelPackBuilder")
@@ -94,6 +94,19 @@ tasks.register<JavaExec>("buildCatalogLevelPacks") {
             providers.gradleProperty("levelPackSlots").orElse("10000").get(),
         )
     }
+}
+
+tasks.register<JavaExec>("verifyCatalogLevelPacks") {
+    group = "verification"
+    description = "Verifies SHA-256 checksums of the frozen Catalog Level Pack V1 assets."
+    dependsOn(qualitySourceSet.classesTaskName)
+    classpath = qualitySourceSet.runtimeClasspath
+    mainClass.set("com.stanisryz.logica.puzzle.core.catalog.quality.CatalogLevelPackIntegrity")
+    args(
+        rootProject.layout.projectDirectory
+            .dir("app/src/main/assets")
+            .asFile.path,
+    )
 }
 
 tasks.register<JavaExec>("wordLexiconPrepare") {

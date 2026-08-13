@@ -30,6 +30,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -38,6 +40,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
@@ -60,8 +63,6 @@ import com.stanisryz.logica.ads.TerminalActionCoordinator
 import com.stanisryz.logica.catalog.CatalogLevelRepository
 import com.stanisryz.logica.catalog.GameAttemptFactory
 import com.stanisryz.logica.catalog.GameAttemptLaunch
-import com.stanisryz.logica.catalog.levelLaunch
-import com.stanisryz.logica.catalog.nextLevelLaunch
 import com.stanisryz.logica.catalog.rememberCatalogLevels
 import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.DailyGameLaunch
@@ -101,6 +102,7 @@ import com.stanisryz.logica.ui.screens.WordTutorialRoute
 import com.stanisryz.logica.ui.screens.gameCatalogEntries
 import com.stanisryz.logica.ui.theme.LogicaMotion
 import com.stanisryz.logica.ui.theme.LogicaSpacing
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun LogicaNavigation(
@@ -152,6 +154,10 @@ internal fun LogicaNavigation(
     val currentDestination = backStack.last()
     var showLivesDialog by rememberSaveable { mutableStateOf(false) }
     val activity = LocalActivity.current
+    val navigationScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val levelUnavailableMessage = stringResource(R.string.level_content_error)
+    var resolvingCatalogLevel by remember { mutableStateOf(false) }
 
     /** There is one store: everything that offers gems selects the Store tab instead of a dialog. */
     val openStore = {
@@ -217,24 +223,42 @@ internal fun LogicaNavigation(
         backStack.add(dailyLaunch.puzzleType.gameDestination(dailyLaunch.launch))
     }
 
-    /** Start the selected difficulty's current level; the pack decides which puzzle that is. */
-    val openLevel: (PuzzleType, Difficulty, Map<Difficulty, Int>) -> Unit = { puzzleType, difficulty, levels ->
-        val level = levels[difficulty] ?: 1
-        backStack.add(puzzleType.gameDestination(catalogLevelRepository.levelLaunch(puzzleType, difficulty, level)))
+    /** Resolve the selected difficulty directly; observed level maps are presentation only. */
+    val openLevel: (PuzzleType, Difficulty) -> Unit = { puzzleType, difficulty ->
+        if (!resolvingCatalogLevel) {
+            resolvingCatalogLevel = true
+            navigationScope.launch {
+                val levelId =
+                    runCatching { catalogLevelRepository.currentLevelId(puzzleType, difficulty) }
+                        .getOrElse {
+                            resolvingCatalogLevel = false
+                            snackbarHostState.showSnackbar(levelUnavailableMessage)
+                            return@launch
+                        }
+                resolvingCatalogLevel = false
+                backStack.add(puzzleType.gameDestination(GameAttemptLaunch.Level(levelId)))
+            }
+        }
     }
 
-    /** After a solve, progression has already advanced, so the next launch is simply level + 1. */
+    /** Re-read progression for Next as well, so every Catalog launch has authoritative identity. */
     val openNextLevel: (PuzzleType, GameAttemptLaunch) -> Unit = { puzzleType, launch ->
-        val next = launch.nextLevelLaunch()
-        if (next == null) {
+        val level = launch as? GameAttemptLaunch.Level
+        if (level == null) {
             returnToGameHub(backStack) { selectedTab = it }
         } else {
-            backStack.removeLastOrNull()
-            backStack.add(puzzleType.gameDestination(next))
+            navigationScope.launch {
+                runCatching { catalogLevelRepository.currentLevelId(puzzleType, level.levelId.difficulty) }
+                    .onSuccess { levelId ->
+                        backStack.removeLastOrNull()
+                        backStack.add(puzzleType.gameDestination(GameAttemptLaunch.Level(levelId)))
+                    }.onFailure { snackbarHostState.showSnackbar(levelUnavailableMessage) }
+            }
         }
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             AppTopBar(
                 title = destinationTitle(currentDestination, selectedTab),
@@ -337,7 +361,7 @@ internal fun LogicaNavigation(
                             tutorialCompleted = settings.balanceTutorialCompleted,
                             economy = economy,
                             onOpenTutorial = { backStack.add(AppDestination.BalanceTutorial) },
-                            onStart = { difficulty -> openLevel(PuzzleType.BALANCE, difficulty, levels) },
+                            onStart = { difficulty -> openLevel(PuzzleType.BALANCE, difficulty) },
                             onRestoreLife = onRestoreLife,
                         )
                     }
@@ -356,7 +380,7 @@ internal fun LogicaNavigation(
                             },
                             onStart = { difficulty ->
                                 onCrownsTutorialCompleted(true)
-                                openLevel(PuzzleType.CROWNS, difficulty, levels)
+                                openLevel(PuzzleType.CROWNS, difficulty)
                             },
                             onRestoreLife = onRestoreLife,
                         )
@@ -380,7 +404,7 @@ internal fun LogicaNavigation(
                             },
                             onStart = { difficulty ->
                                 onWordTutorialCompleted(true)
-                                openLevel(PuzzleType.WORD, difficulty, levels)
+                                openLevel(PuzzleType.WORD, difficulty)
                             },
                             onRestoreLife = onRestoreLife,
                         )
@@ -395,7 +419,7 @@ internal fun LogicaNavigation(
                             tutorialCompleted = settings.sudokuTutorialCompleted,
                             economy = economy,
                             onOpenTutorial = { backStack.add(AppDestination.SudokuTutorial) },
-                            onStart = { difficulty -> openLevel(PuzzleType.SUDOKU, difficulty, levels) },
+                            onStart = { difficulty -> openLevel(PuzzleType.SUDOKU, difficulty) },
                             onRestoreLife = onRestoreLife,
                         )
                     }
@@ -412,7 +436,7 @@ internal fun LogicaNavigation(
                             tutorialCompleted = settings.game2048TutorialCompleted,
                             economy = economy,
                             onOpenTutorial = { backStack.add(AppDestination.Game2048Tutorial) },
-                            onStart = { difficulty -> openLevel(PuzzleType.GAME_2048, difficulty, levels) },
+                            onStart = { difficulty -> openLevel(PuzzleType.GAME_2048, difficulty) },
                             onRestoreLife = onRestoreLife,
                         )
                     }

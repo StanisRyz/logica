@@ -44,9 +44,14 @@ internal sealed interface Game2048UiState {
          */
         val levelCleared: Boolean = false,
     ) : Game2048UiState {
-        /** A cleared level is already durable, so leaving costs the player nothing worth warning about. */
+        /** A reached target stays guarded until its completion transaction is actually durable. */
         val hasMeaningfulProgress: Boolean
-            get() = !game.status.isTerminal && !levelCleared && game.nextSpawnIndex > INITIAL_SPAWN_COUNT
+            get() =
+                !game.status.isTerminal &&
+                    when {
+                        levelCleared -> completionPersistence != CompletionPersistence.Saved
+                        else -> game.nextSpawnIndex > INITIAL_SPAWN_COUNT
+                    }
     }
 
     data class Error(
@@ -201,21 +206,21 @@ internal class Game2048ViewModel(
             viewModelScope.launch {
                 try {
                     completionRepository.complete(completion)
-                    updateCompletionPersistence(game, CompletionPersistence.Saved)
+                    updateCompletionPersistence(current.resultId, CompletionPersistence.Saved)
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (_: Exception) {
-                    updateCompletionPersistence(game, CompletionPersistence.Error)
+                    updateCompletionPersistence(current.resultId, CompletionPersistence.Error)
                 }
             }
     }
 
     private fun updateCompletionPersistence(
-        game: Game2048State,
+        resultId: String,
         persistence: CompletionPersistence,
     ) {
         val current = mutableUiState.value
-        if (current is Game2048UiState.Ready && current.game == game) {
+        if (current is Game2048UiState.Ready && attempt?.resultId == resultId) {
             mutableUiState.value = current.copy(completionPersistence = persistence)
         }
     }

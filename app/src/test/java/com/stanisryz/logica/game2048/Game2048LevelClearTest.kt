@@ -22,10 +22,12 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletion
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.result.GameResult
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -64,10 +66,11 @@ class Game2048LevelClearTest {
     }
 
     @Test
-    fun crossingTheScoreTargetClearsTheLevelOnceAndTheLaterGameOverNeverFails() =
+    fun delayedTargetSaveSurvivesFreeplayAndTheLaterGameOverNeverFails() =
         runBlocking {
             val seed = seedThatClearsThenDies()
-            val completions = RecordingCompletions()
+            val saveGate = CompletableDeferred<Unit>()
+            val completions = RecordingCompletions(saveGate)
             val viewModel =
                 Game2048ViewModel(
                     launch = GameAttemptLaunch.Level(levelId),
@@ -89,8 +92,22 @@ class Game2048LevelClearTest {
             val clear = completions.recorded.single()
             assertEquals(GameOutcome.SOLVED, clear.outcome)
             assertEquals(levelId, clear.catalogLevel)
-            // Cleared, and still running: the board is not terminal and freeplay continues.
+            // Cleared, and still running while the durable transaction is deliberately delayed.
             assertEquals(Game2048Status.IN_PROGRESS, ready.game.status)
+            assertEquals(CompletionPersistence.Saving, ready.completionPersistence)
+            assertTrue(ready.hasMeaningfulProgress)
+
+            val gameAtClear = ready.game
+            viewModel.play(nextDirection(ready.game))
+            ready = viewModel.ready()
+            assertTrue(gameAtClear != ready.game)
+            assertEquals(CompletionPersistence.Saving, ready.completionPersistence)
+
+            saveGate.complete(Unit)
+            ready =
+                viewModel.uiState.first { state ->
+                    state is Game2048UiState.Ready && state.completionPersistence == CompletionPersistence.Saved
+                } as Game2048UiState.Ready
             assertFalse(ready.hasMeaningfulProgress)
 
             val scoreAtClear = ready.game.score
@@ -178,7 +195,9 @@ class Game2048LevelClearTest {
             CatalogLevelDefinition(levelId, seed, GeneratorVersion(Game2048GeneratorVersion.V2.value))
     }
 
-    private class RecordingCompletions : GameCompletionRepository {
+    private class RecordingCompletions(
+        private val saveGate: CompletableDeferred<Unit>,
+    ) : GameCompletionRepository {
         val recorded = mutableListOf<GameCompletion>()
         var calls = 0
             private set
@@ -186,6 +205,7 @@ class Game2048LevelClearTest {
         override suspend fun complete(completion: GameCompletion): GameResult {
             calls += 1
             if (recorded.none { it.resultId == completion.resultId }) recorded += completion
+            saveGate.await()
             return GameResult(
                 resultId = completion.resultId,
                 puzzleType = completion.puzzleType,

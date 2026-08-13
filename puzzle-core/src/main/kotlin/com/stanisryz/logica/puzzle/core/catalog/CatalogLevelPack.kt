@@ -34,7 +34,14 @@ object CatalogLevelPackFormat {
             else -> error("$puzzleType has no Catalog level pack.")
         }
 
-    fun difficultyCode(difficulty: Difficulty): Int = difficulty.ordinal + 1
+    /** Stable on-disk codes. Never derive these from enum declaration order. */
+    fun difficultyCode(difficulty: Difficulty): Int =
+        when (difficulty) {
+            Difficulty.EASY -> 1
+            Difficulty.MEDIUM -> 2
+            Difficulty.HARD -> 3
+            Difficulty.EXPERT -> 4
+        }
 
     fun header(
         packVersion: CatalogLevelPackVersion,
