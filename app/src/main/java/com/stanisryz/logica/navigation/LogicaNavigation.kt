@@ -358,7 +358,6 @@ internal fun LogicaNavigation(
                         val levels = rememberCatalogLevels(catalogLevelRepository, PuzzleType.BALANCE)
                         BalanceStartScreen(
                             levels = levels,
-                            tutorialCompleted = settings.balanceTutorialCompleted,
                             economy = economy,
                             onOpenTutorial = { backStack.add(AppDestination.BalanceTutorial) },
                             onStart = { difficulty -> openLevel(PuzzleType.BALANCE, difficulty) },
@@ -372,7 +371,6 @@ internal fun LogicaNavigation(
                         val levels = rememberCatalogLevels(catalogLevelRepository, PuzzleType.CROWNS)
                         CrownsStartScreen(
                             levels = levels,
-                            tutorialCompleted = settings.crownsTutorialCompleted,
                             economy = economy,
                             onOpenTutorial = {
                                 onCrownsTutorialCompleted(true)
@@ -396,7 +394,6 @@ internal fun LogicaNavigation(
                         val levels = rememberCatalogLevels(catalogLevelRepository, PuzzleType.WORD)
                         WordStartScreen(
                             levels = levels,
-                            tutorialCompleted = settings.wordTutorialCompleted,
                             economy = economy,
                             onOpenTutorial = {
                                 onWordTutorialCompleted(true)
@@ -416,7 +413,6 @@ internal fun LogicaNavigation(
                         val levels = rememberCatalogLevels(catalogLevelRepository, PuzzleType.SUDOKU)
                         SudokuStartScreen(
                             levels = levels,
-                            tutorialCompleted = settings.sudokuTutorialCompleted,
                             economy = economy,
                             onOpenTutorial = { backStack.add(AppDestination.SudokuTutorial) },
                             onStart = { difficulty -> openLevel(PuzzleType.SUDOKU, difficulty) },
@@ -433,7 +429,6 @@ internal fun LogicaNavigation(
                         val levels = rememberCatalogLevels(catalogLevelRepository, PuzzleType.GAME_2048)
                         Game2048StartScreen(
                             levels = levels,
-                            tutorialCompleted = settings.game2048TutorialCompleted,
                             economy = economy,
                             onOpenTutorial = { backStack.add(AppDestination.Game2048Tutorial) },
                             onStart = { difficulty -> openLevel(PuzzleType.GAME_2048, difficulty) },

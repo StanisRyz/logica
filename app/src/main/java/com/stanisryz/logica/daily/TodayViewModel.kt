@@ -117,12 +117,17 @@ internal class TodayViewModel(
      * cancelled and restarted a moment later.
      */
     fun refresh() {
+        val challengeDate = dateProvider()
+        val retainsSameDayContent =
+            (mutableUiState.value as? TodayUiState.Content)?.definition?.challengeDate == challengeDate
         refreshJob?.cancel()
         refreshJob =
             viewModelScope.launch {
-                mutableUiState.value = TodayUiState.Loading
+                // The Game tab can leave and return within the Home navigation scope. Keep its
+                // same-day content visible while repositories refresh, but never carry it across
+                // the date boundary (including after returning from the background overnight).
+                if (!retainsSameDayContent) mutableUiState.value = TodayUiState.Loading
                 try {
-                    val challengeDate = dateProvider()
                     val run = dailyChallengeRepository.readRun(challengeDate)
                     // A persisted run keeps its own policy version forever; only brand-new runs use V5.
                     val definition =
@@ -155,7 +160,9 @@ internal class TodayViewModel(
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (_: Exception) {
-                    mutableUiState.value = TodayUiState.Error(TodayError.LOAD)
+                    // A background refresh must not replace retained, usable same-day content
+                    // with an error card merely because the refresh itself failed.
+                    if (!retainsSameDayContent) mutableUiState.value = TodayUiState.Error(TodayError.LOAD)
                 }
             }
     }

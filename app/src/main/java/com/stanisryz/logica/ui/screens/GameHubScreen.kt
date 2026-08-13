@@ -17,8 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -41,7 +39,6 @@ import com.stanisryz.logica.daily.TodayViewModelFactory
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.statistics.StatisticsRepository
-import com.stanisryz.logica.ui.components.BodyText
 import com.stanisryz.logica.ui.components.LogicaCard
 import com.stanisryz.logica.ui.components.PuzzleArtwork
 import com.stanisryz.logica.ui.components.PuzzleTitle
@@ -174,7 +171,11 @@ private fun GameCatalogCard(
     entry: GameCatalogEntry,
     gameplayAllowed: Boolean,
 ) {
-    LogicaCard(modifier = Modifier.animateContentSize(tween(LogicaMotion.SCREEN_MILLIS))) {
+    LogicaCard(
+        modifier = Modifier.animateContentSize(tween(LogicaMotion.SCREEN_MILLIS)),
+        onClick = entry.onPlay.takeIf { gameplayAllowed },
+        onClickLabel = stringResource(entry.puzzleType.titleResource()),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.action),
@@ -182,14 +183,10 @@ private fun GameCatalogCard(
             PuzzleArtwork(entry.puzzleType)
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text),
+                verticalArrangement = Arrangement.Center,
             ) {
                 PuzzleTitle(stringResource(entry.puzzleType.titleResource()), puzzleType = entry.puzzleType)
-                BodyText(stringResource(entry.descriptionResource))
             }
-        }
-        Button(onClick = entry.onPlay, enabled = gameplayAllowed, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.play))
         }
     }
 }

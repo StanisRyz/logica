@@ -78,7 +78,7 @@
 - Balance gameplay is immutable and separate from `BalanceState`; fixed clues cannot change, while editable cells may be invalid.
 - UI renders gameplay state and dispatches actions; diagnostics and hints reuse core rules/logic, and reset preserves hint usage.
 - Balance is the first playable Android slice; generation and solver-backed hints run off the main thread.
-- Localized hint text belongs in `:app`; active Balance progress preserves committed values, pencil marks, and hint usage across restarts.
+- Localized hint text belongs in `:app`; unfinished gameplay state is transient and discarded when an attempt is left.
 - Balance and Crowns input is explicit: the player selects a value (`ZERO`/`ONE`, crown/blocked mark) and taps a cell; there is no tap cycle, no Undo, and no Eraser, and tapping the selected value again removes it.
 - A committed placement is validated at once against the puzzle's single answer: correct becomes `CORRECT` and is permanently locked, wrong becomes `INCORRECT` and stays visible and editable; the correct value is never revealed by the wrong-state presentation. A puzzle without a unique answer stays `UNVERIFIED` and locks nothing.
 - Pencil marks are a separate unvalidated layer on empty cells only: they never lock, any committed placement clears them, and they render small in the cell's upper-right corner.
@@ -146,8 +146,9 @@
 - User-facing rule and hint explanations belong in `:app`; Compose renders structured core state and UX polish must not change deterministic generation or persistence compatibility without a concrete requirement.
 - Primary navigation is exactly Game/Store/Profile, Game is the start destination, and the Settings gear is on all three; Settings, the start/tutorial screens, and gameplay are secondary destinations that hide the bottom bar and show Back.
 - The three tabs share one back-stack entry and a `SaveableStateHolder` keyed by tab, so switching tabs preserves each tab's ViewModels and saved Compose state; the selected tab is shell state, never a back-stack entry.
-- Game combines Daily and the catalog in one hub without merging their state holders: `TodayViewModel` owns the Daily run and the catalog card simply opens the game's start screen, where each difficulty shows its own current level. Daily is a horizontal `LazyRow` of whole-card actions; the catalog is the vertical list below it, driven by `gameCatalogEntries` so a sixth game is one row of data.
-- `GameHubRoute` is the single owner of the initial Daily load: `TodayViewModel` construction loads nothing and the route's resume observer covers both the first frame and every return from gameplay, so one visit to the hub starts one refresh.
+- Game combines Daily and the catalog in one hub without merging their state holders: `TodayViewModel` owns Daily presentation state while repositories remain durable truth; same-date content stays in memory across tab switches and invalidates on a date change. The catalog is the vertical list below it, driven by `gameCatalogEntries` so a sixth game is one row of data.
+- Each Catalog game card opens the shared direct-launch difficulty selector: its four difficulty buttons show current levels and immediately resolve the authoritative Catalog level; the tutorial action stays available above them.
+- `GameHubRoute` is the single owner of the initial Daily load: `TodayViewModel` construction loads nothing and the route's resume observer refreshes it for first display, gameplay returns, and app resumes without replacing same-date content with a loading state.
 - Store reuses the existing RuStore flow unchanged (`GemStoreViewModel`, `GemPurchaseProcessor`, `RuStorePayGateway`); `StoreRoute` owns the ViewModel and selecting the tab is what reconciles and loads prices. Profile is the existing `StatisticsViewModel` and nothing else: no login, account, avatar, or cloud profile.
 - The wallet is visible on all three tabs, but only the Game tab and the gameplay surfaces may preload a rewarded ad; Store and Profile never trigger a load merely by showing the balance.
 - Shared UI lives in `app/src/main/java/com/stanisryz/logica/ui/components/` and `.../ui/theme/`; screens compose those pieces instead of inventing their own paddings, text sizes, cards, or state views.
@@ -161,7 +162,7 @@
 - Boards stay puzzle-specific: only the surrounding chrome (header, difficulty, actions, errors, completion) is shared.
 - Board cells size their text and their inner grids from the cell the layout actually gave them, never from fixed `sp` that only looks right in a Preview; Word gameplay is one screen with no scrolling, budgeting board and keyboard against the available height, and a rejected guess is shake plus a live-region announcement rather than a text block that changes the layout height.
 - Every state must be readable without color: pair status color with an icon plus a label, and keep the existing non-color Word feedback.
-- All user-facing strings live in `app/src/main/res/values/strings.xml`; Word difficulty is always presented as difficulty plus word length.
+- All user-facing strings live in `app/src/main/res/values/strings.xml`; all Catalog games present the same four direct-launch difficulty labels and their current levels.
 - Balance generator soak verification is opt-in; large seed sweeps never belong in normal tests or builds.
 - Quality failures must report reproducible seeds; use collected metrics for evidence-based tuning, not speculative rewrites.
 - Invalid, non-unique, non-deterministic, misclassified, or branching gameplay puzzles are hard generator failures.

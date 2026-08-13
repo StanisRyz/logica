@@ -9,6 +9,9 @@ failed attempt lets you replay the same level. Unfinished levels are not saved: 
 for confirmation and then discards that attempt, and opening the game again starts the same level
 from the beginning.
 
+Opening a Catalog game shows one shared entry screen: a short «Как играть?» tutorial action followed
+by four direct level buttons — Легко, Средне, Сложно, and Эксперт — each with its current level.
+
 Sudoku uses a frozen, validated Puzzle Bank corpus bundled offline; puzzles are never generated or
 downloaded at runtime. It is the fourth Catalog game, with EASY, MEDIUM, HARD, and EXPERT selection,
 onboarding, economy/results, and Profile statistics, and it is also part of the Daily challenge.

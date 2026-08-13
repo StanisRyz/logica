@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="how_to_play_question">Как играть?</string>
     <string name="app_name">Логика дня</string>
     <string name="tab_game">Игра</string>
     <string name="tab_store">Магазин</string>

@@ -5,13 +5,11 @@ import com.stanisryz.logica.daily.DailyEntryState
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 
 /**
- * One regular (non-Daily) game as the Game hub catalog presents it. There is no saved-game state to
- * show any more: a card simply leads to the game's difficulty screen, where each difficulty carries
- * its own current level.
+ * One regular (non-Daily) game as the Game hub catalog presents it. Its complete card leads to the
+ * game's shared direct-launch difficulty screen.
  */
 internal data class GameCatalogEntry(
     val puzzleType: PuzzleType,
-    val descriptionResource: Int,
     val onPlay: () -> Unit,
 )
 
@@ -19,20 +17,19 @@ internal data class GameCatalogEntry(
  * The catalog of regular games, in the order the hub lists them. A sixth game is one row here and
  * nothing else: neither the list nor its cards assume a fixed count.
  */
-private val CATALOG_PUZZLES: List<Pair<PuzzleType, Int>> =
+private val CATALOG_PUZZLES: List<PuzzleType> =
     listOf(
-        PuzzleType.BALANCE to R.string.balance_catalog_description,
-        PuzzleType.CROWNS to R.string.crowns_catalog_description,
-        PuzzleType.WORD to R.string.word_catalog_description,
-        PuzzleType.SUDOKU to R.string.sudoku_catalog_description,
-        PuzzleType.GAME_2048 to R.string.game_2048_catalog_description,
+        PuzzleType.BALANCE,
+        PuzzleType.CROWNS,
+        PuzzleType.WORD,
+        PuzzleType.SUDOKU,
+        PuzzleType.GAME_2048,
     )
 
 internal fun gameCatalogEntries(onPlay: (PuzzleType) -> Unit): List<GameCatalogEntry> =
-    CATALOG_PUZZLES.map { (puzzleType, description) ->
+    CATALOG_PUZZLES.map { puzzleType ->
         GameCatalogEntry(
             puzzleType = puzzleType,
-            descriptionResource = description,
             onPlay = { onPlay(puzzleType) },
         )
     }
