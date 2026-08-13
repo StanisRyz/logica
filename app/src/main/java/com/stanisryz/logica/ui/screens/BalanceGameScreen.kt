@@ -15,8 +15,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
@@ -324,8 +326,11 @@ private fun balanceValueTool(
             stringResource(if (selectedValue == value) R.string.tool_selected else R.string.tool_not_selected),
         selected = selectedValue == value,
         onClick = { onSelectValue(value) },
-    symbol = { BalancePiece(value) },
+    symbol = { BalancePiece(value, Modifier.size(BALANCE_TOOL_PIECE_SIZE)) },
 )
+
+/** Explicit bounds keep the theme-independent Canvas piece compact inside the shared tool button. */
+private val BALANCE_TOOL_PIECE_SIZE = 20.dp
 
 @Composable
 private fun HintCard(hint: BalanceHint) {
