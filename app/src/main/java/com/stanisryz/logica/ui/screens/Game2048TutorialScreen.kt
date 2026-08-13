@@ -25,7 +25,7 @@ import com.stanisryz.logica.ui.components.ScreenTitle
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import kotlinx.coroutines.launch
 
-/** Static onboarding with no engine repositories, sessions, results, or economy dependencies. */
+/** Static onboarding with no gameplay attempts, results, or economy dependencies. */
 @Composable
 internal fun Game2048TutorialRoute(
     settingsRepository: SettingsRepository,

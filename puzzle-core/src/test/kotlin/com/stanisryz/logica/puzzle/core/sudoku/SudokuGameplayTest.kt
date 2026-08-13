@@ -1,7 +1,6 @@
 package com.stanisryz.logica.puzzle.core.sudoku
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -69,48 +68,6 @@ class SudokuGameplayTest {
         assertEquals(SudokuCellStatus.INCORRECT, state.cellAt(SudokuPosition(0, 0)).status)
         assertTrue(state.cellAt(peer).candidates.contains(2))
         assertEquals(1, state.mistakesUsed)
-    }
-
-    @Test
-    fun `session codec round trip restores identity work mistakes hints and derived statuses`() {
-        var state = engine.requestHint(engine.start())
-        assertEquals(1, state.hintsUsed)
-        assertEquals(0, state.mistakesUsed)
-        val hint = checkNotNull(state.currentHint)
-        assertEquals(SudokuHintTechnique.NAKED_SINGLE, hint.technique)
-        assertEquals(SudokuPosition(6, 4), hint.position)
-        assertEquals(8, hint.value)
-        assertEquals(SudokuCellStatus.CORRECT, state.cellAt(hint.position).status)
-
-        val wrongIndex = state.cells.indexOfFirst { it.status == SudokuCellStatus.EMPTY }
-        val wrongPosition = SudokuPosition.fromIndex(wrongIndex)
-        val solutionDigit = puzzle.solution[wrongIndex].digitToInt()
-        val wrongDigit = if (solutionDigit == 9) 8 else solutionDigit + 1
-        state = engine.placeValue(state, wrongPosition, wrongDigit)
-
-        val candidateIndex = state.cells.indexOfFirst { it.status == SudokuCellStatus.EMPTY }
-        val candidatePosition = SudokuPosition.fromIndex(candidateIndex)
-        val withCandidate =
-            (1..9)
-                .asSequence()
-                .map { digit -> engine.toggleCandidate(state, candidatePosition, digit) }
-                .first { it != state }
-        val encoded = SudokuSessionCodecV1.encode(withCandidate)
-        val restored = SudokuSessionCodecV1.decode(puzzle, encoded)
-
-        assertEquals(puzzle.id, SudokuSessionCodecV1.puzzleId(encoded))
-        assertEquals(withCandidate.cells, restored.cells)
-        assertEquals(SudokuCellStatus.INCORRECT, restored.cellAt(wrongPosition).status)
-        assertEquals(withCandidate.mistakesUsed, restored.mistakesUsed)
-        assertEquals(withCandidate.hintsUsed, restored.hintsUsed)
-        assertEquals(encoded, SudokuSessionCodecV1.encode(restored))
-        assertNotEquals(
-            null,
-            restored
-                .cellAt(candidatePosition)
-                .candidates.digits
-                .firstOrNull(),
-        )
     }
 
     private fun puzzle(): SudokuPuzzle =

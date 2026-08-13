@@ -55,7 +55,7 @@ import com.stanisryz.logica.ui.theme.LogicaSpacing
  * The Game hub: the Daily challenge on top and the regular catalog below it, in one place.
  *
  * The two halves keep their own state holders — the Daily run stays in [TodayViewModel] and the
- * active catalog sessions are observed by the shell — so combining the screens does not combine the
+ * active Catalog attempts are observed by the shell — so combining the screens does not combine the
  * domains behind them.
  */
 @Composable

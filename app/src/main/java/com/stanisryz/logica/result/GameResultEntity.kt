@@ -17,7 +17,7 @@ internal data class GameResultEntity(
     @ColumnInfo(name = "generator_version")
     val generatorVersion: Int,
     @ColumnInfo(name = "session_scope")
-    val sessionScope: String,
+    val resultScope: String,
     @ColumnInfo(name = "hints_used")
     val hintsUsed: Int,
     @ColumnInfo(name = "completed_at_epoch_millis")

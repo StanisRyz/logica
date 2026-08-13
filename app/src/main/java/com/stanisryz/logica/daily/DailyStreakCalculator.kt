@@ -3,7 +3,7 @@ package com.stanisryz.logica.daily
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
 import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.result.GameResult
-import com.stanisryz.logica.session.GameSessionScope
+import com.stanisryz.logica.result.GameResultScope
 import java.time.LocalDate
 
 internal data class DailyStreak(
@@ -31,7 +31,7 @@ internal object DailyStreakQualification {
             val challengeDate = result.challengeDate ?: return@forEach
             val policyVersion = result.dailyPolicyVersion ?: return@forEach
             if (
-                result.sessionScope == GameSessionScope.DAILY &&
+                result.resultScope == GameResultScope.DAILY &&
                 result.outcome == GameOutcome.SOLVED &&
                 DailyChallengePolicyResolver.qualifiesStreakOnAnySolvedEntry(policyVersion)
             ) {

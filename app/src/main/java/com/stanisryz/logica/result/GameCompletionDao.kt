@@ -17,7 +17,6 @@ import com.stanisryz.logica.economy.solvedReward
 import com.stanisryz.logica.economy.toEntity
 import com.stanisryz.logica.economy.toPlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.Difficulty
-import com.stanisryz.logica.session.GameSessionScope
 
 @Dao
 internal interface GameCompletionDao {
@@ -125,7 +124,7 @@ internal interface GameCompletionDao {
      * records its result and its life penalty and leaves the progression on the same level. Every
      * step is keyed so a repeated callback or a persistence retry changes nothing a second time.
      *
-     * It no longer needs a persisted active session: Catalog and Daily attempts are transient.
+     * It needs no persisted active-attempt record: Catalog and Daily attempts are transient.
      */
     @Transaction
     suspend fun complete(result: GameResultEntity): GameResultEntity {
@@ -137,7 +136,7 @@ internal interface GameCompletionDao {
             return existing
         }
 
-        if (result.sessionScope == GameSessionScope.CATALOG.name) {
+        if (result.resultScope == GameResultScope.CATALOG.name) {
             val levelNumber = requireNotNull(result.catalogLevelNumber) { "A Catalog result must name its level." }
             val packVersion =
                 requireNotNull(result.catalogLevelPackVersion) { "A Catalog result must name its level pack." }
@@ -159,7 +158,7 @@ internal interface GameCompletionDao {
         // Progression is part of the same transaction and is monotonic per bucket: advancing to
         // level+1 only when the stored level is still behind makes a repeated completion a no-op.
         if (
-            result.sessionScope == GameSessionScope.CATALOG.name &&
+            result.resultScope == GameResultScope.CATALOG.name &&
             result.outcome == GameOutcome.SOLVED.name &&
             result.catalogLevelNumber != null &&
             result.catalogLevelPackVersion != null
@@ -183,7 +182,7 @@ internal interface GameCompletionDao {
 
         // Daily lifecycle now tracks success, not participation: a FAILED attempt still produces a
         // durable result and leaves the entry open for a retry, but leaves the run untouched.
-        if (result.sessionScope == GameSessionScope.DAILY.name && result.outcome == GameOutcome.SOLVED.name) {
+        if (result.resultScope == GameResultScope.DAILY.name && result.outcome == GameOutcome.SOLVED.name) {
             val challengeDate = requireNotNull(result.challengeDate)
             val policyVersion = requireNotNull(result.dailyPolicyVersion)
             val run =
@@ -253,7 +252,7 @@ internal interface GameCompletionDao {
             difficulty == other.difficulty &&
             puzzleSeed == other.puzzleSeed &&
             generatorVersion == other.generatorVersion &&
-            sessionScope == other.sessionScope &&
+            resultScope == other.resultScope &&
             hintsUsed == other.hintsUsed &&
             outcome == other.outcome &&
             attemptsUsed == other.attemptsUsed &&

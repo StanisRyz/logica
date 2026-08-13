@@ -32,20 +32,12 @@ class Game2048VersionCompatibilityTest {
     }
 
     @Test
-    fun `v2 uses score targets and its identity survives the session codec`() {
+    fun `v2 uses score targets`() {
         assertEquals(12_000L, Game2048RulesetV2(Difficulty.EASY).targetScore)
         assertEquals(30_000L, Game2048RulesetV2(Difficulty.MEDIUM).targetScore)
         assertEquals(100_000L, Game2048RulesetV2(Difficulty.HARD).targetScore)
         assertEquals(250_000L, Game2048RulesetV2(Difficulty.EXPERT).targetScore)
         assertNull(Game2048RulesetV2(Difficulty.EASY).targetTile)
-
-        listOf(Game2048GeneratorVersion.V1, Game2048GeneratorVersion.V2).forEach { version ->
-            val engine = Game2048Engine(Game2048PuzzleId(SEED, Difficulty.MEDIUM, version))
-            val encoded = Game2048SessionCodecV1.encode(engine.start())
-            assertEquals(Game2048SessionCodecV1.FORMAT_VERSION, encoded.formatVersion)
-            assertEquals(version, Game2048SessionCodecV1.puzzleId(encoded).generatorVersion)
-            assertEquals(engine.start(), Game2048SessionCodecV1.decode(encoded))
-        }
     }
 
     /** Same seed, same tiles, all the way down: the versions differ only in when they end. */

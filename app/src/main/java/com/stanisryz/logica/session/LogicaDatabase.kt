@@ -24,7 +24,6 @@ import kotlinx.coroutines.Dispatchers
 
 @Database(
     entities = [
-        GameSessionEntity::class,
         DailyChallengeEntity::class,
         DailyRunEntity::class,
         GameResultEntity::class,
@@ -32,16 +31,10 @@ import kotlinx.coroutines.Dispatchers
         EconomyEventEntity::class,
         CatalogLevelProgressEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 internal abstract class LogicaDatabase : RoomDatabase() {
-    /**
-     * Legacy active-gameplay storage. Nothing writes or reads it any more — Catalog and Daily
-     * attempts are transient — and Stage 42.1 removes it after real-device validation.
-     */
-    abstract fun gameSessionDao(): GameSessionDao
-
     abstract fun dailyChallengeDao(): DailyChallengeDao
 
     abstract fun dailyRunDao(): DailyRunDao
@@ -65,7 +58,15 @@ internal abstract class LogicaDatabase : RoomDatabase() {
                     name = applicationContext.getDatabasePath(DATABASE_NAME).absolutePath,
                 ).setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(Dispatchers.IO)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                .addMigrations(
+                    MIGRATION_1_2,
+                    MIGRATION_2_3,
+                    MIGRATION_3_4,
+                    MIGRATION_4_5,
+                    MIGRATION_5_6,
+                    MIGRATION_6_7,
+                    MIGRATION_7_8,
+                )
                 .build()
         }
 
@@ -284,6 +285,14 @@ internal abstract class LogicaDatabase : RoomDatabase() {
                     connection.execute("ALTER TABLE `game_results` ADD COLUMN `catalog_level_number` INTEGER")
                     connection.execute("ALTER TABLE `game_results` ADD COLUMN `catalog_level_pack_version` INTEGER")
                     connection.execute("DELETE FROM `game_sessions`")
+                }
+            }
+
+        /** Removes only the obsolete active-gameplay table; all durable user data is preserved. */
+        internal val MIGRATION_7_8 =
+            object : Migration(7, 8) {
+                override suspend fun migrate(connection: SQLiteConnection) {
+                    connection.execute("DROP TABLE IF EXISTS `game_sessions`")
                 }
             }
 

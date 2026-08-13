@@ -230,7 +230,7 @@ class Game2048LevelClearTest {
                 difficulty = completion.difficulty,
                 puzzleSeed = completion.puzzleSeed,
                 generatorVersion = completion.generatorVersion,
-                sessionScope = completion.sessionScope,
+                resultScope = completion.resultScope,
                 hintsUsed = completion.hintsUsed,
                 completedAt = Instant.EPOCH,
                 outcome = completion.outcome,

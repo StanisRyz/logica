@@ -17,7 +17,6 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
-import com.stanisryz.logica.session.GameSessionScope
 
 /**
  * An in-memory stand-in for the Room tables the completion transaction touches, so the real
@@ -198,7 +197,7 @@ internal class FakeGameCompletionDao(
             difficulty = difficulty,
             puzzleSeed = PuzzleSeed(4242),
             generatorVersion = GeneratorVersion(1),
-            sessionScope = GameSessionScope.CATALOG,
+            resultScope = GameResultScope.CATALOG,
             hintsUsed = 0,
             outcome = outcome,
             attemptsUsed = if (puzzleType == PuzzleType.WORD) WORD_ATTEMPTS else null,

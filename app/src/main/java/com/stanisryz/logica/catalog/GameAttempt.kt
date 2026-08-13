@@ -9,7 +9,7 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.GameCompletion
 import com.stanisryz.logica.result.GameOutcome
-import com.stanisryz.logica.session.GameSessionScope
+import com.stanisryz.logica.result.GameResultScope
 import java.time.LocalDate
 import java.util.UUID
 
@@ -42,19 +42,19 @@ internal fun GameAttemptLaunch.levelNumberOrNull(): Int? = (this as? GameAttempt
 
 /** Where a resolved attempt belongs. The context alone decides result scope and level identity. */
 internal sealed interface GameAttemptContext {
-    val sessionScope: GameSessionScope
+    val resultScope: GameResultScope
 
     data class Catalog(
         val levelId: CatalogLevelId,
     ) : GameAttemptContext {
-        override val sessionScope: GameSessionScope get() = GameSessionScope.CATALOG
+        override val resultScope: GameResultScope get() = GameResultScope.CATALOG
     }
 
     data class Daily(
         val challengeDate: LocalDate,
         val policyVersion: DailyPolicyVersion,
     ) : GameAttemptContext {
-        override val sessionScope: GameSessionScope get() = GameSessionScope.DAILY
+        override val resultScope: GameResultScope get() = GameResultScope.DAILY
     }
 }
 
@@ -117,7 +117,7 @@ internal data class GameAttempt(
             difficulty = difficulty,
             puzzleSeed = seed,
             generatorVersion = generatorVersion,
-            sessionScope = context.sessionScope,
+            resultScope = context.resultScope,
             hintsUsed = hintsUsed,
             outcome = outcome,
             attemptsUsed = attemptsUsed,

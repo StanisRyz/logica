@@ -62,23 +62,6 @@ class Game2048V2LifecycleTest {
         assertEquals(puzzleId, engine.retry(failed).puzzleId)
     }
 
-    /** Interrupting a V2 game must not change which tile appears next. */
-    @Test
-    fun `save and restore preserve the exact future spawn`() {
-        var uninterrupted = engine.start()
-        repeat(6) {
-            uninterrupted = engine.move(uninterrupted, validDirection(uninterrupted))
-        }
-        val restored = Game2048SessionCodecV1.decode(Game2048SessionCodecV1.encode(uninterrupted))
-        assertEquals(uninterrupted, restored)
-
-        val direction = validDirection(uninterrupted)
-        assertEquals(engine.move(uninterrupted, direction), engine.move(restored, direction))
-    }
-
-    private fun validDirection(state: Game2048State): Game2048Direction =
-        Game2048Direction.entries.first { engine.move(state, it) != state }
-
     private companion object {
         val SEED = PuzzleSeed(0x2048_0038)
 

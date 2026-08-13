@@ -36,7 +36,7 @@ internal enum class BalanceTutorialFeedback {
     TRY_AGAIN,
 }
 
-/** A small Balance-only state controller; it deliberately has no session or persistence dependency. */
+/** A small Balance-only state controller; it deliberately has no gameplay persistence dependency. */
 internal class BalanceTutorialController {
     private var engine = BalanceGameEngine(BalanceTutorialScenarios.puzzleFor(BalanceTutorialStage.PREVENT_THREE))
 

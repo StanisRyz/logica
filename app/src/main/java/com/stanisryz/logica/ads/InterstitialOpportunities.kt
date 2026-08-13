@@ -4,7 +4,7 @@ import com.stanisryz.logica.result.GameCompletion
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.result.GameResult
-import com.stanisryz.logica.session.GameSessionScope
+import com.stanisryz.logica.result.GameResultScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,8 +24,8 @@ internal fun GameCompletion.opensInterstitialOpportunity(): Boolean {
             GameOutcome.SOLVED, GameOutcome.FAILED -> true
         }
     val eligibleScope =
-        when (sessionScope) {
-            GameSessionScope.CATALOG, GameSessionScope.DAILY -> true
+        when (resultScope) {
+            GameResultScope.CATALOG, GameResultScope.DAILY -> true
         }
     return eligibleOutcome && eligibleScope
 }

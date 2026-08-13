@@ -7,7 +7,7 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordRules
 import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.result.GameResult
-import com.stanisryz.logica.session.GameSessionScope
+import com.stanisryz.logica.result.GameResultScope
 import java.time.LocalDate
 
 internal data class GameStatistics(
@@ -108,7 +108,7 @@ internal object StatisticsAggregator {
         val dailyHints =
             results
                 .asSequence()
-                .filter { it.sessionScope == GameSessionScope.DAILY }
+                .filter { it.resultScope == GameResultScope.DAILY }
                 .mapNotNull { result -> result.challengeDate?.let { it to result.hintsUsed } }
                 .groupBy({ it.first }, { it.second })
                 .mapValues { (_, hints) -> hints.sum() }

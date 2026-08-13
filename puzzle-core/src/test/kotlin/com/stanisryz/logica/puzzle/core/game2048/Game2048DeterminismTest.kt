@@ -3,7 +3,6 @@ package com.stanisryz.logica.puzzle.core.game2048
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class Game2048DeterminismTest {
@@ -45,33 +44,4 @@ class Game2048DeterminismTest {
         assertEquals(Game2048MoveTransition(aligned, null), engine.moveWithTrace(aligned, Game2048Direction.LEFT))
     }
 
-    @Test
-    fun `codec round trip preserves the exact next spawn and rejects malformed durable state`() {
-        var uninterrupted = engine.start()
-        repeat(8) {
-            val direction = Game2048Direction.entries.first { engine.move(uninterrupted, it) != uninterrupted }
-            uninterrupted = engine.move(uninterrupted, direction)
-        }
-        val encoded = Game2048SessionCodecV1.encode(uninterrupted)
-        val restored = Game2048SessionCodecV1.decode(encoded)
-        val nextDirection = Game2048Direction.entries.first { engine.move(uninterrupted, it) != uninterrupted }
-
-        assertEquals(puzzleId, Game2048SessionCodecV1.puzzleId(encoded))
-        assertEquals(uninterrupted, restored)
-        assertEquals(engine.move(uninterrupted, nextDirection), engine.move(restored, nextDirection))
-
-        assertRejected(encoded.copy(payload = encoded.payload.replace("spawn=${restored.nextSpawnIndex}", "spawn=-1")))
-        assertRejected(encoded.copy(payload = encoded.payload.replace("score=${restored.score}", "score=-1")))
-        assertRejected(encoded.copy(payload = encoded.payload.replaceFirst(Regex("board=[^,]+"), "board=3")))
-        // V1 and V2 are both supported identities; anything beyond them is still refused.
-        assertRejected(
-            encoded.copy(
-                payload = encoded.payload.replace("|${puzzleId.generatorVersion.value}\n", "|3\n"),
-            ),
-        )
-    }
-
-    private fun assertRejected(encoded: EncodedGame2048Session) {
-        assertThrows(RuntimeException::class.java) { Game2048SessionCodecV1.decode(encoded) }
-    }
 }

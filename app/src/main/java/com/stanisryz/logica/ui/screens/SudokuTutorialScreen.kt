@@ -37,7 +37,7 @@ import com.stanisryz.logica.ui.sudoku.SudokuPencilToggle
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import kotlinx.coroutines.launch
 
-/** A fixed, repository-free worked example: it cannot create sessions, results, or economy events. */
+/** A fixed, repository-free worked example: it cannot create attempts, results, or economy events. */
 @Composable
 internal fun SudokuTutorialRoute(
     settingsRepository: SettingsRepository,

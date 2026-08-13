@@ -3,7 +3,7 @@
 - Stack: Kotlin, Jetpack Compose, Material 3, AGP, and Gradle Kotlin DSL.
 - Work VS Code/CLI-first; the Gradle Wrapper is the build source of truth.
 - Dependency versions are managed in `gradle/libs.versions.toml`; keep dependencies minimal.
-- `:app` owns Android UI, Navigation 3, DataStore preferences, and Room durable persistence; it may depend on `:puzzle-core`.
+- `:app` owns Android UI, Navigation 3, DataStore preferences, and Room durable persistence for terminal results, Catalog progression, Daily data, economy, and other current app state; it may depend on `:puzzle-core`.
 - `:puzzle-core` contains platform-independent puzzle domain and algorithms; it must never depend on Android, Compose, or `:app`.
 - DataStore stores user preferences; Room stores durable results, economy, Daily lifecycle, and Catalog level progression, and ViewModels use repositories rather than Room DAOs.
 - Catalog and Daily gameplay is sessionless: an unfinished attempt lives only in its gameplay ViewModel and is discarded on leaving.
@@ -42,7 +42,7 @@
 - Crowns gameplay state is immutable and UI-independent; Android renders state and dispatches actions without owning rules.
 - Incorrect player crowns are allowed and reported through centralized structured violations.
 - User marks are annotations checked only for hint/error reasoning, never Crowns domain violations.
-- Crowns hints reuse deterministic logic and a confirmed unique solution; reset preserves session-level hint usage.
+- Crowns hints reuse deterministic logic and a confirmed unique solution; reset preserves attempt-level hint usage.
 - Crowns gameplay is context-aware like Balance: a `Catalog` level or a `Daily(challengeDate, policyVersion)` entry drives result scope, level or Daily identity, completion metadata, and the return to the Game hub.
 - Balance and Crowns keep separate UI/gameplay adapters while sharing the attempt, completion, and result infrastructure.
 - Android ViewModels regenerate definitions from the frozen level definition (or the Daily identity) through the corresponding core engine on every open.
@@ -85,7 +85,7 @@
 - Tool selection and Pencil mode are transient presentation state and are never persisted.
 - Balance and Crowns end an attempt at `PuzzleMistakes.MAX_MISTAKES` (3): every newly committed incorrect value costs one mistake, the third sets `FAILED`, and a terminal attempt is read-only for input, pencil, and hints. Pencil marks, tool changes, removing or fixing a wrong value, hints, and restores never change the count.
 - `mistakesUsed` is an event count, never derived from the incorrect cells currently on the board, and Balance/Crowns have no Reset.
-- The per-puzzle session codecs are retained legacy code that nothing calls at runtime; correct/wrong and mistakes are always recomputed from the regenerated puzzle, never stored.
+- Active gameplay sessions and unfinished attempts are never persisted; gameplay state remains transient in ViewModels.
 - Every terminal attempt — `SOLVED` or `FAILED` — produces exactly one durable `GameResult`; `attemptsUsed` stays Word-only. Completion identity is `catalog:<pack>:<type>:<difficulty>:<level>:<attemptId>` for the Catalog and the attempt ID for Daily, so a repeated callback is an idempotent no-op.
 - Retry restarts the very same level from its initial deterministic state under a new attempt ID; it is allowed only after the finished attempt's result is durably persisted.
 - Catalog completion first validates puzzle, difficulty, pack version, and level number against current progression; only then may the atomic result, gem reward or life penalty, and solved progression step land, while repeated matching durable callbacks remain no-ops.
@@ -136,8 +136,7 @@
 - The Daily section operates on the current date only and targets puzzles individually; the tutorial is offered by each puzzle's start screen rather than by the Daily card.
 - Room migrations preserve existing saves and never use destructive migration.
 - Room v4 stores one aggregate `daily_runs` lifecycle per date separately from policy-defined `daily_challenges` entries and results.
-- Room v7 adds `catalog_level_progress` plus nullable `catalog_level_number`/`catalog_level_pack_version` on `game_results`; `MIGRATION_6_7` preserves economy, purchases, settings, Daily history, and every historical result, and clears `game_sessions` because a randomly seeded save cannot be mapped honestly onto a public level.
-- Legacy session entities, DAOs, and codecs stay physically present but unused; Stage 42.1 removes them after real-device validation.
+- Room v8 removes the obsolete `game_sessions` table through `MIGRATION_7_8`; historical migrations and all current durable state remain intact.
 - Completed puzzle results are immutable Room records; completion persistence is atomic and idempotent.
 - Catalog and Daily completion remain isolated by result scope; a Daily run completes atomically only after all of its entries complete.
 - Completion is keyed by result ID: it produces exactly one immutable result, and a retry never inserts a duplicate, pays twice, advances twice, or completes a Daily run twice.
@@ -186,4 +185,3 @@
 - A Catalog 2048 level reaches its target the instant `score >= targetScore`, but target-reached and completion-durable are distinct states: persistence follows the attempt identity while freeplay continues, leaving stays guarded until durability, and Back after a durable clear is an eligible deferred terminal action; later game over can neither fail nor repay the cleared level.
 - 2048 game over before the target is the normal failure: it records `FAILED`, costs one life, and keeps progression on the same level.
 - 2048 onboarding is a DataStore preference and creates no gameplay records; Profile reports played/solved/failed plus solved counts by difficulty, without high-score persistence.
-- Deferred to Stage 42.1: physically removing the retained legacy session infrastructure once the sessionless model is validated on a real device.

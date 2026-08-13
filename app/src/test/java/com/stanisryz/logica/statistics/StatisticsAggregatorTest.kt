@@ -7,7 +7,7 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.result.GameResult
-import com.stanisryz.logica.session.GameSessionScope
+import com.stanisryz.logica.result.GameResultScope
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.Instant
@@ -19,33 +19,33 @@ class StatisticsAggregatorTest {
         val today = LocalDate.of(2026, 8, 8)
         val results =
             listOf(
-                result("easy", Difficulty.EASY, GameSessionScope.CATALOG, hintsUsed = 1),
+                result("easy", Difficulty.EASY, GameResultScope.CATALOG, hintsUsed = 1),
                 result(
                     id = "daily",
                     difficulty = Difficulty.MEDIUM,
-                    scope = GameSessionScope.DAILY,
+                    scope = GameResultScope.DAILY,
                     hintsUsed = 2,
                     challengeDate = today.minusDays(1),
                 ),
-                result("hard", Difficulty.HARD, GameSessionScope.CATALOG, hintsUsed = 0),
+                result("hard", Difficulty.HARD, GameResultScope.CATALOG, hintsUsed = 0),
                 result(
                     "crowns",
                     Difficulty.EXPERT,
-                    GameSessionScope.CATALOG,
+                    GameResultScope.CATALOG,
                     hintsUsed = 3,
                     puzzleType = PuzzleType.CROWNS,
                 ),
                 result(
                     "sudoku-solved",
                     Difficulty.HARD,
-                    GameSessionScope.CATALOG,
+                    GameResultScope.CATALOG,
                     hintsUsed = 4,
                     puzzleType = PuzzleType.SUDOKU,
                 ),
                 result(
                     "sudoku-failed",
                     Difficulty.MEDIUM,
-                    GameSessionScope.CATALOG,
+                    GameResultScope.CATALOG,
                     hintsUsed = 5,
                     puzzleType = PuzzleType.SUDOKU,
                     outcome = GameOutcome.FAILED,
@@ -53,14 +53,14 @@ class StatisticsAggregatorTest {
                 result(
                     "2048-solved",
                     Difficulty.MEDIUM,
-                    GameSessionScope.CATALOG,
+                    GameResultScope.CATALOG,
                     hintsUsed = 0,
                     puzzleType = PuzzleType.GAME_2048,
                 ),
                 result(
                     "2048-failed",
                     Difficulty.HARD,
-                    GameSessionScope.CATALOG,
+                    GameResultScope.CATALOG,
                     hintsUsed = 0,
                     puzzleType = PuzzleType.GAME_2048,
                     outcome = GameOutcome.FAILED,
@@ -119,7 +119,7 @@ class StatisticsAggregatorTest {
     private fun result(
         id: String,
         difficulty: Difficulty,
-        scope: GameSessionScope,
+        scope: GameResultScope,
         hintsUsed: Int,
         challengeDate: LocalDate? = null,
         puzzleType: PuzzleType = PuzzleType.BALANCE,
@@ -131,7 +131,7 @@ class StatisticsAggregatorTest {
             difficulty = difficulty,
             puzzleSeed = PuzzleSeed(id.hashCode().toLong()),
             generatorVersion = GeneratorVersion(1),
-            sessionScope = scope,
+            resultScope = scope,
             hintsUsed = hintsUsed,
             completedAt = Instant.ofEpochMilli(1_000),
             outcome = outcome,

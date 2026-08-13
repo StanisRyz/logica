@@ -7,7 +7,7 @@ import com.stanisryz.logica.result.FakeGameCompletionDao
 import com.stanisryz.logica.result.GameCompletion
 import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.result.toEntity
-import com.stanisryz.logica.session.GameSessionScope
+import com.stanisryz.logica.result.GameResultScope
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -67,7 +67,7 @@ class EconomyResultCompletionTest {
                     difficulty = entry.difficulty,
                     puzzleSeed = entry.seed,
                     generatorVersion = entry.generatorVersion,
-                    sessionScope = GameSessionScope.DAILY,
+                    resultScope = GameResultScope.DAILY,
                     hintsUsed = 1,
                     challengeDate = definition.challengeDate,
                     dailyPolicyVersion = definition.policyVersion,

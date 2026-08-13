@@ -6,7 +6,6 @@ import com.stanisryz.logica.puzzle.core.daily.DailyChallengeDefinition
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV2
 import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
-import com.stanisryz.logica.session.GameSessionScope
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -101,7 +100,7 @@ class DailyAggregateCompletionTest {
             difficulty = difficulty,
             puzzleSeed = seed,
             generatorVersion = generatorVersion,
-            sessionScope = GameSessionScope.DAILY,
+            resultScope = GameResultScope.DAILY,
             hintsUsed = hintsUsed,
             outcome = outcome,
             challengeDate = definition.challengeDate,

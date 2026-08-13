@@ -5,7 +5,7 @@ import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.result.GameResult
-import com.stanisryz.logica.session.GameSessionScope
+import com.stanisryz.logica.result.GameResultScope
 import java.time.LocalDate
 
 /** Only what the completed Daily card and the share formatter need for one puzzle's result. */
@@ -47,7 +47,7 @@ internal object DailyResultSummaryBuilder {
         val resultByPuzzleType =
             results
                 .asSequence()
-                .filter { it.sessionScope == GameSessionScope.DAILY }
+                .filter { it.resultScope == GameResultScope.DAILY }
                 .filter { it.challengeDate == definition.challengeDate && it.dailyPolicyVersion == definition.policyVersion }
                 .filter { it.outcome == GameOutcome.SOLVED }
                 .associateBy { it.puzzleType }

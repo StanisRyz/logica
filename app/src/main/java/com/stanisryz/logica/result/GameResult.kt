@@ -7,7 +7,6 @@ import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordRules
-import com.stanisryz.logica.session.GameSessionScope
 import java.time.Instant
 import java.time.LocalDate
 
@@ -18,6 +17,12 @@ import java.time.LocalDate
 internal enum class GameOutcome {
     SOLVED,
     FAILED,
+}
+
+/** Whether a durable terminal result belongs to Catalog progression or a Daily challenge. */
+internal enum class GameResultScope {
+    CATALOG,
+    DAILY,
 }
 
 /** Shared validation for the typed outcome metadata of one terminal game. */
@@ -41,7 +46,7 @@ internal data class GameCompletion(
     val difficulty: Difficulty,
     val puzzleSeed: PuzzleSeed,
     val generatorVersion: GeneratorVersion,
-    val sessionScope: GameSessionScope,
+    val resultScope: GameResultScope,
     val hintsUsed: Int,
     val outcome: GameOutcome = GameOutcome.SOLVED,
     val attemptsUsed: Int? = null,
@@ -57,10 +62,10 @@ internal data class GameCompletion(
         require(resultId.isNotBlank()) { "Result ID must not be blank." }
         require(hintsUsed >= 0) { "Hints used must not be negative." }
         require(
-            (sessionScope == GameSessionScope.DAILY) ==
+            (resultScope == GameResultScope.DAILY) ==
                 (challengeDate != null && dailyPolicyVersion != null),
         ) { "Daily identity must be present only for Daily results." }
-        require(catalogLevel == null || sessionScope == GameSessionScope.CATALOG) {
+        require(catalogLevel == null || resultScope == GameResultScope.CATALOG) {
             "Only a Catalog result may carry Catalog level identity."
         }
         require(catalogLevel == null || (catalogLevel.puzzleType == puzzleType && catalogLevel.difficulty == difficulty)) {
@@ -76,7 +81,7 @@ internal data class GameResult(
     val difficulty: Difficulty,
     val puzzleSeed: PuzzleSeed,
     val generatorVersion: GeneratorVersion,
-    val sessionScope: GameSessionScope,
+    val resultScope: GameResultScope,
     val hintsUsed: Int,
     val completedAt: Instant,
     val outcome: GameOutcome = GameOutcome.SOLVED,
@@ -90,10 +95,10 @@ internal data class GameResult(
         require(resultId.isNotBlank()) { "Result ID must not be blank." }
         require(hintsUsed >= 0) { "Hints used must not be negative." }
         require(
-            (sessionScope == GameSessionScope.DAILY) ==
+            (resultScope == GameResultScope.DAILY) ==
                 (challengeDate != null && dailyPolicyVersion != null),
         ) { "Daily identity must be present only for Daily results." }
-        require(catalogLevel == null || sessionScope == GameSessionScope.CATALOG) {
+        require(catalogLevel == null || resultScope == GameResultScope.CATALOG) {
             "Only a Catalog result may carry Catalog level identity."
         }
         requireOutcomeMetadata(puzzleType, attemptsUsed)

@@ -6,7 +6,7 @@ import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV5
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.result.GameResult
-import com.stanisryz.logica.session.GameSessionScope
+import com.stanisryz.logica.result.GameResultScope
 import com.stanisryz.logica.statistics.StatisticsAggregator
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -135,7 +135,7 @@ class DailyStreakAndSharingTest {
             difficulty = entry.difficulty,
             puzzleSeed = entry.seed,
             generatorVersion = entry.generatorVersion,
-            sessionScope = GameSessionScope.DAILY,
+            resultScope = GameResultScope.DAILY,
             hintsUsed = 0,
             completedAt = Instant.EPOCH,
             outcome = outcome,

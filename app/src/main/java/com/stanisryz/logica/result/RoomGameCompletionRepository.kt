@@ -6,7 +6,7 @@ import kotlinx.coroutines.sync.withLock
 /**
  * The durable end of an attempt. Terminal results, their economy effect, their Daily lifecycle, and
  * Catalog level progression all happen inside one Room transaction, so this is the whole write path
- * — there is no active gameplay session to keep in step with it any more.
+ * — there is no active-attempt record to keep in step with it.
  *
  * Completions are serialised so two games finishing at almost the same moment still each see an
  * up-to-date wallet.

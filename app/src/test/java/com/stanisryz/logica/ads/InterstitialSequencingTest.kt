@@ -11,7 +11,7 @@ import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.result.GameResult
 import com.stanisryz.logica.result.toEntity
 import com.stanisryz.logica.result.toGameResultOrNull
-import com.stanisryz.logica.session.GameSessionScope
+import com.stanisryz.logica.result.GameResultScope
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -33,10 +33,10 @@ class InterstitialSequencingTest {
         runBlocking {
             val outcomes =
                 listOf(
-                    GameOutcome.SOLVED to GameSessionScope.CATALOG,
-                    GameOutcome.FAILED to GameSessionScope.CATALOG,
-                    GameOutcome.SOLVED to GameSessionScope.DAILY,
-                    GameOutcome.FAILED to GameSessionScope.DAILY,
+                    GameOutcome.SOLVED to GameResultScope.CATALOG,
+                    GameOutcome.FAILED to GameResultScope.CATALOG,
+                    GameOutcome.SOLVED to GameResultScope.DAILY,
+                    GameOutcome.FAILED to GameResultScope.DAILY,
                 )
 
             outcomes.forEachIndexed { index, (outcome, scope) ->
@@ -148,7 +148,7 @@ class InterstitialSequencingTest {
     private fun completion(
         resultId: String,
         outcome: GameOutcome = GameOutcome.SOLVED,
-        scope: GameSessionScope = GameSessionScope.CATALOG,
+        scope: GameResultScope = GameResultScope.CATALOG,
     ): GameCompletion =
         GameCompletion(
             resultId = resultId,
@@ -156,11 +156,11 @@ class InterstitialSequencingTest {
             difficulty = Difficulty.MEDIUM,
             puzzleSeed = PuzzleSeed(7),
             generatorVersion = GeneratorVersion(1),
-            sessionScope = scope,
+            resultScope = scope,
             hintsUsed = 0,
             outcome = outcome,
-            challengeDate = if (scope == GameSessionScope.DAILY) LocalDate.of(2026, 8, 11) else null,
-            dailyPolicyVersion = if (scope == GameSessionScope.DAILY) DailyPolicyVersion(5) else null,
+            challengeDate = if (scope == GameResultScope.DAILY) LocalDate.of(2026, 8, 11) else null,
+            dailyPolicyVersion = if (scope == GameResultScope.DAILY) DailyPolicyVersion(5) else null,
         )
 }
 

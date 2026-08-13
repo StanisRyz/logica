@@ -8,7 +8,6 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
-import com.stanisryz.logica.session.GameSessionScope
 import java.time.Instant
 import java.time.LocalDate
 
@@ -19,7 +18,7 @@ internal fun GameCompletion.toEntity(completedAtEpochMillis: Long): GameResultEn
         difficulty = difficulty.name,
         puzzleSeed = puzzleSeed.value,
         generatorVersion = generatorVersion.value,
-        sessionScope = sessionScope.name,
+        resultScope = resultScope.name,
         hintsUsed = hintsUsed,
         completedAtEpochMillis = completedAtEpochMillis,
         outcome = outcome.name,
@@ -32,7 +31,7 @@ internal fun GameCompletion.toEntity(completedAtEpochMillis: Long): GameResultEn
 
 internal fun GameResultEntity.toGameResultOrNull(): GameResult? =
     runCatching {
-        val scope = GameSessionScope.valueOf(sessionScope)
+        val scope = GameResultScope.valueOf(resultScope)
         val type = PuzzleType.valueOf(puzzleType)
         val puzzleDifficulty = Difficulty.valueOf(difficulty)
         GameResult(
@@ -41,7 +40,7 @@ internal fun GameResultEntity.toGameResultOrNull(): GameResult? =
             difficulty = puzzleDifficulty,
             puzzleSeed = PuzzleSeed(puzzleSeed),
             generatorVersion = GeneratorVersion(generatorVersion),
-            sessionScope = scope,
+            resultScope = scope,
             hintsUsed = hintsUsed.also { require(it >= 0) },
             completedAt = Instant.ofEpochMilli(completedAtEpochMillis),
             outcome = GameOutcome.valueOf(outcome),
@@ -52,7 +51,7 @@ internal fun GameResultEntity.toGameResultOrNull(): GameResult? =
             // rather than invalidating an otherwise valid durable result.
             catalogLevel =
                 catalogLevelNumber
-                    ?.takeIf { scope == GameSessionScope.CATALOG }
+                    ?.takeIf { scope == GameResultScope.CATALOG }
                     ?.let { level ->
                         catalogLevelPackVersion?.let { packVersion ->
                             runCatching {
@@ -67,7 +66,7 @@ internal fun GameResultEntity.toGameResultOrNull(): GameResult? =
                     },
         ).also { result ->
             require(
-                (scope == GameSessionScope.DAILY) ==
+                (scope == GameResultScope.DAILY) ==
                     (result.challengeDate != null && result.dailyPolicyVersion != null),
             )
         }

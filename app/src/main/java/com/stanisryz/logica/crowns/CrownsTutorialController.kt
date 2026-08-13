@@ -40,7 +40,7 @@ internal enum class CrownsTutorialFeedback {
     MINI_PUZZLE,
 }
 
-/** Crowns-only onboarding state. It deliberately has no session, result, or Room dependency. */
+/** Crowns-only onboarding state. It deliberately has no attempt, result, or Room dependency. */
 internal class CrownsTutorialController {
     private var engine = CrownsGameEngine(CrownsTutorialScenarios.puzzle)
 

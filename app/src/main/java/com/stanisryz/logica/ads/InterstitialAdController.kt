@@ -31,7 +31,7 @@ internal enum class InterstitialAdState {
     /** An ad is on screen; nothing else may present a fullscreen ad. */
     SHOWING,
 
-    /** No fill, no network, or a failed initialization. Only a later gameplay session tries again. */
+    /** No fill, no network, or a failed initialization. Only a later gameplay attempt tries again. */
     UNAVAILABLE,
 }
 
@@ -181,7 +181,7 @@ internal class InterstitialAdController(
                 mutableState.value = InterstitialAdState.READY
             }
 
-            /** A failed load is final until a later gameplay session; it never retries in a loop. */
+            /** A failed load is final until a later gameplay attempt; it never retries in a loop. */
             override fun onAdFailedToLoad(error: AdRequestError) {
                 loadedAd = null
                 mutableState.value = InterstitialAdState.UNAVAILABLE
