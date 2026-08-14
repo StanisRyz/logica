@@ -12,9 +12,6 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -45,13 +42,11 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
@@ -264,7 +259,6 @@ internal fun LogicaNavigation(
                 title = destinationTitle(currentDestination, selectedTab),
                 showBack = currentDestination != AppDestination.Home,
                 showWallet = currentDestination.showsWallet(),
-                compactWallet = currentDestination.usesCompactGameplayHeader(),
                 showSettings = currentDestination.showsSettingsAction(),
                 economy = economy,
                 onBack = goBack,
@@ -565,8 +559,8 @@ private fun PuzzleType.startDestination(): AppDestination =
 
 /**
  * The shared header of every screen: what you are looking at, the wallet where it belongs, and the
- * Settings gear on all three primary tabs. Gameplay keeps its compact wallet on the same line so
- * the board retains the vertical space a second header row would consume.
+ * Settings gear on all three primary tabs. The wallet always remains on that same line; its compact
+ * presentation protects normal portrait phones without introducing a second header row.
  */
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -574,7 +568,6 @@ private fun AppTopBar(
     title: String,
     showBack: Boolean,
     showWallet: Boolean,
-    compactWallet: Boolean,
     showSettings: Boolean,
     economy: PlayerEconomy,
     onBack: () -> Unit,
@@ -582,48 +575,31 @@ private fun AppTopBar(
     onOpenLives: () -> Unit,
     onOpenStore: () -> Unit,
 ) {
-    BoxWithConstraints {
-        val walletOnOwnLine = showWallet && !compactWallet && maxWidth < COMPACT_HEADER_WIDTH
-        Column {
-            TopAppBar(
-                title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = {
-                    if (showBack) {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                        }
-                    }
-                },
-                actions = {
-                    if (showWallet && !walletOnOwnLine) {
-                        EconomyBar(
-                            economy = economy,
-                            onOpenLives = onOpenLives,
-                            onOpenGemStore = onOpenStore,
-                            compact = compactWallet,
-                        )
-                    }
-                    if (showSettings) {
-                        IconButton(onClick = onOpenSettings) {
-                            Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings))
-                        }
-                    }
-                },
-            )
-            if (walletOnOwnLine) {
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = LogicaSpacing.screenHorizontal, vertical = LogicaSpacing.text),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    EconomyBar(economy = economy, onOpenLives = onOpenLives, onOpenGemStore = onOpenStore)
+    TopAppBar(
+        title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        navigationIcon = {
+            if (showBack) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                 }
             }
-        }
-    }
+        },
+        actions = {
+            if (showWallet) {
+                EconomyBar(
+                    economy = economy,
+                    onOpenLives = onOpenLives,
+                    onOpenGemStore = onOpenStore,
+                    compact = true,
+                )
+            }
+            if (showSettings) {
+                IconButton(onClick = onOpenSettings) {
+                    Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings))
+                }
+            }
+        },
+    )
 }
 
 @Composable
@@ -670,6 +646,3 @@ private fun destinationTitle(
             AppDestination.Game2048Tutorial -> R.string.game_2048_tutorial_title
         },
     )
-
-/** Below this the title, the wallet, and the gear stop fitting on one comfortable line. */
-private val COMPACT_HEADER_WIDTH = 380.dp

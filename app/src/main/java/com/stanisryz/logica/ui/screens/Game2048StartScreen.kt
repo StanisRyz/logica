@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.Difficulty
-import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.ui.components.PuzzleStartScreen
 
 @Composable
@@ -17,7 +16,6 @@ internal fun Game2048StartScreen(
     modifier: Modifier = Modifier,
 ) {
     PuzzleStartScreen(
-        puzzleType = PuzzleType.GAME_2048,
         levels = levels,
         economy = economy,
         onOpenTutorial = onOpenTutorial,

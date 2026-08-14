@@ -45,6 +45,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.R
 import com.stanisryz.logica.daily.DailyEntryState
@@ -281,13 +282,25 @@ private fun DailyEntryCard(
         onClick = if (actionable) onStart else null,
         onClickLabel = actionLabel,
     ) {
-        PuzzleArtwork(entry.puzzleType)
-        Text(
-            text = stringResource(entry.puzzleType.titleResource()),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        SupportingText(difficultyLabel(entry.puzzleType, entry.difficulty))
-        EntryStatusChip(entry.state, isCompleted, palette.successContainer, palette.onSuccessContainer)
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text),
+        ) {
+            PuzzleArtwork(entry.puzzleType)
+            Text(
+                text = stringResource(entry.puzzleType.titleResource()),
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center,
+            )
+            SupportingText(
+                text = difficultyLabel(entry.puzzleType, entry.difficulty),
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+            )
+            EntryStatusChip(entry.state, isCompleted, palette.successContainer, palette.onSuccessContainer)
+        }
     }
 }
 

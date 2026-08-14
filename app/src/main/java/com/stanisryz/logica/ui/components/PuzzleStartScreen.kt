@@ -1,5 +1,8 @@
 package com.stanisryz.logica.ui.components
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -8,7 +11,6 @@ import androidx.compose.ui.res.stringResource
 import com.stanisryz.logica.R
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.Difficulty
-import com.stanisryz.logica.puzzle.core.model.PuzzleType
 
 /**
  * The shared Catalog entry screen: a compact tutorial action followed by four direct-launch
@@ -16,7 +18,6 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
  */
 @Composable
 internal fun PuzzleStartScreen(
-    puzzleType: PuzzleType,
     levels: Map<Difficulty, Int>,
     economy: PlayerEconomy,
     onOpenTutorial: () -> Unit,
@@ -25,17 +26,19 @@ internal fun PuzzleStartScreen(
     modifier: Modifier = Modifier,
 ) {
     ScreenColumn(modifier) {
-        PuzzleTitle(stringResource(puzzleType.titleResource()), puzzleType = puzzleType)
-        TextButton(onClick = onOpenTutorial) {
-            Text(stringResource(R.string.how_to_play_question))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            TextButton(onClick = onOpenTutorial) {
+                Text(stringResource(R.string.how_to_play_question))
+            }
         }
-        ScreenSection(title = stringResource(R.string.difficulty)) {
-            DifficultySelector(
-                levels = levels,
-                onStart = onStart,
-                enabled = economy.isGameplayAllowed,
-            )
-        }
+        DifficultySelector(
+            levels = levels,
+            onStart = onStart,
+            enabled = economy.isGameplayAllowed,
+        )
 
         ZeroLivesCard(economy, onRestoreLife)
     }

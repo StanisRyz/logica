@@ -66,6 +66,7 @@ import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.components.difficultyLabel
 import com.stanisryz.logica.ui.sudoku.SudokuBoard
 import com.stanisryz.logica.ui.sudoku.SudokuNumberPad
+import com.stanisryz.logica.ui.sudoku.SudokuNumberPadHeight
 import com.stanisryz.logica.ui.sudoku.SudokuToolBar
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.ui.theme.LogicaTheme
@@ -291,7 +292,7 @@ private fun SudokuReadyState(
     }
 }
 
-/** The normal game uses every available pixel for a square board; expanded states may scroll. */
+/** The normal game derives its square-board budget from the controls it keeps on screen. */
 @Composable
 private fun CompactSudokuGameplay(
     game: SudokuGameState,
@@ -313,7 +314,11 @@ private fun CompactSudokuGameplay(
                 .fillMaxSize()
                 .padding(horizontal = LogicaSpacing.gameplayHorizontal, vertical = LogicaSpacing.text),
     ) {
-        val boardSize = minOf(maxWidth, (maxHeight - COMPACT_CONTROLS_HEIGHT).coerceAtLeast(0.dp))
+        val boardSize =
+            minOf(
+                maxWidth,
+                (maxHeight - normalGameplayControlsHeight()).coerceAtLeast(0.dp),
+            )
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text),
@@ -356,14 +361,8 @@ private fun SudokuGameplayContent(
     onRestoreLife: (() -> Unit)? = null,
     boardModifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        GameHeaderBadges(difficultyLabel, levelNumber)
-        MistakeIndicator(mistakesUsed, SudokuGameState.MAX_MISTAKES)
-    }
+    GameHeaderBadges(difficultyLabel, levelNumber)
+    MistakeIndicator(mistakesUsed, SudokuGameState.MAX_MISTAKES)
     if (economy != null && onRestoreLife != null) ZeroLivesCard(economy, onRestoreLife)
     SudokuBoard(
         game = game,
@@ -427,7 +426,21 @@ private fun SudokuGameError.message(): String =
 
 private fun SudokuDifficulty.toDifficulty(): Difficulty = Difficulty.valueOf(name)
 
-private val COMPACT_CONTROLS_HEIGHT = 144.dp
+/**
+ * The normal screen reserves one row for each metadata group, the icon tools, and the real 3x3
+ * keypad height. The remaining bounded space belongs to the square board.
+ */
+private fun normalGameplayControlsHeight() =
+    SUDOKU_METADATA_ROW_HEIGHT +
+        SUDOKU_MISTAKES_ROW_HEIGHT +
+        SUDOKU_TOOL_ROW_HEIGHT +
+        SudokuNumberPadHeight +
+        LogicaSpacing.text * NORMAL_GAMEPLAY_GAP_COUNT
+
+private val SUDOKU_METADATA_ROW_HEIGHT = 32.dp
+private val SUDOKU_MISTAKES_ROW_HEIGHT = 20.dp
+private val SUDOKU_TOOL_ROW_HEIGHT = 48.dp
+private const val NORMAL_GAMEPLAY_GAP_COUNT = 4
 
 @Preview(name = "Sudoku", widthDp = 360, heightDp = 800, showBackground = true)
 @Composable

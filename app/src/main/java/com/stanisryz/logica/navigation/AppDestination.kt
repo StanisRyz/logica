@@ -127,6 +127,3 @@ internal fun AppDestination.isGameplay(): Boolean =
         -> true
         else -> false
     }
-
-/** Every production gameplay board keeps its wallet in the shared top row at every width. */
-internal fun AppDestination.usesCompactGameplayHeader(): Boolean = isGameplay()

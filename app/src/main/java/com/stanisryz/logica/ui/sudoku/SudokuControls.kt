@@ -1,12 +1,15 @@
 package com.stanisryz.logica.ui.sudoku
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,19 +27,38 @@ internal fun SudokuNumberPad(
     onDigit: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier = modifier.fillMaxWidth()) {
-        (1..DIGIT_COUNT).forEach { digit ->
-            FilledTonalButton(
-                onClick = { onDigit(digit) },
-                enabled = enabled,
-                modifier = Modifier.weight(1f).heightIn(min = MIN_KEY_HEIGHT),
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(SUDOKU_DIGIT_ROW_SPACING),
+    ) {
+        (1..DIGIT_COUNT).chunked(DIGITS_PER_ROW).forEach { row ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(SUDOKU_DIGIT_ROW_SPACING),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
             ) {
-                Text(
-                    text = digit.toString(),
-                    style = MaterialTheme.typography.titleMedium,
-                )
+                row.forEach { digit ->
+                    SudokuDigitButton(digit = digit, enabled = enabled, onClick = { onDigit(digit) })
+                }
             }
         }
+    }
+}
+
+/** A focused, padding-free circular key so every digit sits at the exact center of its control. */
+@Composable
+private fun SudokuDigitButton(
+    digit: Int,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    FilledTonalIconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.size(SUDOKU_DIGIT_CONTROL_SIZE),
+        shape = CircleShape,
+    ) {
+        Text(text = digit.toString(), style = MaterialTheme.typography.titleMedium)
     }
 }
 
@@ -97,5 +119,12 @@ internal fun SudokuPencilToggle(
     )
 }
 
-private val MIN_KEY_HEIGHT = 48.dp
 private const val DIGIT_COUNT = 9
+private const val DIGITS_PER_ROW = 3
+private const val KEYPAD_ROW_COUNT = DIGIT_COUNT / DIGITS_PER_ROW
+
+internal val SUDOKU_DIGIT_CONTROL_SIZE = 44.dp
+internal val SUDOKU_DIGIT_ROW_SPACING = 8.dp
+
+internal val SudokuNumberPadHeight =
+    SUDOKU_DIGIT_CONTROL_SIZE * KEYPAD_ROW_COUNT + SUDOKU_DIGIT_ROW_SPACING * (KEYPAD_ROW_COUNT - 1)
