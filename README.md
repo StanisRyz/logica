@@ -4,13 +4,13 @@ Native Android application with playable Balance, Crowns, Word, Sudoku, and 2048
 
 Every catalog game is played as a numbered sequence of fixed levels. Level 1 of Легко is the same
 puzzle for everyone, and so is level 743 — each game and each difficulty keeps its own level number,
-shown on the difficulty list and above the board. Solving a level moves you to the next one; a
+shown above the board. Solving a level moves you to the next one; a
 failed attempt lets you replay the same level. Unfinished levels are not saved: leaving one asks
 for confirmation and then discards that attempt, and opening the game again starts the same level
 from the beginning.
 
 Opening a Catalog game shows one shared entry screen: a short «Как играть?» tutorial action followed
-by four direct level buttons — Легко, Средне, Сложно, and Эксперт — each with its current level.
+by four direct level cards — Легко, Средне, Сложно, and Эксперт.
 
 Sudoku uses a frozen, validated Puzzle Bank corpus bundled offline; puzzles are never generated or
 downloaded at runtime. It is the fourth Catalog game, with EASY, MEDIUM, HARD, and EXPERT selection,

@@ -8,7 +8,6 @@ import com.stanisryz.logica.ui.components.PuzzleStartScreen
 
 @Composable
 internal fun Game2048StartScreen(
-    levels: Map<Difficulty, Int>,
     economy: PlayerEconomy,
     onOpenTutorial: () -> Unit,
     onStart: (Difficulty) -> Unit,
@@ -16,7 +15,6 @@ internal fun Game2048StartScreen(
     modifier: Modifier = Modifier,
 ) {
     PuzzleStartScreen(
-        levels = levels,
         economy = economy,
         onOpenTutorial = onOpenTutorial,
         onStart = onStart,

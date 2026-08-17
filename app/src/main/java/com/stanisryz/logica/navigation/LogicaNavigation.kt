@@ -3,7 +3,7 @@ package com.stanisryz.logica.navigation
 import android.app.Activity
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -58,7 +58,6 @@ import com.stanisryz.logica.ads.TerminalActionCoordinator
 import com.stanisryz.logica.catalog.CatalogLevelRepository
 import com.stanisryz.logica.catalog.GameAttemptFactory
 import com.stanisryz.logica.catalog.GameAttemptLaunch
-import com.stanisryz.logica.catalog.rememberCatalogLevels
 import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.DailyGameLaunch
 import com.stanisryz.logica.daily.DailyResultRepository
@@ -268,11 +267,7 @@ internal fun LogicaNavigation(
             )
         },
         bottomBar = {
-            AnimatedVisibility(
-                visible = currentDestination.showsBottomBar(),
-                enter = fadeIn(tween(LogicaMotion.SHORT_MILLIS)),
-                exit = fadeOut(tween(LogicaMotion.SHORT_MILLIS)),
-            ) {
+            if (currentDestination.showsBottomBar()) {
                 AppBottomBar(selectedTab) { selectedTab = it }
             }
         },
@@ -294,10 +289,7 @@ internal fun LogicaNavigation(
                 (
                     fadeIn(tween(LogicaMotion.SCREEN_MILLIS)) +
                         slideInHorizontally(tween(LogicaMotion.SCREEN_MILLIS)) { width -> -width / 20 }
-                ) togetherWith (
-                    fadeOut(tween(LogicaMotion.SHORT_MILLIS)) +
-                        slideOutHorizontally(tween(LogicaMotion.SCREEN_MILLIS)) { width -> width / 28 }
-                )
+                ) togetherWith ExitTransition.None
             },
             entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
             entryProvider =
@@ -350,9 +342,7 @@ internal fun LogicaNavigation(
                         SettingsScreen(settings, onThemeModeChanged, onSoundEnabledChanged, onHapticsEnabledChanged)
                     }
                     entry<AppDestination.BalanceStart> {
-                        val levels = rememberCatalogLevels(catalogLevelRepository, PuzzleType.BALANCE)
                         BalanceStartScreen(
-                            levels = levels,
                             economy = economy,
                             onOpenTutorial = { backStack.add(AppDestination.BalanceTutorial) },
                             onStart = { difficulty -> openLevel(PuzzleType.BALANCE, difficulty) },
@@ -363,9 +353,7 @@ internal fun LogicaNavigation(
                         BalanceTutorialRoute(settingsRepository = settingsRepository, onDone = { backStack.removeLastOrNull() })
                     }
                     entry<AppDestination.CrownsStart> {
-                        val levels = rememberCatalogLevels(catalogLevelRepository, PuzzleType.CROWNS)
                         CrownsStartScreen(
-                            levels = levels,
                             economy = economy,
                             onOpenTutorial = {
                                 onCrownsTutorialCompleted(true)
@@ -386,9 +374,7 @@ internal fun LogicaNavigation(
                         )
                     }
                     entry<AppDestination.WordStart> {
-                        val levels = rememberCatalogLevels(catalogLevelRepository, PuzzleType.WORD)
                         WordStartScreen(
-                            levels = levels,
                             economy = economy,
                             onOpenTutorial = {
                                 onWordTutorialCompleted(true)
@@ -405,9 +391,7 @@ internal fun LogicaNavigation(
                         WordTutorialRoute(settingsRepository = settingsRepository, onDone = { backStack.removeLastOrNull() })
                     }
                     entry<AppDestination.SudokuStart> {
-                        val levels = rememberCatalogLevels(catalogLevelRepository, PuzzleType.SUDOKU)
                         SudokuStartScreen(
-                            levels = levels,
                             economy = economy,
                             onOpenTutorial = { backStack.add(AppDestination.SudokuTutorial) },
                             onStart = { difficulty -> openLevel(PuzzleType.SUDOKU, difficulty) },
@@ -421,9 +405,7 @@ internal fun LogicaNavigation(
                         )
                     }
                     entry<AppDestination.Game2048Start> {
-                        val levels = rememberCatalogLevels(catalogLevelRepository, PuzzleType.GAME_2048)
                         Game2048StartScreen(
-                            levels = levels,
                             economy = economy,
                             onOpenTutorial = { backStack.add(AppDestination.Game2048Tutorial) },
                             onStart = { difficulty -> openLevel(PuzzleType.GAME_2048, difficulty) },

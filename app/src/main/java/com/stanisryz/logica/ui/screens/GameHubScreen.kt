@@ -1,7 +1,6 @@
 package com.stanisryz.logica.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -10,14 +9,18 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -26,7 +29,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -42,8 +47,8 @@ import com.stanisryz.logica.daily.TodayViewModelFactory
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.statistics.StatisticsRepository
-import com.stanisryz.logica.ui.components.LogicaCard
-import com.stanisryz.logica.ui.components.PuzzleArtwork
+import com.stanisryz.logica.ui.components.CatalogCardArtwork
+import com.stanisryz.logica.ui.components.CatalogCardLabelScrim
 import com.stanisryz.logica.ui.components.SectionTitle
 import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.components.titleResource
@@ -173,22 +178,50 @@ private fun GameCatalogCard(
     entry: GameCatalogEntry,
     gameplayAllowed: Boolean,
 ) {
-    LogicaCard(
-        modifier = Modifier.animateContentSize(tween(LogicaMotion.SCREEN_MILLIS)),
-        onClick = entry.onPlay.takeIf { gameplayAllowed },
-        onClickLabel = stringResource(entry.puzzleType.titleResource()),
+    val colors = MaterialTheme.colorScheme
+    Card(
+        modifier = Modifier.fillMaxWidth().height(GAME_CATALOG_CARD_HEIGHT),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = if (gameplayAllowed) colors.surfaceContainerLow else colors.surfaceContainerHighest,
+                contentColor = if (gameplayAllowed) colors.onSurface else colors.onSurfaceVariant.copy(alpha = DISABLED_ALPHA),
+            ),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        enabled = gameplayAllowed,
+                        role = Role.Button,
+                        onClickLabel = stringResource(entry.puzzleType.titleResource()),
+                        onClick = entry.onPlay,
+                    ),
+            contentAlignment = Alignment.CenterStart,
         ) {
-            PuzzleArtwork(entry.puzzleType)
+            CatalogCardArtwork(entry.puzzleType.catalogArtworkDrawableName(), Modifier.fillMaxSize())
+            CatalogCardLabelScrim(Modifier.fillMaxSize())
             Text(
                 text = stringResource(entry.puzzleType.titleResource()),
-                modifier = Modifier.padding(start = LogicaSpacing.action),
-                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.fillMaxWidth(0.5f).padding(start = GAME_CATALOG_LABEL_PADDING),
+                style = MaterialTheme.typography.headlineSmall,
+                color = GAME_CATALOG_LABEL_COLOR.copy(alpha = if (gameplayAllowed) 1f else DISABLED_ALPHA),
             )
         }
     }
 }
+
+private fun PuzzleType.catalogArtworkDrawableName(): String =
+    when (this) {
+        PuzzleType.BALANCE -> "game_balance"
+        PuzzleType.CROWNS -> "game_crowns"
+        PuzzleType.WORD -> "game_word"
+        PuzzleType.SUDOKU -> "game_sudoku"
+        PuzzleType.GAME_2048 -> "game_2048"
+        else -> error("$this has no Catalog artwork.")
+    }
+
+private val GAME_CATALOG_CARD_HEIGHT = 124.dp
+private val GAME_CATALOG_LABEL_PADDING = 24.dp
+private val GAME_CATALOG_LABEL_COLOR = androidx.compose.ui.graphics.Color(0xFF1B2A35)
+private const val DISABLED_ALPHA = 0.38f

@@ -81,8 +81,8 @@ internal sealed interface AppDestination {
 /** The bottom navigation belongs to the primary tabs and to nothing else. */
 internal fun AppDestination.showsBottomBar(): Boolean = this == AppDestination.Home
 
-/** The Settings gear sits on all three primary tabs; secondary destinations show Back instead. */
-internal fun AppDestination.showsSettingsAction(): Boolean = this == AppDestination.Home
+/** The Settings gear is available everywhere except Settings itself, which is already open. */
+internal fun AppDestination.showsSettingsAction(): Boolean = this != AppDestination.Settings
 
 /**
  * Where the wallet belongs: the shared shell of the primary tabs, and every screen a game can be
