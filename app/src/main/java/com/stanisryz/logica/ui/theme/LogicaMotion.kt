@@ -5,9 +5,9 @@ internal object LogicaMotion {
     const val SHORT_MILLIS = 150
     const val SCREEN_MILLIS = 200
 
-    /** Shared fade-through timing for destination and primary-tab changes. */
-    const val NAVIGATION_EXIT_MILLIS = 90
-    const val NAVIGATION_ENTER_DELAY_MILLIS = NAVIGATION_EXIT_MILLIS
-    const val NAVIGATION_ENTER_MILLIS = 120
-    const val NAVIGATION_OFFSET_DIVISOR = 28
+    /** Shared timing and offsets for the shell's directional navigation motion. */
+    const val NAVIGATION_SLIDE_MILLIS = 220
+    const val DESTINATION_OUTGOING_PARALLAX_DIVISOR = 4
+    const val PRIMARY_TAB_INCOMING_OFFSET_DIVISOR = 2
+    const val PRIMARY_TAB_OUTGOING_PARALLAX_DIVISOR = 6
 }

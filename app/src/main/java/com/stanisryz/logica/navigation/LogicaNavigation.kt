@@ -3,11 +3,8 @@ package com.stanisryz.logica.navigation
 import android.app.Activity
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -50,6 +47,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
@@ -284,12 +282,20 @@ internal fun LogicaNavigation(
                     .background(MaterialTheme.colorScheme.background),
             onBack = goBack,
             transitionSpec = {
-                navigationFadeThroughEnter(direction = 1) togetherWith
-                    navigationFadeThroughExit(direction = -1)
+                horizontalSlideTransition(
+                    incomingDirection = 1,
+                    incomingOffsetDivisor = 1,
+                    outgoingDirection = -1,
+                    outgoingOffsetDivisor = LogicaMotion.DESTINATION_OUTGOING_PARALLAX_DIVISOR,
+                )
             },
             popTransitionSpec = {
-                navigationFadeThroughEnter(direction = -1) togetherWith
-                    navigationFadeThroughExit(direction = 1)
+                horizontalSlideTransition(
+                    incomingDirection = -1,
+                    incomingOffsetDivisor = LogicaMotion.DESTINATION_OUTGOING_PARALLAX_DIVISOR,
+                    outgoingDirection = 1,
+                    outgoingOffsetDivisor = 1,
+                )
             },
             entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
             entryProvider =
@@ -303,8 +309,13 @@ internal fun LogicaNavigation(
                                     .background(MaterialTheme.colorScheme.background),
                             transitionSpec = {
                                 val direction = if (targetState.ordinal >= initialState.ordinal) 1 else -1
-                                navigationFadeThroughEnter(direction) togetherWith
-                                    navigationFadeThroughExit(direction = -direction)
+                                horizontalSlideTransition(
+                                    incomingDirection = direction,
+                                    incomingOffsetDivisor = LogicaMotion.PRIMARY_TAB_INCOMING_OFFSET_DIVISOR,
+                                    outgoingDirection = -direction,
+                                    outgoingOffsetDivisor =
+                                        LogicaMotion.PRIMARY_TAB_OUTGOING_PARALLAX_DIVISOR,
+                                )
                             },
                             label = "primaryTab",
                         ) { tab ->
@@ -583,25 +594,24 @@ private fun AppTopBar(
     )
 }
 
-private fun navigationFadeThroughEnter(direction: Int): EnterTransition =
-    fadeIn(
-        tween(
-            durationMillis = LogicaMotion.NAVIGATION_ENTER_MILLIS,
-            delayMillis = LogicaMotion.NAVIGATION_ENTER_DELAY_MILLIS,
-        ),
-    ) +
-        slideInHorizontally(
-            tween(
-                durationMillis = LogicaMotion.NAVIGATION_ENTER_MILLIS,
-                delayMillis = LogicaMotion.NAVIGATION_ENTER_DELAY_MILLIS,
-            ),
-        ) { width -> direction * (width / LogicaMotion.NAVIGATION_OFFSET_DIVISOR) }
-
-private fun navigationFadeThroughExit(direction: Int): ExitTransition =
-    fadeOut(tween(durationMillis = LogicaMotion.NAVIGATION_EXIT_MILLIS)) +
-        slideOutHorizontally(tween(durationMillis = LogicaMotion.NAVIGATION_EXIT_MILLIS)) { width ->
-            direction * (width / LogicaMotion.NAVIGATION_OFFSET_DIVISOR)
+private fun horizontalSlideTransition(
+    incomingDirection: Int,
+    incomingOffsetDivisor: Int,
+    outgoingDirection: Int,
+    outgoingOffsetDivisor: Int,
+) =
+    slideInHorizontally(navigationSlideSpec()) { width ->
+        incomingDirection * (width / incomingOffsetDivisor)
+    } togetherWith
+        slideOutHorizontally(navigationSlideSpec()) { width ->
+            outgoingDirection * (width / outgoingOffsetDivisor)
         }
+
+private fun navigationSlideSpec() =
+    tween<IntOffset>(
+        durationMillis = LogicaMotion.NAVIGATION_SLIDE_MILLIS,
+        easing = FastOutSlowInEasing,
+    )
 
 @Composable
 private fun AppBottomBar(
