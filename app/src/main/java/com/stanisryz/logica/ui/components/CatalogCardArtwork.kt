@@ -48,3 +48,5 @@ internal fun CatalogCardLabelScrim(modifier: Modifier = Modifier) {
 }
 
 private val CATALOG_LABEL_SCRIM = Color(0xFFF4F8FB).copy(alpha = 0.15f)
+
+internal const val CATALOG_CARD_TITLE_SCALE = 1.40625f

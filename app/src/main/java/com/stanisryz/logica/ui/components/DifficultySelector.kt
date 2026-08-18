@@ -110,7 +110,7 @@ private fun DifficultyCard(
                 modifier = Modifier.fillMaxWidth(0.5f).padding(start = DIFFICULTY_LABEL_PADDING),
                 style =
                     MaterialTheme.typography.headlineSmall.copy(
-                        fontSize = MaterialTheme.typography.headlineSmall.fontSize * DIFFICULTY_TITLE_SCALE,
+                        fontSize = MaterialTheme.typography.headlineSmall.fontSize * CATALOG_CARD_TITLE_SCALE,
                     ),
                 color = DIFFICULTY_LABEL_COLOR.copy(alpha = if (enabled) 1f else DISABLED_ALPHA),
             )
@@ -134,5 +134,4 @@ private fun Difficulty.artworkDrawableName(): String =
 
 private val DIFFICULTY_LABEL_PADDING = 24.dp
 private val DIFFICULTY_LABEL_COLOR = Color(0xFF1B2A35)
-private const val DIFFICULTY_TITLE_SCALE = 1.40625f
 private const val DISABLED_ALPHA = 0.38f

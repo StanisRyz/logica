@@ -49,6 +49,7 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.ui.components.CatalogCardArtwork
 import com.stanisryz.logica.ui.components.CatalogCardLabelScrim
+import com.stanisryz.logica.ui.components.CATALOG_CARD_TITLE_SCALE
 import com.stanisryz.logica.ui.components.SectionTitle
 import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.components.titleResource
@@ -204,7 +205,10 @@ private fun GameCatalogCard(
             Text(
                 text = stringResource(entry.puzzleType.titleResource()),
                 modifier = Modifier.fillMaxWidth(0.5f).padding(start = GAME_CATALOG_LABEL_PADDING),
-                style = MaterialTheme.typography.headlineSmall,
+                style =
+                    MaterialTheme.typography.headlineSmall.copy(
+                        fontSize = MaterialTheme.typography.headlineSmall.fontSize * CATALOG_CARD_TITLE_SCALE,
+                    ),
                 color = GAME_CATALOG_LABEL_COLOR.copy(alpha = if (gameplayAllowed) 1f else DISABLED_ALPHA),
             )
         }
