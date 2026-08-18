@@ -1,6 +1,6 @@
 # Логика дня
 
-Native Android application with playable Balance, Crowns, Word, Sudoku, and 2048 puzzles. The stack is Kotlin, Jetpack Compose, Navigation 3, DataStore, Room, and Gradle Kotlin DSL.
+Native Android application with playable Balance, Crowns, Word, Sudoku, and 2048 puzzles. The stack is Kotlin Multiplatform for the deterministic core, Jetpack Compose, Navigation 3, DataStore, Room, and Gradle Kotlin DSL; Android remains the production app and JVM supports developer tooling.
 
 Every catalog game is played as a numbered sequence of fixed levels. Level 1 of Легко is the same
 puzzle for everyone, and so is level 743 — each game and each difficulty keeps its own level number,
@@ -77,7 +77,7 @@ the 10 000 accepted puzzles per game and difficulty. Level Pack V1 is frozen: ma
 verify successfully, changed content requires a new pack version, and past level 10 000 the content
 cycles while the level number keeps counting up.
 
-`wordLexiconPrepare` regenerates `puzzle-core/src/main/resources/word/v1/` from the offline curated
+`wordLexiconPrepare` regenerates `puzzle-core/src/commonMain/resources/word/v1/` from the offline curated
 sources in `lexicon/word/`; V1 is frozen and changing an existing V1 seed-to-answer mapping is not
 allowed. The Python tool reproducibly regenerates V2 from pinned, locally installed pymorphy3 Russian
 dictionary data, pinned `wordfreq` Russian frequency ranking, and project allow/block files. Android
@@ -97,7 +97,7 @@ the tutorials, and gameplay open on top of them with normal Back navigation.
 Modules:
 
 - `app/` — Android/Compose shell plus neutral platform-service contracts and Android adapters for Store, ads, identity, cloud capability, and lifecycle.
-- `puzzle-core/` — deterministic Balance, Crowns, Word, Sudoku, and 2048 domain/gameplay code and diagnostics.
+- `puzzle-core/` — Kotlin Multiplatform deterministic Balance, Crowns, Word, Sudoku, and 2048 runtime in `commonMain`, with Android consumption and JVM-only developer tooling.
 - `lexicon/word/` — curated offline Word corpus sources and their provenance note.
 
 Balance is playable from the Game tab's catalog with optional interactive onboarding, selectable difficulties and levels, conflicts, hints, and improved accessibility cues.

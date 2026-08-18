@@ -3,7 +3,7 @@
 ## Frozen V1
 
 `answers_source.txt` and `guesses_source.txt` are the original project-authored, manually reviewed
-five-letter sources. `puzzle-core/src/main/resources/word/v1/` remains frozen and is generated only by
+five-letter sources. `puzzle-core/src/commonMain/resources/word/v1/` remains frozen and is generated only by
 `:puzzle-core:wordLexiconPrepare`; no Stage 27.1 change was made to either V1 resource.
 
 Frozen resource SHA-256 values:

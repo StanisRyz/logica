@@ -6,7 +6,9 @@
 - `:app` owns Android UI, Navigation 3, DataStore preferences, and Room durable persistence for terminal results, Catalog progression, Daily data, economy, and other current app state; it may depend on `:puzzle-core`.
 - Shared application services and UI depend on narrow neutral contracts under `platform/`; Android adapters under `platform/android/` wrap RuStore, Yandex Mobile Ads, and local Android host services.
 - Future Yandex Games implementations plug into the same Store, ads, identity, cloud-save, and lifecycle contracts; do not branch provider behavior through UI or ViewModels.
-- `:puzzle-core` contains platform-independent puzzle domain and algorithms; it must never depend on Android, Compose, or `:app`.
+- `:puzzle-core` is Kotlin Multiplatform: portable puzzle runtime belongs in `commonMain` and must never depend on Java, Android, Compose, filesystem/classpath APIs, system randomness/time, or `:app`.
+- Android/JVM bundled-resource adapters stay in their platform source sets; JVM quality, lexicon, freeze, and integrity tooling stays developer-only in `jvmQuality`.
+- Generator/version identities and deterministic outputs must remain identical across targets; structural target changes never justify a new generator version.
 - DataStore stores user preferences; Room stores durable results, economy, Daily lifecycle, and Catalog level progression, and ViewModels use repositories rather than Room DAOs.
 - Catalog and Daily gameplay is sessionless: an unfinished attempt lives only in its gameplay ViewModel and is discarded on leaving.
 - Catalog Level Pack V1 is frozen: `(puzzleType, difficulty, contentSlot)` maps to one accepted seed forever, developer tooling must reject a content-changing overwrite, and incompatible curation needs a new `CatalogLevelPackVersion`.
