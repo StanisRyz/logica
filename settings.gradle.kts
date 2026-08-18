@@ -7,7 +7,8 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    // Kotlin's JS/Wasm tooling adds its managed Node and Binaryen distribution repositories.
+    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
     repositories {
         google()
         mavenCentral()
@@ -21,3 +22,4 @@ dependencyResolutionManagement {
 rootProject.name = "Logica"
 include(":app")
 include(":puzzle-core")
+include(":web-app")

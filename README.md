@@ -1,6 +1,6 @@
 # Логика дня
 
-Native Android application with playable Balance, Crowns, Word, Sudoku, and 2048 puzzles. The stack is Kotlin Multiplatform for the deterministic core, Jetpack Compose, Navigation 3, DataStore, Room, and Gradle Kotlin DSL; Android remains the production app, JVM supports developer tooling, and JS/Wasm browser library targets prepare the core for a future Web host.
+Logica contains the native Android application with playable Balance, Crowns, Word, Sudoku, and 2048 puzzles plus an initial Yandex Games Web host. The deterministic core and canonical puzzle data are shared, while Android remains the complete application and the Compose Multiplatform Web root is intentionally bootstrap-only for now.
 
 Every catalog game is played as a numbered sequence of fixed levels. Level 1 of Легко is the same
 puzzle for everyone, and so is level 743 — each game and each difficulty keeps its own level number,
@@ -24,6 +24,21 @@ the goal is. It has animated tile movement, merges and deterministic spawning, o
 results/economy, and Profile statistics, and it is also part of the Daily challenge.
 
 Requires JDK 17 and Android SDK Platform 36.
+
+The `:web-app` module builds Kotlin/JS and Kotlin/Wasm browser executables. Local runs use a clearly
+labelled standalone mode when the Yandex SDK is absent; the compatibility distribution selects Wasm
+where supported and falls back to JavaScript. Build the Web outputs and the uploadable Yandex ZIP with:
+
+```powershell
+.\gradlew.bat :web-app:jsBrowserDevelopmentRun
+.\gradlew.bat :web-app:wasmJsBrowserDevelopmentRun
+.\gradlew.bat :web-app:composeCompatibilityBrowserDistribution
+.\gradlew.bat :web-app:packageYandexDistribution
+```
+
+The ZIP is written to `web-app/build/distributions/logica-yandex.zip`. The current Web host includes
+SDK bootstrap, lifecycle handling, lazy canonical-data loading, and responsive 9:16 presentation; it
+does not yet include the game UI, Player, Payments, ads, Store, Profile, Daily, or a sticky banner.
 
 Crowns, the second puzzle type, now has a pure-Kotlin domain model, deterministic solving and generation, solve-based difficulty evaluation, and unique/multiple-solution detection in `puzzle-core/`.
 
