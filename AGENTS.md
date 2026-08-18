@@ -4,11 +4,12 @@
 - Work VS Code/CLI-first; the Gradle Wrapper is the build source of truth.
 - Dependency versions are managed in `gradle/libs.versions.toml`; keep dependencies minimal.
 - `:app` owns Android UI, Navigation 3, DataStore preferences, and Room durable persistence for terminal results, Catalog progression, Daily data, economy, and other current app state; it may depend on `:puzzle-core`.
+- `:platform-contracts` owns the small platform-neutral Store, Ads, Player Identity, Cloud Save, lifecycle, metadata/capabilities, and `PlatformServices` contracts in `commonMain`; it depends only on multiplatform primitives such as coroutines `StateFlow`.
 - `:web-app` is the separate Yandex/Web application host; it owns browser I/O, Yandex SDK bootstrap behind one bridge, Web lifecycle adaptation, lazy Web asset loading, and the responsive 9:16 host presentation.
 - Android and Web remain separate entry points over the shared core and canonical data. The current Web root is bootstrap-only; full shared presentation comes later.
-- Shared application services and UI depend on narrow neutral contracts under `platform/`; Android adapters under `platform/android/` wrap RuStore, Yandex Mobile Ads, and local Android host services.
+- Android and Web implement the same neutral contracts from `:platform-contracts`; Android-specific adapters remain in `:app` under `platform/android/`, while Yandex/browser implementations remain in `:web-app`.
 - Future Yandex Games Player, Store, ads, identity, and cloud-save implementations plug into narrow neutral contracts; raw Yandex SDK access must stay behind the Web bridge and never spread through UI or application code.
-- `:puzzle-core` is Kotlin Multiplatform for Android, JVM, JavaScript, and Wasm browser libraries: portable puzzle runtime belongs in `commonMain` and must never depend on Java, Android, Compose, filesystem/classpath/browser/network APIs, system randomness/time, or `:app`.
+- `:puzzle-core` is Kotlin Multiplatform for Android, JVM, JavaScript, and Wasm browser libraries: portable puzzle runtime belongs in `commonMain` and must never depend on Java, Android, Compose, filesystem/classpath/browser/network APIs, system randomness/time, `:app`, or `:platform-contracts`.
 - Platform bundled-resource/preload adapters stay outside `commonMain`; JVM quality, lexicon, freeze, and integrity tooling stays developer-only in `jvmQuality`.
 - Generator/version identities and deterministic outputs must remain identical across targets; structural target changes never justify a new generator version.
 - DataStore stores user preferences; Room stores durable results, economy, Daily lifecycle, and Catalog level progression, and ViewModels use repositories rather than Room DAOs.

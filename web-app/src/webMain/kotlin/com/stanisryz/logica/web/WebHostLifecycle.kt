@@ -2,18 +2,18 @@
 
 package com.stanisryz.logica.web
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import com.stanisryz.logica.platform.PlatformLifecycle
+import com.stanisryz.logica.platform.PlatformLifecycleState
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlin.js.ExperimentalWasmJsInterop
 
 /** Browser/Yandex host activity only; future gameplay policy remains outside this adapter. */
-internal enum class WebHostLifecycleState {
-    ACTIVE,
-    INACTIVE,
-}
+internal class WebHostLifecycle : PlatformLifecycle, YandexLifecycleListener {
+    private val mutableState = MutableStateFlow(PlatformLifecycleState.INACTIVE)
+    override val state: StateFlow<PlatformLifecycleState> = mutableState.asStateFlow()
 
-internal class WebHostLifecycle : YandexLifecycleListener {
     private var started = false
     private var yandexPaused = false
     private var browserVisible = isBrowserDocumentVisible()
@@ -21,9 +21,6 @@ internal class WebHostLifecycle : YandexLifecycleListener {
     private val visibilityCallback = { refreshBrowserState() }
     private val focusCallback = { refreshBrowserState() }
     private val blurCallback = { refreshBrowserState() }
-
-    var state by mutableStateOf(WebHostLifecycleState.INACTIVE)
-        private set
 
     fun start() {
         if (started) return
@@ -50,7 +47,7 @@ internal class WebHostLifecycle : YandexLifecycleListener {
         removeDocumentEventListener("visibilitychange", visibilityCallback)
         removeWindowEventListener("focus", focusCallback)
         removeWindowEventListener("blur", blurCallback)
-        state = WebHostLifecycleState.INACTIVE
+        mutableState.value = PlatformLifecycleState.INACTIVE
     }
 
     private fun refreshBrowserState() {
@@ -60,11 +57,11 @@ internal class WebHostLifecycle : YandexLifecycleListener {
     }
 
     private fun updateState() {
-        state =
+        mutableState.value =
             if (started && !yandexPaused && browserVisible && browserFocused) {
-                WebHostLifecycleState.ACTIVE
+                PlatformLifecycleState.ACTIVE
             } else {
-                WebHostLifecycleState.INACTIVE
+                PlatformLifecycleState.INACTIVE
             }
     }
 }

@@ -3,7 +3,7 @@ package com.stanisryz.logica.platform
 import kotlinx.coroutines.flow.StateFlow
 
 /** SDK-level ad state. Product policy decides where and when a gateway may enter these states. */
-internal enum class PlatformAdState {
+enum class PlatformAdState {
     IDLE,
     LOADING,
     READY,
@@ -12,15 +12,15 @@ internal enum class PlatformAdState {
 }
 
 /** Opaque presentation surface supplied by the platform UI host. */
-internal interface AdDisplayHost
+interface AdDisplayHost
 
-internal enum class AdShowStart {
+enum class AdShowStart {
     STARTED,
     UNAVAILABLE,
     FAILED,
 }
 
-internal sealed interface RewardedAdEvent {
+sealed interface RewardedAdEvent {
     data object Rewarded : RewardedAdEvent
 
     data object Dismissed : RewardedAdEvent
@@ -28,7 +28,7 @@ internal sealed interface RewardedAdEvent {
     data object Failed : RewardedAdEvent
 }
 
-internal sealed interface FullscreenAdEvent {
+sealed interface FullscreenAdEvent {
     data object Shown : FullscreenAdEvent
 
     data object Dismissed : FullscreenAdEvent
@@ -37,7 +37,7 @@ internal sealed interface FullscreenAdEvent {
 }
 
 /** One rewarded placement. Reward persistence and rewarded-life policy stay above this boundary. */
-internal interface RewardedAdsGateway {
+interface RewardedAdsGateway {
     val state: StateFlow<PlatformAdState>
 
     suspend fun preload()
@@ -52,7 +52,7 @@ internal interface RewardedAdsGateway {
 }
 
 /** One fullscreen placement. Opportunities, cooldown, and terminal actions stay above this boundary. */
-internal interface FullscreenAdsGateway {
+interface FullscreenAdsGateway {
     val state: StateFlow<PlatformAdState>
 
     suspend fun preload()

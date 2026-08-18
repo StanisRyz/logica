@@ -1,11 +1,11 @@
 package com.stanisryz.logica.platform
 
-internal enum class CloudSaveAvailability {
+enum class CloudSaveAvailability {
     AVAILABLE,
     UNSUPPORTED,
 }
 
-internal sealed interface CloudSaveReadResult {
+sealed interface CloudSaveReadResult {
     data class Found(
         val payload: ByteArray,
     ) : CloudSaveReadResult
@@ -19,7 +19,7 @@ internal sealed interface CloudSaveReadResult {
     ) : CloudSaveReadResult
 }
 
-internal sealed interface CloudSaveWriteResult {
+sealed interface CloudSaveWriteResult {
     data object Saved : CloudSaveWriteResult
 
     data object Unsupported : CloudSaveWriteResult
@@ -30,7 +30,7 @@ internal sealed interface CloudSaveWriteResult {
 }
 
 /** Optional remote snapshot storage. Room and DataStore remain separate local persistence. */
-internal interface CloudSaveGateway {
+interface CloudSaveGateway {
     val availability: CloudSaveAvailability
 
     suspend fun read(): CloudSaveReadResult

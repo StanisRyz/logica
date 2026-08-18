@@ -111,6 +111,7 @@ room3 {
 }
 
 dependencies {
+    implementation(project(":platform-contracts"))
     implementation(project(":puzzle-core"))
 
     implementation(libs.androidx.activity.compose)

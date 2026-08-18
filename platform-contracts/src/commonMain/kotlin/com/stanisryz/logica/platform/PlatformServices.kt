@@ -1,23 +1,23 @@
 package com.stanisryz.logica.platform
 
-internal enum class PlatformKind {
+enum class PlatformKind {
     ANDROID_RUSTORE,
     YANDEX_GAMES,
 }
 
-internal data class PlatformCapabilities(
+data class PlatformCapabilities(
     val purchases: Boolean,
     val playerAuthorization: Boolean,
     val cloudSave: Boolean,
 )
 
-internal data class PlatformMetadata(
+data class PlatformMetadata(
     val kind: PlatformKind,
     val capabilities: PlatformCapabilities,
 )
 
 /** Composition only: policy belongs to the application services that consume these dependencies. */
-internal data class PlatformServices(
+data class PlatformServices(
     val metadata: PlatformMetadata,
     val store: StoreGateway,
     val rewardedAds: RewardedAdsGateway,

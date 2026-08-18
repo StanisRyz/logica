@@ -1,13 +1,13 @@
 package com.stanisryz.logica.platform
 
 /** Store-owned product metadata. Price text is already localized and formatted by the provider. */
-internal data class PlatformProduct(
+data class PlatformProduct(
     val productId: String,
     val priceLabel: String,
 )
 
 /** A confirmed consumable transaction which the application has not finalized yet. */
-internal data class PlatformPurchase(
+data class PlatformPurchase(
     /** Provider-qualified durable key, for example `rustore:<purchaseId>`. */
     val transactionId: String,
     /** Raw provider ID used only to finalize the purchase with that provider. */
@@ -16,7 +16,7 @@ internal data class PlatformPurchase(
 )
 
 /** Only [Confirmed] is eligible to enter the durable economy ledger. */
-internal sealed interface PlatformPurchaseResult {
+sealed interface PlatformPurchaseResult {
     data class Confirmed(
         val purchase: PlatformPurchase,
     ) : PlatformPurchaseResult
@@ -30,7 +30,7 @@ internal sealed interface PlatformPurchaseResult {
     ) : PlatformPurchaseResult
 }
 
-internal class PlatformStoreException(
+class PlatformStoreException(
     message: String,
 ) : Exception(message)
 
@@ -39,7 +39,7 @@ internal class PlatformStoreException(
  * [finalize] to the provider's delivery acknowledgement, such as RuStore acknowledgement or
  * Yandex Games `consumePurchase()`.
  */
-internal interface StoreGateway {
+interface StoreGateway {
     suspend fun products(productIds: List<String>): List<PlatformProduct>
 
     suspend fun purchase(productId: String): PlatformPurchaseResult

@@ -1,6 +1,6 @@
 # Логика дня
 
-Logica contains the native Android application with playable Balance, Crowns, Word, Sudoku, and 2048 puzzles plus an initial Yandex Games Web host. The deterministic core and canonical puzzle data are shared, while Android remains the complete application and the Compose Multiplatform Web root is intentionally bootstrap-only for now.
+Logica contains the native Android application with playable Balance, Crowns, Word, Sudoku, and 2048 puzzles plus an initial Yandex Games Web host. The deterministic core and canonical puzzle data are shared through `:puzzle-core`, and neutral Store, Ads, Player, Cloud Save, lifecycle, and capability contracts live in `:platform-contracts`. Android remains the complete application; the Compose Multiplatform Web root is intentionally bootstrap-only for now.
 
 Every catalog game is played as a numbered sequence of fixed levels. Level 1 of Легко is the same
 puzzle for everyone, and so is level 743 — each game and each difficulty keeps its own level number,

@@ -1,13 +1,13 @@
 package com.stanisryz.logica.platform
 
-internal enum class PlayerAuthorizationState {
+enum class PlayerAuthorizationState {
     AUTHORIZED,
     ANONYMOUS,
     UNSUPPORTED,
 }
 
 /** Profile information owned by the application rather than any account SDK. */
-internal data class PlayerIdentity(
+data class PlayerIdentity(
     val playerId: String? = null,
     val displayName: String? = null,
     val avatarReference: String? = null,
@@ -15,7 +15,7 @@ internal data class PlayerIdentity(
     val provider: String,
 )
 
-internal sealed interface PlayerAuthorizationResult {
+sealed interface PlayerAuthorizationResult {
     data class Available(
         val identity: PlayerIdentity,
     ) : PlayerAuthorizationResult
@@ -27,7 +27,7 @@ internal sealed interface PlayerAuthorizationResult {
     ) : PlayerAuthorizationResult
 }
 
-internal interface PlayerIdentityGateway {
+interface PlayerIdentityGateway {
     suspend fun identity(): PlayerIdentity
 
     suspend fun requestAuthorization(): PlayerAuthorizationResult

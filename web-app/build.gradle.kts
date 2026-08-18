@@ -36,6 +36,7 @@ kotlin {
             resources.srcDir(project(":puzzle-core").layout.projectDirectory.dir("src/commonMain/resources"))
 
             dependencies {
+                implementation(project(":platform-contracts"))
                 implementation(project(":puzzle-core"))
                 implementation(compose.runtime)
                 implementation(compose.foundation)

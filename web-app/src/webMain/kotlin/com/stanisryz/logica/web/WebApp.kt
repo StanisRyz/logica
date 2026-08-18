@@ -19,6 +19,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.stanisryz.logica.platform.PlatformLifecycleState
 
 private val WebColors =
     lightColorScheme(
@@ -51,6 +54,8 @@ internal fun WebApp(
     controller: WebBootstrapController,
     lifecycle: WebHostLifecycle,
 ) {
+    val lifecycleState by lifecycle.state.collectAsState()
+
     MaterialTheme(colorScheme = WebColors) {
         LaunchedEffect(controller) {
             withFrameNanos { }
@@ -63,7 +68,7 @@ internal fun WebApp(
                 is WebBootstrapState.Ready ->
                     ReadyContent(
                         mode = state.mode,
-                        lifecycleState = lifecycle.state,
+                        lifecycleState = lifecycleState,
                         onRendered = controller::onInitialHostUiReady,
                     )
                 is WebBootstrapState.FatalError -> FatalContent(state.message)
@@ -118,7 +123,7 @@ private fun LoadingContent() {
 @Composable
 private fun ReadyContent(
     mode: WebHostMode,
-    lifecycleState: WebHostLifecycleState,
+    lifecycleState: PlatformLifecycleState,
     onRendered: () -> Unit,
 ) {
     LaunchedEffect(mode) {
@@ -172,8 +177,8 @@ private fun ReadyContent(
         Text(
             text =
                 when (lifecycleState) {
-                    WebHostLifecycleState.ACTIVE -> "Хост активен"
-                    WebHostLifecycleState.INACTIVE -> "Хост на паузе"
+                    PlatformLifecycleState.ACTIVE -> "Хост активен"
+                    PlatformLifecycleState.INACTIVE -> "Хост на паузе"
                 },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
