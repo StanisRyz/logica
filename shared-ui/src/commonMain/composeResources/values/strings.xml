@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="difficulty_easy">Легко</string>
+    <string name="difficulty_medium">Средне</string>
+    <string name="difficulty_hard">Сложно</string>
+    <string name="difficulty_expert">Эксперт</string>
+    <string name="catalog_level">Уровень %1$d</string>
+    <string name="mistakes_label">Ошибки: %1$d из %2$d</string>
+    <string name="mistakes_description">Ошибок: %1$d из %2$d</string>
+
+    <string name="balance_cell_description">Строка %1$d, столбец %2$d. Значение: %3$s. %4$s%5$s</string>
+    <string name="fixed_cell">Фиксированная клетка</string>
+    <string name="editable_cell">Редактируемая клетка</string>
+    <string name="confirmed_cell">Значение подтверждено, изменить нельзя</string>
+    <string name="incorrect_cell">Значение неверно, исправьте его</string>
+    <string name="pencil_marks_suffix"> Черновые пометки: %1$s.</string>
+    <string name="conflict_suffix"> Есть конфликт.</string>
+    <string name="cell_empty">пусто</string>
+    <string name="cell_zero">ноль</string>
+    <string name="cell_one">единица</string>
+
+    <string name="tool_pencil">Карандаш</string>
+    <string name="tool_selected">Выбрано</string>
+    <string name="tool_not_selected">Не выбрано</string>
+    <string name="tool_on">Включён</string>
+    <string name="tool_off">Выключен</string>
+    <string name="balance_tool_black">Чёрный ●</string>
+    <string name="balance_tool_white">Белый ○</string>
+    <string name="hint">Подсказка</string>
+    <string name="searching_hint">Ищем подсказку…</string>
+    <string name="hint_legend">Рамка показывает цель подсказки; светлые клетки — её основание.</string>
+    <string name="hint_incorrect_value">Проверьте клетку %1$d:%2$d: здесь должно быть %3$s.</string>
+    <string name="hint_logical_deduction">Клетка %1$d:%2$d: %3$s. %4$s</string>
+    <string name="rule_prevent_three">Нельзя ставить три одинаковых значения подряд.</string>
+    <string name="rule_complete_quota">В линии уже набрана половина одинаковых значений.</string>
+    <string name="rule_preserve_uniqueness">Завершённые линии не должны совпадать.</string>
+    <string name="violation_unbalanced_row">В строке слишком много одинаковых символов.</string>
+    <string name="violation_unbalanced_column">В столбце слишком много одинаковых символов.</string>
+    <string name="violation_three_horizontal">В строке три одинаковых символа подряд.</string>
+    <string name="violation_three_vertical">В столбце три одинаковых символа подряд.</string>
+    <string name="violation_duplicate_rows">Две завершённые строки совпадают.</string>
+    <string name="violation_duplicate_columns">Два завершённых столбца совпадают.</string>
+    <string name="violation_fixed_clue">Фиксированная клетка не может быть изменена.</string>
+    <string name="violation_board_size">Размер поля не совпадает с головоломкой.</string>
+</resources>

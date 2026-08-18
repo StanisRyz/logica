@@ -76,6 +76,11 @@ internal class WebBootstrapController(
         notifyGameReadyIfPossible()
     }
 
+    /** Gameplay lifecycle failures never block the puzzle or host UI. */
+    fun setGameplayActive(active: Boolean) {
+        bridge.setGameplayActive(active)
+    }
+
     fun dispose() {
         bridge.dispose()
         lifecycle.dispose()

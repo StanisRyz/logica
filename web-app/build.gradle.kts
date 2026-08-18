@@ -38,6 +38,7 @@ kotlin {
             dependencies {
                 implementation(project(":platform-contracts"))
                 implementation(project(":puzzle-core"))
+                implementation(project(":shared-ui"))
                 implementation(compose.runtime)
                 implementation(compose.foundation)
                 implementation(compose.material3)

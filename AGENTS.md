@@ -3,10 +3,12 @@
 - Stack: Kotlin, Jetpack Compose, Compose Multiplatform for Web, Material 3, AGP, and Gradle Kotlin DSL.
 - Work VS Code/CLI-first; the Gradle Wrapper is the build source of truth.
 - Dependency versions are managed in `gradle/libs.versions.toml`; keep dependencies minimal.
-- `:app` owns Android UI, Navigation 3, DataStore preferences, and Room durable persistence for terminal results, Catalog progression, Daily data, economy, and other current app state; it may depend on `:puzzle-core`.
+- `:app` is the Android application host: it owns ViewModels, Navigation 3, DataStore, Room persistence, economy, ads, haptics, and Android platform adapters; it may depend on `:puzzle-core` and `:shared-ui`.
 - `:platform-contracts` owns the small platform-neutral Store, Ads, Player Identity, Cloud Save, lifecycle, metadata/capabilities, and `PlatformServices` contracts in `commonMain`; it depends only on multiplatform primitives such as coroutines `StateFlow`.
-- `:web-app` is the separate Yandex/Web application host; it owns browser I/O, Yandex SDK bootstrap behind one bridge, Web lifecycle adaptation, lazy Web asset loading, and the responsive 9:16 host presentation.
-- Android and Web remain separate entry points over the shared core and canonical data. The current Web root is bootstrap-only; full shared presentation comes later.
+- `:shared-ui` owns platform-neutral Compose Multiplatform presentation shared by Android and Web; it never owns ViewModels, persistence, economy, ads, haptics, navigation, or platform SDK integrations.
+- Balance is the first shared-presentation pilot. Future games should follow the same state-down/events-up host adapter pattern rather than creating Web-specific UI copies.
+- `:web-app` is the separate Yandex/Web application host; it owns browser I/O, Yandex SDK bootstrap behind one bridge, Web lifecycle adaptation, lazy Web asset loading, and the responsive 9:16 host. It currently exposes only the playable Balance Level 1 vertical slice and has no durable Web progression.
+- Android and Web remain separate entry points over the shared core, canonical data, and focused shared presentation.
 - Android and Web implement the same neutral contracts from `:platform-contracts`; Android-specific adapters remain in `:app` under `platform/android/`, while Yandex/browser implementations remain in `:web-app`.
 - Future Yandex Games Player, Store, ads, identity, and cloud-save implementations plug into narrow neutral contracts; raw Yandex SDK access must stay behind the Web bridge and never spread through UI or application code.
 - `:puzzle-core` is Kotlin Multiplatform for Android, JVM, JavaScript, and Wasm browser libraries: portable puzzle runtime belongs in `commonMain` and must never depend on Java, Android, Compose, filesystem/classpath/browser/network APIs, system randomness/time, `:app`, or `:platform-contracts`.
@@ -159,7 +161,7 @@
 - `GameHubRoute` is the single owner of the initial Daily load: `TodayViewModel` construction loads nothing and the route's resume observer refreshes it for first display, gameplay returns, and app resumes without replacing same-date content with a loading state.
 - Store reuses the existing purchase flow through `StoreGateway` (`GemStoreViewModel` and `GemPurchaseProcessor` remain provider-neutral); `StoreRoute` owns the ViewModel and selecting the tab is what reconciles and loads prices. Profile is the existing `StatisticsViewModel` and nothing else: no login, account, avatar, or cloud profile.
 - The wallet is visible on all three tabs, but only the Game tab and the gameplay surfaces may preload a rewarded ad; Store and Profile never trigger a load merely by showing the balance.
-- Shared UI lives in `app/src/main/java/com/stanisryz/logica/ui/components/` and `.../ui/theme/`; screens compose those pieces instead of inventing their own paddings, text sizes, cards, or state views.
+- Platform-neutral shared presentation lives in `:shared-ui`; Android-only components remain in `app/src/main/java/com/stanisryz/logica/ui/`.
 - `LogicaMotion` owns the shared short state and screen-transition durations; forward destinations slide in from the right with outgoing parallax, Back reverses that motion, and primary tabs slide directionally as peers. Navigation state and lifecycle stay independent from presentation animation. Gameplay-specific motion may keep local timings tied to its sequencing.
 - `LogicaSpacing` owns every layout value and `LogicaTheme` owns the complete Light/Dark `ColorScheme` plus shapes; do not leave Material container/surface roles at their baseline defaults.
 - `LogicaPalette` (via `LocalLogicaPalette`) holds only what Material 3 has no role for: the success family and the categorical Crowns region colors; everything else uses `MaterialTheme.colorScheme`.
@@ -172,7 +174,7 @@
 - Boards stay puzzle-specific: only the surrounding chrome (header, difficulty, actions, errors, completion) is shared.
 - Board cells size their text and their inner grids from the cell the layout actually gave them, never from fixed `sp` that only looks right in a Preview; Word gameplay is one screen with no scrolling, budgeting board and keyboard against the available height, and a rejected guess is shake plus a live-region announcement rather than a text block that changes the layout height.
 - Every state must be readable without color: pair status color with an icon plus a label, and keep the existing non-color Word feedback.
-- All user-facing strings live in `app/src/main/res/values/strings.xml`; all Catalog games present the same four direct-launch difficulty cards.
+- Shared Balance/difficulty resources live in `:shared-ui`; Android-only strings stay in `app/src/main/res/values/strings.xml`. All Catalog games present the same four direct-launch difficulty cards.
 - Balance generator soak verification is opt-in; large seed sweeps never belong in normal tests or builds.
 - Quality failures must report reproducible seeds; use collected metrics for evidence-based tuning, not speculative rewrites.
 - Invalid, non-unique, non-deterministic, misclassified, or branching gameplay puzzles are hard generator failures.

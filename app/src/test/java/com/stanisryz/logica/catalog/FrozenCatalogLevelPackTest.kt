@@ -14,6 +14,8 @@ import com.stanisryz.logica.puzzle.core.game2048.Game2048Engine
 import com.stanisryz.logica.puzzle.core.game2048.Game2048GeneratorVersion
 import com.stanisryz.logica.puzzle.core.game2048.Game2048PuzzleId
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
+import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordGeneratorV2
 import org.junit.Assert.assertEquals
@@ -30,6 +32,18 @@ import java.security.MessageDigest
  */
 class FrozenCatalogLevelPackTest {
     private val pack = BinaryCatalogLevelPack(BundledLevelPackFiles)
+
+    @Test
+    fun balanceEasyLevelOneMatchesTheWebCommonCatalogIdentity() {
+        val definition =
+            pack.require(
+                CatalogLevelId(PuzzleType.BALANCE, Difficulty.EASY, CatalogLevelNumber(1)),
+            )
+
+        assertEquals(PuzzleSeed(1L), definition.seed)
+        assertEquals(GeneratorVersion(1), definition.generatorVersion)
+        assertEquals(definition.seed, BalanceGeneratorV1().generate(definition.seed, definition.difficulty).id.seed)
+    }
 
     @Test
     fun representativeFrozenLevelsKeepTheirContentIdentityAndStableDifficultyCodes() {

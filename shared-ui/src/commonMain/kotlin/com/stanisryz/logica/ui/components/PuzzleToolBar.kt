@@ -17,11 +17,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 
-/**
- * One selectable input tool: the value a tap will place, the pencil modifier, or a hint. Its name
- * is exposed to accessibility while the visual stays a compact, icon-only control.
- */
-internal data class PuzzleTool(
+data class PuzzleTool(
     val label: String,
     val stateDescription: String?,
     val selected: Boolean?,
@@ -30,9 +26,9 @@ internal data class PuzzleTool(
     val symbol: @Composable () -> Unit,
 )
 
-/** The compact explicit input row shared by Balance and Crowns; it sits directly under the board. */
+/** Compact explicit puzzle input shared by the migrated Balance surface and Android peers. */
 @Composable
-internal fun PuzzleToolBar(
+fun PuzzleToolBar(
     tools: List<PuzzleTool>,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,

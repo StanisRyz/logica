@@ -113,6 +113,7 @@ room3 {
 dependencies {
     implementation(project(":platform-contracts"))
     implementation(project(":puzzle-core"))
+    implementation(project(":shared-ui"))
 
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))

@@ -4,18 +4,12 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-/**
- * The two product colors Material 3 has no semantic role for: a success family used by every
- * completion state, and the categorical Crowns region palette. Everything else must keep using
- * `MaterialTheme.colorScheme`.
- */
 @Immutable
 data class LogicaPalette(
     val success: Color,
     val onSuccess: Color,
     val successContainer: Color,
     val onSuccessContainer: Color,
-    /** Muted, mutually distinguishable region fills; Crowns also draws region boundaries. */
     val crownsRegions: List<Color>,
     val onCrownsRegion: Color,
 )
@@ -60,5 +54,5 @@ internal val DarkLogicaPalette =
         onCrownsRegion = Color(0xFFE1E3E5),
     )
 
-/** Provided by [LogicaTheme]; the default keeps previews and tests from crashing. */
+/** Provided by [LogicaTheme]; the default keeps previews and tests usable. */
 val LocalLogicaPalette = staticCompositionLocalOf { LightLogicaPalette }

@@ -12,9 +12,10 @@ fun main() {
             puzzleDataLoader = BrowserPuzzleDataLoader(),
             lifecycle = lifecycle,
         )
+    val balanceController = WebBalanceController.create(controller.puzzleDataLoader)
 
     ComposeViewport {
-        WebApp(controller, lifecycle)
+        WebApp(controller, balanceController, lifecycle)
     }
     controller.start()
 }

@@ -24,18 +24,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.stanisryz.logica.R
 import com.stanisryz.logica.puzzle.core.balance.BalanceCell
 import com.stanisryz.logica.puzzle.core.balance.BalanceCellStatus
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameState
 import com.stanisryz.logica.puzzle.core.balance.BalancePosition
 import com.stanisryz.logica.puzzle.core.balance.BalancePuzzle
+import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.balance_cell_description
+import com.stanisryz.logica.shared.ui.generated.resources.cell_empty
+import com.stanisryz.logica.shared.ui.generated.resources.cell_one
+import com.stanisryz.logica.shared.ui.generated.resources.cell_zero
+import com.stanisryz.logica.shared.ui.generated.resources.confirmed_cell
+import com.stanisryz.logica.shared.ui.generated.resources.conflict_suffix
+import com.stanisryz.logica.shared.ui.generated.resources.editable_cell
+import com.stanisryz.logica.shared.ui.generated.resources.fixed_cell
+import com.stanisryz.logica.shared.ui.generated.resources.incorrect_cell
+import com.stanisryz.logica.shared.ui.generated.resources.pencil_marks_suffix
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun BalanceBoard(
@@ -44,11 +56,11 @@ fun BalanceBoard(
     onCellTapped: (BalancePosition) -> Unit,
     enabledPositions: Set<BalancePosition>? = null,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val conflictPositions = remember(game.violations) { game.violations.flatMapTo(mutableSetOf()) { it.affectedPositions } }
     val hint = game.currentHint
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        // Pencil marks have to stay readable inside one cell of whatever board size is on screen.
         val pencilPieceSize =
             (maxWidth / puzzle.size * PENCIL_PIECE_RATIO).coerceIn(MIN_PENCIL_PIECE_SIZE, MAX_PENCIL_PIECE_SIZE)
         Column(modifier = Modifier.size(maxWidth)) {
@@ -66,7 +78,8 @@ fun BalanceBoard(
                             isHintTarget = hint?.position == position,
                             isHintEvidence = position in (hint?.evidencePositions ?: emptySet()),
                             enabled =
-                                !game.isLocked(position) &&
+                                enabled &&
+                                    !game.isLocked(position) &&
                                     !game.status.isTerminal &&
                                     (enabledPositions == null || position in enabledPositions),
                             onClick = { onCellTapped(position) },
@@ -85,7 +98,7 @@ private fun BalanceCellView(
     value: BalanceCell,
     status: BalanceCellStatus,
     pencilMarks: Set<BalanceCell>,
-    pencilPieceSize: androidx.compose.ui.unit.Dp,
+    pencilPieceSize: Dp,
     isConflict: Boolean,
     isHintTarget: Boolean,
     isHintEvidence: Boolean,
@@ -99,8 +112,7 @@ private fun BalanceCellView(
     val isConfirmed = status == BalanceCellStatus.CORRECT
     val background =
         when {
-            isIncorrect -> colors.errorContainer
-            isConflict -> colors.errorContainer
+            isIncorrect || isConflict -> colors.errorContainer
             isHintTarget -> colors.tertiaryContainer
             isHintEvidence -> colors.secondaryContainer
             isFixed -> colors.surfaceVariant
@@ -117,20 +129,20 @@ private fun BalanceCellView(
     val stateLabel =
         stringResource(
             when {
-                isFixed -> R.string.fixed_cell
-                isIncorrect -> R.string.incorrect_cell
-                isConfirmed -> R.string.confirmed_cell
-                else -> R.string.editable_cell
+                isFixed -> Res.string.fixed_cell
+                isIncorrect -> Res.string.incorrect_cell
+                isConfirmed -> Res.string.confirmed_cell
+                else -> Res.string.editable_cell
             },
         )
     val description =
         stringResource(
-            R.string.balance_cell_description,
+            Res.string.balance_cell_description,
             position.row + 1,
             position.column + 1,
             cellAccessibilityLabel(value),
             stateLabel,
-            if (isConflict) stringResource(R.string.conflict_suffix) else "",
+            if (isConflict) stringResource(Res.string.conflict_suffix) else "",
         ) + pencilMarks.pencilAccessibilitySuffix()
     Box(
         modifier =
@@ -150,7 +162,6 @@ private fun BalanceCellView(
             )
         }
         if (isIncorrect) {
-            // A wrong value must be recognisable without relying on the error colour alone.
             Icon(
                 imageVector = Icons.Filled.PriorityHigh,
                 contentDescription = null,
@@ -177,18 +188,18 @@ private fun Set<BalanceCell>.pencilAccessibilitySuffix(): String =
         ""
     } else {
         val labels = sortedBy(BalanceCell::ordinal).map { cellAccessibilityLabel(it) }
-        stringResource(R.string.pencil_marks_suffix, labels.joinToString(separator = ", "))
+        stringResource(Res.string.pencil_marks_suffix, labels.joinToString(separator = ", "))
     }
 
 @Composable
-private fun cellAccessibilityLabel(value: BalanceCell): String =
-    stringResource(
-        when (value) {
-            BalanceCell.EMPTY -> R.string.cell_empty
-            BalanceCell.ZERO -> R.string.cell_zero
-            BalanceCell.ONE -> R.string.cell_one
-        },
-    )
+private fun cellAccessibilityLabel(value: BalanceCell): String = stringResource(value.accessibilityResource())
+
+private fun BalanceCell.accessibilityResource(): StringResource =
+    when (this) {
+        BalanceCell.EMPTY -> Res.string.cell_empty
+        BalanceCell.ZERO -> Res.string.cell_zero
+        BalanceCell.ONE -> Res.string.cell_one
+    }
 
 internal fun BalanceCell.symbol(): String =
     when (this) {
@@ -197,9 +208,9 @@ internal fun BalanceCell.symbol(): String =
         BalanceCell.ONE -> "●"
     }
 
-/** Game pieces are invariant: they never inherit a Material content tint or invert with the theme. */
+/** Game pieces remain literal black/white and never invert with the Material theme. */
 @Composable
-internal fun BalancePiece(
+fun BalancePiece(
     value: BalanceCell,
     modifier: Modifier = Modifier,
 ) {

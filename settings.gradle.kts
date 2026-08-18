@@ -23,4 +23,5 @@ rootProject.name = "Logica"
 include(":app")
 include(":platform-contracts")
 include(":puzzle-core")
+include(":shared-ui")
 include(":web-app")

@@ -22,6 +22,7 @@ import com.stanisryz.logica.puzzle.core.balance.BalanceCell
 import com.stanisryz.logica.puzzle.core.balance.BalancePosition
 import com.stanisryz.logica.settings.SettingsRepository
 import com.stanisryz.logica.ui.balance.BalanceBoard
+import com.stanisryz.logica.ui.balance.BalanceToolBar
 import com.stanisryz.logica.ui.components.LogicaCard
 import com.stanisryz.logica.ui.components.ScreenColumn
 import com.stanisryz.logica.ui.theme.LogicaSpacing

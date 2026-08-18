@@ -12,6 +12,7 @@ internal class YandexGamesBridge {
     private var initializationStarted = false
     private var disposed = false
     private var loadingReadySent = false
+    private var gameplayActive = false
     private var pauseCallback: (() -> Unit)? = null
     private var resumeCallback: (() -> Unit)? = null
 
@@ -85,10 +86,27 @@ internal class YandexGamesBridge {
         }
     }
 
+    /** Idempotent Yandex gameplay activity; hosts decide when a real in-progress route is active. */
+    fun setGameplayActive(active: Boolean): String? {
+        if (gameplayActive == active) return null
+        val gameplayApi = sdk?.features?.gameplayApi
+        return try {
+            if (active) gameplayApi?.start() else gameplayApi?.stop()
+            gameplayActive = active
+            null
+        } catch (error: Throwable) {
+            error.message ?: "Unable to update Yandex gameplay activity."
+        }
+    }
+
     fun dispose() {
         if (disposed) return
         disposed = true
         val initializedSdk = sdk
+        if (gameplayActive) {
+            runCatching { initializedSdk?.features?.gameplayApi?.stop() }
+            gameplayActive = false
+        }
         val pause = pauseCallback
         val resume = resumeCallback
         if (initializedSdk != null && pause != null) {
@@ -152,10 +170,19 @@ private external interface YandexSdk : JsAny {
 private external interface YandexFeatures : JsAny {
     @JsName("LoadingAPI")
     val loadingApi: YandexLoadingApi?
+
+    @JsName("GameplayAPI")
+    val gameplayApi: YandexGameplayApi?
 }
 
 private external interface YandexLoadingApi : JsAny {
     fun ready()
+}
+
+private external interface YandexGameplayApi : JsAny {
+    fun start()
+
+    fun stop()
 }
 
 private fun yandexGamesOrNull(): YandexGamesGlobal? = js("typeof globalThis.YaGames === 'undefined' ? null : globalThis.YaGames")
