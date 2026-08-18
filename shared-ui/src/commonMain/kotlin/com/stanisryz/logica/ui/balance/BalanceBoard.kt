@@ -60,10 +60,16 @@ fun BalanceBoard(
 ) {
     val conflictPositions = remember(game.violations) { game.violations.flatMapTo(mutableSetOf()) { it.affectedPositions } }
     val hint = game.currentHint
-    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+    BoxWithConstraints(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center,
+    ) {
+        // Tutorial callers may offer unbounded height; in that case width remains the real limit.
+        // Gameplay offers both dimensions, so a short host shrinks the board instead of clipping it.
+        val boardSide = minOf(maxWidth, maxHeight)
         val pencilPieceSize =
-            (maxWidth / puzzle.size * PENCIL_PIECE_RATIO).coerceIn(MIN_PENCIL_PIECE_SIZE, MAX_PENCIL_PIECE_SIZE)
-        Column(modifier = Modifier.size(maxWidth)) {
+            (boardSide / puzzle.size * PENCIL_PIECE_RATIO).coerceIn(MIN_PENCIL_PIECE_SIZE, MAX_PENCIL_PIECE_SIZE)
+        Column(modifier = Modifier.size(boardSide)) {
             repeat(puzzle.size) { row ->
                 Row(Modifier.fillMaxWidth().weight(1f)) {
                     repeat(puzzle.size) { column ->

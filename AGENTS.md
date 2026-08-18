@@ -171,7 +171,7 @@
 - Normal Sudoku gameplay orders difficulty/level, mistakes, square board, Pencil/Hint, then a compact 3x3 digit keypad; its height budget keeps that normal state on one portrait screen.
 - Difficulty cards hide Catalog level numbers while gameplay shows `Уровень N`; terminal actions are Retry level, Next level, and To Games, and there is no Continue, no active-save indicator, and no new-game branch.
 - `GameplayExitGuard` is the one seam between the shell's Back handling and gameplay: leaving a non-terminal level with real progress confirms first, and nothing else — no autosave — protects it.
-- Boards stay puzzle-specific: only the surrounding chrome (header, difficulty, actions, errors, completion) is shared.
+- Boards stay puzzle-specific: only the surrounding chrome (header, difficulty, actions, errors, completion) is shared. Primary gameplay surfaces fit host constraints without internal scrolling; square boards adapt to both width and height while platform hosts retain application policy.
 - Board cells size their text and their inner grids from the cell the layout actually gave them, never from fixed `sp` that only looks right in a Preview; Word gameplay is one screen with no scrolling, budgeting board and keyboard against the available height, and a rejected guess is shake plus a live-region announcement rather than a text block that changes the layout height.
 - Every state must be readable without color: pair status color with an icon plus a label, and keep the existing non-color Word feedback.
 - Shared Balance/difficulty resources live in `:shared-ui`; Android-only strings stay in `app/src/main/res/values/strings.xml`. All Catalog games present the same four direct-launch difficulty cards.
