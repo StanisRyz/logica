@@ -41,11 +41,13 @@ import com.stanisryz.logica.platform.PlatformLifecycleState
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.word.WordGameStatus
 import com.stanisryz.logica.ui.balance.BalanceGameContent
 import com.stanisryz.logica.ui.components.DifficultySelector
 import com.stanisryz.logica.ui.crowns.CrownsGameContent
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.ui.theme.LogicaTheme
+import com.stanisryz.logica.ui.word.WordGameContent
 
 private sealed interface WebRoute {
     data object Landing : WebRoute
@@ -53,6 +55,8 @@ private sealed interface WebRoute {
     data object Balance : WebRoute
 
     data object Crowns : WebRoute
+
+    data object Word : WebRoute
 }
 
 @Composable
@@ -60,6 +64,7 @@ internal fun WebApp(
     controller: WebBootstrapController,
     balanceController: WebBalanceController,
     crownsController: WebCrownsController,
+    wordController: WebWordController,
     lifecycle: WebHostLifecycle,
 ) {
     val lifecycleState by lifecycle.state.collectAsState()
@@ -69,11 +74,12 @@ internal fun WebApp(
             withFrameNanos { }
             controller.onComposeRootRendered()
         }
-        DisposableEffect(controller, balanceController, crownsController) {
+        DisposableEffect(controller, balanceController, crownsController, wordController) {
             onDispose {
                 controller.setGameplayActive(false)
                 balanceController.dispose()
                 crownsController.dispose()
+                wordController.dispose()
             }
         }
 
@@ -87,6 +93,7 @@ internal fun WebApp(
                         controller = controller,
                         balanceController = balanceController,
                         crownsController = crownsController,
+                        wordController = wordController,
                         onRendered = controller::onInitialHostUiReady,
                     )
                 is WebBootstrapState.FatalError -> FatalContent(state.message)
@@ -135,17 +142,19 @@ private fun ReadyContent(
     controller: WebBootstrapController,
     balanceController: WebBalanceController,
     crownsController: WebCrownsController,
+    wordController: WebWordController,
     onRendered: () -> Unit,
 ) {
     var route by remember { mutableStateOf<WebRoute>(WebRoute.Landing) }
     val balanceState = balanceController.state
     val crownsState = crownsController.state
+    val wordState = wordController.state
 
     LaunchedEffect(mode) {
         withFrameNanos { }
         onRendered()
     }
-    LaunchedEffect(route, balanceState, crownsState, lifecycleState) {
+    LaunchedEffect(route, balanceState, crownsState, wordState, lifecycleState) {
         controller.setGameplayActive(
             when (route) {
                 WebRoute.Landing -> false
@@ -155,6 +164,9 @@ private fun ReadyContent(
                 WebRoute.Crowns ->
                     crownsState is WebCrownsState.Playing &&
                         crownsState.game.status == CrownsGameStatus.IN_PROGRESS
+                WebRoute.Word ->
+                    wordState is WebWordState.Playing &&
+                        wordState.game.status == WordGameStatus.IN_PROGRESS
             } &&
                 lifecycleState == PlatformLifecycleState.ACTIVE,
         )
@@ -172,6 +184,10 @@ private fun ReadyContent(
                 onOpenCrowns = {
                     crownsController.showDifficultySelector()
                     route = WebRoute.Crowns
+                },
+                onOpenWord = {
+                    wordController.showDifficultySelector()
+                    route = WebRoute.Word
                 },
             )
         WebRoute.Balance ->
@@ -192,6 +208,15 @@ private fun ReadyContent(
                     route = WebRoute.Landing
                 },
             )
+        WebRoute.Word ->
+            WordFlow(
+                state = wordState,
+                controller = wordController,
+                onExitWord = {
+                    wordController.showDifficultySelector()
+                    route = WebRoute.Landing
+                },
+            )
     }
 }
 
@@ -201,6 +226,7 @@ private fun LandingContent(
     lifecycleState: PlatformLifecycleState,
     onOpenBalance: () -> Unit,
     onOpenCrowns: () -> Unit,
+    onOpenWord: () -> Unit,
 ) {
     CenteredColumn {
         Box(
@@ -226,6 +252,8 @@ private fun LandingContent(
         Button(onClick = onOpenBalance) { Text("Играть в Баланс") }
         Spacer(Modifier.height(12.dp))
         Button(onClick = onOpenCrowns) { Text("Играть в Короны") }
+        Spacer(Modifier.height(12.dp))
+        Button(onClick = onOpenWord) { Text("Играть в Слово") }
         Spacer(Modifier.height(24.dp))
         Text(
             text =
@@ -308,6 +336,38 @@ private fun CrownsFlow(
             )
         is WebCrownsState.Playing ->
             PlayingCrownsContent(
+                state = state,
+                controller = controller,
+            )
+    }
+}
+
+@Composable
+private fun WordFlow(
+    state: WebWordState,
+    controller: WebWordController,
+    onExitWord: () -> Unit,
+) {
+    when (state) {
+        WebWordState.DifficultySelection ->
+            DifficultyContent(
+                gameTitle = "Слово",
+                onBack = onExitWord,
+                onStart = controller::selectDifficulty,
+            )
+        is WebWordState.Loading ->
+            LoadingLevelContent(
+                difficulty = state.difficulty,
+                onBack = controller::showDifficultySelector,
+            )
+        is WebWordState.Error ->
+            LevelErrorContent(
+                detail = state.detail,
+                onRetry = { controller.selectDifficulty(state.difficulty) },
+                onBack = controller::showDifficultySelector,
+            )
+        is WebWordState.Playing ->
+            PlayingWordContent(
                 state = state,
                 controller = controller,
             )
@@ -469,6 +529,70 @@ private fun PlayingCrownsContent(
                 )
             },
             text = { Text("Уровень 1 можно пройти ещё раз или выбрать другую сложность.") },
+            confirmButton = {
+                TextButton(onClick = controller::retry) { Text("Пройти заново") }
+            },
+            dismissButton = {
+                TextButton(onClick = controller::showDifficultySelector) { Text("К сложности") }
+            },
+        )
+    }
+}
+
+@Composable
+private fun PlayingWordContent(
+    state: WebWordState.Playing,
+    controller: WebWordController,
+) {
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = controller::showDifficultySelector) { Text("К сложности") }
+            Spacer(Modifier.weight(1f))
+            Text("Слово", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.width(GAME_HEADER_TITLE_SPACER))
+        }
+        WordGameContent(
+            puzzle = state.puzzle,
+            game = state.game,
+            levelNumber = state.definition.levelNumber.value,
+            rejection = state.rejection,
+            rejectionRevision = state.rejectionRevision,
+            acceptedAttemptRevision = state.acceptedAttemptRevision,
+            gameplayEnabled = state.game.status == WordGameStatus.IN_PROGRESS,
+            onLetter = controller::setLetter,
+            onClearLetter = controller::clearLetter,
+            onSubmit = controller::submit,
+            onDismissRejection = controller::dismissRejection,
+            onAcceptedAttemptRevealed = controller::onAcceptedAttemptRevealed,
+            modifier = Modifier.weight(1f),
+        )
+    }
+
+    if (state.isTerminalRevealReady) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = {
+                Text(
+                    if (state.game.status == WordGameStatus.SOLVED) {
+                        "Слово отгадано"
+                    } else {
+                        "Попытки закончились"
+                    },
+                )
+            },
+            text = {
+                Text(
+                    if (state.game.status == WordGameStatus.SOLVED) {
+                        "Уровень 1 пройден за ${state.game.attempts.size} попыток."
+                    } else {
+                        "Загаданное слово: ${state.puzzle.answer.uppercase()}"
+                    },
+                )
+            },
             confirmButton = {
                 TextButton(onClick = controller::retry) { Text("Пройти заново") }
             },

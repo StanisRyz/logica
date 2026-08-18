@@ -24,23 +24,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.stanisryz.logica.R
 import com.stanisryz.logica.puzzle.core.word.WordLetterFeedback
 import com.stanisryz.logica.puzzle.core.word.WordLetterKnowledge
+import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.word_backspace
+import com.stanisryz.logica.shared.ui.generated.resources.word_enter
+import com.stanisryz.logica.shared.ui.generated.resources.word_key_description
+import org.jetbrains.compose.resources.stringResource
 
-/**
- * Russian keyboard over the normalized core alphabet, so `ё` never appears as its own key.
- * Key styling mirrors [WordLetterKnowledge], which already keeps the strongest known state.
- */
+/** Shared adaptive Russian keyboard over the normalized alphabet, without a separate `ё` key. */
 @Composable
-internal fun WordKeyboard(
+fun WordKeyboard(
     knowledge: WordLetterKnowledge,
     enabled: Boolean,
     onLetter: (Char) -> Unit,
@@ -75,8 +75,8 @@ internal fun WordKeyboard(
             horizontalArrangement = Arrangement.spacedBy(KEY_SPACING),
         ) {
             ActionKey(
-                label = { Text(stringResource(R.string.word_enter), fontWeight = FontWeight.Bold) },
-                description = stringResource(R.string.word_enter),
+                label = { Text(stringResource(Res.string.word_enter), fontWeight = FontWeight.Bold) },
+                description = stringResource(Res.string.word_enter),
                 enabled = enabled,
                 keyHeight = keyHeight,
                 onClick = onSubmit,
@@ -84,7 +84,7 @@ internal fun WordKeyboard(
             )
             ActionKey(
                 label = { Icon(Icons.AutoMirrored.Filled.Backspace, contentDescription = null) },
-                description = stringResource(R.string.word_backspace),
+                description = stringResource(Res.string.word_backspace),
                 enabled = enabled,
                 keyHeight = keyHeight,
                 onClick = onBackspace,
@@ -132,7 +132,7 @@ private fun LetterKey(
         )
     val description =
         stringResource(
-            R.string.word_key_description,
+            Res.string.word_key_description,
             letter.uppercaseChar().toString(),
             stringResource(feedback.descriptionResource()),
         )
@@ -144,7 +144,6 @@ private fun LetterKey(
                 .clip(RoundedCornerShape(KEY_CORNER))
                 .background(container)
                 .then(
-                    // Non-color cue: PRESENT keys keep a heavy outline, ABSENT keys have none.
                     if (feedback == WordLetterFeedback.PRESENT) {
                         Modifier.border(PRESENT_BORDER_WIDTH, colors.tertiary, RoundedCornerShape(KEY_CORNER))
                     } else {
@@ -154,7 +153,6 @@ private fun LetterKey(
                 .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        // A compacted keyboard keeps its letters proportional to the keys they sit on.
         val letterSize =
             with(LocalDensity.current) {
                 (keyHeight * KEY_FONT_RATIO).coerceIn(MIN_KEY_FONT, MAX_KEY_FONT).toSp()
@@ -194,7 +192,6 @@ private fun ActionKey(
     }
 }
 
-/** Standard ЙЦУКЕН order, minus `ё`, split so every row fits a small portrait phone. */
 private val LETTER_ROWS =
     listOf(
         "йцукенгшщзхъ".toList(),
@@ -202,10 +199,7 @@ private val LETTER_ROWS =
         "ячсмитьбю".toList(),
     )
 
-/** Vertical gap between key rows; the screen adds it up when it budgets the keyboard's height. */
 internal val WORD_KEY_SPACING = 4.dp
-
-/** How many rows the keyboard has: three letter rows plus the action row. */
 internal const val WORD_KEYBOARD_ROWS = 4
 
 private val KEY_SPACING = WORD_KEY_SPACING

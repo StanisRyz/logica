@@ -6,16 +6,17 @@
 - `:app` is the Android application host: it owns ViewModels, Navigation 3, DataStore, Room persistence, economy, ads, haptics, and Android platform adapters; it may depend on `:puzzle-core` and `:shared-ui`.
 - `:platform-contracts` owns the small platform-neutral Store, Ads, Player Identity, Cloud Save, lifecycle, metadata/capabilities, and `PlatformServices` contracts in `commonMain`; it depends only on multiplatform primitives such as coroutines `StateFlow`.
 - `:shared-ui` owns platform-neutral Compose Multiplatform presentation shared by Android and Web; it never owns ViewModels, persistence, economy, ads, haptics, navigation, or platform SDK integrations.
-- Balance and Crowns use shared Compose Multiplatform presentation with state-down/events-up host adapters; future games extend this approach instead of adding Web-specific UI copies.
+- Balance, Crowns, and Word use shared Compose Multiplatform gameplay presentation with state-down/events-up host adapters; future games extend this approach instead of adding Web-specific UI copies.
 - Shared square-board gameplay follows one constraint-driven screen: metadata and tools stay visible, contextual status is bounded, and the board adapts to both available dimensions without gameplay scrolling.
 - Android gameplay hosts retain ViewModels, economy, persistence, haptics, terminal policy, navigation, and ads; shared presentation owns none of them.
-- `:web-app` owns browser I/O, Yandex SDK bootstrap behind one bridge, Web lifecycle adaptation, lazy assets, and the responsive 9:16 host. Its Balance and Crowns controllers are lightweight adapters over frozen Catalog Level 1 and common engines, with no durable Web progression.
+- `:web-app` owns browser I/O, Yandex SDK bootstrap behind one bridge, Web lifecycle adaptation, lazy assets, and the responsive 9:16 host. Its Balance, Crowns, and Word controllers are lightweight adapters over frozen Catalog Level 1 and common engines, with no durable Web progression; Word loads only the lexicon version required by the frozen definition.
 - Android and Web remain separate entry points over the shared core, canonical data, and focused shared presentation.
 - Android and Web implement the same neutral contracts from `:platform-contracts`; Android-specific adapters remain in `:app` under `platform/android/`, while Yandex/browser implementations remain in `:web-app`.
 - Future Yandex Games Player, Store, ads, identity, and cloud-save implementations plug into narrow neutral contracts; raw Yandex SDK access must stay behind the Web bridge and never spread through UI or application code.
 - `:puzzle-core` is Kotlin Multiplatform for Android, JVM, JavaScript, and Wasm browser libraries: portable puzzle runtime belongs in `commonMain` and must never depend on Java, Android, Compose, filesystem/classpath/browser/network APIs, system randomness/time, `:app`, or `:platform-contracts`.
 - Platform bundled-resource/preload adapters stay outside `commonMain`; JVM quality, lexicon, freeze, and integrity tooling stays developer-only in `jvmQuality`.
 - Generator/version identities and deterministic outputs must remain identical across targets; structural target changes never justify a new generator version.
+- Word generator-version mapping to its generator, allowed guesses, and bundled resources has one common source of truth in `:puzzle-core`.
 - DataStore stores user preferences; Room stores durable results, economy, Daily lifecycle, and Catalog level progression, and ViewModels use repositories rather than Room DAOs.
 - Catalog and Daily gameplay is sessionless: an unfinished attempt lives only in its gameplay ViewModel and is discarded on leaving.
 - Catalog Level Pack V1 is frozen: `(puzzleType, difficulty, contentSlot)` maps to one accepted seed forever, developer tooling must reject a content-changing overwrite, and incompatible curation needs a new `CatalogLevelPackVersion`.
@@ -58,19 +59,19 @@
 - Crowns gameplay is context-aware like Balance: a `Catalog` level or a `Daily(challengeDate, policyVersion)` entry drives result scope, level or Daily identity, completion metadata, and the return to the Game hub.
 - Balance and Crowns keep separate UI/gameplay adapters while sharing the attempt, completion, and result infrastructure.
 - Android ViewModels regenerate definitions from the frozen level definition (or the Daily identity) through the corresponding core engine on every open.
-- Word is the third playable puzzle: core in `:puzzle-core`, Android gameplay, Catalog, Daily, results, statistics, and onboarding in `:app`.
+- Word is the third playable puzzle: core/runtime mapping lives in `:puzzle-core`, gameplay presentation lives in `:shared-ui`, and Android Catalog, Daily, results, statistics, and onboarding policy remains in `:app`.
 - Sudoku is the fourth Catalog puzzle and uses `PuzzleType.SUDOKU`; it is excluded from immutable Daily Policies V1–V4 and enters Daily with Policy V5.
 - Sudoku Catalog identity is app difficulty plus selector `PuzzleSeed` plus content-provider `GeneratorVersion(1)`; the adapter deterministically selects Dataset V1 while the full `SudokuPuzzleId` fingerprint remains authoritative.
 - A Sudoku level slot always reselects exactly the same Dataset V1 record through the frozen selector seed; a Daily Sudoku keeps being selected by the Daily identity.
 - Terminal Sudoku attempts use the shared idempotent result/economy transaction (`SOLVED` grants the difficulty reward, `FAILED` costs one life); same-level Retry waits for durable completion and starts a new attempt. Profile includes Sudoku played/solved/failed, difficulty, and hint statistics.
 - Word V1 stays frozen at five normalized Russian letters for every difficulty; Word V2 maps EASY/MEDIUM/HARD/EXPERT to 4/5/6/7 letters, and both versions keep six attempts with no Undo, Reset, or hints.
 - `RussianWordNormalizer` is the single normalization contract for corpus preparation, lexicon lookup, gameplay submission, and tests: lower case, `Ё -> Е`, Russian Cyrillic only, and explicit puzzle-specific length validation.
-- Incomplete input, failed normalization, and unknown words consume no attempt and are reported as structured rejections; localized Word text belongs in `:app`.
+- Incomplete input, failed normalization, and unknown words consume no attempt and are reported as structured rejections; shared gameplay and accessibility text belongs in `:shared-ui`, while Android terminal/application text stays in `:app`.
 - Repeated-letter feedback is two-pass: exact positions are marked first and consume their answer letters, and the remaining guess letters match only the still unused counts.
 - `WordAllowedGuesses` and `WordPossibleAnswers` are separate concepts; every answer is also an allowed guess, and the answer pool stays substantially more curated than the guess pool.
 - `WordLexiconV1` is bundled generated project data produced offline by `:puzzle-core:wordLexiconPrepare`; runtime never uses the network, and generated resources are never edited by hand.
 - `WordLexiconV1` is FROZEN: its answer contents and ordering fix the `(difficulty, seed, generatorVersion = 1)` mapping, so any change to that mapping requires a new generator version rather than a V1 edit.
-- `WordLexiconV2` is generated offline from pinned local `pymorphy3`/`pymorphy3-dicts-ru` dictionary entries, pinned Russian `wordfreq` ranking, and project allow/block files; Android bundles generated data and has no Python or runtime morphology dependency.
+- `WordLexiconV2` is generated offline from pinned local `pymorphy3`/`pymorphy3-dicts-ru` dictionary entries, pinned Russian `wordfreq` ranking, and project allow/block files; runtime targets consume bundled generated data and have no Python or runtime morphology dependency.
 - Word V2 difficulty is word-length-only; morphology provides broad noun guesses, `wordfreq` ranks answer commonness without misusing pymorphy parse confidence, and every difficulty keeps at least 500 possible answers.
 - An unfinished Word attempt is an immutable position-aware `WordDraft`; the engine owns per-position set, replace, clear, and submit operations while submitted attempts stay immutable.
 - Word input, submitted attempts, cell selection, and animation state are all transient attempt state and none of it is persisted.
@@ -174,9 +175,9 @@
 - Difficulty cards hide Catalog level numbers while gameplay shows `Уровень N`; terminal actions are Retry level, Next level, and To Games, and there is no Continue, no active-save indicator, and no new-game branch.
 - `GameplayExitGuard` is the one seam between the shell's Back handling and gameplay: leaving a non-terminal level with real progress confirms first, and nothing else — no autosave — protects it.
 - Boards stay puzzle-specific: only the surrounding chrome (header, difficulty, actions, errors, completion) is shared. Primary gameplay surfaces fit host constraints without internal scrolling; square boards adapt to both width and height while platform hosts retain application policy.
-- Board cells size their text and their inner grids from the cell the layout actually gave them, never from fixed `sp` that only looks right in a Preview; Word gameplay is one screen with no scrolling, budgeting board and keyboard against the available height, and a rejected guess is shake plus a live-region announcement rather than a text block that changes the layout height.
+- Board cells size their text and their inner grids from the cell the layout actually gave them, never from fixed `sp` that only looks right in a Preview; shared Word board, keyboard, rejection shake, and sequential reveal stay on one active screen by budgeting both width and height without gameplay scrolling.
 - Every state must be readable without color: pair status color with an icon plus a label, and keep the existing non-color Word feedback.
-- Shared Balance/difficulty resources live in `:shared-ui`; Android-only strings stay in `app/src/main/res/values/strings.xml`. All Catalog games present the same four direct-launch difficulty cards.
+- Shared Balance, Crowns, Word gameplay, and difficulty resources live in `:shared-ui`; Android-only strings stay in `app/src/main/res/values/strings.xml`. All Catalog games present the same four direct-launch difficulty cards.
 - Balance generator soak verification is opt-in; large seed sweeps never belong in normal tests or builds.
 - Quality failures must report reproducible seeds; use collected metrics for evidence-based tuning, not speculative rewrites.
 - Invalid, non-unique, non-deterministic, misclassified, or branching gameplay puzzles are hard generator failures.

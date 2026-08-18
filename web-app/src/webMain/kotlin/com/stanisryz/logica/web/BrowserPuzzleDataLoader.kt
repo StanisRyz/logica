@@ -9,8 +9,6 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetVersion
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDifficulty
 import com.stanisryz.logica.puzzle.core.web.WebPuzzleData
-import com.stanisryz.logica.puzzle.core.word.WordLexiconV1
-import com.stanisryz.logica.puzzle.core.word.WordLexiconV2
 import org.khronos.webgl.ArrayBuffer
 import org.khronos.webgl.Uint8Array
 import kotlin.coroutines.resume
@@ -26,14 +24,8 @@ import kotlin.js.asJsException
 class BrowserPuzzleDataLoader {
     private val loadedResources = mutableSetOf<String>()
 
-    suspend fun loadWordV1() {
-        loadWordResource(WordLexiconV1.ALLOWED_GUESSES_RESOURCE)
-        loadWordResource(WordLexiconV1.ANSWERS_RESOURCE)
-    }
-
-    suspend fun loadWordV2() {
-        loadWordResource(WordLexiconV2.ALLOWED_GUESSES_RESOURCE)
-        loadWordResource(WordLexiconV2.ANSWERS_RESOURCE)
+    suspend fun loadWordResources(resourcePaths: List<String>) {
+        resourcePaths.forEach { loadWordResource(it) }
     }
 
     suspend fun loadWordResource(resourcePath: String) {

@@ -1,22 +1,6 @@
 package com.stanisryz.logica.ui.screens
 
 import android.view.HapticFeedbackConstants
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.scaleIn
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.HighlightOff
@@ -27,21 +11,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
@@ -50,8 +23,6 @@ import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.catalog.levelNumberOrNull
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
-import com.stanisryz.logica.puzzle.core.model.PuzzleType
-import com.stanisryz.logica.puzzle.core.word.WordDraft
 import com.stanisryz.logica.puzzle.core.word.WordGameState
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
 import com.stanisryz.logica.puzzle.core.word.WordGuessRejection
@@ -61,24 +32,17 @@ import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.ui.components.CompletionActions
 import com.stanisryz.logica.ui.components.CompletionCard
 import com.stanisryz.logica.ui.components.EconomyResultFeedback
-import com.stanisryz.logica.ui.components.GameHeaderBadges
 import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.LeaveLevelGuard
 import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.components.RetryableErrorState
 import com.stanisryz.logica.ui.components.ZeroLivesCard
-import com.stanisryz.logica.ui.components.difficultyLabel
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
-import com.stanisryz.logica.ui.theme.LogicaSpacing
-import com.stanisryz.logica.ui.word.WORD_KEYBOARD_ROWS
-import com.stanisryz.logica.ui.word.WORD_KEY_SPACING
-import com.stanisryz.logica.ui.word.WordBoard
-import com.stanisryz.logica.ui.word.WordKeyboard
+import com.stanisryz.logica.ui.word.WordGameContent
 import com.stanisryz.logica.word.WordGameError
 import com.stanisryz.logica.word.WordGameUiState
 import com.stanisryz.logica.word.WordGameViewModel
 import com.stanisryz.logica.word.WordGameViewModelFactory
-import kotlin.math.roundToInt
 
 @Composable
 internal fun WordGameRoute(
@@ -186,12 +150,6 @@ private fun WordGameScreen(
     }
 }
 
-/**
- * One screen, no scrolling: the metrics line, the board, and the keyboard are budgeted against the
- * height the screen actually has, so a seven-letter EXPERT game on a small portrait phone compacts
- * its cells and keys rather than moving any of them out of reach. Only the finished attempt, whose
- * completion card can be taller than the space the keyboard leaves behind, may scroll.
- */
 @Composable
 private fun WordReadyState(
     puzzle: WordPuzzle,
@@ -216,33 +174,6 @@ private fun WordReadyState(
     modifier: Modifier,
 ) {
     val view = LocalView.current
-    val shakeDistance = with(LocalDensity.current) { SHAKE_DISTANCE.toPx() }
-    var selectedCellIndex by
-        rememberSaveable(puzzle.id) {
-            mutableIntStateOf(initialWordSelection(game))
-        }
-    val rejectionShake = remember { Animatable(0f) }
-    var revealedAttemptRevision by
-        rememberSaveable(puzzle.id) {
-            mutableIntStateOf(0)
-        }
-
-    LaunchedEffect(rejectionRevision) {
-        if (rejectionRevision == 0) return@LaunchedEffect
-        if (rejection == WordGuessRejection.INCOMPLETE_INPUT) {
-            game.currentDraft.firstEmptyIndex()?.let { selectedCellIndex = it }
-        }
-        if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.REJECT)
-        rejectionShake.snapTo(0f)
-        listOf(-shakeDistance, shakeDistance, -shakeDistance * 0.6f, shakeDistance * 0.6f, 0f)
-            .forEach { target -> rejectionShake.animateTo(target, tween(SHAKE_STEP_MILLIS)) }
-    }
-    LaunchedEffect(game.attempts.size, game.status) {
-        if (game.status == WordGameStatus.IN_PROGRESS) {
-            selectedCellIndex = initialWordSelection(game)
-        }
-    }
-    // Balance and Crowns already confirm a solve; Word additionally has a terminal failure.
     LaunchedEffect(game.status) {
         if (!hapticsEnabled) return@LaunchedEffect
         when (game.status) {
@@ -252,151 +183,43 @@ private fun WordReadyState(
         }
     }
 
-    val isPlaying = game.status == WordGameStatus.IN_PROGRESS
-    /*
-     * A rejected guess shakes the board and buzzes; it no longer inserts a line of text that moves
-     * the whole board and keyboard down and back up again. The reason remains a live accessibility
-     * announcement on the compact metadata row, so nothing new is laid out.
-     */
-    val rejectionMessage = rejection?.let { stringResource(it.messageResource()) }
-
-    BoxWithConstraints(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .padding(
-                    horizontal = LogicaSpacing.gameplayHorizontal,
-                    vertical = LogicaSpacing.item,
-                ),
-    ) {
-        val compact = maxHeight < COMPACT_SCREEN_HEIGHT
-        val gap = if (compact) LogicaSpacing.text else LogicaSpacing.item
-        val keyHeight = (maxHeight * KEY_HEIGHT_RATIO).coerceIn(MIN_KEY_HEIGHT, MAX_KEY_HEIGHT)
-        /*
-         * The board keeps the height the keyboard leaves it whether the game is running or finished,
-         * so a terminal card that scrolls into view does not first resize the board underneath it.
-         */
-        val keyboardHeight = keyHeight * WORD_KEYBOARD_ROWS + WORD_KEY_SPACING * (WORD_KEYBOARD_ROWS - 1)
-        val boardHeight = (maxHeight - keyboardHeight - HEADER_HEIGHT_BUDGET).coerceAtLeast(MIN_BOARD_HEIGHT)
-
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(gap),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.action, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                GameHeaderBadges(difficultyLabel(PuzzleType.WORD, puzzle.id.difficulty), levelNumber)
-                if (rejectionMessage != null) {
-                    androidx.compose.foundation.layout.Box(
-                        modifier =
-                            Modifier.semantics {
-                                liveRegion = LiveRegionMode.Assertive
-                                contentDescription = rejectionMessage
-                            },
-                    )
-                }
-            }
-            // The saved word stays visible and intact at zero lives; only the actions stop working.
+    WordGameContent(
+        puzzle = puzzle,
+        game = game,
+        levelNumber = levelNumber,
+        rejection = rejection,
+        rejectionRevision = rejectionRevision,
+        acceptedAttemptRevision = acceptedAttemptRevision,
+        gameplayEnabled = economy.isGameplayAllowed,
+        onLetter = onLetter,
+        onClearLetter = onClearLetter,
+        onSubmit = onSubmit,
+        onDismissRejection = onDismissRejection,
+        modifier = modifier,
+        onInputInteraction = {
+            if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        },
+        onRejectionPresented = {
+            if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+        },
+        hostStatusContent = {
             ZeroLivesCard(economy, onRestoreLife)
-            Column(
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .then(if (isPlaying) Modifier else Modifier.verticalScroll(rememberScrollState())),
-                verticalArrangement = Arrangement.spacedBy(gap, Alignment.CenterVertically),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                WordBoard(
-                    game = game,
-                    selectedCellIndex = selectedCellIndex,
-                    editableEnabled = economy.isGameplayAllowed,
-                    onCellSelected = { selectedCellIndex = it },
-                    acceptedAttemptRevision = acceptedAttemptRevision,
-                    onAcceptedAttemptRevealed = { revealedAttemptRevision = it },
-                    modifier =
-                        Modifier
-                            .heightIn(max = boardHeight)
-                            .offset {
-                                IntOffset(rejectionShake.value.roundToInt(), 0)
-                            },
-                )
-                AnimatedVisibility(
-                    visible =
-                        !isPlaying &&
-                            (acceptedAttemptRevision == 0 || revealedAttemptRevision >= acceptedAttemptRevision),
-                    enter =
-                        fadeIn(tween(TERMINAL_APPEAR_MILLIS)) +
-                            scaleIn(
-                                animationSpec = tween(TERMINAL_APPEAR_MILLIS),
-                                initialScale = TERMINAL_INITIAL_SCALE,
-                            ),
-                ) {
-                    WordTerminalCard(
-                        puzzle = puzzle,
-                        game = game,
-                        completionPersistence = completionPersistence,
-                        economy = economy,
-                        onRetryCompletion = onRetryCompletion,
-                        onRetryLevel = onRetryLevel,
-                        onNextLevel = onNextLevel,
-                        onGameHub = onGameHub,
-                        isDaily = isDaily,
-                    )
-                }
-            }
-
-            if (isPlaying) {
-                WordKeyboard(
-                    knowledge = game.letterKnowledge,
-                    enabled = economy.isGameplayAllowed,
-                    onLetter = { letter ->
-                        if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                        onDismissRejection()
-                        val editedPosition = selectedCellIndex
-                        onLetter(editedPosition, letter)
-                        selectedCellIndex = nextWordSelection(game.currentDraft, editedPosition)
-                    },
-                    onBackspace = {
-                        if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                        onDismissRejection()
-                        positionToClear(game.currentDraft, selectedCellIndex)?.let { position ->
-                            onClearLetter(position)
-                            selectedCellIndex = position
-                        }
-                    },
-                    onSubmit = onSubmit,
-                    keyHeight = keyHeight,
-                )
-            }
-        }
-    }
+        },
+        terminalContent = {
+            WordTerminalCard(
+                puzzle = puzzle,
+                game = game,
+                completionPersistence = completionPersistence,
+                economy = economy,
+                onRetryCompletion = onRetryCompletion,
+                onRetryLevel = onRetryLevel,
+                onNextLevel = onNextLevel,
+                onGameHub = onGameHub,
+                isDaily = isDaily,
+            )
+        },
+    )
 }
-
-private fun initialWordSelection(game: WordGameState): Int = game.currentDraft.firstEmptyIndex() ?: game.wordLength - 1
-
-private fun nextWordSelection(
-    draft: WordDraft,
-    editedPosition: Int,
-): Int {
-    ((editedPosition + 1) until draft.wordLength).firstOrNull { draft[it] == null }?.let { return it }
-    (0 until editedPosition).firstOrNull { draft[it] == null }?.let { return it }
-    return editedPosition
-}
-
-private fun positionToClear(
-    draft: WordDraft,
-    selectedPosition: Int,
-): Int? =
-    if (draft[selectedPosition] != null) {
-        selectedPosition
-    } else {
-        (selectedPosition - 1 downTo 0).firstOrNull { draft[it] != null }
-    }
 
 @Composable
 private fun WordTerminalCard(
@@ -443,20 +266,18 @@ private fun WordTerminalCard(
                     stringResource(R.string.saving_completion),
                     style = MaterialTheme.typography.bodyMedium,
                 )
-            // The wallet effect is only reported once the result is durably stored.
             CompletionPersistence.Saved ->
                 EconomyResultFeedback(
                     isSolved = isSolved,
                     lives = economy.lives,
                     difficulty = puzzle.id.difficulty,
                 )
-            else -> Unit
+            CompletionPersistence.NotRequired -> Unit
         }
 
         CompletionActions {
             when (completionPersistence) {
                 CompletionPersistence.Saved -> {
-                    // A failed attempt leads with replaying the same word; Daily stays open.
                     if (!isSolved) {
                         Button(
                             onClick = onRetryLevel,
@@ -487,28 +308,3 @@ private fun WordTerminalCard(
         }
     }
 }
-
-private fun WordGuessRejection.messageResource(): Int =
-    when (this) {
-        WordGuessRejection.INCOMPLETE_INPUT -> R.string.word_rejection_incomplete
-        WordGuessRejection.NOT_IN_ALLOWED_GUESSES -> R.string.word_rejection_unknown_word
-        WordGuessRejection.NORMALIZATION_FAILED -> R.string.word_rejection_invalid_letters
-        WordGuessRejection.GAME_FINISHED -> R.string.word_rejection_finished
-    }
-
-private val SHAKE_DISTANCE = 8.dp
-private const val SHAKE_STEP_MILLIS = 35
-
-/** Below this the gameplay column tightens its gaps so board and keyboard both keep their size. */
-private val COMPACT_SCREEN_HEIGHT = 620.dp
-
-/** The keyboard is four rows, so this ratio keeps it around a third of a short screen. */
-private const val KEY_HEIGHT_RATIO = 0.068f
-private val MIN_KEY_HEIGHT = 36.dp
-private val MAX_KEY_HEIGHT = 48.dp
-
-/** What the difficulty/attempts line plus the gaps around it cost the board. */
-private val HEADER_HEIGHT_BUDGET = 56.dp
-private val MIN_BOARD_HEIGHT = 180.dp
-private const val TERMINAL_APPEAR_MILLIS = 180
-private const val TERMINAL_INITIAL_SCALE = 0.98f

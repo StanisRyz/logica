@@ -37,32 +37,39 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.stanisryz.logica.R
 import com.stanisryz.logica.puzzle.core.word.WordGameState
 import com.stanisryz.logica.puzzle.core.word.WordLetterFeedback
 import com.stanisryz.logica.puzzle.core.word.WordRules
+import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.word_attempt_row_description
+import com.stanisryz.logica.shared.ui.generated.resources.word_editable_cell_empty
+import com.stanisryz.logica.shared.ui.generated.resources.word_editable_cell_letter
+import com.stanisryz.logica.shared.ui.generated.resources.word_feedback_absent
+import com.stanisryz.logica.shared.ui.generated.resources.word_feedback_correct
+import com.stanisryz.logica.shared.ui.generated.resources.word_feedback_present
+import com.stanisryz.logica.shared.ui.generated.resources.word_feedback_unknown
 import kotlinx.coroutines.delay
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 
-/** One board cell: either a submitted letter with feedback, the positional draft, or an empty slot. */
 private data class WordCell(
     val letter: Char?,
     val feedback: WordLetterFeedback?,
 )
 
+/** Shared adaptive Word board with draft pop/fade and accepted-attempt reveal animations. */
 @Composable
-internal fun WordBoard(
+fun WordBoard(
     game: WordGameState,
     modifier: Modifier = Modifier,
     selectedCellIndex: Int? = null,
@@ -87,18 +94,17 @@ internal fun WordBoard(
         currentOnAcceptedAttemptRevealed(acceptedAttemptRevision)
     }
 
-    /*
-     * The board is sized from the space it is actually given, in both directions: a seven-letter
-     * EXPERT grid on a short phone shrinks its cells instead of pushing the keyboard off screen.
-     * With no height limit — inside the scrollable terminal layout — width decides alone.
-     */
     BoxWithConstraints(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
         val columns = game.wordLength
         val widthBudget = minOf(maxWidth, BOARD_MAX_WIDTH)
         val cellFromWidth = (widthBudget - cellSpacing * (columns - 1)) / columns
         val cellSize =
             if (constraints.hasBoundedHeight) {
-                minOf(cellFromWidth, (maxHeight - cellSpacing * (WordRules.MAXIMUM_ATTEMPTS - 1)) / WordRules.MAXIMUM_ATTEMPTS)
+                minOf(
+                    cellFromWidth,
+                    (maxHeight - cellSpacing * (WordRules.MAXIMUM_ATTEMPTS - 1)) /
+                        WordRules.MAXIMUM_ATTEMPTS,
+                )
             } else {
                 cellFromWidth
             }.coerceAtLeast(MIN_CELL_SIZE)
@@ -144,9 +150,9 @@ private fun WordBoardRow(
     cellSpacing: Dp,
     cellSize: Dp,
 ) {
-    val correctLabel = stringResource(R.string.word_feedback_correct)
-    val presentLabel = stringResource(R.string.word_feedback_present)
-    val absentLabel = stringResource(R.string.word_feedback_absent)
+    val correctLabel = stringResource(Res.string.word_feedback_correct)
+    val presentLabel = stringResource(Res.string.word_feedback_present)
+    val absentLabel = stringResource(Res.string.word_feedback_absent)
     val letters =
         row.joinToString(separator = ", ") { cell ->
             val label =
@@ -158,7 +164,11 @@ private fun WordBoardRow(
             "${cell.letter?.uppercaseChar()} $label"
         }
     val rowDescription =
-        if (isSubmitted) stringResource(R.string.word_attempt_row_description, rowIndex + 1, letters) else null
+        if (isSubmitted) {
+            stringResource(Res.string.word_attempt_row_description, rowIndex + 1, letters)
+        } else {
+            null
+        }
 
     Row(
         modifier =
@@ -242,10 +252,10 @@ private fun WordBoardCell(
         }
     val cellDescription =
         if (cell.letter == null) {
-            stringResource(R.string.word_editable_cell_empty, position + 1, wordLength)
+            stringResource(Res.string.word_editable_cell_empty, position + 1, wordLength)
         } else {
             stringResource(
-                R.string.word_editable_cell_letter,
+                Res.string.word_editable_cell_letter,
                 position + 1,
                 wordLength,
                 cell.letter.uppercaseChar().toString(),
@@ -301,8 +311,6 @@ private fun WordBoardCell(
             },
             label = "wordLetter",
         ) { letter ->
-            // The letter follows the cell it lives in, so a compacted board keeps its proportions
-            // and a large system font scale cannot push the glyph past the cell edges.
             val letterSize =
                 with(LocalDensity.current) {
                     (cellSize * LETTER_TEXT_RATIO).coerceIn(MIN_LETTER_TEXT, MAX_LETTER_TEXT).toSp()
@@ -317,7 +325,6 @@ private fun WordBoardCell(
                 maxLines = 1,
                 style =
                     MaterialTheme.typography.headlineSmall.copy(
-                        platformStyle = PlatformTextStyle(includeFontPadding = false),
                         lineHeightStyle =
                             LineHeightStyle(
                                 alignment = LineHeightStyle.Alignment.Center,
@@ -346,12 +353,12 @@ private fun buildRows(game: WordGameState): List<List<WordCell>> =
         }
     }
 
-internal fun WordLetterFeedback?.descriptionResource(): Int =
+internal fun WordLetterFeedback?.descriptionResource(): StringResource =
     when (this) {
-        WordLetterFeedback.CORRECT -> R.string.word_feedback_correct
-        WordLetterFeedback.PRESENT -> R.string.word_feedback_present
-        WordLetterFeedback.ABSENT -> R.string.word_feedback_absent
-        null -> R.string.word_feedback_unknown
+        WordLetterFeedback.CORRECT -> Res.string.word_feedback_correct
+        WordLetterFeedback.PRESENT -> Res.string.word_feedback_present
+        WordLetterFeedback.ABSENT -> Res.string.word_feedback_absent
+        null -> Res.string.word_feedback_unknown
     }
 
 private val BOARD_MAX_WIDTH = 340.dp

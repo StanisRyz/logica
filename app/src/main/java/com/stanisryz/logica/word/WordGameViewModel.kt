@@ -9,19 +9,15 @@ import com.stanisryz.logica.catalog.GameAttemptFactory
 import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
-import com.stanisryz.logica.puzzle.core.contract.PuzzleGenerator
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
-import com.stanisryz.logica.puzzle.core.word.WordAllowedGuesses
 import com.stanisryz.logica.puzzle.core.word.WordGameEngine
 import com.stanisryz.logica.puzzle.core.word.WordGameState
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
-import com.stanisryz.logica.puzzle.core.word.WordGeneratorV1
-import com.stanisryz.logica.puzzle.core.word.WordGeneratorV2
 import com.stanisryz.logica.puzzle.core.word.WordGuessRejection
-import com.stanisryz.logica.puzzle.core.word.WordLexiconV1
-import com.stanisryz.logica.puzzle.core.word.WordLexiconV2
 import com.stanisryz.logica.puzzle.core.word.WordPuzzle
+import com.stanisryz.logica.puzzle.core.word.WordRuntime
+import com.stanisryz.logica.puzzle.core.word.WordRuntimeResolver
 import com.stanisryz.logica.puzzle.core.word.WordSubmitResult
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
@@ -71,7 +67,7 @@ internal class WordGameViewModel(
     private val attemptFactory: GameAttemptFactory,
     private val completionRepository: GameCompletionRepository,
     economyRepository: EconomyRepository,
-    private val runtimeResolver: (GeneratorVersion) -> WordRuntime = ::resolveWordRuntime,
+    private val runtimeResolver: (GeneratorVersion) -> WordRuntime = WordRuntimeResolver::resolve,
     private val workDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow<WordGameUiState>(WordGameUiState.Loading)
@@ -218,18 +214,6 @@ internal class WordGameViewModel(
         }
     }
 }
-
-internal data class WordRuntime(
-    val generator: PuzzleGenerator<WordPuzzle>,
-    val allowedGuesses: WordAllowedGuesses,
-)
-
-private fun resolveWordRuntime(generatorVersion: GeneratorVersion): WordRuntime =
-    when (generatorVersion.value) {
-        1 -> WordRuntime(WordGeneratorV1(), WordLexiconV1.allowedGuesses)
-        2 -> WordRuntime(WordGeneratorV2(), WordLexiconV2.allowedGuesses)
-        else -> error("Unsupported Word generator version ${generatorVersion.value}.")
-    }
 
 internal class WordGameViewModelFactory(
     private val launch: GameAttemptLaunch,
