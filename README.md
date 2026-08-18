@@ -99,7 +99,7 @@ Modules:
 
 - `app/` — Android/Compose shell plus neutral platform-service contracts and Android adapters for Store, ads, identity, cloud capability, and lifecycle.
 - `puzzle-core/` — Kotlin Multiplatform deterministic Balance, Crowns, Word, Sudoku, and 2048 runtime in `commonMain`, with Android/JVM/JS/Wasm library targets and JVM-only developer tooling.
-- `puzzle-data/` — the canonical frozen Catalog Level Pack corpus shared by Android and future Web builds.
+- `puzzle-data/` — the canonical frozen Catalog Level Pack and Sudoku Dataset V1 corpus shared by Android and future Web builds.
 - `lexicon/word/` — curated offline Word corpus sources and their provenance note.
 
 Balance is playable from the Game tab's catalog with optional interactive onboarding, selectable difficulties and levels, conflicts, hints, and improved accessibility cues.

@@ -127,9 +127,6 @@ tasks.register<JavaExec>("buildCatalogLevelPacks") {
             rootProject.layout.projectDirectory
                 .dir("puzzle-data")
                 .asFile.path,
-            rootProject.layout.projectDirectory
-                .dir("app/src/main/assets/sudoku")
-                .asFile.path,
             providers.gradleProperty("levelPackGames").orElse("all").get(),
             providers.gradleProperty("levelPackSlots").orElse("10000").get(),
         )

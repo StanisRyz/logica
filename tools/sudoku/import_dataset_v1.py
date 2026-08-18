@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Build the immutable Sudoku Dataset V1 from a local Puzzle Bank checkout.
 
-The Android application never runs this tool. It consumes only the generated
-fixed-width binary files under app/src/main/assets/sudoku/v1.
+The application never runs this tool. Runtime targets consume only the generated
+fixed-width binary files under puzzle-data/sudoku/v1.
 """
 
 from __future__ import annotations
@@ -375,7 +375,7 @@ def main() -> int:
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=Path("app/src/main/assets/sudoku/v1"),
+        default=Path("puzzle-data/sudoku/v1"),
     )
     parser.add_argument(
         "--report",
