@@ -39,16 +39,27 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.stanisryz.logica.platform.PlatformLifecycleState
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
+import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.ui.balance.BalanceGameContent
 import com.stanisryz.logica.ui.components.DifficultySelector
+import com.stanisryz.logica.ui.crowns.CrownsGameContent
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.ui.theme.LogicaTheme
+
+private sealed interface WebRoute {
+    data object Landing : WebRoute
+
+    data object Balance : WebRoute
+
+    data object Crowns : WebRoute
+}
 
 @Composable
 internal fun WebApp(
     controller: WebBootstrapController,
     balanceController: WebBalanceController,
+    crownsController: WebCrownsController,
     lifecycle: WebHostLifecycle,
 ) {
     val lifecycleState by lifecycle.state.collectAsState()
@@ -58,8 +69,12 @@ internal fun WebApp(
             withFrameNanos { }
             controller.onComposeRootRendered()
         }
-        DisposableEffect(controller) {
-            onDispose { controller.setGameplayActive(false) }
+        DisposableEffect(controller, balanceController, crownsController) {
+            onDispose {
+                controller.setGameplayActive(false)
+                balanceController.dispose()
+                crownsController.dispose()
+            }
         }
 
         PortraitHostSurface {
@@ -71,6 +86,7 @@ internal fun WebApp(
                         lifecycleState = lifecycleState,
                         controller = controller,
                         balanceController = balanceController,
+                        crownsController = crownsController,
                         onRendered = controller::onInitialHostUiReady,
                     )
                 is WebBootstrapState.FatalError -> FatalContent(state.message)
@@ -118,42 +134,64 @@ private fun ReadyContent(
     lifecycleState: PlatformLifecycleState,
     controller: WebBootstrapController,
     balanceController: WebBalanceController,
+    crownsController: WebCrownsController,
     onRendered: () -> Unit,
 ) {
-    var balanceOpen by remember { mutableStateOf(false) }
+    var route by remember { mutableStateOf<WebRoute>(WebRoute.Landing) }
     val balanceState = balanceController.state
+    val crownsState = crownsController.state
 
     LaunchedEffect(mode) {
         withFrameNanos { }
         onRendered()
     }
-    LaunchedEffect(balanceOpen, balanceState, lifecycleState) {
+    LaunchedEffect(route, balanceState, crownsState, lifecycleState) {
         controller.setGameplayActive(
-            balanceOpen &&
-                balanceState is WebBalanceState.Playing &&
-                balanceState.game.status == BalanceGameStatus.IN_PROGRESS &&
+            when (route) {
+                WebRoute.Landing -> false
+                WebRoute.Balance ->
+                    balanceState is WebBalanceState.Playing &&
+                        balanceState.game.status == BalanceGameStatus.IN_PROGRESS
+                WebRoute.Crowns ->
+                    crownsState is WebCrownsState.Playing &&
+                        crownsState.game.status == CrownsGameStatus.IN_PROGRESS
+            } &&
                 lifecycleState == PlatformLifecycleState.ACTIVE,
         )
     }
 
-    if (!balanceOpen) {
-        LandingContent(
-            mode = mode,
-            lifecycleState = lifecycleState,
-            onOpenBalance = {
-                balanceController.showDifficultySelector()
-                balanceOpen = true
-            },
-        )
-    } else {
-        BalanceFlow(
-            state = balanceState,
-            controller = balanceController,
-            onExitBalance = {
-                balanceController.showDifficultySelector()
-                balanceOpen = false
-            },
-        )
+    when (route) {
+        WebRoute.Landing ->
+            LandingContent(
+                mode = mode,
+                lifecycleState = lifecycleState,
+                onOpenBalance = {
+                    balanceController.showDifficultySelector()
+                    route = WebRoute.Balance
+                },
+                onOpenCrowns = {
+                    crownsController.showDifficultySelector()
+                    route = WebRoute.Crowns
+                },
+            )
+        WebRoute.Balance ->
+            BalanceFlow(
+                state = balanceState,
+                controller = balanceController,
+                onExitBalance = {
+                    balanceController.showDifficultySelector()
+                    route = WebRoute.Landing
+                },
+            )
+        WebRoute.Crowns ->
+            CrownsFlow(
+                state = crownsState,
+                controller = crownsController,
+                onExitCrowns = {
+                    crownsController.showDifficultySelector()
+                    route = WebRoute.Landing
+                },
+            )
     }
 }
 
@@ -162,6 +200,7 @@ private fun LandingContent(
     mode: WebHostMode,
     lifecycleState: PlatformLifecycleState,
     onOpenBalance: () -> Unit,
+    onOpenCrowns: () -> Unit,
 ) {
     CenteredColumn {
         Box(
@@ -179,12 +218,14 @@ private fun LandingContent(
         Text("Логика", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(12.dp))
         Text(
-            text = "Первая общая игра готова",
+            text = "Общие игры Android и Web",
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(28.dp))
         Button(onClick = onOpenBalance) { Text("Играть в Баланс") }
+        Spacer(Modifier.height(12.dp))
+        Button(onClick = onOpenCrowns) { Text("Играть в Короны") }
         Spacer(Modifier.height(24.dp))
         Text(
             text =
@@ -218,16 +259,17 @@ private fun BalanceFlow(
     when (state) {
         WebBalanceState.DifficultySelection ->
             DifficultyContent(
+                gameTitle = "Баланс",
                 onBack = onExitBalance,
                 onStart = controller::selectDifficulty,
             )
         is WebBalanceState.Loading ->
-            LoadingBalanceContent(
+            LoadingLevelContent(
                 difficulty = state.difficulty,
                 onBack = controller::showDifficultySelector,
             )
         is WebBalanceState.Error ->
-            BalanceErrorContent(
+            LevelErrorContent(
                 detail = state.detail,
                 onRetry = { controller.selectDifficulty(state.difficulty) },
                 onBack = controller::showDifficultySelector,
@@ -241,7 +283,40 @@ private fun BalanceFlow(
 }
 
 @Composable
+private fun CrownsFlow(
+    state: WebCrownsState,
+    controller: WebCrownsController,
+    onExitCrowns: () -> Unit,
+) {
+    when (state) {
+        WebCrownsState.DifficultySelection ->
+            DifficultyContent(
+                gameTitle = "Короны",
+                onBack = onExitCrowns,
+                onStart = controller::selectDifficulty,
+            )
+        is WebCrownsState.Loading ->
+            LoadingLevelContent(
+                difficulty = state.difficulty,
+                onBack = controller::showDifficultySelector,
+            )
+        is WebCrownsState.Error ->
+            LevelErrorContent(
+                detail = state.detail,
+                onRetry = { controller.selectDifficulty(state.difficulty) },
+                onBack = controller::showDifficultySelector,
+            )
+        is WebCrownsState.Playing ->
+            PlayingCrownsContent(
+                state = state,
+                controller = controller,
+            )
+    }
+}
+
+@Composable
 private fun DifficultyContent(
+    gameTitle: String,
     onBack: () -> Unit,
     onStart: (Difficulty) -> Unit,
 ) {
@@ -264,7 +339,7 @@ private fun DifficultyContent(
             ) {
                 TextButton(onClick = onBack) { Text("Назад") }
                 Text(
-                    text = "Баланс · выберите сложность",
+                    text = "$gameTitle · выберите сложность",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -279,7 +354,7 @@ private fun DifficultyContent(
 }
 
 @Composable
-private fun LoadingBalanceContent(
+private fun LoadingLevelContent(
     difficulty: Difficulty,
     onBack: () -> Unit,
 ) {
@@ -306,7 +381,7 @@ private fun PlayingBalanceContent(
             Spacer(Modifier.weight(1f))
             Text("Баланс", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
-            Spacer(Modifier.width(GAME_HEADER_BALANCE_SPACER))
+            Spacer(Modifier.width(GAME_HEADER_TITLE_SPACER))
         }
         BalanceGameContent(
             puzzle = state.puzzle,
@@ -349,7 +424,63 @@ private fun PlayingBalanceContent(
 }
 
 @Composable
-private fun BalanceErrorContent(
+private fun PlayingCrownsContent(
+    state: WebCrownsState.Playing,
+    controller: WebCrownsController,
+) {
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = controller::showDifficultySelector) { Text("К сложности") }
+            Spacer(Modifier.weight(1f))
+            Text("Короны", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.width(GAME_HEADER_TITLE_SPACER))
+        }
+        CrownsGameContent(
+            puzzle = state.puzzle,
+            game = state.game,
+            difficulty = state.definition.difficulty,
+            levelNumber = state.definition.levelNumber.value,
+            selectedValue = state.selectedValue,
+            isPencilMode = state.isPencilMode,
+            isHintLoading = state.isHintLoading,
+            gameplayEnabled = state.game.status == CrownsGameStatus.IN_PROGRESS,
+            onCellTapped = controller::onCellTapped,
+            onSelectValue = controller::selectValue,
+            onTogglePencil = controller::togglePencilMode,
+            onHint = controller::requestHint,
+            modifier = Modifier.weight(1f),
+        )
+    }
+
+    if (state.game.status.isTerminal) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = {
+                Text(
+                    if (state.game.status == CrownsGameStatus.SOLVED) {
+                        "Уровень решён"
+                    } else {
+                        "Попытка не пройдена"
+                    },
+                )
+            },
+            text = { Text("Уровень 1 можно пройти ещё раз или выбрать другую сложность.") },
+            confirmButton = {
+                TextButton(onClick = controller::retry) { Text("Пройти заново") }
+            },
+            dismissButton = {
+                TextButton(onClick = controller::showDifficultySelector) { Text("К сложности") }
+            },
+        )
+    }
+}
+
+@Composable
+private fun LevelErrorContent(
     detail: String,
     onRetry: () -> Unit,
     onBack: () -> Unit,
@@ -416,4 +547,4 @@ private val DIFFICULTY_HEADER_HEIGHT = 48.dp
 private val MIN_DIFFICULTY_CARD_HEIGHT = 96.dp
 private val MAX_DIFFICULTY_CARD_HEIGHT = 152.dp
 private val GAME_HEADER_HEIGHT = 52.dp
-private val GAME_HEADER_BALANCE_SPACER = 92.dp
+private val GAME_HEADER_TITLE_SPACER = 92.dp

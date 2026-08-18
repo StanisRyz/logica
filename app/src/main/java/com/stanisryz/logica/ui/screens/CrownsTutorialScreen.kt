@@ -28,6 +28,7 @@ import com.stanisryz.logica.settings.SettingsRepository
 import com.stanisryz.logica.ui.components.LogicaCard
 import com.stanisryz.logica.ui.components.ScreenColumn
 import com.stanisryz.logica.ui.crowns.CrownsBoard
+import com.stanisryz.logica.ui.crowns.CrownsToolBar
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 @Composable

@@ -2,12 +2,10 @@ package com.stanisryz.logica.ui.balance
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -67,6 +65,7 @@ import com.stanisryz.logica.ui.components.GameMessage
 import com.stanisryz.logica.ui.components.MistakeIndicator
 import com.stanisryz.logica.ui.components.PuzzleTool
 import com.stanisryz.logica.ui.components.PuzzleToolBar
+import com.stanisryz.logica.ui.components.SquareGameLayout
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -92,38 +91,23 @@ fun BalanceGameContent(
     modifier: Modifier = Modifier,
     hostStatusContent: @Composable ColumnScope.() -> Unit = {},
 ) {
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val compact = maxHeight < COMPACT_HEIGHT_THRESHOLD
-        val verticalPadding = if (compact) COMPACT_VERTICAL_PADDING else LogicaSpacing.screenVertical
-        val sectionSpacing = if (compact) COMPACT_SECTION_SPACING else LogicaSpacing.item
-        val contextHeight = if (compact) COMPACT_CONTEXT_HEIGHT else NORMAL_CONTEXT_HEIGHT
-
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(
-                        horizontal = LogicaSpacing.screenHorizontal,
-                        vertical = verticalPadding,
-                    ),
-            verticalArrangement = Arrangement.spacedBy(sectionSpacing),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
+    SquareGameLayout(
+        modifier = modifier,
+        metadataContent = {
             GameHeaderBadges(stringResource(difficulty.labelResource()), levelNumber)
             MistakeIndicator(game.mistakesUsed, PuzzleMistakes.MAX_MISTAKES)
-            hostStatusContent()
-            Box(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                contentAlignment = Alignment.Center,
-            ) {
-                BalanceBoard(
-                    puzzle = puzzle,
-                    game = game,
-                    onCellTapped = onCellTapped,
-                    enabled = gameplayEnabled,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
+        },
+        hostStatusContent = hostStatusContent,
+        boardContent = {
+            BalanceBoard(
+                puzzle = puzzle,
+                game = game,
+                onCellTapped = onCellTapped,
+                enabled = gameplayEnabled,
+                modifier = Modifier.fillMaxSize(),
+            )
+        },
+        toolContent = {
             BalanceToolBar(
                 selectedValue = selectedValue,
                 isPencilMode = isPencilMode,
@@ -136,15 +120,17 @@ fun BalanceGameContent(
                         gameplayEnabled,
                 enabled = gameplayEnabled,
             )
+        },
+        contextStatusContent = { compact ->
             BalanceContextStatus(
                 hint = game.currentHint,
                 violation = game.violations.firstOrNull()?.type,
                 isHintLoading = isHintLoading,
                 compact = compact,
-                modifier = Modifier.fillMaxWidth().height(contextHeight),
+                modifier = Modifier.fillMaxWidth(),
             )
-        }
-    }
+        },
+    )
 }
 
 /** A fixed-height region prevents contextual feedback from displacing the board or tool row. */
@@ -329,11 +315,6 @@ private fun Difficulty.labelResource(): StringResource =
     }
 
 private val BALANCE_TOOL_PIECE_SIZE = 20.dp
-private val COMPACT_HEIGHT_THRESHOLD = 700.dp
-private val COMPACT_VERTICAL_PADDING = 8.dp
-private val COMPACT_SECTION_SPACING = 6.dp
-private val COMPACT_CONTEXT_HEIGHT = 76.dp
-private val NORMAL_CONTEXT_HEIGHT = 112.dp
 private val CONTEXT_CARD_PADDING = 12.dp
 private const val COMPACT_HINT_LINES = 3
 private const val NORMAL_HINT_LINES = 3

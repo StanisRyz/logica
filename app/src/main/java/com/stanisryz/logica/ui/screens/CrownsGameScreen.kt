@@ -1,26 +1,15 @@
 package com.stanisryz.logica.ui.screens
 
 import android.view.HapticFeedbackConstants
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
@@ -35,36 +24,20 @@ import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameState
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
-import com.stanisryz.logica.puzzle.core.crowns.CrownsHint
-import com.stanisryz.logica.puzzle.core.crowns.CrownsHintAction
-import com.stanisryz.logica.puzzle.core.crowns.CrownsLogicTechnique
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPosition
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPuzzle
-import com.stanisryz.logica.puzzle.core.crowns.CrownsViolationType
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleMistakes
-import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
-import com.stanisryz.logica.ui.components.BodyText
-import com.stanisryz.logica.ui.components.GameHeaderBadges
-import com.stanisryz.logica.ui.components.GameMessage
 import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.LeaveLevelGuard
 import com.stanisryz.logica.ui.components.LoadingState
-import com.stanisryz.logica.ui.components.LogicaCard
-import com.stanisryz.logica.ui.components.MistakeIndicator
 import com.stanisryz.logica.ui.components.PuzzleTerminalDialog
-import com.stanisryz.logica.ui.components.PuzzleTool
-import com.stanisryz.logica.ui.components.PuzzleToolBar
 import com.stanisryz.logica.ui.components.RetryableErrorState
-import com.stanisryz.logica.ui.components.ScreenColumn
-import com.stanisryz.logica.ui.components.SupportingText
 import com.stanisryz.logica.ui.components.ZeroLivesCard
-import com.stanisryz.logica.ui.components.difficultyLabel
-import com.stanisryz.logica.ui.crowns.CrownsBoard
-import com.stanisryz.logica.ui.theme.LogicaSpacing
+import com.stanisryz.logica.ui.crowns.CrownsGameContent
 
 @Composable
 internal fun CrownsGameRoute(
@@ -218,44 +191,34 @@ private fun CrownsReadyState(
         previousStatus = game.status
     }
 
-    ScreenColumn(
-        modifier = modifier,
-        verticalSpacing = LogicaSpacing.item,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        GameHeaderBadges(difficultyLabel(PuzzleType.CROWNS, difficulty), levelNumber)
-        MistakeIndicator(game.mistakesUsed, PuzzleMistakes.MAX_MISTAKES)
-        // The saved puzzle stays visible and intact at zero lives; only the actions stop working.
-        ZeroLivesCard(economy, onRestoreLife)
-        CrownsBoard(
-            puzzle = puzzle,
-            game = game,
-            onCellTapped = { position ->
-                if (!economy.isGameplayAllowed) return@CrownsBoard
+    CrownsGameContent(
+        puzzle = puzzle,
+        game = game,
+        difficulty = difficulty,
+        levelNumber = levelNumber,
+        selectedValue = selectedValue,
+        isPencilMode = isPencilMode,
+        isHintLoading = isHintLoading,
+        gameplayEnabled = economy.isGameplayAllowed,
+        onCellTapped = { position ->
+            if (economy.isGameplayAllowed) {
                 if (hapticsEnabled) {
                     val feedback =
                         if (isPencilMode) HapticFeedbackConstants.CLOCK_TICK else HapticFeedbackConstants.KEYBOARD_TAP
                     view.performHapticFeedback(feedback)
                 }
                 onCellTapped(position)
-            },
-        )
-        CrownsToolBar(
-            selectedValue = selectedValue,
-            isPencilMode = isPencilMode,
-            onSelectValue = onSelectValue,
-            onTogglePencil = onTogglePencil,
-            onHint = onHint,
-            hintEnabled =
-                !isHintLoading &&
-                    game.status == CrownsGameStatus.IN_PROGRESS &&
-                    economy.isGameplayAllowed,
-            enabled = economy.isGameplayAllowed,
-        )
-        game.currentHint?.let { hint -> CrownsHintCard(hint) }
-        GameMessage(game.violations.firstOrNull()?.let { crownsViolationText(it.type) })
-        if (isHintLoading) SupportingText(stringResource(R.string.searching_hint))
-    }
+            }
+        },
+        onSelectValue = onSelectValue,
+        onTogglePencil = onTogglePencil,
+        onHint = onHint,
+        modifier = modifier,
+        hostStatusContent = {
+            // The saved puzzle stays visible and intact at zero lives; only the actions stop working.
+            ZeroLivesCard(economy, onRestoreLife)
+        },
+    )
 
     if (game.status.isTerminal) {
         PuzzleTerminalDialog(
@@ -274,127 +237,3 @@ private fun CrownsReadyState(
         )
     }
 }
-
-/** Explicit input: pick the value to place, and optionally switch to unvalidated pencil notes. */
-@Composable
-internal fun CrownsToolBar(
-    selectedValue: CrownsPlayerCell,
-    isPencilMode: Boolean,
-    onSelectValue: (CrownsPlayerCell) -> Unit,
-    onTogglePencil: () -> Unit,
-    onHint: (() -> Unit)? = null,
-    hintEnabled: Boolean = false,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-) {
-    val selectedLabel = stringResource(R.string.tool_selected)
-    val unselectedLabel = stringResource(R.string.tool_not_selected)
-    val crownSize = 20.dp
-    PuzzleToolBar(
-        tools =
-            listOf(
-                PuzzleTool(
-                    label = stringResource(R.string.crowns_tool_crown),
-                    stateDescription = if (selectedValue == CrownsPlayerCell.CROWN) selectedLabel else unselectedLabel,
-                    selected = selectedValue == CrownsPlayerCell.CROWN,
-                    onClick = { onSelectValue(CrownsPlayerCell.CROWN) },
-                    symbol = {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_crown),
-                            contentDescription = null,
-                            modifier = Modifier.size(crownSize),
-                        )
-                    },
-                ),
-                PuzzleTool(
-                    label = stringResource(R.string.crowns_tool_mark),
-                    stateDescription = if (selectedValue == CrownsPlayerCell.MARKED) selectedLabel else unselectedLabel,
-                    selected = selectedValue == CrownsPlayerCell.MARKED,
-                    onClick = { onSelectValue(CrownsPlayerCell.MARKED) },
-                    symbol = { Text("×", style = MaterialTheme.typography.titleMedium) },
-                ),
-                PuzzleTool(
-                    label = stringResource(R.string.tool_pencil),
-                    stateDescription = if (isPencilMode) stringResource(R.string.tool_on) else stringResource(R.string.tool_off),
-                    selected = isPencilMode,
-                    onClick = onTogglePencil,
-                    symbol = { Icon(Icons.Filled.Edit, contentDescription = null) },
-                ),
-            ) +
-                listOfNotNull(
-                    onHint?.let { hint ->
-                        PuzzleTool(
-                            label = stringResource(R.string.hint),
-                            stateDescription = null,
-                            selected = null,
-                            enabled = hintEnabled,
-                            onClick = hint,
-                            symbol = { Icon(Icons.Filled.Lightbulb, contentDescription = null) },
-                        )
-                    },
-                ),
-        modifier = modifier,
-        enabled = enabled,
-    )
-}
-
-@Composable
-private fun CrownsHintCard(hint: CrownsHint) {
-    LogicaCard(
-        modifier = Modifier.fillMaxWidth(),
-        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-        verticalSpacing = LogicaSpacing.text,
-    ) {
-        BodyText(hint.crownsPresentationText())
-        SupportingText(stringResource(R.string.crowns_hint_legend))
-    }
-}
-
-@Composable
-private fun CrownsHint.crownsPresentationText(): String {
-    val firstTarget = targetPositions.sortedWith(compareBy(CrownsPosition::row, CrownsPosition::column)).first()
-    return when (action) {
-        CrownsHintAction.CLEAR_CROWN ->
-            stringResource(R.string.crowns_hint_incorrect_crown, firstTarget.row + 1, firstTarget.column + 1)
-        CrownsHintAction.CLEAR_MARK ->
-            stringResource(R.string.crowns_hint_incorrect_mark, firstTarget.row + 1, firstTarget.column + 1)
-        CrownsHintAction.PLACE_CROWN ->
-            stringResource(
-                R.string.crowns_hint_place,
-                firstTarget.row + 1,
-                firstTarget.column + 1,
-                technique.crownsPresentationText(),
-            )
-        CrownsHintAction.MARK_POSITIONS ->
-            stringResource(
-                R.string.crowns_hint_mark,
-                targetPositions.size,
-                technique.crownsPresentationText(),
-            )
-    }
-}
-
-@Composable
-private fun CrownsLogicTechnique?.crownsPresentationText(): String =
-    stringResource(
-        when (this) {
-            CrownsLogicTechnique.SINGLE_CANDIDATE_ROW -> R.string.crowns_technique_single_row
-            CrownsLogicTechnique.SINGLE_CANDIDATE_COLUMN -> R.string.crowns_technique_single_column
-            CrownsLogicTechnique.SINGLE_CANDIDATE_REGION -> R.string.crowns_technique_single_region
-            CrownsLogicTechnique.REGION_LOCKED_TO_ROW -> R.string.crowns_technique_region_row
-            CrownsLogicTechnique.REGION_LOCKED_TO_COLUMN -> R.string.crowns_technique_region_column
-            null -> R.string.empty
-        },
-    )
-
-@Composable
-private fun crownsViolationText(type: CrownsViolationType): String =
-    stringResource(
-        when (type) {
-            CrownsViolationType.POSITION_OUTSIDE_BOARD -> R.string.crowns_violation_position
-            CrownsViolationType.ROW_CONFLICT -> R.string.crowns_violation_row
-            CrownsViolationType.COLUMN_CONFLICT -> R.string.crowns_violation_column
-            CrownsViolationType.REGION_CONFLICT -> R.string.crowns_violation_region
-            CrownsViolationType.DIAGONAL_ADJACENCY_CONFLICT -> R.string.crowns_violation_diagonal
-        },
-    )

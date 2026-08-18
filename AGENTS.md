@@ -6,8 +6,10 @@
 - `:app` is the Android application host: it owns ViewModels, Navigation 3, DataStore, Room persistence, economy, ads, haptics, and Android platform adapters; it may depend on `:puzzle-core` and `:shared-ui`.
 - `:platform-contracts` owns the small platform-neutral Store, Ads, Player Identity, Cloud Save, lifecycle, metadata/capabilities, and `PlatformServices` contracts in `commonMain`; it depends only on multiplatform primitives such as coroutines `StateFlow`.
 - `:shared-ui` owns platform-neutral Compose Multiplatform presentation shared by Android and Web; it never owns ViewModels, persistence, economy, ads, haptics, navigation, or platform SDK integrations.
-- Balance is the first shared-presentation pilot. Future games should follow the same state-down/events-up host adapter pattern rather than creating Web-specific UI copies.
-- `:web-app` is the separate Yandex/Web application host; it owns browser I/O, Yandex SDK bootstrap behind one bridge, Web lifecycle adaptation, lazy Web asset loading, and the responsive 9:16 host. It currently exposes only the playable Balance Level 1 vertical slice and has no durable Web progression.
+- Balance and Crowns use shared Compose Multiplatform presentation with state-down/events-up host adapters; future games extend this approach instead of adding Web-specific UI copies.
+- Shared square-board gameplay follows one constraint-driven screen: metadata and tools stay visible, contextual status is bounded, and the board adapts to both available dimensions without gameplay scrolling.
+- Android gameplay hosts retain ViewModels, economy, persistence, haptics, terminal policy, navigation, and ads; shared presentation owns none of them.
+- `:web-app` owns browser I/O, Yandex SDK bootstrap behind one bridge, Web lifecycle adaptation, lazy assets, and the responsive 9:16 host. Its Balance and Crowns controllers are lightweight adapters over frozen Catalog Level 1 and common engines, with no durable Web progression.
 - Android and Web remain separate entry points over the shared core, canonical data, and focused shared presentation.
 - Android and Web implement the same neutral contracts from `:platform-contracts`; Android-specific adapters remain in `:app` under `platform/android/`, while Yandex/browser implementations remain in `:web-app`.
 - Future Yandex Games Player, Store, ads, identity, and cloud-save implementations plug into narrow neutral contracts; raw Yandex SDK access must stay behind the Web bridge and never spread through UI or application code.

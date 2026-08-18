@@ -15,13 +15,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.R
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.ui.crowns.CrownIcon
 
 /** Shared user-facing naming for the production puzzles, so every screen calls them the same thing. */
 internal fun PuzzleType.titleResource(): Int =
@@ -68,7 +68,7 @@ internal fun PuzzleArtwork(
     ) {
         val iconModifier = Modifier.size(size * ARTWORK_ICON_RATIO)
         if (puzzleType == PuzzleType.CROWNS) {
-            Icon(painterResource(R.drawable.ic_crown), contentDescription = null, tint = accent, modifier = iconModifier)
+            CrownIcon(modifier = iconModifier, tint = accent)
         } else {
             val icon =
                 when (puzzleType) {

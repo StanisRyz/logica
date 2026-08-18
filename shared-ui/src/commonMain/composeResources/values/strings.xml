@@ -42,4 +42,30 @@
     <string name="violation_duplicate_columns">Два завершённых столбца совпадают.</string>
     <string name="violation_fixed_clue">Фиксированная клетка не может быть изменена.</string>
     <string name="violation_board_size">Размер поля не совпадает с головоломкой.</string>
+
+    <string name="crowns_tool_crown">Корона</string>
+    <string name="crowns_tool_mark">Метка ×</string>
+    <string name="crowns_cell_description">Строка %1$d, столбец %2$d, область %3$d. %4$s. %5$s.%6$s%7$s</string>
+    <string name="crowns_cell_empty">Пустая клетка</string>
+    <string name="crowns_cell_marked">Стоит метка</string>
+    <string name="crowns_cell_crown">Стоит корона</string>
+    <string name="crowns_guided_suffix"> Рекомендуемая клетка обучения.</string>
+    <string name="hint_target_suffix"> Цель подсказки.</string>
+    <string name="hint_evidence_suffix"> Основание подсказки.</string>
+    <string name="hint_conflict_suffix"> Ошибка, указанная подсказкой.</string>
+    <string name="crowns_violation_position">Корона находится за пределами поля.</string>
+    <string name="crowns_violation_row">В одной строке стоит больше одной короны.</string>
+    <string name="crowns_violation_column">В одном столбце стоит больше одной короны.</string>
+    <string name="crowns_violation_region">В одной цветной области стоит больше одной короны.</string>
+    <string name="crowns_violation_diagonal">Две короны соприкасаются по диагонали.</string>
+    <string name="crowns_hint_incorrect_crown">Уберите корону из клетки %1$d:%2$d: она не входит в решение.</string>
+    <string name="crowns_hint_incorrect_mark">Уберите метку из клетки %1$d:%2$d: здесь должна стоять корона.</string>
+    <string name="crowns_hint_place">Поставьте корону в клетку %1$d:%2$d. %3$s</string>
+    <string name="crowns_hint_mark">Поставьте метки в выделенных клетках (%1$d). %2$s</string>
+    <string name="crowns_technique_single_row">В этой строке осталась одна возможная клетка.</string>
+    <string name="crowns_technique_single_column">В этом столбце осталась одна возможная клетка.</string>
+    <string name="crowns_technique_single_region">В этой области осталась одна возможная клетка.</string>
+    <string name="crowns_technique_region_row">Все возможные клетки области лежат в одной строке, поэтому остальные клетки строки исключаются.</string>
+    <string name="crowns_technique_region_column">Все возможные клетки области лежат в одном столбце, поэтому остальные клетки столбца исключаются.</string>
+    <string name="crowns_hint_legend">Выделение показывает цель подсказки; соседний цвет — клетки, на которых основан вывод.</string>
 </resources>
