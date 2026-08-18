@@ -96,7 +96,7 @@ the tutorials, and gameplay open on top of them with normal Back navigation.
 
 Modules:
 
-- `app/` — Android/Compose application shell, navigation, theme, and settings.
+- `app/` — Android/Compose shell plus neutral platform-service contracts and Android adapters for Store, ads, identity, cloud capability, and lifecycle.
 - `puzzle-core/` — deterministic Balance, Crowns, Word, Sudoku, and 2048 domain/gameplay code and diagnostics.
 - `lexicon/word/` — curated offline Word corpus sources and their provenance note.
 

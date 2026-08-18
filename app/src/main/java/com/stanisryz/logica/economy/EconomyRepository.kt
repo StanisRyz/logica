@@ -25,8 +25,8 @@ internal interface EconomyRepository {
 
     /**
      * Credits one confirmed store purchase. Both arguments are plain identifiers on purpose: the
-     * economy never sees a billing SDK type, and RuStore's purchase ID is what makes the grant
-     * idempotent.
+     * economy never sees a billing SDK type, and the provider-qualified transaction ID makes the
+     * grant idempotent without collisions between store providers.
      */
     suspend fun grantPurchasedGems(
         purchaseId: String,

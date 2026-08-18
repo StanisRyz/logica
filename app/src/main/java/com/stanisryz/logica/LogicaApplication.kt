@@ -17,6 +17,7 @@ import com.stanisryz.logica.daily.RoomDailyChallengeRepository
 import com.stanisryz.logica.daily.RoomDailyResultRepository
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.RoomEconomyRepository
+import com.stanisryz.logica.platform.android.AndroidPlatformComposition
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.result.RoomGameCompletionRepository
 import com.stanisryz.logica.session.LogicaDatabase
@@ -24,9 +25,6 @@ import com.stanisryz.logica.settings.DataStoreSettingsRepository
 import com.stanisryz.logica.settings.SettingsRepository
 import com.stanisryz.logica.statistics.RoomStatisticsRepository
 import com.stanisryz.logica.statistics.StatisticsRepository
-import com.stanisryz.logica.store.RuStorePayGateway
-import com.stanisryz.logica.store.createRuStorePayGateway
-import com.stanisryz.logica.store.ruStoreSdkTheme
 
 private val Context.userSettingsDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "user_settings",
@@ -42,13 +40,15 @@ private val Context.advertisingDataStore: DataStore<Preferences> by preferencesD
 
 class LogicaApplication : Application() {
     internal val container: AppContainer by lazy {
-        AppContainer(applicationContext)
+        AppContainer(this)
     }
 }
 
 internal class AppContainer(
-    context: Context,
+    context: Application,
 ) {
+    val platform = AndroidPlatformComposition(context)
+
     val settingsRepository: SettingsRepository =
         DataStoreSettingsRepository(
             dataStore = context.userSettingsDataStore,
@@ -105,22 +105,4 @@ internal class AppContainer(
         RoomEconomyRepository(database.economyDao())
     }
 
-    /**
-     * Whether this build has RuStore configuration at all. It is read from the build rather than
-     * discovered from a failing SDK call, and it is what keeps a checkout without
-     * `logica.rustoreConsoleAppId` from ever reaching `RuStorePayClient`.
-     */
-    val isRuStorePayConfigured: Boolean = BuildConfig.RUSTORE_CONSOLE_APP_ID.isNotBlank()
-
-    /**
-     * Constructing this touches nothing: the Pay SDK is brought up by its own ContentProvider from
-     * the manifest, no call is made until the player opens the Store, and every call through the
-     * gateway is allowed to fail without the application noticing.
-     */
-    val ruStorePayGateway: RuStorePayGateway by lazy {
-        createRuStorePayGateway(
-            consoleApplicationId = BuildConfig.RUSTORE_CONSOLE_APP_ID,
-            sdkTheme = { context.ruStoreSdkTheme() },
-        )
-    }
 }

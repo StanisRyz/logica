@@ -6,8 +6,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * What a paid purchase does to the wallet. RuStore's purchase ID is the ledger key, so the same
- * payment arriving again — from a repeated callback, from reconciliation, or from a finalization
+ * What a paid purchase does to the wallet. The provider-qualified transaction ID is the ledger key,
+ * so the same payment arriving again — from a repeated callback, reconciliation, or finalization
  * retry — is worth nothing the second time.
  */
 class GemPurchaseEconomyTest {
@@ -16,7 +16,7 @@ class GemPurchaseEconomyTest {
         runBlocking {
             val dao = FakeEconomyDao(PlayerEconomy(gems = 7, lives = 3, nextLifeAtEpochMillis = NOW + INTERVAL))
 
-            val granted = dao.grantPurchasedGems("XYZ", "gems_250", NOW) as EconomyGemPurchase.Granted
+            val granted = dao.grantPurchasedGems("rustore:XYZ", "gems_250", NOW) as EconomyGemPurchase.Granted
 
             assertEquals(GemPack.GEMS_250, granted.pack)
             assertEquals(7 + 250, granted.economy.gems)
@@ -28,7 +28,7 @@ class GemPurchaseEconomyTest {
             assertEquals(0, dao.events.getValue("rustore:XYZ").lifeDelta)
 
             // The same payment again adds nothing, whatever brought it back.
-            val repeated = dao.grantPurchasedGems("XYZ", "gems_250", NOW)
+            val repeated = dao.grantPurchasedGems("rustore:XYZ", "gems_250", NOW)
 
             assertTrue(repeated is EconomyGemPurchase.AlreadyGranted)
             assertEquals(7 + 250, dao.wallet(NOW).gems)
@@ -36,7 +36,8 @@ class GemPurchaseEconomyTest {
 
             // A product this build has no reward for is worth exactly nothing; nothing is inferred
             // from the ID, and no ledger row is written that would consume the purchase.
-            val unknown = dao.grantPurchasedGems("ABC", "gems_9000", NOW) as EconomyGemPurchase.UnsupportedProduct
+            val unknown =
+                dao.grantPurchasedGems("rustore:ABC", "gems_9000", NOW) as EconomyGemPurchase.UnsupportedProduct
 
             assertEquals("gems_9000", unknown.productId)
             assertEquals(7 + 250, dao.wallet(NOW).gems)

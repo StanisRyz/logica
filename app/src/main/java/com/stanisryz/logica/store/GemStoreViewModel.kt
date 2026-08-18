@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.GemPack
+import com.stanisryz.logica.platform.StoreGateway
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,7 +15,7 @@ import kotlinx.coroutines.launch
 
 /** Everything the Gem Store can be. */
 internal sealed interface GemStoreState {
-    /** Prices are being loaded from RuStore. */
+    /** Prices are being loaded from the active platform store. */
     data object Loading : GemStoreState
 
     /**
@@ -28,7 +29,7 @@ internal sealed interface GemStoreState {
         val outcome: GemPurchaseOutcome? = null,
     ) : GemStoreState
 
-    /** RuStore is not usable here. The gem balance stays visible and a retry is offered. */
+    /** The platform store is not usable here. The gem balance stays visible and retry is offered. */
     data object Unavailable : GemStoreState
 }
 
@@ -39,7 +40,7 @@ internal sealed interface GemStoreState {
  * [EconomyRepository] flow every other screen reads, so the balance is Room's number rather than a
  * count this class incremented.
  *
- * Construction does nothing at all. Reconciliation and prices are RuStore work, and RuStore work
+ * Construction does nothing at all. Reconciliation and prices are platform-store work, which
  * happens only because the player opened the store: a launched application that never reaches the
  * Store tab makes no payment call, and a purchase paid for but never credited is picked up on the
  * next open — without any restore button, which a consumable currency does not need.
@@ -100,7 +101,8 @@ internal class GemStoreViewModel(
 
 internal class GemStoreViewModelFactory(
     private val economyRepository: EconomyRepository,
-    private val gateway: RuStorePayGateway,
+    private val gateway: StoreGateway,
+    private val products: GemPackProductMapping,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(GemStoreViewModel::class.java)) {
@@ -108,6 +110,6 @@ internal class GemStoreViewModelFactory(
         }
 
         @Suppress("UNCHECKED_CAST")
-        return GemStoreViewModel(GemPurchaseProcessor(gateway, economyRepository)) as T
+        return GemStoreViewModel(GemPurchaseProcessor(gateway, products, economyRepository)) as T
     }
 }

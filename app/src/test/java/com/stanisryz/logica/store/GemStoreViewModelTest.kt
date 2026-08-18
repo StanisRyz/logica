@@ -4,7 +4,13 @@ import com.stanisryz.logica.economy.EconomyGemPurchase
 import com.stanisryz.logica.economy.EconomyRefill
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.EconomyRewardedLife
+import com.stanisryz.logica.economy.GemPack
 import com.stanisryz.logica.economy.PlayerEconomy
+import com.stanisryz.logica.platform.PlatformProduct
+import com.stanisryz.logica.platform.PlatformPurchase
+import com.stanisryz.logica.platform.PlatformPurchaseResult
+import com.stanisryz.logica.platform.StoreGateway
+import com.stanisryz.logica.platform.android.AndroidRuStoreAdapter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -44,8 +50,11 @@ class GemStoreViewModelTest {
         runTest(dispatcher) {
             // The gateway a checkout without `logica.rustoreConsoleAppId` gets. Nothing in it may
             // reach the SDK, which is why the theme it would need is an error here.
-            val gateway = createRuStorePayGateway(consoleApplicationId = "", sdkTheme = { error("the SDK is never asked") })
-            val viewModel = GemStoreViewModel(GemPurchaseProcessor(gateway, UnusedEconomyRepository))
+            val gateway =
+                AndroidRuStoreAdapter(
+                    createRuStorePayGateway(consoleApplicationId = "", sdkTheme = { error("the SDK is never asked") }),
+                )
+            val viewModel = GemStoreViewModel(GemPurchaseProcessor(gateway, TEST_PRODUCTS, UnusedEconomyRepository))
 
             viewModel.open()
             advanceUntilIdle()
@@ -56,9 +65,9 @@ class GemStoreViewModelTest {
     @Test
     fun nothingIsAskedOfRuStoreUntilTheStoreIsOpened() =
         runTest(dispatcher) {
-            val gateway = RecordingRuStorePayGateway()
+            val gateway = RecordingStoreGateway()
 
-            val viewModel = GemStoreViewModel(GemPurchaseProcessor(gateway, UnusedEconomyRepository))
+            val viewModel = GemStoreViewModel(GemPurchaseProcessor(gateway, TEST_PRODUCTS, UnusedEconomyRepository))
             advanceUntilIdle()
 
             assertEquals(emptyList<String>(), gateway.calls)
@@ -74,8 +83,8 @@ class GemStoreViewModelTest {
     @Test
     fun aFailingSdkLeavesTheStoreUnavailableWithOneLoadAtATimeAndARetryThatWorks() =
         runTest(dispatcher) {
-            val gateway = RecordingRuStorePayGateway(failure = IllegalStateException("RuStorePayClient is not created"))
-            val viewModel = GemStoreViewModel(GemPurchaseProcessor(gateway, UnusedEconomyRepository))
+            val gateway = RecordingStoreGateway(failure = IllegalStateException("RuStorePayClient is not created"))
+            val viewModel = GemStoreViewModel(GemPurchaseProcessor(gateway, TEST_PRODUCTS, UnusedEconomyRepository))
 
             // Re-entering the tab while the first load is still running is not a second load.
             viewModel.open()
@@ -98,23 +107,32 @@ class GemStoreViewModelTest {
 }
 
 /** RuStore reduced to what it was asked and when, plus a switch for making it fail. */
-private class RecordingRuStorePayGateway(
+private val TEST_PRODUCTS =
+    GemPackProductMapping(
+        mapOf(
+            GemPack.GEMS_50 to "gems_50",
+            GemPack.GEMS_250 to "gems_250",
+            GemPack.GEMS_600 to "gems_600",
+        ),
+    )
+
+private class RecordingStoreGateway(
     var failure: Throwable? = null,
-) : RuStorePayGateway {
+) : StoreGateway {
     val calls = mutableListOf<String>()
 
-    override suspend fun products(productIds: List<String>): List<StoreProduct> {
+    override suspend fun products(productIds: List<String>): List<PlatformProduct> {
         calls += "products"
         failure?.let { throw it }
-        return productIds.map { StoreProduct(it, "99 ₽") }
+        return productIds.map { PlatformProduct(it, "99 ₽") }
     }
 
-    override suspend fun purchase(productId: String): StorePurchaseResult {
+    override suspend fun purchase(productId: String): PlatformPurchaseResult {
         calls += "purchase"
-        return StorePurchaseResult.Cancelled
+        return PlatformPurchaseResult.Cancelled
     }
 
-    override suspend fun unfinalizedPurchases(): List<StorePurchase> {
+    override suspend fun unprocessedPurchases(): List<PlatformPurchase> {
         calls += "unfinalizedPurchases"
         failure?.let { throw it }
         return emptyList()

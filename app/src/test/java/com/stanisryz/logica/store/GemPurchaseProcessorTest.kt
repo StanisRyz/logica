@@ -7,6 +7,10 @@ import com.stanisryz.logica.economy.EconomyRewardedLife
 import com.stanisryz.logica.economy.FakeEconomyDao
 import com.stanisryz.logica.economy.GemPack
 import com.stanisryz.logica.economy.PlayerEconomy
+import com.stanisryz.logica.platform.PlatformProduct
+import com.stanisryz.logica.platform.PlatformPurchase
+import com.stanisryz.logica.platform.PlatformPurchaseResult
+import com.stanisryz.logica.platform.StoreGateway
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
@@ -24,20 +28,20 @@ class GemPurchaseProcessorTest {
     fun onlyAConfirmedPurchaseOfAKnownPackIsCredited() =
         runBlocking {
             val dao = FakeEconomyDao(PlayerEconomy(gems = 0, lives = 5))
-            val gateway = FakeRuStorePayGateway()
-            val processor = GemPurchaseProcessor(gateway, FakeEconomyRepository(dao))
+            val gateway = FakeStoreGateway()
+            val processor = GemPurchaseProcessor(gateway, TEST_PRODUCTS, FakeEconomyRepository(dao))
 
-            gateway.nextResult = confirmed("p-1", GemPack.GEMS_250.productId)
+            gateway.nextResult = confirmed("p-1", TEST_PRODUCTS.productId(GemPack.GEMS_250))
             assertEquals(GemPurchaseOutcome.Granted(GemPack.GEMS_250), processor.buy(GemPack.GEMS_250))
             assertEquals(250, dao.wallet(NOW).gems)
             assertEquals(listOf("p-1"), gateway.finalized)
 
             // Everything that is not a confirmed payment leaves the wallet exactly where it was.
-            gateway.nextResult = StorePurchaseResult.Cancelled
+            gateway.nextResult = PlatformPurchaseResult.Cancelled
             assertEquals(GemPurchaseOutcome.Cancelled, processor.buy(GemPack.GEMS_50))
-            gateway.nextResult = StorePurchaseResult.Pending
+            gateway.nextResult = PlatformPurchaseResult.Pending
             assertEquals(GemPurchaseOutcome.Processing, processor.buy(GemPack.GEMS_50))
-            gateway.nextResult = StorePurchaseResult.Failed(IllegalStateException("network"))
+            gateway.nextResult = PlatformPurchaseResult.Failed(IllegalStateException("network"))
             assertEquals(GemPurchaseOutcome.Failed, processor.buy(GemPack.GEMS_50))
 
             assertEquals(250, dao.wallet(NOW).gems)
@@ -57,17 +61,17 @@ class GemPurchaseProcessorTest {
     fun aPurchaseCreditedBeforeAFailedFinalizationIsNotPaidTwiceOnReconciliation() =
         runBlocking {
             val dao = FakeEconomyDao(PlayerEconomy(gems = 0, lives = 5))
-            val gateway = FakeRuStorePayGateway(finalizationFailures = 1)
-            val processor = GemPurchaseProcessor(gateway, FakeEconomyRepository(dao))
+            val gateway = FakeStoreGateway(finalizationFailures = 1)
+            val processor = GemPurchaseProcessor(gateway, TEST_PRODUCTS, FakeEconomyRepository(dao))
 
             // The gems land, then the process effectively dies before RuStore is told about it.
-            gateway.nextResult = confirmed("p-1", GemPack.GEMS_250.productId)
+            gateway.nextResult = confirmed("p-1", TEST_PRODUCTS.productId(GemPack.GEMS_250))
             assertEquals(GemPurchaseOutcome.Granted(GemPack.GEMS_250), processor.buy(GemPack.GEMS_250))
             assertEquals(250, dao.wallet(NOW).gems)
             assertEquals(emptyList<String>(), gateway.finalized)
 
             // RuStore therefore still considers it undelivered and hands it back.
-            gateway.unfinalized = listOf(StorePurchase("p-1", GemPack.GEMS_250.productId))
+            gateway.unfinalized = listOf(platformPurchase("p-1", TEST_PRODUCTS.productId(GemPack.GEMS_250)))
             val reconciled = processor.reconcile()
 
             assertTrue(reconciled.single() is EconomyGemPurchase.AlreadyGranted)
@@ -80,26 +84,44 @@ class GemPurchaseProcessorTest {
     private fun confirmed(
         purchaseId: String,
         productId: String,
-    ) = StorePurchaseResult.Confirmed(StorePurchase(purchaseId, productId))
+    ) = PlatformPurchaseResult.Confirmed(platformPurchase(purchaseId, productId))
 
     private companion object {
         const val NOW = 1_700_000_000_000L
     }
 }
 
-/** RuStore, reduced to the four things the processor asks of it. */
-private class FakeRuStorePayGateway(
+private fun platformPurchase(
+    purchaseId: String,
+    productId: String,
+) = PlatformPurchase(
+        transactionId = "test-store:$purchaseId",
+        purchaseId = purchaseId,
+        productId = productId,
+    )
+
+private val TEST_PRODUCTS =
+    GemPackProductMapping(
+        mapOf(
+            GemPack.GEMS_50 to "provider-small",
+            GemPack.GEMS_250 to "provider-medium",
+            GemPack.GEMS_600 to "provider-large",
+        ),
+    )
+
+/** A platform store, reduced to the four things the processor asks of it. */
+private class FakeStoreGateway(
     private var finalizationFailures: Int = 0,
-) : RuStorePayGateway {
-    var nextResult: StorePurchaseResult = StorePurchaseResult.Cancelled
-    var unfinalized: List<StorePurchase> = emptyList()
+) : StoreGateway {
+    var nextResult: PlatformPurchaseResult = PlatformPurchaseResult.Cancelled
+    var unfinalized: List<PlatformPurchase> = emptyList()
     val finalized = mutableListOf<String>()
 
-    override suspend fun products(productIds: List<String>): List<StoreProduct> = productIds.map { StoreProduct(it, "99 ₽") }
+    override suspend fun products(productIds: List<String>): List<PlatformProduct> = productIds.map { PlatformProduct(it, "99 ₽") }
 
-    override suspend fun purchase(productId: String): StorePurchaseResult = nextResult
+    override suspend fun purchase(productId: String): PlatformPurchaseResult = nextResult
 
-    override suspend fun unfinalizedPurchases(): List<StorePurchase> = unfinalized
+    override suspend fun unprocessedPurchases(): List<PlatformPurchase> = unfinalized
 
     override suspend fun finalize(purchaseId: String) {
         if (finalizationFailures > 0) {

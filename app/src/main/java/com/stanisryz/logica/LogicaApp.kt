@@ -13,6 +13,7 @@ import com.stanisryz.logica.ads.RewardedLifeControllerFactory
 import com.stanisryz.logica.economy.EconomyViewModel
 import com.stanisryz.logica.economy.EconomyViewModelFactory
 import com.stanisryz.logica.navigation.LogicaNavigation
+import com.stanisryz.logica.platform.android.AndroidAdDisplayHost
 import com.stanisryz.logica.settings.SettingsViewModel
 import com.stanisryz.logica.settings.SettingsViewModelFactory
 import com.stanisryz.logica.ui.theme.LogicaTheme
@@ -27,6 +28,8 @@ fun LogicaApp() {
     val statisticsRepository = application.container.statisticsRepository
     val dailyResultRepository = application.container.dailyResultRepository
     val economyRepository = application.container.economyRepository
+    val platform = application.container.platform
+    val platformServices = platform.services
     val viewModelFactory =
         remember(settingsRepository) {
             SettingsViewModelFactory(settingsRepository)
@@ -40,15 +43,15 @@ fun LogicaApp() {
     val economyViewModel: EconomyViewModel = viewModel(factory = economyViewModelFactory)
     val economy by economyViewModel.economy.collectAsStateWithLifecycle()
     val rewardedControllerFactory =
-        remember(economyRepository) {
-            RewardedLifeControllerFactory(application, economyRepository)
+        remember(economyRepository, platformServices.rewardedAds) {
+            RewardedLifeControllerFactory(platformServices.rewardedAds, economyRepository)
         }
     val rewardedController: RewardedLifeController = viewModel(factory = rewardedControllerFactory)
     val rewardedState by rewardedController.state.collectAsStateWithLifecycle()
     val interstitialControllerFactory =
-        remember(application) {
+        remember(platformServices.fullscreenAds) {
             InterstitialAdControllerFactory(
-                context = application,
+                ads = platformServices.fullscreenAds,
                 opportunities = application.container.interstitialOpportunities,
                 cooldown = application.container.interstitialCooldownPolicy,
             )
@@ -69,15 +72,22 @@ fun LogicaApp() {
             economy = economy,
             rewardedState = rewardedState,
             interstitialOpportunity = interstitialOpportunity,
-            ruStorePayGateway = application.container.ruStorePayGateway,
+            storeGateway = platformServices.store,
+            storeProducts = platform.gemPackProducts,
             onRestoreLife = economyViewModel::refillLife,
             onPreloadRewardedAd = rewardedController::preload,
             onReleaseRewardedAd = rewardedController::release,
-            onWatchRewardedAd = rewardedController::show,
+            onWatchRewardedAd = { rewardedController.show(AndroidAdDisplayHost(it)) },
             onRetryRewardedAd = rewardedController::retry,
             onGameplayStarted = interstitialController::onGameplayStarted,
             onGameplayStopped = interstitialController::onGameplayStopped,
-            onShowInterstitialForTerminalAction = interstitialController::showForTerminalAction,
+            onShowInterstitialForTerminalAction = { opportunity, activity, onFinished ->
+                interstitialController.showForTerminalAction(
+                    opportunity,
+                    activity?.let(::AndroidAdDisplayHost),
+                    onFinished,
+                )
+            },
             onThemeModeChanged = settingsViewModel::setThemeMode,
             onSoundEnabledChanged = settingsViewModel::setSoundEnabled,
             onHapticsEnabledChanged = settingsViewModel::setHapticsEnabled,

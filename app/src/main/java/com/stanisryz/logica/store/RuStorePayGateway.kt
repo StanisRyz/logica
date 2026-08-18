@@ -26,33 +26,33 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /** One gem pack as RuStore prices it. The label is the store's own formatted price, never ours. */
-internal data class StoreProduct(
+internal data class RuStoreProduct(
     val productId: String,
     val priceLabel: String,
 )
 
 /** A purchase that RuStore has confirmed and that has not been finalized yet. */
-internal data class StorePurchase(
+internal data class RuStorePurchase(
     val purchaseId: String,
     val productId: String,
 )
 
 /** How one payment attempt ended. Only [Confirmed] may ever reach the economy. */
-internal sealed interface StorePurchaseResult {
+internal sealed interface RuStorePurchaseResult {
     /** RuStore confirmed the payment; [purchase] is ready to be credited and then finalized. */
     data class Confirmed(
-        val purchase: StorePurchase,
-    ) : StorePurchaseResult
+        val purchase: RuStorePurchase,
+    ) : RuStorePurchaseResult
 
     /** The payment exists but is not settled yet; reconciliation finishes it later. */
-    data object Pending : StorePurchaseResult
+    data object Pending : RuStorePurchaseResult
 
     /** The player backed out. A normal result, not a failure. */
-    data object Cancelled : StorePurchaseResult
+    data object Cancelled : RuStorePurchaseResult
 
     data class Failed(
         val cause: Throwable,
-    ) : StorePurchaseResult
+    ) : RuStorePurchaseResult
 }
 
 /**
@@ -62,13 +62,13 @@ internal sealed interface StorePurchaseResult {
  */
 internal interface RuStorePayGateway {
     /** Prices for the requested products. A product RuStore does not return is unavailable. */
-    suspend fun products(productIds: List<String>): List<StoreProduct>
+    suspend fun products(productIds: List<String>): List<RuStoreProduct>
 
     /** Opens RuStore's payment flow and waits for it to end. */
-    suspend fun purchase(productId: String): StorePurchaseResult
+    suspend fun purchase(productId: String): RuStorePurchaseResult
 
     /** Confirmed consumable purchases RuStore still considers undelivered. */
-    suspend fun unfinalizedPurchases(): List<StorePurchase>
+    suspend fun unfinalizedPurchases(): List<RuStorePurchase>
 
     /** Tells RuStore the goods were delivered, which closes the purchase for good. */
     suspend fun finalize(purchaseId: String)
@@ -102,12 +102,12 @@ internal fun createRuStorePayGateway(
  * unavailable, and it makes no SDK call: there is no payment this build could complete.
  */
 internal object UnconfiguredRuStorePayGateway : RuStorePayGateway {
-    override suspend fun products(productIds: List<String>): List<StoreProduct> = emptyList()
+    override suspend fun products(productIds: List<String>): List<RuStoreProduct> = emptyList()
 
-    override suspend fun purchase(productId: String): StorePurchaseResult =
-        StorePurchaseResult.Failed(StoreUnavailableException("This build has no RuStore console application ID."))
+    override suspend fun purchase(productId: String): RuStorePurchaseResult =
+        RuStorePurchaseResult.Failed(StoreUnavailableException("This build has no RuStore console application ID."))
 
-    override suspend fun unfinalizedPurchases(): List<StorePurchase> = emptyList()
+    override suspend fun unfinalizedPurchases(): List<RuStorePurchase> = emptyList()
 
     override suspend fun finalize(purchaseId: String) = Unit
 }
@@ -131,7 +131,7 @@ internal class RuStoreGemPayGateway(
 ) : RuStorePayGateway {
     private val purchaseInteractor get() = RuStorePayClient.instance.getPurchaseInteractor()
 
-    override suspend fun products(productIds: List<String>): List<StoreProduct> =
+    override suspend fun products(productIds: List<String>): List<RuStoreProduct> =
         guarded("product") {
             requirePurchasesAvailable()
             RuStorePayClient.instance
@@ -139,10 +139,10 @@ internal class RuStoreGemPayGateway(
                 .getProducts(productIds.map { ProductId(it) })
                 .await()
                 .filter { it.type == ProductType.CONSUMABLE_PRODUCT }
-                .map { StoreProduct(productId = it.productId.value, priceLabel = it.amountLabel.value) }
+                .map { RuStoreProduct(productId = it.productId.value, priceLabel = it.amountLabel.value) }
         }
 
-    override suspend fun purchase(productId: String): StorePurchaseResult {
+    override suspend fun purchase(productId: String): RuStorePurchaseResult {
         // The payment sheet is the player's own flow, so it is the one call with no time limit on it;
         // every way it can end is already a result rather than an exception.
         val result =
@@ -155,11 +155,11 @@ internal class RuStoreGemPayGateway(
                         purchaseEventListener = null,
                     ).await()
             } catch (cancelled: RuStorePaymentException.ProductPurchaseCancelled) {
-                return StorePurchaseResult.Cancelled
+                return RuStorePurchaseResult.Cancelled
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (failure: Throwable) {
-                return StorePurchaseResult.Failed(failure)
+                return RuStorePurchaseResult.Failed(failure)
             }
         // A finished payment flow is not the same as a settled purchase, so the status is read back
         // from RuStore rather than assumed from the flow having returned at all.
@@ -169,13 +169,13 @@ internal class RuStoreGemPayGateway(
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (failure: Throwable) {
-                return StorePurchaseResult.Failed(failure)
+                return RuStorePurchaseResult.Failed(failure)
             }
-        val productPurchase = purchase as? ProductPurchase ?: return StorePurchaseResult.Pending
+        val productPurchase = purchase as? ProductPurchase ?: return RuStorePurchaseResult.Pending
         return when (productPurchase.status) {
             ProductPurchaseStatus.CONFIRMED ->
-                StorePurchaseResult.Confirmed(
-                    StorePurchase(
+                RuStorePurchaseResult.Confirmed(
+                    RuStorePurchase(
                         purchaseId = productPurchase.purchaseId.value,
                         productId = productPurchase.productId.value,
                     ),
@@ -184,12 +184,12 @@ internal class RuStoreGemPayGateway(
             ProductPurchaseStatus.REJECTED,
             ProductPurchaseStatus.EXPIRED,
             ProductPurchaseStatus.REVERSED,
-            -> StorePurchaseResult.Cancelled
-            else -> StorePurchaseResult.Pending
+            -> RuStorePurchaseResult.Cancelled
+            else -> RuStorePurchaseResult.Pending
         }
     }
 
-    override suspend fun unfinalizedPurchases(): List<StorePurchase> =
+    override suspend fun unfinalizedPurchases(): List<RuStorePurchase> =
         guarded("unfinalized purchases") {
             purchaseInteractor
                 .getPurchases(
@@ -198,7 +198,7 @@ internal class RuStoreGemPayGateway(
                     acknowledgementState = AcknowledgementState.PENDING,
                 ).await()
                 .filterIsInstance<ProductPurchase>()
-                .map { StorePurchase(purchaseId = it.purchaseId.value, productId = it.productId.value) }
+                .map { RuStorePurchase(purchaseId = it.purchaseId.value, productId = it.productId.value) }
         }
 
     override suspend fun finalize(purchaseId: String) {

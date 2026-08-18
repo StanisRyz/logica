@@ -52,7 +52,7 @@ internal sealed interface EconomyRewardedLife {
     ) : EconomyRewardedLife
 }
 
-/** The outcome of crediting one RuStore purchase. Money already changed hands in every case. */
+/** The outcome of crediting one confirmed platform purchase. */
 internal sealed interface EconomyGemPurchase {
     val economy: PlayerEconomy
 
@@ -158,23 +158,23 @@ internal interface EconomyDao {
     }
 
     /**
-     * Credits one confirmed RuStore purchase. [productId] is checked against the local [GemPack]
-     * whitelist before anything else, so the gem amount is always this build's number rather than
-     * the store's. The ledger row keyed by [purchaseId] is the duplicate-protection boundary: the
+     * Credits one confirmed store purchase. [productId] is an application pack key checked against
+     * the [GemPack] whitelist before anything else, so the gem amount is always this build's number
+     * rather than the store's. The ledger row keyed by [transactionId] is the duplicate boundary: the
      * same payment reaching this method again — from a repeated callback, from reconciliation after
      * a crash, or from a finalization retry — adds nothing. Lives are never touched by a purchase.
      */
     @Transaction
     suspend fun grantPurchasedGems(
-        purchaseId: String,
+        transactionId: String,
         productId: String,
         nowEpochMillis: Long,
     ): EconomyGemPurchase {
         val current = find().toPlayerEconomy(nowEpochMillis).regenerated(nowEpochMillis)
         val pack =
-            GemPack.forProductId(productId)
+            GemPack.forKey(productId)
                 ?: return EconomyGemPurchase.UnsupportedProduct(current, productId)
-        val effect = current.purchasedGems(purchaseId, pack)
+        val effect = current.purchasedGems(transactionId, pack)
         if (insertEvent(effect.event.toEntity(nowEpochMillis)) == -1L) {
             // Whatever regeneration is due is still worth persisting; the gems already arrived.
             upsert(current.toEntity(nowEpochMillis))

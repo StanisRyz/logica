@@ -66,12 +66,13 @@ import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.platform.StoreGateway
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.settings.SettingsRepository
 import com.stanisryz.logica.settings.ThemeMode
 import com.stanisryz.logica.settings.UserSettings
 import com.stanisryz.logica.statistics.StatisticsRepository
-import com.stanisryz.logica.store.RuStorePayGateway
+import com.stanisryz.logica.store.GemPackProductMapping
 import com.stanisryz.logica.ui.components.EconomyBar
 import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.LivesDialog
@@ -112,7 +113,8 @@ internal fun LogicaNavigation(
     economy: PlayerEconomy,
     rewardedState: RewardedAdState,
     interstitialOpportunity: InterstitialOpportunity?,
-    ruStorePayGateway: RuStorePayGateway,
+    storeGateway: StoreGateway,
+    storeProducts: GemPackProductMapping,
     onRestoreLife: () -> Unit,
     onPreloadRewardedAd: () -> Unit,
     onReleaseRewardedAd: () -> Unit,
@@ -340,7 +342,8 @@ internal fun LogicaNavigation(
                                             StoreRoute(
                                                 economy = economy,
                                                 economyRepository = economyRepository,
-                                                ruStorePayGateway = ruStorePayGateway,
+                                                storeGateway = storeGateway,
+                                                storeProducts = storeProducts,
                                             )
                                         PrimaryTab.PROFILE -> ProfileRoute(statisticsRepository)
                                     }

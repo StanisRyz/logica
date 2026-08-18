@@ -11,7 +11,7 @@ internal enum class EconomyEventType {
     /** One rewarded ad the player chose to watch at zero lives, credited once. */
     REWARDED_AD_LIFE,
 
-    /** One confirmed RuStore purchase of a gem pack, credited once. */
+    /** Persisted legacy name for one confirmed store gem purchase, credited once. */
     RUSTORE_GEM_PURCHASE,
 }
 
@@ -45,10 +45,10 @@ internal data class EconomyEvent(
         fun rewardedAdEventId(actionId: String): String = "rewarded_ad:$actionId"
 
         /**
-         * RuStore's own purchase ID is the economic identity of a payment, so the ledger row for it
-         * is the same whether it arrives from the purchase callback or from reconciliation later.
+         * The store adapter qualifies its transaction ID with the provider, so reconciliation and
+         * callbacks share a key while different providers cannot collide.
          */
-        fun purchaseEventId(purchaseId: String): String = "rustore:$purchaseId"
+        fun purchaseEventId(transactionId: String): String = transactionId
     }
 }
 
@@ -106,14 +106,14 @@ internal fun PlayerEconomy.rewardedAdLife(actionId: String): EconomyEffect =
  * and lives are not part of a purchase at all.
  */
 internal fun PlayerEconomy.purchasedGems(
-    purchaseId: String,
+    transactionId: String,
     pack: GemPack,
 ): EconomyEffect =
     effect(
         updated = withGemsGranted(pack.gems),
-        eventId = EconomyEvent.purchaseEventId(purchaseId),
+        eventId = EconomyEvent.purchaseEventId(transactionId),
         type = EconomyEventType.RUSTORE_GEM_PURCHASE,
-        sourceId = purchaseId,
+        sourceId = transactionId,
     )
 
 private fun PlayerEconomy.effect(
