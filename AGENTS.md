@@ -6,14 +6,15 @@
 - `:app` owns Android UI, Navigation 3, DataStore preferences, and Room durable persistence for terminal results, Catalog progression, Daily data, economy, and other current app state; it may depend on `:puzzle-core`.
 - Shared application services and UI depend on narrow neutral contracts under `platform/`; Android adapters under `platform/android/` wrap RuStore, Yandex Mobile Ads, and local Android host services.
 - Future Yandex Games implementations plug into the same Store, ads, identity, cloud-save, and lifecycle contracts; do not branch provider behavior through UI or ViewModels.
-- `:puzzle-core` is Kotlin Multiplatform: portable puzzle runtime belongs in `commonMain` and must never depend on Java, Android, Compose, filesystem/classpath APIs, system randomness/time, or `:app`.
-- Android/JVM bundled-resource adapters stay in their platform source sets; JVM quality, lexicon, freeze, and integrity tooling stays developer-only in `jvmQuality`.
+- `:puzzle-core` is Kotlin Multiplatform for Android, JVM, JavaScript, and Wasm browser libraries: portable puzzle runtime belongs in `commonMain` and must never depend on Java, Android, Compose, filesystem/classpath/browser/network APIs, system randomness/time, or `:app`.
+- Platform bundled-resource/preload adapters stay outside `commonMain`; JVM quality, lexicon, freeze, and integrity tooling stays developer-only in `jvmQuality`.
 - Generator/version identities and deterministic outputs must remain identical across targets; structural target changes never justify a new generator version.
 - DataStore stores user preferences; Room stores durable results, economy, Daily lifecycle, and Catalog level progression, and ViewModels use repositories rather than Room DAOs.
 - Catalog and Daily gameplay is sessionless: an unfinished attempt lives only in its gameplay ViewModel and is discarded on leaving.
 - Catalog Level Pack V1 is frozen: `(puzzleType, difficulty, contentSlot)` maps to one accepted seed forever, developer tooling must reject a content-changing overwrite, and incompatible curation needs a new `CatalogLevelPackVersion`.
 - One bucket holds exactly 10 000 slots; a displayed level resolves through `((level - 1) % 10 000) + 1`, so level 10 001 replays slot 1 while staying a distinct level and a distinct completion.
-- Level packs are compact read-only binary assets under `app/src/main/assets/levels/v1/`; the runtime streams the single record it needs and never parses a whole bucket at cold start.
+- Frozen Level Packs have one canonical platform-neutral corpus under `puzzle-data/levels/v1/`; Android packages those exact bytes at `levels/v1/`, and future Web builds must consume the same data.
+- Web runtime receives already-loaded Word lexicon text and individual Catalog Level Pack bytes through the narrow synchronous preload/in-memory boundary; loading and browser APIs stay in the future host.
 - Frozen Level Pack binary difficulty codes are explicit and stable: EASY/MEDIUM/HARD/EXPERT are 1/2/3/4 and never enum ordinals.
 - Missing or corrupt level content fails the attempt cleanly; it never falls back to a randomly seeded puzzle.
 - `:puzzle-core:buildCatalogLevelPacks` is the developer-only offline freeze; it reuses the shipped generators, solvers, datasets, and lexicons and never runs on a device.

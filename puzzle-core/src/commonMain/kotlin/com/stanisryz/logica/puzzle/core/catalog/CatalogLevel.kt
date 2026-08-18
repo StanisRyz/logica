@@ -4,6 +4,7 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import kotlin.jvm.JvmInline
 
 /**
  * A frozen Catalog content pack. Once released, a version's `(game, difficulty, slot) -> content`

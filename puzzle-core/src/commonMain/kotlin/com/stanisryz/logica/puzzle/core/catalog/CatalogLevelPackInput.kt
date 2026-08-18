@@ -1,7 +1,7 @@
 package com.stanisryz.logica.puzzle.core.catalog
 
 /** Narrow streaming input required by the frozen Catalog pack reader. */
-expect abstract class CatalogLevelPackInput {
+expect abstract class CatalogLevelPackInput protected constructor() {
     abstract fun read(): Int
 
     open fun read(

@@ -2,6 +2,7 @@ package com.stanisryz.logica.puzzle.core.game2048
 
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
+import kotlin.jvm.JvmInline
 
 enum class Game2048Direction {
     LEFT,

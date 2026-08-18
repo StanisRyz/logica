@@ -39,13 +39,19 @@ import kotlin.system.exitProcess
 object CatalogLevelPackBuilder {
     @JvmStatic
     fun main(args: Array<String>) {
-        require(args.size >= 2) { "Expected <assets-dir> <games> [slots]." }
-        val assetsDirectory = File(args[0])
-        require(assetsDirectory.isDirectory) { "Assets directory ${assetsDirectory.path} does not exist." }
-        val requestedGames = parseGames(args[1])
-        val slots = args.getOrNull(2)?.toIntOrNull() ?: CatalogLevelPacks.SLOTS_PER_BUCKET
+        require(args.size >= 3) { "Expected <puzzle-data-dir> <sudoku-data-dir> <games> [slots]." }
+        val puzzleDataDirectory = File(args[0])
+        require(puzzleDataDirectory.isDirectory) {
+            "Puzzle data directory ${puzzleDataDirectory.path} does not exist."
+        }
+        val sudokuDataDirectory = File(args[1])
+        require(sudokuDataDirectory.isDirectory) {
+            "Sudoku data directory ${sudokuDataDirectory.path} does not exist."
+        }
+        val requestedGames = parseGames(args[2])
+        val slots = args.getOrNull(3)?.toIntOrNull() ?: CatalogLevelPacks.SLOTS_PER_BUCKET
         require(slots in 1..CatalogLevelPacks.SLOTS_PER_BUCKET) { "Slot count must be within 1..10000." }
-        CatalogLevelPackIntegrity.verify(assetsDirectory)
+        CatalogLevelPackIntegrity.verify(puzzleDataDirectory)
 
         println("Building Catalog Level Pack V1: $slots slots per bucket, games=${requestedGames.joinToString()}")
         val startedAt = System.nanoTime()
@@ -54,7 +60,9 @@ object CatalogLevelPackBuilder {
             Difficulty.entries.forEach { difficulty ->
                 val bucketStartedAt = System.nanoTime()
                 val outcome =
-                    runCatching { buildBucket(assetsDirectory, puzzleType, difficulty, slots) }
+                    runCatching {
+                        buildBucket(puzzleDataDirectory, sudokuDataDirectory, puzzleType, difficulty, slots)
+                    }
                 outcome
                     .onSuccess { file ->
                         println(
@@ -86,7 +94,8 @@ object CatalogLevelPackBuilder {
         }
 
     private fun buildBucket(
-        assetsDirectory: File,
+        puzzleDataDirectory: File,
+        sudokuDataDirectory: File,
         puzzleType: PuzzleType,
         difficulty: Difficulty,
         slots: Int,
@@ -96,7 +105,7 @@ object CatalogLevelPackBuilder {
                 PuzzleType.BALANCE -> balanceBucket(difficulty, slots)
                 PuzzleType.CROWNS -> crownsBucket(difficulty, slots)
                 PuzzleType.WORD -> wordBucket(difficulty, slots)
-                PuzzleType.SUDOKU -> sudokuBucket(assetsDirectory, difficulty, slots)
+                PuzzleType.SUDOKU -> sudokuBucket(sudokuDataDirectory, difficulty, slots)
                 PuzzleType.GAME_2048 -> game2048Bucket(difficulty, slots)
                 else -> error("$puzzleType has no Catalog level pack.")
             }
@@ -108,18 +117,18 @@ object CatalogLevelPackBuilder {
                     "first repeated slot=${summary.firstRepeatedSlot ?: "none"}",
             )
         }
-        return write(assetsDirectory, puzzleType, difficulty, bucket)
+        return write(puzzleDataDirectory, puzzleType, difficulty, bucket)
     }
 
     private fun write(
-        assetsDirectory: File,
+        puzzleDataDirectory: File,
         puzzleType: PuzzleType,
         difficulty: Difficulty,
         bucket: Bucket,
     ): File {
         val target =
             File(
-                assetsDirectory,
+                puzzleDataDirectory,
                 CatalogLevelPackFormat.assetPath(CatalogLevelPackVersion.V1, puzzleType, difficulty),
             )
         val output = ByteArrayOutputStream(CatalogLevelPackFormat.HEADER_SIZE + bucket.seeds.size * CatalogLevelPackFormat.RECORD_SIZE)
@@ -251,14 +260,14 @@ object CatalogLevelPackBuilder {
      * level slot always picks exactly the same record.
      */
     private fun sudokuBucket(
-        assetsDirectory: File,
+        sudokuDataDirectory: File,
         difficulty: Difficulty,
         slots: Int,
     ): Bucket {
         val sudokuDifficulty = SudokuDifficulty.valueOf(difficulty.name)
         val dataset =
             BinarySudokuDataset { version, bucketDifficulty ->
-                File(assetsDirectory, "sudoku/v${version.value}/${bucketDifficulty.name.lowercase()}.sdk")
+                File(sudokuDataDirectory, "v${version.value}/${bucketDifficulty.name.lowercase()}.sdk")
                     .takeIf(File::isFile)
                     ?.readBytes()
             }

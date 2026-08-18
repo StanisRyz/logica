@@ -1,6 +1,6 @@
 # Логика дня
 
-Native Android application with playable Balance, Crowns, Word, Sudoku, and 2048 puzzles. The stack is Kotlin Multiplatform for the deterministic core, Jetpack Compose, Navigation 3, DataStore, Room, and Gradle Kotlin DSL; Android remains the production app and JVM supports developer tooling.
+Native Android application with playable Balance, Crowns, Word, Sudoku, and 2048 puzzles. The stack is Kotlin Multiplatform for the deterministic core, Jetpack Compose, Navigation 3, DataStore, Room, and Gradle Kotlin DSL; Android remains the production app, JVM supports developer tooling, and JS/Wasm browser library targets prepare the core for a future Web host.
 
 Every catalog game is played as a numbered sequence of fixed levels. Level 1 of Легко is the same
 puzzle for everyone, and so is level 743 — each game and each difficulty keeps its own level number,
@@ -75,7 +75,8 @@ The frozen Catalog levels are built offline and committed as compact assets:
 It reuses the shipped generators, solvers, dataset, and lexicon to regenerate candidate buckets for
 the 10 000 accepted puzzles per game and difficulty. Level Pack V1 is frozen: matching candidates
 verify successfully, changed content requires a new pack version, and past level 10 000 the content
-cycles while the level number keeps counting up.
+cycles while the level number keeps counting up. The single canonical corpus lives under
+`puzzle-data/levels/v1/`; Android packages it under the unchanged `levels/v1/` runtime asset path.
 
 `wordLexiconPrepare` regenerates `puzzle-core/src/commonMain/resources/word/v1/` from the offline curated
 sources in `lexicon/word/`; V1 is frozen and changing an existing V1 seed-to-answer mapping is not
@@ -97,7 +98,8 @@ the tutorials, and gameplay open on top of them with normal Back navigation.
 Modules:
 
 - `app/` — Android/Compose shell plus neutral platform-service contracts and Android adapters for Store, ads, identity, cloud capability, and lifecycle.
-- `puzzle-core/` — Kotlin Multiplatform deterministic Balance, Crowns, Word, Sudoku, and 2048 runtime in `commonMain`, with Android consumption and JVM-only developer tooling.
+- `puzzle-core/` — Kotlin Multiplatform deterministic Balance, Crowns, Word, Sudoku, and 2048 runtime in `commonMain`, with Android/JVM/JS/Wasm library targets and JVM-only developer tooling.
+- `puzzle-data/` — the canonical frozen Catalog Level Pack corpus shared by Android and future Web builds.
 - `lexicon/word/` — curated offline Word corpus sources and their provenance note.
 
 Balance is playable from the Game tab's catalog with optional interactive onboarding, selectable difficulties and levels, conflicts, hints, and improved accessibility cues.

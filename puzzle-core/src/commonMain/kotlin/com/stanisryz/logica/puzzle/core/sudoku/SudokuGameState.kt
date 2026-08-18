@@ -1,5 +1,7 @@
 package com.stanisryz.logica.puzzle.core.sudoku
 
+import kotlin.jvm.JvmInline
+
 data class SudokuPosition(
     val row: Int,
     val column: Int,

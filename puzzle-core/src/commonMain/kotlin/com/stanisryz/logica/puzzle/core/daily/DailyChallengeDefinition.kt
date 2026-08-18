@@ -5,6 +5,7 @@ import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleId
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import kotlin.jvm.JvmInline
 
 @JvmInline
 value class DailyPolicyVersion(

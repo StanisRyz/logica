@@ -100,6 +100,10 @@ android {
         compose = true
         buildConfig = true
     }
+
+    sourceSets {
+        getByName("main").assets.srcDir(rootProject.file("puzzle-data"))
+    }
 }
 
 room3 {

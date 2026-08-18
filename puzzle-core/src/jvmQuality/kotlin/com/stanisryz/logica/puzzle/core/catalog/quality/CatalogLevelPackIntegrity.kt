@@ -11,13 +11,13 @@ import java.security.MessageDigest
 object CatalogLevelPackIntegrity {
     @JvmStatic
     fun main(args: Array<String>) {
-        require(args.size == 1) { "Expected <assets-dir>." }
+        require(args.size == 1) { "Expected <puzzle-data-dir>." }
         verify(File(args.single()))
         println("Catalog Level Pack V1 integrity verified (${expectedPaths().size} buckets).")
     }
 
-    fun verify(assetsDirectory: File) {
-        val manifest = File(assetsDirectory, MANIFEST_PATH)
+    fun verify(puzzleDataDirectory: File) {
+        val manifest = File(puzzleDataDirectory, MANIFEST_PATH)
         require(manifest.isFile) { "Frozen Level Pack checksum manifest is missing: ${manifest.path}" }
         val checksums = parseManifest(manifest)
         val expectedPaths = expectedPaths()

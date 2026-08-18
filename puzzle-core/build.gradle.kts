@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -30,9 +31,21 @@ kotlin {
         }
     }
 
+    js {
+        browser()
+    }
+
+    @OptIn(ExperimentalWasmDsl::class)
+    wasmJs {
+        browser()
+    }
+
     jvmToolchain(17)
 
     sourceSets {
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+        }
         jvmTest.dependencies {
             implementation(libs.junit)
         }
@@ -99,11 +112,11 @@ tasks.register<JavaExec>("wordQualityCheck") {
 
 /**
  * Developer-only offline freeze of the Catalog Level Packs. It is never part of a normal build and
- * never runs on a device: it writes the compact bucket assets the application reads read-only.
+ * never runs on a device: it verifies the compact buckets in the canonical shared data corpus.
  */
 tasks.register<JavaExec>("buildCatalogLevelPacks") {
     group = "build"
-    description = "Regenerates candidates and verifies they match the frozen Catalog Level Pack V1 assets."
+    description = "Regenerates candidates and verifies they match the frozen Catalog Level Pack V1 corpus."
     dependsOn(qualityCompilation.compileAllTaskName)
     classpath(qualityCompilation.output.allOutputs, qualityCompilation.runtimeDependencyFiles)
     mainClass.set("com.stanisryz.logica.puzzle.core.catalog.quality.CatalogLevelPackBuilder")
@@ -112,7 +125,10 @@ tasks.register<JavaExec>("buildCatalogLevelPacks") {
     doFirst {
         args(
             rootProject.layout.projectDirectory
-                .dir("app/src/main/assets")
+                .dir("puzzle-data")
+                .asFile.path,
+            rootProject.layout.projectDirectory
+                .dir("app/src/main/assets/sudoku")
                 .asFile.path,
             providers.gradleProperty("levelPackGames").orElse("all").get(),
             providers.gradleProperty("levelPackSlots").orElse("10000").get(),
@@ -122,13 +138,13 @@ tasks.register<JavaExec>("buildCatalogLevelPacks") {
 
 tasks.register<JavaExec>("verifyCatalogLevelPacks") {
     group = "verification"
-    description = "Verifies SHA-256 checksums of the frozen Catalog Level Pack V1 assets."
+    description = "Verifies SHA-256 checksums of the frozen Catalog Level Pack V1 corpus."
     dependsOn(qualityCompilation.compileAllTaskName)
     classpath(qualityCompilation.output.allOutputs, qualityCompilation.runtimeDependencyFiles)
     mainClass.set("com.stanisryz.logica.puzzle.core.catalog.quality.CatalogLevelPackIntegrity")
     args(
         rootProject.layout.projectDirectory
-            .dir("app/src/main/assets")
+            .dir("puzzle-data")
             .asFile.path,
     )
 }

@@ -151,18 +151,18 @@ class FrozenCatalogLevelPackTest {
             context = GameAttemptContext.Catalog(levelId),
         ).resultId
 
-    /** Reads the shipped assets straight off disk; the runtime reads exactly the same bytes. */
+    /** Reads the canonical shared corpus straight off disk; Android packages these exact bytes. */
     private object BundledLevelPackFiles : CatalogLevelPackSource {
-        private val assetsDirectory: File =
-            listOf(File("src/main/assets"), File("app/src/main/assets"))
+        private val puzzleDataDirectory: File =
+            listOf(File("puzzle-data"), File("../puzzle-data"))
                 .firstOrNull(File::isDirectory)
-                ?: error("The bundled assets directory was not found.")
+                ?: error("The canonical puzzle-data directory was not found.")
 
         override fun open(
             packVersion: CatalogLevelPackVersion,
             puzzleType: PuzzleType,
             difficulty: Difficulty,
-        ) = File(assetsDirectory, CatalogLevelPackFormat.assetPath(packVersion, puzzleType, difficulty))
+        ) = File(puzzleDataDirectory, CatalogLevelPackFormat.assetPath(packVersion, puzzleType, difficulty))
             .takeIf(File::isFile)
             ?.inputStream()
     }

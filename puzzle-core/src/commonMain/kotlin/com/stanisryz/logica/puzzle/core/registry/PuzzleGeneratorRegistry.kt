@@ -15,9 +15,10 @@ class PuzzleGeneratorRegistry(
 
     fun register(generator: PuzzleGenerator<*>) {
         val key = Key(generator.type, generator.version)
-        require(generatorsByKey.putIfAbsent(key, generator) == null) {
+        require(key !in generatorsByKey) {
             "Generator already registered for ${generator.type} version ${generator.version.value}."
         }
+        generatorsByKey[key] = generator
     }
 
     fun find(
