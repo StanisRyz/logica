@@ -22,14 +22,7 @@ internal class YandexPlayerIdentityGateway(
             anonymousYandexIdentity()
         }
 
-    override suspend fun requestAuthorization(): PlayerAuthorizationResult =
-        try {
-            PlayerAuthorizationResult.Available(bridge.requestPlayerAuthorization().toIdentity())
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Throwable) {
-            PlayerAuthorizationResult.Failed(error)
-        }
+    override suspend fun requestAuthorization(): PlayerAuthorizationResult = PlayerAuthorizationResult.Unsupported
 
     private fun YandexPlayerSnapshot.toIdentity(): PlayerIdentity =
         PlayerIdentity(
@@ -53,7 +46,6 @@ internal class YandexCloudSaveGateway(
 
     override suspend fun read(): CloudSaveReadResult =
         try {
-            ensureAuthorized()
             val encoded = bridge.readPlayerData(CLOUD_STATE_KEY) ?: return CloudSaveReadResult.Missing
             val payload = WebBase64.decode(encoded) ?: error("Yandex cloud save payload is not valid Base64.")
             CloudSaveReadResult.Found(payload)
@@ -65,7 +57,6 @@ internal class YandexCloudSaveGateway(
 
     override suspend fun write(payload: ByteArray): CloudSaveWriteResult =
         try {
-            ensureAuthorized()
             bridge.writePlayerData(
                 key = CLOUD_STATE_KEY,
                 value = WebBase64.encode(payload),
@@ -77,12 +68,6 @@ internal class YandexCloudSaveGateway(
         } catch (error: Throwable) {
             CloudSaveWriteResult.Failed(error)
         }
-
-    private suspend fun ensureAuthorized() {
-        check(bridge.playerSnapshot().isAuthorized) {
-            "Yandex cloud save requires an authorized Player."
-        }
-    }
 
     private companion object {
         const val CLOUD_STATE_KEY = "logica_state_v1"

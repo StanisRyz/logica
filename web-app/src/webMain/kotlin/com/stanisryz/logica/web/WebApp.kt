@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -216,13 +215,6 @@ private fun ReadyContent(
             GameHubContent(
                 puzzleTypes = GAME_CATALOG_PUZZLE_TYPES,
                 catalogEnabled = true,
-                headerContent = {
-                    WebAccountCard(
-                        state = playerSession.state,
-                        onSignIn = playerSession::requestAuthorization,
-                        onRetrySync = playerSession::retrySynchronization,
-                    )
-                },
                 onGameSelected = { puzzleType ->
                     route =
                         when (puzzleType) {
@@ -295,83 +287,6 @@ private fun ReadyContent(
                     route = WebRoute.GameHub
                 },
             )
-    }
-}
-
-@Composable
-private fun WebAccountCard(
-    state: WebPlayerSessionState,
-    onSignIn: () -> Unit,
-    onRetrySync: () -> Unit,
-) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(LogicaSpacing.section),
-            verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text),
-        ) {
-            when (state) {
-                WebPlayerSessionState.Loading -> {
-                    Text("Сохранение прогресса", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "Проверяем аккаунт…",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                WebPlayerSessionState.Unsupported -> {
-                    Text("Локальное сохранение", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "Прогресс сохраняется в этом браузере.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                is WebPlayerSessionState.Anonymous -> {
-                    Text("Синхронизация прогресса", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "Войдите в Яндекс, чтобы продолжать с того же уровня на других устройствах.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    state.authorizationError?.let { message ->
-                        Text(
-                            message,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                    Button(onClick = onSignIn) { Text("Войти") }
-                }
-                is WebPlayerSessionState.Authorized -> {
-                    Text(
-                        state.identity.displayName ?: "Игрок Яндекса",
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    when (state.syncStatus) {
-                        WebCloudSyncStatus.SYNCING ->
-                            Text(
-                                "Синхронизация…",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        WebCloudSyncStatus.SYNCED ->
-                            Text(
-                                "Прогресс синхронизирован",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        WebCloudSyncStatus.ERROR -> {
-                            Text(
-                                "Локальный прогресс сохранён. Синхронизация временно недоступна.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                            TextButton(onClick = onRetrySync) { Text("Повторить") }
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 

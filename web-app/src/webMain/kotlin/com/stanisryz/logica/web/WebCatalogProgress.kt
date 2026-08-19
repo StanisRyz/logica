@@ -161,10 +161,32 @@ internal interface WebCatalogProgressStore {
     fun save(snapshot: WebCatalogProgressSnapshot)
 }
 
+/** A local-storage namespace, separate from the schema payload and safe for use in a browser key. */
+internal data class WebCatalogProgressScope private constructor(
+    val keySuffix: String,
+) {
+    companion object {
+        val STANDALONE = WebCatalogProgressScope("standalone")
+
+        fun yandexPlayer(uniqueId: String): WebCatalogProgressScope {
+            require(uniqueId.isNotBlank()) { "A Yandex Player scope requires a stable unique ID." }
+            val encoded =
+                WebBase64
+                    .encode(uniqueId.encodeToByteArray())
+                    .trimEnd('=')
+                    .replace('+', '-')
+                    .replace('/', '_')
+            return WebCatalogProgressScope("yandex-$encoded")
+        }
+    }
+}
+
 /** Browser-local durable source; corrupt or missing data safely resolves to an empty snapshot. */
 internal class WebCatalogProgressLocalStore(
-    private val storageKey: String = LOCAL_STORAGE_KEY,
+    scope: WebCatalogProgressScope,
 ) : WebCatalogProgressStore {
+    internal val storageKey = "$LOCAL_STORAGE_KEY_PREFIX:${scope.keySuffix}"
+
     override fun load(): WebCatalogProgressSnapshot =
         runCatching {
             val encoded = localStorageGet(storageKey) ?: return@runCatching WebCatalogProgressSnapshot.EMPTY
@@ -177,8 +199,12 @@ internal class WebCatalogProgressLocalStore(
     }
 
     private companion object {
-        const val LOCAL_STORAGE_KEY = "logica_catalog_progress_v1"
+        const val LOCAL_STORAGE_KEY_PREFIX = "logica_catalog_progress_v1"
     }
+}
+
+internal fun interface WebCatalogProgressRepositoryFactory {
+    fun create(scope: WebCatalogProgressScope): WebCatalogProgressRepository
 }
 
 internal sealed interface WebCatalogAdvanceResult {
@@ -208,6 +234,7 @@ internal sealed interface WebCatalogMergeResult {
 
 /** Authoritative Web-local Catalog levels and deterministic monotonic cloud merge. */
 internal class WebCatalogProgressRepository(
+    val scope: WebCatalogProgressScope,
     private val localStore: WebCatalogProgressStore,
 ) {
     private val mutableSnapshot = MutableStateFlow(WebCatalogProgressSnapshot.EMPTY)

@@ -21,7 +21,7 @@ class WebCatalogProgressRepositoryTest {
         val local = snapshot(balanceV1 to 12, balanceV2 to 3)
         val cloud = snapshot(balanceV1 to 7, balanceV2 to 20, crownsV1 to 5)
         val store = FakeProgressStore(local)
-        val repository = WebCatalogProgressRepository(store)
+        val repository = WebCatalogProgressRepository(WebCatalogProgressScope.STANDALONE, store)
         repository.loadLocal()
 
         val merged = assertIs<WebCatalogMergeResult.Merged>(repository.mergeCloud(cloud))
@@ -41,7 +41,7 @@ class WebCatalogProgressRepositoryTest {
     @Test
     fun advancementIsMonotonicIdempotentAndRejectsFutureClaims() {
         val store = FakeProgressStore(WebCatalogProgressSnapshot.EMPTY)
-        val repository = WebCatalogProgressRepository(store)
+        val repository = WebCatalogProgressRepository(WebCatalogProgressScope.STANDALONE, store)
         repository.loadLocal()
         val levelOne = level(PuzzleType.WORD, Difficulty.MEDIUM, pack = 1, level = 1)
 

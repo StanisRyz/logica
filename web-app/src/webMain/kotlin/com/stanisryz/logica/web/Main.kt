@@ -13,19 +13,27 @@ fun main() {
             puzzleDataLoader = BrowserPuzzleDataLoader(),
             lifecycle = lifecycle,
         )
-    val progressRepository = WebCatalogProgressRepository(WebCatalogProgressLocalStore())
+    val progressRepositoryFactory =
+        WebCatalogProgressRepositoryFactory { scope ->
+            WebCatalogProgressRepository(
+                scope = scope,
+                localStore = WebCatalogProgressLocalStore(scope),
+            )
+        }
     val playerSession =
         if (bridge.isAvailable) {
             WebPlayerSessionController(
                 playerIdentityGateway = YandexPlayerIdentityGateway(bridge),
                 cloudSaveGateway = YandexCloudSaveGateway(bridge),
-                progressRepository = progressRepository,
+                progressRepositoryFactory = progressRepositoryFactory,
+                playerContextEvents = bridge,
             )
         } else {
             WebPlayerSessionController(
                 playerIdentityGateway = UnsupportedWebPlayerIdentityGateway,
                 cloudSaveGateway = UnsupportedWebCloudSaveGateway,
-                progressRepository = progressRepository,
+                progressRepositoryFactory = progressRepositoryFactory,
+                playerContextEvents = bridge,
             )
         }
     val balanceController = WebBalanceController.create(controller.puzzleDataLoader)

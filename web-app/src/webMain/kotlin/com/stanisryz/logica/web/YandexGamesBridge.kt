@@ -20,8 +20,12 @@ internal data class YandexPlayerSnapshot(
     val avatarReference: String?,
 )
 
+internal interface WebPlayerContextEvents {
+    fun setPlayerContextChangedListener(listener: (() -> Unit)?)
+}
+
 /** The only raw JavaScript boundary for the Yandex Games SDK. */
-internal class YandexGamesBridge {
+internal class YandexGamesBridge : WebPlayerContextEvents {
     private var sdk: YandexSdk? = null
     private var cachedPlayer: YandexPlayer? = null
     private var playerRequest: Promise<YandexPlayer>? = null
@@ -31,6 +35,9 @@ internal class YandexGamesBridge {
     private var gameplayActive = false
     private var pauseCallback: (() -> Unit)? = null
     private var resumeCallback: (() -> Unit)? = null
+    private var accountSelectionClosedEvent: String? = null
+    private var accountSelectionClosedCallback: (() -> Unit)? = null
+    private var playerContextChangedListener: (() -> Unit)? = null
 
     val isAvailable: Boolean
         get() = yandexGamesOrNull() != null
@@ -74,6 +81,7 @@ internal class YandexGamesBridge {
                     try {
                         sdk = initializedSdk
                         subscribeLifecycle(initializedSdk, lifecycleListener)
+                        subscribePlayerContextChanges(initializedSdk)
                         prefetchPlayer(initializedSdk)
                         onReady()
                     } catch (error: Throwable) {
@@ -90,18 +98,11 @@ internal class YandexGamesBridge {
         )
     }
 
-    /** Resolves the Player once and then reuses it until an explicit authorization refresh. */
-    suspend fun playerSnapshot(): YandexPlayerSnapshot = player(refresh = false).snapshot()
-
-    /** Opens the SDK auth dialog and reacquires the Player before exposing its new identity. */
-    suspend fun requestPlayerAuthorization(): YandexPlayerSnapshot {
-        val initializedSdk = requireSdk()
-        initializedSdk.auth.openAuthDialog().await()
-        return player(refresh = true).snapshot()
-    }
+    /** Resolves the current Player once and reuses it until the SDK reports an account-context change. */
+    suspend fun playerSnapshot(): YandexPlayerSnapshot = player().snapshot()
 
     suspend fun readPlayerData(key: String): String? {
-        val data = player(refresh = false).getData(singleStringArray(key)).await()
+        val data = player().getData(singleStringArray(key)).await()
         return stringPropertyOrNull(data, key)
     }
 
@@ -110,7 +111,11 @@ internal class YandexGamesBridge {
         value: String,
         flush: Boolean,
     ) {
-        player(refresh = false).setData(singlePropertyObject(key, value), flush).await()
+        player().setData(singlePropertyObject(key, value), flush).await()
+    }
+
+    override fun setPlayerContextChangedListener(listener: (() -> Unit)?) {
+        playerContextChangedListener = listener
     }
 
     /** Returns an error for the caller to surface; repeated calls never reach the real SDK twice. */
@@ -155,8 +160,16 @@ internal class YandexGamesBridge {
         if (initializedSdk != null && resume != null) {
             runCatching { initializedSdk.off(GAME_API_RESUME, resume) }
         }
+        val accountEvent = accountSelectionClosedEvent
+        val accountCallback = accountSelectionClosedCallback
+        if (initializedSdk != null && accountEvent != null && accountCallback != null) {
+            runCatching { initializedSdk.off(accountEvent, accountCallback) }
+        }
         pauseCallback = null
         resumeCallback = null
+        accountSelectionClosedEvent = null
+        accountSelectionClosedCallback = null
+        playerContextChangedListener = null
         cachedPlayer = null
         playerRequest = null
         sdk = null
@@ -186,16 +199,10 @@ internal class YandexGamesBridge {
         )
     }
 
-    private suspend fun player(refresh: Boolean): YandexPlayer {
-        if (!refresh) cachedPlayer?.let { return it }
+    private suspend fun player(): YandexPlayer {
+        cachedPlayer?.let { return it }
         val initializedSdk = requireSdk()
-        val request =
-            if (!refresh) {
-                playerRequest ?: initializedSdk.getPlayer().also { playerRequest = it }
-            } else {
-                cachedPlayer = null
-                initializedSdk.getPlayer().also { playerRequest = it }
-            }
+        val request = playerRequest ?: initializedSdk.getPlayer().also { playerRequest = it }
 
         return try {
             request.await().also { resolved ->
@@ -215,7 +222,7 @@ internal class YandexGamesBridge {
 
     private fun YandexPlayer.snapshot(): YandexPlayerSnapshot =
         YandexPlayerSnapshot(
-            isAuthorized = isAuthorized(),
+            isAuthorized = runCatching { isAuthorized() }.getOrDefault(false),
             uniqueId = optionalText { getUniqueID() },
             displayName = optionalText { getName() },
             avatarReference = optionalText { getPhoto(PLAYER_PHOTO_SIZE) },
@@ -241,6 +248,21 @@ internal class YandexGamesBridge {
         resumeCallback = resume
     }
 
+    private fun subscribePlayerContextChanges(initializedSdk: YandexSdk) {
+        runCatching {
+            val eventName = initializedSdk.events?.accountSelectionDialogClosed ?: return
+            val callback: () -> Unit = {
+                cachedPlayer = null
+                playerRequest = null
+                playerContextChangedListener?.invoke()
+                Unit
+            }
+            initializedSdk.on(eventName, callback)
+            accountSelectionClosedEvent = eventName
+            accountSelectionClosedCallback = callback
+        }
+    }
+
     private companion object {
         const val GAME_API_PAUSE = "game_api_pause"
         const val GAME_API_RESUME = "game_api_resume"
@@ -260,7 +282,9 @@ private external interface YandexGamesGlobal : JsAny {
 
 private external interface YandexSdk : JsAny {
     val features: YandexFeatures
-    val auth: YandexAuth
+
+    @JsName("EVENTS")
+    val events: YandexSdkEvents?
 
     fun getPlayer(): Promise<YandexPlayer>
 
@@ -275,8 +299,9 @@ private external interface YandexSdk : JsAny {
     )
 }
 
-private external interface YandexAuth : JsAny {
-    fun openAuthDialog(): Promise<JsAny?>
+private external interface YandexSdkEvents : JsAny {
+    @JsName("ACCOUNT_SELECTION_DIALOG_CLOSED")
+    val accountSelectionDialogClosed: String?
 }
 
 private external interface YandexPlayer : JsAny {
