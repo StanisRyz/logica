@@ -6,12 +6,28 @@ import androidx.compose.ui.window.ComposeViewport
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
     val lifecycle = WebHostLifecycle()
+    val bridge = YandexGamesBridge()
     val controller =
         WebBootstrapController(
-            bridge = YandexGamesBridge(),
+            bridge = bridge,
             puzzleDataLoader = BrowserPuzzleDataLoader(),
             lifecycle = lifecycle,
         )
+    val progressRepository = WebCatalogProgressRepository(WebCatalogProgressLocalStore())
+    val playerSession =
+        if (bridge.isAvailable) {
+            WebPlayerSessionController(
+                playerIdentityGateway = YandexPlayerIdentityGateway(bridge),
+                cloudSaveGateway = YandexCloudSaveGateway(bridge),
+                progressRepository = progressRepository,
+            )
+        } else {
+            WebPlayerSessionController(
+                playerIdentityGateway = UnsupportedWebPlayerIdentityGateway,
+                cloudSaveGateway = UnsupportedWebCloudSaveGateway,
+                progressRepository = progressRepository,
+            )
+        }
     val balanceController = WebBalanceController.create(controller.puzzleDataLoader)
     val crownsController = WebCrownsController.create(controller.puzzleDataLoader)
     val wordController = WebWordController.create(controller.puzzleDataLoader)
@@ -27,6 +43,7 @@ fun main() {
             sudokuController,
             game2048Controller,
             lifecycle,
+            playerSession,
         )
     }
     controller.start()
