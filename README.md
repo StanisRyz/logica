@@ -113,8 +113,11 @@ the tutorials, and gameplay open on top of them with normal Back navigation.
 
 Modules:
 
-- `app/` — Android/Compose shell plus neutral platform-service contracts and Android adapters for Store, ads, identity, cloud capability, and lifecycle.
+- `app/` — the Android application host: shell, ViewModels, navigation, persistence, economy, and Android service adapters.
 - `puzzle-core/` — Kotlin Multiplatform deterministic Balance, Crowns, Word, Sudoku, and 2048 runtime in `commonMain`, with Android/JVM/JS/Wasm library targets and JVM-only developer tooling.
+- `shared-ui/` — the Compose Multiplatform presentation shared by Android and Web, including all five game screens, difficulty selection, and the artwork-based Game catalog.
+- `platform-contracts/` — small platform-neutral contracts for Store, ads, Player identity, Cloud Save, lifecycle, metadata, and capabilities.
+- `web-app/` — the browser/Yandex host with responsive 9:16 layout, browser data loading, lifecycle integration, and lightweight game controllers.
 - `puzzle-data/` — the canonical frozen Catalog Level Pack and Sudoku Dataset V1 corpus shared by Android and Web builds.
 - `lexicon/word/` — curated offline Word corpus sources and their provenance note.
 
@@ -163,6 +166,6 @@ never affects gems, lives, your result, the Daily challenge, or your statistics,
 you are back on exactly the same result screen. If there is no ad ready, nothing waits and nothing
 changes. There are no banners.
 
-All five Catalog puzzles share one calm Material 3 shell: a single Light/Dark colour scheme, one spacing and text hierarchy, one difficulty selector, and one loading/error/completion presentation, while each board keeps its own specialised gameplay. Puzzle states are always readable without colour, and the shared UI pieces live in `app/src/main/java/com/stanisryz/logica/ui/components/` and `.../ui/theme/`.
+All five Catalog puzzles share one calm Material 3 presentation through `:shared-ui`: one theme and spacing system, the artwork-based Game catalog, one difficulty selector, and shared gameplay chrome, while each board keeps its own specialised gameplay. Puzzle states are always readable without colour.
 
 Dependency versions are managed in `gradle/libs.versions.toml`.

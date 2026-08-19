@@ -2,7 +2,6 @@ package com.stanisryz.logica.web
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -12,9 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,17 +33,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.stanisryz.logica.platform.PlatformLifecycleState
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Status
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameStatus
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
 import com.stanisryz.logica.ui.balance.BalanceGameContent
 import com.stanisryz.logica.ui.components.DifficultySelector
+import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
+import com.stanisryz.logica.ui.components.GameHubContent
 import com.stanisryz.logica.ui.crowns.CrownsGameContent
 import com.stanisryz.logica.ui.game2048.Game2048Content
 import com.stanisryz.logica.ui.game2048.formatGame2048Number
@@ -56,7 +55,7 @@ import com.stanisryz.logica.ui.theme.LogicaTheme
 import com.stanisryz.logica.ui.word.WordGameContent
 
 private sealed interface WebRoute {
-    data object Landing : WebRoute
+    data object GameHub : WebRoute
 
     data object Balance : WebRoute
 
@@ -170,7 +169,7 @@ private fun ReadyContent(
     game2048Controller: Web2048Controller,
     onRendered: () -> Unit,
 ) {
-    var route by remember { mutableStateOf<WebRoute>(WebRoute.Landing) }
+    var route by remember { mutableStateOf<WebRoute>(WebRoute.GameHub) }
     val balanceState = balanceController.state
     val crownsState = crownsController.state
     val wordState = wordController.state
@@ -184,7 +183,7 @@ private fun ReadyContent(
     LaunchedEffect(route, balanceState, crownsState, wordState, sudokuState, game2048State, lifecycleState) {
         controller.setGameplayActive(
             when (route) {
-                WebRoute.Landing -> false
+                WebRoute.GameHub -> false
                 WebRoute.Balance ->
                     balanceState is WebBalanceState.Playing &&
                         balanceState.game.status == BalanceGameStatus.IN_PROGRESS
@@ -206,29 +205,35 @@ private fun ReadyContent(
     }
 
     when (route) {
-        WebRoute.Landing ->
-            LandingContent(
-                mode = mode,
-                lifecycleState = lifecycleState,
-                onOpenBalance = {
-                    balanceController.showDifficultySelector()
-                    route = WebRoute.Balance
-                },
-                onOpenCrowns = {
-                    crownsController.showDifficultySelector()
-                    route = WebRoute.Crowns
-                },
-                onOpenWord = {
-                    wordController.showDifficultySelector()
-                    route = WebRoute.Word
-                },
-                onOpenSudoku = {
-                    sudokuController.showDifficultySelector()
-                    route = WebRoute.Sudoku
-                },
-                onOpenGame2048 = {
-                    game2048Controller.showDifficultySelector()
-                    route = WebRoute.Game2048
+        WebRoute.GameHub ->
+            GameHubContent(
+                puzzleTypes = GAME_CATALOG_PUZZLE_TYPES,
+                catalogEnabled = true,
+                onGameSelected = { puzzleType ->
+                    route =
+                        when (puzzleType) {
+                            PuzzleType.BALANCE -> {
+                                balanceController.showDifficultySelector()
+                                WebRoute.Balance
+                            }
+                            PuzzleType.CROWNS -> {
+                                crownsController.showDifficultySelector()
+                                WebRoute.Crowns
+                            }
+                            PuzzleType.WORD -> {
+                                wordController.showDifficultySelector()
+                                WebRoute.Word
+                            }
+                            PuzzleType.SUDOKU -> {
+                                sudokuController.showDifficultySelector()
+                                WebRoute.Sudoku
+                            }
+                            PuzzleType.GAME_2048 -> {
+                                game2048Controller.showDifficultySelector()
+                                WebRoute.Game2048
+                            }
+                            else -> error("$puzzleType has no Web game flow.")
+                        }
                 },
             )
         WebRoute.Balance ->
@@ -237,7 +242,7 @@ private fun ReadyContent(
                 controller = balanceController,
                 onExitBalance = {
                     balanceController.showDifficultySelector()
-                    route = WebRoute.Landing
+                    route = WebRoute.GameHub
                 },
             )
         WebRoute.Crowns ->
@@ -246,7 +251,7 @@ private fun ReadyContent(
                 controller = crownsController,
                 onExitCrowns = {
                     crownsController.showDifficultySelector()
-                    route = WebRoute.Landing
+                    route = WebRoute.GameHub
                 },
             )
         WebRoute.Word ->
@@ -255,7 +260,7 @@ private fun ReadyContent(
                 controller = wordController,
                 onExitWord = {
                     wordController.showDifficultySelector()
-                    route = WebRoute.Landing
+                    route = WebRoute.GameHub
                 },
             )
         WebRoute.Sudoku ->
@@ -264,7 +269,7 @@ private fun ReadyContent(
                 controller = sudokuController,
                 onExitSudoku = {
                     sudokuController.showDifficultySelector()
-                    route = WebRoute.Landing
+                    route = WebRoute.GameHub
                 },
             )
         WebRoute.Game2048 ->
@@ -273,73 +278,9 @@ private fun ReadyContent(
                 controller = game2048Controller,
                 onExitGame2048 = {
                     game2048Controller.showDifficultySelector()
-                    route = WebRoute.Landing
+                    route = WebRoute.GameHub
                 },
             )
-    }
-}
-
-@Composable
-private fun LandingContent(
-    mode: WebHostMode,
-    lifecycleState: PlatformLifecycleState,
-    onOpenBalance: () -> Unit,
-    onOpenCrowns: () -> Unit,
-    onOpenWord: () -> Unit,
-    onOpenSudoku: () -> Unit,
-    onOpenGame2048: () -> Unit,
-) {
-    CenteredColumn {
-        Box(
-            modifier = Modifier.size(88.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = "Л",
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                fontSize = 42.sp,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-        Spacer(Modifier.height(28.dp))
-        Text("Логика", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = "Общие игры Android и Web",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(28.dp))
-        Button(onClick = onOpenBalance) { Text("Играть в Баланс") }
-        Spacer(Modifier.height(12.dp))
-        Button(onClick = onOpenCrowns) { Text("Играть в Короны") }
-        Spacer(Modifier.height(12.dp))
-        Button(onClick = onOpenWord) { Text("Играть в Слово") }
-        Spacer(Modifier.height(12.dp))
-        Button(onClick = onOpenSudoku) { Text("Играть в Судоку") }
-        Spacer(Modifier.height(12.dp))
-        Button(onClick = onOpenGame2048) { Text("Играть в 2048") }
-        Spacer(Modifier.height(24.dp))
-        Text(
-            text =
-                when (mode) {
-                    WebHostMode.YANDEX -> "Яндекс Игры подключены"
-                    WebHostMode.STANDALONE -> "Локальный автономный режим"
-                },
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text =
-                when (lifecycleState) {
-                    PlatformLifecycleState.ACTIVE -> "Хост активен"
-                    PlatformLifecycleState.INACTIVE -> "Хост на паузе"
-                },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 

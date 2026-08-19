@@ -3,6 +3,7 @@ package com.stanisryz.logica.ui.screens
 import com.stanisryz.logica.R
 import com.stanisryz.logica.daily.DailyEntryState
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -12,10 +13,7 @@ import org.junit.Test
 /** What the Game hub is made of: the Daily entries on top and the regular catalog below them. */
 class GameHubModelTest {
     @Test
-    fun `catalog lists five games and every card simply opens its difficulty screen`() {
-        val opened = mutableListOf<PuzzleType>()
-        val catalog = gameCatalogEntries(onPlay = opened::add)
-
+    fun `shared catalog maps exactly five games in product order`() {
         assertEquals(
             listOf(
                 PuzzleType.BALANCE,
@@ -24,11 +22,8 @@ class GameHubModelTest {
                 PuzzleType.SUDOKU,
                 PuzzleType.GAME_2048,
             ),
-            catalog.map { it.puzzleType },
+            GAME_CATALOG_PUZZLE_TYPES,
         )
-        catalog.single { it.puzzleType == PuzzleType.GAME_2048 }.onPlay()
-        catalog.single { it.puzzleType == PuzzleType.WORD }.onPlay()
-        assertEquals(listOf(PuzzleType.GAME_2048, PuzzleType.WORD), opened)
     }
 
     @Test

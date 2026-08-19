@@ -6,38 +6,17 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.stanisryz.logica.R
 import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.DailyGameLaunch
 import com.stanisryz.logica.daily.DailyResultRepository
@@ -47,14 +26,9 @@ import com.stanisryz.logica.daily.TodayViewModelFactory
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.statistics.StatisticsRepository
-import com.stanisryz.logica.ui.components.CatalogCardArtwork
-import com.stanisryz.logica.ui.components.CatalogCardLabelScrim
-import com.stanisryz.logica.ui.components.CATALOG_CARD_TITLE_SCALE
-import com.stanisryz.logica.ui.components.SectionTitle
+import com.stanisryz.logica.ui.components.GameHubContent
 import com.stanisryz.logica.ui.components.ZeroLivesCard
-import com.stanisryz.logica.ui.components.titleResource
 import com.stanisryz.logica.ui.theme.LogicaMotion
-import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 /**
  * The Game hub: the Daily challenge on top and the regular catalog below it, in one place.
@@ -68,8 +42,9 @@ internal fun GameHubRoute(
     dailyChallengeRepository: DailyChallengeRepository,
     statisticsRepository: StatisticsRepository,
     dailyResultRepository: DailyResultRepository,
-    catalog: List<GameCatalogEntry>,
+    catalog: List<PuzzleType>,
     economy: PlayerEconomy,
+    onGameSelected: (PuzzleType) -> Unit,
     onOpenDaily: (DailyGameLaunch) -> Unit,
     onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
@@ -111,6 +86,7 @@ internal fun GameHubRoute(
         onStartDaily = todayViewModel::start,
         onRetryDaily = todayViewModel::refresh,
         onRestoreLife = onRestoreLife,
+        onGameSelected = onGameSelected,
         modifier = modifier,
     )
 }
@@ -123,33 +99,29 @@ internal fun GameHubRoute(
 @Composable
 private fun GameHubScreen(
     dailyState: TodayUiState,
-    catalog: List<GameCatalogEntry>,
+    catalog: List<PuzzleType>,
     economy: PlayerEconomy,
     onStartDaily: (PuzzleType) -> Unit,
     onRetryDaily: () -> Unit,
     onRestoreLife: () -> Unit,
+    onGameSelected: (PuzzleType) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        state = rememberLazyListState(),
-        contentPadding =
-            PaddingValues(
-                horizontal = LogicaSpacing.screenHorizontal,
-                vertical = LogicaSpacing.screenVertical,
-            ),
-        verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
-    ) {
-        item(key = "daily") {
+    GameHubContent(
+        puzzleTypes = catalog,
+        catalogEnabled = economy.isGameplayAllowed,
+        onGameSelected = onGameSelected,
+        modifier = modifier,
+        headerContent = {
             DailySection(
                 uiState = dailyState,
                 gameplayAllowed = economy.isGameplayAllowed,
                 onStart = onStartDaily,
                 onRetryLoad = onRetryDaily,
             )
-        }
+        },
         // The zero-life gate itself is unchanged; the hub only shows it once, above both halves.
-        item(key = "zero-lives") {
+        statusContent = {
             AnimatedVisibility(
                 visible = !economy.isGameplayAllowed,
                 enter = fadeIn(tween(LogicaMotion.SHORT_MILLIS)) + expandVertically(tween(LogicaMotion.SCREEN_MILLIS)),
@@ -157,75 +129,6 @@ private fun GameHubScreen(
             ) {
                 ZeroLivesCard(economy, onRestoreLife)
             }
-        }
-        item(key = "games-title") {
-            SectionTitle(
-                text = stringResource(R.string.puzzles),
-                modifier = Modifier.padding(top = LogicaSpacing.text),
-            )
-        }
-        items(catalog, key = { it.puzzleType }) { entry ->
-            GameCatalogCard(entry, economy.isGameplayAllowed)
-        }
-    }
+        },
+    )
 }
-
-/**
- * A regular game as a full-width card: bigger than a Daily card and built for vertical browsing. It
- * leads to the game's difficulty screen, which is where the current level of each difficulty lives.
- */
-@Composable
-private fun GameCatalogCard(
-    entry: GameCatalogEntry,
-    gameplayAllowed: Boolean,
-) {
-    val colors = MaterialTheme.colorScheme
-    Card(
-        modifier = Modifier.fillMaxWidth().height(GAME_CATALOG_CARD_HEIGHT),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = if (gameplayAllowed) colors.surfaceContainerLow else colors.surfaceContainerHighest,
-                contentColor = if (gameplayAllowed) colors.onSurface else colors.onSurfaceVariant.copy(alpha = DISABLED_ALPHA),
-            ),
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .clickable(
-                        enabled = gameplayAllowed,
-                        role = Role.Button,
-                        onClickLabel = stringResource(entry.puzzleType.titleResource()),
-                        onClick = entry.onPlay,
-                    ),
-            contentAlignment = Alignment.CenterStart,
-        ) {
-            CatalogCardArtwork(entry.puzzleType.catalogArtworkDrawableName(), Modifier.fillMaxSize())
-            CatalogCardLabelScrim(Modifier.fillMaxSize())
-            Text(
-                text = stringResource(entry.puzzleType.titleResource()),
-                modifier = Modifier.fillMaxWidth(0.5f).padding(start = GAME_CATALOG_LABEL_PADDING),
-                style =
-                    MaterialTheme.typography.headlineSmall.copy(
-                        fontSize = MaterialTheme.typography.headlineSmall.fontSize * CATALOG_CARD_TITLE_SCALE,
-                    ),
-                color = GAME_CATALOG_LABEL_COLOR.copy(alpha = if (gameplayAllowed) 1f else DISABLED_ALPHA),
-            )
-        }
-    }
-}
-
-private fun PuzzleType.catalogArtworkDrawableName(): String =
-    when (this) {
-        PuzzleType.BALANCE -> "game_balance"
-        PuzzleType.CROWNS -> "game_crowns"
-        PuzzleType.WORD -> "game_word"
-        PuzzleType.SUDOKU -> "game_sudoku"
-        PuzzleType.GAME_2048 -> "game_2048"
-        else -> error("$this has no Catalog artwork.")
-    }
-
-private val GAME_CATALOG_CARD_HEIGHT = 124.dp
-private val GAME_CATALOG_LABEL_PADDING = 24.dp
-private val GAME_CATALOG_LABEL_COLOR = androidx.compose.ui.graphics.Color(0xFF1B2A35)
-private const val DISABLED_ALPHA = 0.38f

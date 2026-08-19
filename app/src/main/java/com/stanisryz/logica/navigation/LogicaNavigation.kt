@@ -8,9 +8,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -74,6 +73,7 @@ import com.stanisryz.logica.settings.UserSettings
 import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.store.GemPackProductMapping
 import com.stanisryz.logica.ui.components.EconomyBar
+import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
 import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.LivesDialog
 import com.stanisryz.logica.ui.screens.BalanceGameRoute
@@ -95,9 +95,7 @@ import com.stanisryz.logica.ui.screens.SudokuTutorialRoute
 import com.stanisryz.logica.ui.screens.WordGameRoute
 import com.stanisryz.logica.ui.screens.WordStartScreen
 import com.stanisryz.logica.ui.screens.WordTutorialRoute
-import com.stanisryz.logica.ui.screens.gameCatalogEntries
 import com.stanisryz.logica.ui.theme.LogicaMotion
-import com.stanisryz.logica.ui.theme.LogicaSpacing
 import kotlinx.coroutines.launch
 
 @Composable
@@ -215,7 +213,9 @@ internal fun LogicaNavigation(
 
     // A game card simply leads to its difficulty screen, where the current level of each
     // difficulty is shown; there is no saved-game branch to choose between any more.
-    val catalog = gameCatalogEntries(onPlay = { puzzleType -> backStack.add(puzzleType.startDestination()) })
+    val onGameSelected: (PuzzleType) -> Unit = { puzzleType ->
+        backStack.add(puzzleType.startDestination())
+    }
     val openDaily: (DailyGameLaunch) -> Unit = { dailyLaunch ->
         backStack.add(dailyLaunch.puzzleType.gameDestination(dailyLaunch.launch))
     }
@@ -333,8 +333,9 @@ internal fun LogicaNavigation(
                                                 dailyChallengeRepository = dailyChallengeRepository,
                                                 statisticsRepository = statisticsRepository,
                                                 dailyResultRepository = dailyResultRepository,
-                                                catalog = catalog,
+                                                catalog = GAME_CATALOG_PUZZLE_TYPES,
                                                 economy = economy,
+                                                onGameSelected = onGameSelected,
                                                 onOpenDaily = openDaily,
                                                 onRestoreLife = onRestoreLife,
                                             )
