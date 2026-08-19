@@ -28,6 +28,7 @@ class WebCrownsControllerTest {
             val controller =
                 WebCrownsController(
                     loadPack = { loadedDifficulty = it },
+                    progression = FakeWebCatalogProgressAccess(),
                     levelPack = fixedMediumLevelOne,
                     scope = this,
                 )

@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -180,11 +178,22 @@ private fun ReadyContent(
     val wordState = wordController.state
     val sudokuState = sudokuController.state
     val game2048State = game2048Controller.state
+    val accountChangeRevision = playerSession.accountChangeRevision
 
     LaunchedEffect(mode) {
         playerSession.start()
         withFrameNanos { }
         onRendered()
+    }
+    LaunchedEffect(accountChangeRevision) {
+        if (accountChangeRevision > 0L) {
+            balanceController.showDifficultySelector()
+            crownsController.showDifficultySelector()
+            wordController.showDifficultySelector()
+            sudokuController.showDifficultySelector()
+            game2048Controller.showDifficultySelector()
+            route = WebRoute.GameHub
+        }
     }
     LaunchedEffect(route, balanceState, crownsState, wordState, sudokuState, game2048State, lifecycleState) {
         controller.setGameplayActive(
@@ -304,14 +313,16 @@ private fun BalanceFlow(
                 onStart = controller::selectDifficulty,
             )
         is WebBalanceState.Loading ->
-            LoadingLevelContent(
+            WebCatalogLoadingContent(
                 difficulty = state.difficulty,
+                levelNumber = state.levelNumber?.value,
                 onBack = controller::showDifficultySelector,
             )
         is WebBalanceState.Error ->
-            LevelErrorContent(
+            WebCatalogLevelErrorContent(
+                levelNumber = state.levelNumber?.value,
                 detail = state.detail,
-                onRetry = { controller.selectDifficulty(state.difficulty) },
+                onRetry = controller::retryLoading,
                 onBack = controller::showDifficultySelector,
             )
         is WebBalanceState.Playing ->
@@ -336,14 +347,16 @@ private fun CrownsFlow(
                 onStart = controller::selectDifficulty,
             )
         is WebCrownsState.Loading ->
-            LoadingLevelContent(
+            WebCatalogLoadingContent(
                 difficulty = state.difficulty,
+                levelNumber = state.levelNumber?.value,
                 onBack = controller::showDifficultySelector,
             )
         is WebCrownsState.Error ->
-            LevelErrorContent(
+            WebCatalogLevelErrorContent(
+                levelNumber = state.levelNumber?.value,
                 detail = state.detail,
-                onRetry = { controller.selectDifficulty(state.difficulty) },
+                onRetry = controller::retryLoading,
                 onBack = controller::showDifficultySelector,
             )
         is WebCrownsState.Playing ->
@@ -368,14 +381,16 @@ private fun WordFlow(
                 onStart = controller::selectDifficulty,
             )
         is WebWordState.Loading ->
-            LoadingLevelContent(
+            WebCatalogLoadingContent(
                 difficulty = state.difficulty,
+                levelNumber = state.levelNumber?.value,
                 onBack = controller::showDifficultySelector,
             )
         is WebWordState.Error ->
-            LevelErrorContent(
+            WebCatalogLevelErrorContent(
+                levelNumber = state.levelNumber?.value,
                 detail = state.detail,
-                onRetry = { controller.selectDifficulty(state.difficulty) },
+                onRetry = controller::retryLoading,
                 onBack = controller::showDifficultySelector,
             )
         is WebWordState.Playing ->
@@ -400,14 +415,16 @@ private fun SudokuFlow(
                 onStart = controller::selectDifficulty,
             )
         is WebSudokuState.Loading ->
-            LoadingLevelContent(
+            WebCatalogLoadingContent(
                 difficulty = state.difficulty,
+                levelNumber = state.levelNumber?.value,
                 onBack = controller::showDifficultySelector,
             )
         is WebSudokuState.Error ->
-            LevelErrorContent(
+            WebCatalogLevelErrorContent(
+                levelNumber = state.levelNumber?.value,
                 detail = state.detail,
-                onRetry = { controller.selectDifficulty(state.difficulty) },
+                onRetry = controller::retryLoading,
                 onBack = controller::showDifficultySelector,
             )
         is WebSudokuState.Playing ->
@@ -432,14 +449,16 @@ private fun Game2048Flow(
                 onStart = controller::selectDifficulty,
             )
         is Web2048State.Loading ->
-            LoadingLevelContent(
+            WebCatalogLoadingContent(
                 difficulty = state.difficulty,
+                levelNumber = state.levelNumber?.value,
                 onBack = controller::showDifficultySelector,
             )
         is Web2048State.Error ->
-            LevelErrorContent(
+            WebCatalogLevelErrorContent(
+                levelNumber = state.levelNumber?.value,
                 detail = state.detail,
-                onRetry = { controller.selectDifficulty(state.difficulty) },
+                onRetry = controller::retryLoading,
                 onBack = controller::showDifficultySelector,
             )
         is Web2048State.Playing ->
@@ -490,20 +509,6 @@ private fun DifficultyContent(
 }
 
 @Composable
-private fun LoadingLevelContent(
-    difficulty: Difficulty,
-    onBack: () -> Unit,
-) {
-    CenteredColumn {
-        CircularProgressIndicator()
-        Spacer(Modifier.height(20.dp))
-        Text("Загружаем уровень 1: ${difficulty.webLabel()}")
-        Spacer(Modifier.height(12.dp))
-        TextButton(onClick = onBack) { Text("Назад к сложности") }
-    }
-}
-
-@Composable
 private fun PlayingBalanceContent(
     state: WebBalanceState.Playing,
     controller: WebBalanceController,
@@ -536,27 +541,17 @@ private fun PlayingBalanceContent(
         )
     }
 
-    if (state.game.status.isTerminal) {
-        AlertDialog(
-            onDismissRequest = {},
-            title = {
-                Text(
-                    if (state.game.status == BalanceGameStatus.SOLVED) {
-                        "Уровень решён"
-                    } else {
-                        "Попытка не пройдена"
-                    },
-                )
-            },
-            text = { Text("Уровень 1 можно пройти ещё раз или выбрать другую сложность.") },
-            confirmButton = {
-                TextButton(onClick = controller::retry) { Text("Пройти заново") }
-            },
-            dismissButton = {
-                TextButton(onClick = controller::showDifficultySelector) { Text("К сложности") }
-            },
-        )
-    }
+    WebOrdinaryCatalogTerminalDialog(
+        visible = state.game.status.isTerminal,
+        levelNumber = state.definition.levelNumber.value,
+        solved = state.game.status == BalanceGameStatus.SOLVED,
+        completion = controller.completionState,
+        onNextLevel = controller::nextLevel,
+        onRetry = controller::retry,
+        onRetrySave = controller::retrySave,
+        onBack = controller::showDifficultySelector,
+    )
+
 }
 
 @Composable
@@ -592,27 +587,17 @@ private fun PlayingCrownsContent(
         )
     }
 
-    if (state.game.status.isTerminal) {
-        AlertDialog(
-            onDismissRequest = {},
-            title = {
-                Text(
-                    if (state.game.status == CrownsGameStatus.SOLVED) {
-                        "Уровень решён"
-                    } else {
-                        "Попытка не пройдена"
-                    },
-                )
-            },
-            text = { Text("Уровень 1 можно пройти ещё раз или выбрать другую сложность.") },
-            confirmButton = {
-                TextButton(onClick = controller::retry) { Text("Пройти заново") }
-            },
-            dismissButton = {
-                TextButton(onClick = controller::showDifficultySelector) { Text("К сложности") }
-            },
-        )
-    }
+    WebOrdinaryCatalogTerminalDialog(
+        visible = state.game.status.isTerminal,
+        levelNumber = state.definition.levelNumber.value,
+        solved = state.game.status == CrownsGameStatus.SOLVED,
+        completion = controller.completionState,
+        onNextLevel = controller::nextLevel,
+        onRetry = controller::retry,
+        onRetrySave = controller::retrySave,
+        onBack = controller::showDifficultySelector,
+    )
+
 }
 
 @Composable
@@ -648,35 +633,19 @@ private fun PlayingWordContent(
         )
     }
 
-    if (state.isTerminalRevealReady) {
-        AlertDialog(
-            onDismissRequest = {},
-            title = {
-                Text(
-                    if (state.game.status == WordGameStatus.SOLVED) {
-                        "Слово отгадано"
-                    } else {
-                        "Попытки закончились"
-                    },
-                )
-            },
-            text = {
-                Text(
-                    if (state.game.status == WordGameStatus.SOLVED) {
-                        "Уровень 1 пройден за ${state.game.attempts.size} попыток."
-                    } else {
-                        "Загаданное слово: ${state.puzzle.answer.uppercase()}"
-                    },
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = controller::retry) { Text("Пройти заново") }
-            },
-            dismissButton = {
-                TextButton(onClick = controller::showDifficultySelector) { Text("К сложности") }
-            },
-        )
-    }
+    WebOrdinaryCatalogTerminalDialog(
+        visible = state.isTerminalRevealReady,
+        levelNumber = state.definition.levelNumber.value,
+        solved = state.game.status == WordGameStatus.SOLVED,
+        completion = controller.completionState,
+        solvedDetail = "Уровень пройден за ${state.game.attempts.size} попыток.",
+        failedDetail = "Загаданное слово: ${state.puzzle.answer.uppercase()}",
+        onNextLevel = controller::nextLevel,
+        onRetry = controller::retry,
+        onRetrySave = controller::retrySave,
+        onBack = controller::showDifficultySelector,
+    )
+
 }
 
 @Composable
@@ -720,27 +689,17 @@ private fun PlayingSudokuContent(
         )
     }
 
-    if (state.game.status.isTerminal) {
-        AlertDialog(
-            onDismissRequest = {},
-            title = {
-                Text(
-                    if (state.game.status == SudokuGameStatus.SOLVED) {
-                        "Уровень решён"
-                    } else {
-                        "Попытка не пройдена"
-                    },
-                )
-            },
-            text = { Text("Уровень 1 можно пройти ещё раз или выбрать другую сложность.") },
-            confirmButton = {
-                TextButton(onClick = controller::retry) { Text("Пройти заново") }
-            },
-            dismissButton = {
-                TextButton(onClick = controller::showDifficultySelector) { Text("К сложности") }
-            },
-        )
-    }
+    WebOrdinaryCatalogTerminalDialog(
+        visible = state.game.status.isTerminal,
+        levelNumber = state.definition.levelNumber.value,
+        solved = state.game.status == SudokuGameStatus.SOLVED,
+        completion = controller.completionState,
+        onNextLevel = controller::nextLevel,
+        onRetry = controller::retry,
+        onRetrySave = controller::retrySave,
+        onBack = controller::showDifficultySelector,
+    )
+
 }
 
 @Composable
@@ -759,11 +718,15 @@ private fun PlayingGame2048Content(
             Spacer(Modifier.weight(1f))
             Spacer(Modifier.width(GAME_HEADER_TITLE_SPACER))
         }
+        WebCatalogSaveErrorBanner(
+            completion = controller.completionState,
+            onRetrySave = controller::retrySave,
+        )
         Game2048Content(
             game = state.game,
             difficulty = state.definition.difficulty,
             levelNumber = state.definition.levelNumber.value,
-            levelCleared = state.levelCleared,
+            levelCleared = controller.completionState is WebCatalogCompletionState.Saved,
             motionRevision = state.motionRevision,
             motionTrace = state.motionTrace,
             gameplayEnabled = state.game.status == Game2048Status.IN_PROGRESS,
@@ -773,56 +736,18 @@ private fun PlayingGame2048Content(
         )
     }
 
-    if (state.game.status.isTerminal && state.motionTrace == null) {
-        val cleared = state.levelCleared || state.game.status == Game2048Status.SOLVED
-        AlertDialog(
-            onDismissRequest = {},
-            title = {
-                Text(if (cleared) "Уровень пройден" else "Ходов больше нет")
-            },
-            text = {
-                Text(
-                    if (cleared) {
-                        "Уровень 1 пройден. Итоговый счёт: ${formatGame2048Number(state.game.score)}."
-                    } else {
-                        "Цель не достигнута. Итоговый счёт: ${formatGame2048Number(state.game.score)}."
-                    },
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = controller::retry) { Text("Сыграть заново") }
-            },
-            dismissButton = {
-                TextButton(onClick = controller::showDifficultySelector) { Text("К сложности") }
-            },
-        )
-    }
-}
+    Web2048CatalogTerminalDialog(
+        visible = state.game.status.isTerminal && state.motionTrace == null,
+        levelNumber = state.definition.levelNumber.value,
+        goalReached = state.game.goalReached,
+        score = formatGame2048Number(state.game.score),
+        completion = controller.completionState,
+        onNextLevel = controller::nextLevel,
+        onRetry = controller::retry,
+        onRetrySave = controller::retrySave,
+        onBack = controller::showDifficultySelector,
+    )
 
-@Composable
-private fun LevelErrorContent(
-    detail: String,
-    onRetry: () -> Unit,
-    onBack: () -> Unit,
-) {
-    CenteredColumn {
-        Text(
-            text = "Не удалось открыть уровень 1",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.error,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = detail,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(20.dp))
-        Button(onClick = onRetry) { Text("Повторить") }
-        TextButton(onClick = onBack) { Text("К сложности") }
-    }
 }
 
 @Composable
@@ -846,7 +771,7 @@ private fun FatalContent(message: String) {
 }
 
 @Composable
-private fun CenteredColumn(content: @Composable ColumnScope.() -> Unit) {
+internal fun CenteredColumn(content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp),
         verticalArrangement = Arrangement.Center,

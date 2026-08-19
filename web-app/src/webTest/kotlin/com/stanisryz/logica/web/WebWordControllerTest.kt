@@ -5,7 +5,6 @@ import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPack
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackResult
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
-import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPacks
 import com.stanisryz.logica.puzzle.core.contract.PuzzleGenerator
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
@@ -28,15 +27,17 @@ import kotlin.test.assertTrue
 class WebWordControllerTest {
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun frozenLevelOneLoadsItsRuntimeAndSubmitsThroughCommonEngine() =
+    fun authoritativeLevelAdvancesOnceAndNextReloadsTheDurableLevelAfterReveal() =
         runTest {
             var loadedDifficulty: Difficulty? = null
             var loadedResources: List<String>? = null
+            val progression = FakeWebCatalogProgressAccess(initialLevel = 7)
             val controller =
                 WebWordController(
                     loadPack = { loadedDifficulty = it },
                     loadRuntimeResources = { loadedResources = it },
-                    levelPack = fixedEasyLevelOne,
+                    progression = progression,
+                    levelPack = fixedEasyLevels,
                     runtimeResolver = { testRuntime },
                     scope = this,
                 )
@@ -48,6 +49,7 @@ class WebWordControllerTest {
             assertEquals(Difficulty.EASY, loadedDifficulty)
             assertEquals(testRuntime.requiredResourcePaths, loadedResources)
             assertEquals(PuzzleSeed(17), playing.definition.seed)
+            assertEquals(7, playing.definition.levelNumber.value)
             TEST_ANSWER.forEachIndexed(controller::setLetter)
             controller.submit()
 
@@ -55,8 +57,18 @@ class WebWordControllerTest {
             assertEquals(WordGameStatus.SOLVED, solved.game.status)
             assertEquals(1, solved.acceptedAttemptRevision)
             assertFalse(solved.isTerminalRevealReady)
+            advanceUntilIdle()
+            val saved = assertIs<WebCatalogCompletionState.Saved>(controller.completionState)
+            assertEquals(8, saved.nextLevel.levelNumber.value)
+            controller.submit()
+            advanceUntilIdle()
+            assertEquals(1, progression.advanceCalls)
             controller.onAcceptedAttemptRevealed(solved.acceptedAttemptRevision)
             assertTrue(assertIs<WebWordState.Playing>(controller.state).isTerminalRevealReady)
+
+            controller.nextLevel()
+            advanceUntilIdle()
+            assertEquals(8, assertIs<WebWordState.Playing>(controller.state).definition.levelNumber.value)
         }
 
     private val testRuntime =
@@ -82,12 +94,12 @@ class WebWordControllerTest {
             requiredResourcePaths = listOf("/word/v2/test_answers.txt", "/word/v2/test_guesses.txt"),
         )
 
-    private val fixedEasyLevelOne =
+    private val fixedEasyLevels =
         object : CatalogLevelPack {
             override fun resolve(levelId: CatalogLevelId): CatalogLevelPackResult<CatalogLevelDefinition> {
                 assertEquals(PuzzleType.WORD, levelId.puzzleType)
                 assertEquals(Difficulty.EASY, levelId.difficulty)
-                assertEquals(CatalogLevelPacks.FIRST_LEVEL, levelId.levelNumber)
+                assertTrue(levelId.levelNumber.value == 7 || levelId.levelNumber.value == 8)
                 assertEquals(CatalogLevelPackVersion.V1, levelId.packVersion)
                 return CatalogLevelPackResult.Success(
                     CatalogLevelDefinition(

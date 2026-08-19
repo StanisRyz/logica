@@ -36,6 +36,7 @@ class WebSudokuControllerTest {
                 WebSudokuController(
                     loadPack = { loadedPack = it },
                     loadDataset = { version, difficulty -> loadedDataset = version to difficulty },
+                    progression = FakeWebCatalogProgressAccess(),
                     levelPack = fixedMediumLevelOne,
                     dataset = fixedDataset,
                     scope = this,

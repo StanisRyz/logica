@@ -21,6 +21,8 @@ internal data class YandexPlayerSnapshot(
 )
 
 internal interface WebPlayerContextEvents {
+    fun setAccountSelectionOpenedListener(listener: (() -> Unit)?)
+
     fun setPlayerContextChangedListener(listener: (() -> Unit)?)
 }
 
@@ -35,8 +37,11 @@ internal class YandexGamesBridge : WebPlayerContextEvents {
     private var gameplayActive = false
     private var pauseCallback: (() -> Unit)? = null
     private var resumeCallback: (() -> Unit)? = null
+    private var accountSelectionOpenedEvent: String? = null
+    private var accountSelectionOpenedCallback: (() -> Unit)? = null
     private var accountSelectionClosedEvent: String? = null
     private var accountSelectionClosedCallback: (() -> Unit)? = null
+    private var accountSelectionOpenedListener: (() -> Unit)? = null
     private var playerContextChangedListener: (() -> Unit)? = null
 
     val isAvailable: Boolean
@@ -114,6 +119,10 @@ internal class YandexGamesBridge : WebPlayerContextEvents {
         player().setData(singlePropertyObject(key, value), flush).await()
     }
 
+    override fun setAccountSelectionOpenedListener(listener: (() -> Unit)?) {
+        accountSelectionOpenedListener = listener
+    }
+
     override fun setPlayerContextChangedListener(listener: (() -> Unit)?) {
         playerContextChangedListener = listener
     }
@@ -160,6 +169,11 @@ internal class YandexGamesBridge : WebPlayerContextEvents {
         if (initializedSdk != null && resume != null) {
             runCatching { initializedSdk.off(GAME_API_RESUME, resume) }
         }
+        val accountOpenedEvent = accountSelectionOpenedEvent
+        val accountOpenedCallback = accountSelectionOpenedCallback
+        if (initializedSdk != null && accountOpenedEvent != null && accountOpenedCallback != null) {
+            runCatching { initializedSdk.off(accountOpenedEvent, accountOpenedCallback) }
+        }
         val accountEvent = accountSelectionClosedEvent
         val accountCallback = accountSelectionClosedCallback
         if (initializedSdk != null && accountEvent != null && accountCallback != null) {
@@ -167,8 +181,11 @@ internal class YandexGamesBridge : WebPlayerContextEvents {
         }
         pauseCallback = null
         resumeCallback = null
+        accountSelectionOpenedEvent = null
+        accountSelectionOpenedCallback = null
         accountSelectionClosedEvent = null
         accountSelectionClosedCallback = null
+        accountSelectionOpenedListener = null
         playerContextChangedListener = null
         cachedPlayer = null
         playerRequest = null
@@ -217,8 +234,7 @@ internal class YandexGamesBridge : WebPlayerContextEvents {
         }
     }
 
-    private fun requireSdk(): YandexSdk =
-        checkNotNull(sdk) { "Yandex Games SDK is not ready." }
+    private fun requireSdk(): YandexSdk = checkNotNull(sdk) { "Yandex Games SDK is not ready." }
 
     private fun YandexPlayer.snapshot(): YandexPlayerSnapshot =
         YandexPlayerSnapshot(
@@ -228,8 +244,7 @@ internal class YandexGamesBridge : WebPlayerContextEvents {
             avatarReference = optionalText { getPhoto(PLAYER_PHOTO_SIZE) },
         )
 
-    private fun optionalText(block: () -> String?): String? =
-        runCatching(block).getOrNull()?.trim()?.takeIf(String::isNotEmpty)
+    private fun optionalText(block: () -> String?): String? = runCatching(block).getOrNull()?.trim()?.takeIf(String::isNotEmpty)
 
     private fun subscribeLifecycle(
         initializedSdk: YandexSdk,
@@ -249,6 +264,16 @@ internal class YandexGamesBridge : WebPlayerContextEvents {
     }
 
     private fun subscribePlayerContextChanges(initializedSdk: YandexSdk) {
+        runCatching {
+            val eventName = initializedSdk.events?.accountSelectionDialogOpened ?: return@runCatching
+            val callback: () -> Unit = {
+                accountSelectionOpenedListener?.invoke()
+                Unit
+            }
+            initializedSdk.on(eventName, callback)
+            accountSelectionOpenedEvent = eventName
+            accountSelectionOpenedCallback = callback
+        }
         runCatching {
             val eventName = initializedSdk.events?.accountSelectionDialogClosed ?: return
             val callback: () -> Unit = {
@@ -300,6 +325,9 @@ private external interface YandexSdk : JsAny {
 }
 
 private external interface YandexSdkEvents : JsAny {
+    @JsName("ACCOUNT_SELECTION_DIALOG_OPENED")
+    val accountSelectionDialogOpened: String?
+
     @JsName("ACCOUNT_SELECTION_DIALOG_CLOSED")
     val accountSelectionDialogClosed: String?
 }

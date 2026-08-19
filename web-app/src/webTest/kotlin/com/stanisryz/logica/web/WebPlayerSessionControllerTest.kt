@@ -63,10 +63,26 @@ class WebPlayerSessionControllerTest {
 
             controller.start()
             advanceUntilIdle()
+            val progression = WebCatalogProgressCoordinator(controller)
+            val playerAAttempt =
+                assertIs<WebCatalogLevelResolution.Resolved>(
+                    progression.resolveCurrentLevel(PuzzleType.BALANCE, Difficulty.EASY),
+                ).attempt
 
             assertEquals(scopeA, controller.progressRepository?.scope)
             assertEquals(12, controller.progressRepository?.currentLevel(balance)?.value)
             assertEquals(12, WebCatalogProgressCodec.decode(cloud.snapshots.getValue(playerA))?.currentLevel(balance)?.value)
+
+            events.fireOpened()
+            assertIs<WebCatalogCompletionResult.ContextChanged>(progression.advanceSolved(playerAAttempt))
+            assertEquals(
+                12,
+                stores
+                    .getValue(scopeA)
+                    .snapshot
+                    .currentLevel(balance)
+                    .value,
+            )
 
             identity.playerId = playerB
             events.fireChanged()
@@ -74,7 +90,23 @@ class WebPlayerSessionControllerTest {
 
             assertEquals(scopeB, controller.progressRepository?.scope)
             assertEquals(7, controller.progressRepository?.currentLevel(balance)?.value)
-            assertEquals(12, stores.getValue(scopeA).snapshot.currentLevel(balance).value)
+            assertEquals(
+                12,
+                stores
+                    .getValue(scopeA)
+                    .snapshot
+                    .currentLevel(balance)
+                    .value,
+            )
+            assertIs<WebCatalogCompletionResult.ContextChanged>(progression.advanceSolved(playerAAttempt))
+            assertEquals(
+                7,
+                stores
+                    .getValue(scopeB)
+                    .snapshot
+                    .currentLevel(balance)
+                    .value,
+            )
             val state = assertIs<WebPlayerSessionState.PlayerReady>(controller.state)
             assertEquals(WebCloudSyncStatus.SYNCED, state.syncStatus)
         }
@@ -116,7 +148,12 @@ class WebPlayerSessionControllerTest {
     }
 
     private class FakePlayerContextEvents : WebPlayerContextEvents {
+        private var openedListener: (() -> Unit)? = null
         private var listener: (() -> Unit)? = null
+
+        override fun setAccountSelectionOpenedListener(listener: (() -> Unit)?) {
+            openedListener = listener
+        }
 
         override fun setPlayerContextChangedListener(listener: (() -> Unit)?) {
             this.listener = listener
@@ -124,6 +161,10 @@ class WebPlayerSessionControllerTest {
 
         fun fireChanged() {
             listener?.invoke()
+        }
+
+        fun fireOpened() {
+            openedListener?.invoke()
         }
     }
 

@@ -9,6 +9,11 @@ import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPacks
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Direction
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Engine
 import com.stanisryz.logica.puzzle.core.game2048.Game2048GeneratorVersion
+import com.stanisryz.logica.puzzle.core.game2048.Game2048MoveTrace
+import com.stanisryz.logica.puzzle.core.game2048.Game2048MoveTransition
+import com.stanisryz.logica.puzzle.core.game2048.Game2048PuzzleId
+import com.stanisryz.logica.puzzle.core.game2048.Game2048State
+import com.stanisryz.logica.puzzle.core.game2048.Game2048Status
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
@@ -31,6 +36,7 @@ class Web2048ControllerTest {
             val controller =
                 Web2048Controller(
                     loadPack = { loadedDifficulty = it },
+                    progression = FakeWebCatalogProgressAccess(),
                     levelPack = fixedMediumLevelOne,
                     scope = this,
                 )
@@ -64,6 +70,71 @@ class Web2048ControllerTest {
             assertNull(finished.motionRevision)
             assertNull(finished.motionTrace)
         }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun firstV2TargetCrossingAdvancesOnceWhileFreeplayContinuesThroughGameOver() =
+        runTest {
+            val progression = FakeWebCatalogProgressAccess()
+            val controller =
+                Web2048Controller(
+                    loadPack = {},
+                    progression = progression,
+                    levelPack = fixedMediumLevelOne,
+                    engineFactory = { puzzleId -> scriptedV2Engine(puzzleId) },
+                    scope = this,
+                )
+
+            controller.selectDifficulty(Difficulty.MEDIUM)
+            advanceUntilIdle()
+            controller.move(Game2048Direction.LEFT)
+            advanceUntilIdle()
+
+            val freeplay = assertIs<Web2048State.Playing>(controller.state)
+            assertEquals(Game2048Status.IN_PROGRESS, freeplay.game.status)
+            assertEquals(true, freeplay.game.goalReached)
+            assertEquals(1, progression.advanceCalls)
+            assertEquals(2, assertIs<WebCatalogCompletionState.Saved>(controller.completionState).nextLevel.levelNumber.value)
+
+            controller.finishMotion(assertNotNull(freeplay.motionRevision))
+            controller.move(Game2048Direction.RIGHT)
+            val terminal = assertIs<Web2048State.Playing>(controller.state)
+            controller.finishMotion(assertNotNull(terminal.motionRevision))
+            advanceUntilIdle()
+
+            assertEquals(Game2048Status.SOLVED, assertIs<Web2048State.Playing>(controller.state).game.status)
+            assertEquals(1, progression.advanceCalls)
+            assertEquals(2, assertIs<WebCatalogCompletionState.Saved>(controller.completionState).nextLevel.levelNumber.value)
+        }
+
+    private fun scriptedV2Engine(puzzleId: Game2048PuzzleId): Web2048GameEngine {
+        val start = Game2048Engine(puzzleId).start()
+        val targetCrossed = start.copy(score = 30_000L, status = Game2048Status.IN_PROGRESS)
+        val gameOver =
+            Game2048State(
+                puzzleId = puzzleId,
+                board = listOf(2, 4, 2, 4, 4, 2, 4, 2, 2, 4, 2, 4, 4, 2, 4, 2),
+                score = 30_000L,
+                nextSpawnIndex = targetCrossed.nextSpawnIndex,
+                status = Game2048Status.SOLVED,
+            )
+        return object : Web2048GameEngine {
+            private var move = 0
+
+            override fun start(): Game2048State = start
+
+            override fun moveWithTrace(
+                state: Game2048State,
+                direction: Game2048Direction,
+            ): Game2048MoveTransition =
+                Game2048MoveTransition(
+                    state = if (move++ == 0) targetCrossed else gameOver,
+                    trace = Game2048MoveTrace(direction, emptyList(), emptyList(), null, 0L),
+                )
+
+            override fun retry(state: Game2048State): Game2048State = start
+        }
+    }
 
     private val fixedMediumLevelOne =
         object : CatalogLevelPack {

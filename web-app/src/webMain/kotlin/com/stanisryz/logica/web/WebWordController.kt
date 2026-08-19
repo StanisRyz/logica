@@ -6,16 +6,17 @@ import androidx.compose.runtime.setValue
 import com.stanisryz.logica.puzzle.core.catalog.BinaryCatalogLevelPack
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelDefinition
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPack
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackResult
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
-import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPacks
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.web.WebPuzzleData
 import com.stanisryz.logica.puzzle.core.word.WordGameEngine
 import com.stanisryz.logica.puzzle.core.word.WordGameState
+import com.stanisryz.logica.puzzle.core.word.WordGameStatus
 import com.stanisryz.logica.puzzle.core.word.WordGuessRejection
 import com.stanisryz.logica.puzzle.core.word.WordPuzzle
 import com.stanisryz.logica.puzzle.core.word.WordRuntime
@@ -34,9 +35,11 @@ internal sealed interface WebWordState {
 
     data class Loading(
         val difficulty: Difficulty,
+        val levelNumber: CatalogLevelNumber? = null,
     ) : WebWordState
 
     data class Playing(
+        val attempt: WebCatalogAttempt,
         val definition: CatalogLevelDefinition,
         val puzzle: WordPuzzle,
         val game: WordGameState,
@@ -53,50 +56,85 @@ internal sealed interface WebWordState {
 
     data class Error(
         val difficulty: Difficulty,
+        val levelNumber: CatalogLevelNumber?,
         val detail: String,
+        val progressionUnavailable: Boolean = false,
     ) : WebWordState
 }
 
-/** Lightweight Web adapter over frozen Word Level 1 and the common Word runtime and engine. */
+/** Lightweight Web adapter over authoritative frozen Word Catalog levels and the common runtime. */
 internal class WebWordController(
     private val loadPack: suspend (Difficulty) -> Unit,
     private val loadRuntimeResources: suspend (List<String>) -> Unit,
+    private val progression: WebCatalogProgressAccess,
     private val levelPack: CatalogLevelPack = BinaryCatalogLevelPack(WebPuzzleData),
     private val runtimeResolver: (GeneratorVersion) -> WordRuntime = WordRuntimeResolver::resolve,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private var operation: Job? = null
     private var engine: WordGameEngine? = null
+    private val completion = WebCatalogCompletionController(progression, scope)
 
     var state by mutableStateOf<WebWordState>(WebWordState.DifficultySelection)
         private set
+
+    val completionState: WebCatalogCompletionState
+        get() = completion.state
 
     fun selectDifficulty(difficulty: Difficulty) {
         operation?.cancel()
         state = WebWordState.Loading(difficulty)
         operation =
             scope.launch {
+                var levelNumber: CatalogLevelNumber? = null
                 try {
+                    val attempt =
+                        when (
+                            val resolved =
+                                progression.resolveCurrentLevel(
+                                    PuzzleType.WORD,
+                                    difficulty,
+                                    CatalogLevelPackVersion.V1,
+                                )
+                        ) {
+                            is WebCatalogLevelResolution.Resolved -> resolved.attempt
+                            is WebCatalogLevelResolution.Unavailable -> {
+                                state = WebWordState.Error(difficulty, null, resolved.detail, progressionUnavailable = true)
+                                return@launch
+                            }
+                        }
+                    levelNumber = attempt.levelId.levelNumber
+                    state = WebWordState.Loading(difficulty, levelNumber)
                     loadPack(difficulty)
-                    val definition = resolveLevelOne(difficulty)
+                    if (!progression.isCurrent(attempt)) return@launch
+                    val definition = resolveLevel(attempt.levelId)
                     val runtime = runtimeResolver(definition.generatorVersion)
                     require(runtime.generator.version == definition.generatorVersion) {
-                        "Word Level 1 requires generator ${definition.generatorVersion.value}."
+                        "Word level ${attempt.levelId.levelNumber.value} requires generator ${definition.generatorVersion.value}."
                     }
                     loadRuntimeResources(runtime.requiredResourcePaths)
+                    if (!progression.isCurrent(attempt)) return@launch
                     val puzzle = runtime.generator.generate(definition.seed, difficulty)
                     require(puzzle.id.generatorVersion == definition.generatorVersion)
                     runtime.allowedGuesses.size
                     val nextEngine = WordGameEngine(puzzle, runtime.allowedGuesses)
                     engine = nextEngine
-                    state = WebWordState.Playing(definition, puzzle, nextEngine.start())
+                    completion.startAttempt(attempt)
+                    state = WebWordState.Playing(attempt, definition, puzzle, nextEngine.start())
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (exception: Exception) {
                     engine = null
-                    state = WebWordState.Error(difficulty, exception.message ?: "Word Level 1 is unavailable.")
+                    completion.reset()
+                    state = WebWordState.Error(difficulty, levelNumber, exception.message ?: "Word level is unavailable.")
                 }
             }
+    }
+
+    fun retryLoading() {
+        val error = state as? WebWordState.Error ?: return
+        if (error.progressionUnavailable) progression.retryContextBinding()
+        selectDifficulty(error.difficulty)
     }
 
     fun setLetter(
@@ -121,12 +159,17 @@ internal class WebWordController(
                         rejectionRevision = playing.rejectionRevision + 1,
                     )
             is WordSubmitResult.Accepted ->
-                state =
-                    playing.copy(
+                playing
+                    .copy(
                         game = result.state,
                         rejection = null,
                         acceptedAttemptRevision = playing.acceptedAttemptRevision + 1,
-                    )
+                    ).also { updated ->
+                        state = updated
+                        if (playing.game.status != WordGameStatus.SOLVED && updated.game.status == WordGameStatus.SOLVED) {
+                            completion.saveSolved(playing.attempt)
+                        }
+                    }
         }
     }
 
@@ -143,9 +186,10 @@ internal class WebWordController(
 
     fun retry() {
         val playing = state as? WebWordState.Playing ?: return
-        if (!playing.game.isFinished) return
+        if (playing.game.status != WordGameStatus.FAILED) return
         val activeEngine = engine ?: return
         operation?.cancel()
+        completion.startAttempt(playing.attempt)
         state =
             playing.copy(
                 game = activeEngine.start(),
@@ -156,9 +200,22 @@ internal class WebWordController(
             )
     }
 
+    fun nextLevel() {
+        val playing = state as? WebWordState.Playing ?: return
+        if (completion.state !is WebCatalogCompletionState.Saved) return
+        selectDifficulty(playing.attempt.levelId.difficulty)
+    }
+
+    fun retrySave() {
+        val playing = state as? WebWordState.Playing ?: return
+        if (playing.game.status != WordGameStatus.SOLVED) return
+        completion.saveSolved(playing.attempt)
+    }
+
     fun showDifficultySelector() {
         operation?.cancel()
         engine = null
+        completion.reset()
         state = WebWordState.DifficultySelection
     }
 
@@ -178,22 +235,17 @@ internal class WebWordController(
         state = playing.copy(game = updated, rejection = null)
     }
 
-    private fun resolveLevelOne(difficulty: Difficulty): CatalogLevelDefinition {
-        val levelId =
-            CatalogLevelId(
-                puzzleType = PuzzleType.WORD,
-                difficulty = difficulty,
-                levelNumber = CatalogLevelPacks.FIRST_LEVEL,
-                packVersion = CatalogLevelPackVersion.V1,
-            )
-        return when (val resolved = levelPack.resolve(levelId)) {
+    private fun resolveLevel(levelId: CatalogLevelId): CatalogLevelDefinition =
+        when (val resolved = levelPack.resolve(levelId)) {
             is CatalogLevelPackResult.Success -> resolved.value
             is CatalogLevelPackResult.Failure -> error(resolved.detail)
         }
-    }
 
     companion object {
-        fun create(loader: BrowserPuzzleDataLoader): WebWordController =
+        fun create(
+            loader: BrowserPuzzleDataLoader,
+            progression: WebCatalogProgressAccess,
+        ): WebWordController =
             WebWordController(
                 loadPack = { difficulty ->
                     loader.loadCatalogLevelPack(
@@ -203,6 +255,7 @@ internal class WebWordController(
                     )
                 },
                 loadRuntimeResources = loader::loadWordResources,
+                progression = progression,
             )
     }
 }

@@ -6,12 +6,13 @@ import androidx.compose.runtime.setValue
 import com.stanisryz.logica.puzzle.core.catalog.BinaryCatalogLevelPack
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelDefinition
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPack
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackResult
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
-import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPacks
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameEngine
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameState
+import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGeneratorV1
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPosition
@@ -32,9 +33,11 @@ internal sealed interface WebCrownsState {
 
     data class Loading(
         val difficulty: Difficulty,
+        val levelNumber: CatalogLevelNumber? = null,
     ) : WebCrownsState
 
     data class Playing(
+        val attempt: WebCatalogAttempt,
         val definition: CatalogLevelDefinition,
         val puzzle: CrownsPuzzle,
         val game: CrownsGameState,
@@ -45,45 +48,79 @@ internal sealed interface WebCrownsState {
 
     data class Error(
         val difficulty: Difficulty,
+        val levelNumber: CatalogLevelNumber?,
         val detail: String,
+        val progressionUnavailable: Boolean = false,
     ) : WebCrownsState
 }
 
-/** Lightweight Web adapter over frozen Crowns Level 1 and the common gameplay engine. */
+/** Lightweight Web adapter over authoritative frozen Crowns Catalog levels and the common engine. */
 internal class WebCrownsController(
     private val loadPack: suspend (Difficulty) -> Unit,
+    private val progression: WebCatalogProgressAccess,
     private val levelPack: CatalogLevelPack = BinaryCatalogLevelPack(WebPuzzleData),
     private val generator: CrownsGeneratorV1 = CrownsGeneratorV1(),
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private var operation: Job? = null
     private var engine: CrownsGameEngine? = null
+    private val completion = WebCatalogCompletionController(progression, scope)
 
     var state by mutableStateOf<WebCrownsState>(WebCrownsState.DifficultySelection)
         private set
+
+    val completionState: WebCatalogCompletionState
+        get() = completion.state
 
     fun selectDifficulty(difficulty: Difficulty) {
         operation?.cancel()
         state = WebCrownsState.Loading(difficulty)
         operation =
             scope.launch {
+                var levelNumber: CatalogLevelNumber? = null
                 try {
+                    val attempt =
+                        when (
+                            val resolved =
+                                progression.resolveCurrentLevel(
+                                    PuzzleType.CROWNS,
+                                    difficulty,
+                                    CatalogLevelPackVersion.V1,
+                                )
+                        ) {
+                            is WebCatalogLevelResolution.Resolved -> resolved.attempt
+                            is WebCatalogLevelResolution.Unavailable -> {
+                                state = WebCrownsState.Error(difficulty, null, resolved.detail, progressionUnavailable = true)
+                                return@launch
+                            }
+                        }
+                    levelNumber = attempt.levelId.levelNumber
+                    state = WebCrownsState.Loading(difficulty, levelNumber)
                     loadPack(difficulty)
-                    val definition = resolveLevelOne(difficulty)
+                    if (!progression.isCurrent(attempt)) return@launch
+                    val definition = resolveLevel(attempt.levelId)
                     require(definition.generatorVersion == generator.version) {
-                        "Crowns Level 1 requires generator ${definition.generatorVersion.value}."
+                        "Crowns level ${attempt.levelId.levelNumber.value} requires generator ${definition.generatorVersion.value}."
                     }
                     val puzzle = generator.generate(definition.seed, difficulty)
                     val nextEngine = CrownsGameEngine(puzzle)
                     engine = nextEngine
-                    state = WebCrownsState.Playing(definition, puzzle, nextEngine.start())
+                    completion.startAttempt(attempt)
+                    state = WebCrownsState.Playing(attempt, definition, puzzle, nextEngine.start())
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (exception: Exception) {
                     engine = null
-                    state = WebCrownsState.Error(difficulty, exception.message ?: "Crowns Level 1 is unavailable.")
+                    completion.reset()
+                    state = WebCrownsState.Error(difficulty, levelNumber, exception.message ?: "Crowns level is unavailable.")
                 }
             }
+    }
+
+    fun retryLoading() {
+        val error = state as? WebCrownsState.Error ?: return
+        if (error.progressionUnavailable) progression.retryContextBinding()
+        selectDifficulty(error.difficulty)
     }
 
     fun selectValue(value: CrownsPlayerCell) {
@@ -110,7 +147,7 @@ internal class WebCrownsController(
             } else {
                 activeEngine.placeValue(playing.game, position, playing.selectedValue)
             }
-        if (updated != playing.game) state = playing.copy(game = updated, isHintLoading = false)
+        if (updated != playing.game) updateGame(playing, updated, isHintLoading = false)
     }
 
     fun requestHint() {
@@ -131,16 +168,17 @@ internal class WebCrownsController(
                     }
                 val current = state
                 if (current is WebCrownsState.Playing && current.game == requestedGame) {
-                    state = current.copy(game = hinted, isHintLoading = false)
+                    updateGame(current, hinted, isHintLoading = false)
                 }
             }
     }
 
     fun retry() {
         val playing = state as? WebCrownsState.Playing ?: return
-        if (!playing.game.status.isTerminal) return
+        if (playing.game.status != CrownsGameStatus.FAILED) return
         val activeEngine = engine ?: return
         operation?.cancel()
+        completion.startAttempt(playing.attempt)
         state =
             playing.copy(
                 game = activeEngine.start(),
@@ -149,9 +187,22 @@ internal class WebCrownsController(
             )
     }
 
+    fun nextLevel() {
+        val playing = state as? WebCrownsState.Playing ?: return
+        if (completion.state !is WebCatalogCompletionState.Saved) return
+        selectDifficulty(playing.attempt.levelId.difficulty)
+    }
+
+    fun retrySave() {
+        val playing = state as? WebCrownsState.Playing ?: return
+        if (playing.game.status != CrownsGameStatus.SOLVED) return
+        completion.saveSolved(playing.attempt)
+    }
+
     fun showDifficultySelector() {
         operation?.cancel()
         engine = null
+        completion.reset()
         state = WebCrownsState.DifficultySelection
     }
 
@@ -159,22 +210,28 @@ internal class WebCrownsController(
         scope.cancel()
     }
 
-    private fun resolveLevelOne(difficulty: Difficulty): CatalogLevelDefinition {
-        val levelId =
-            CatalogLevelId(
-                puzzleType = PuzzleType.CROWNS,
-                difficulty = difficulty,
-                levelNumber = CatalogLevelPacks.FIRST_LEVEL,
-                packVersion = CatalogLevelPackVersion.V1,
-            )
-        return when (val resolved = levelPack.resolve(levelId)) {
-            is CatalogLevelPackResult.Success -> resolved.value
-            is CatalogLevelPackResult.Failure -> error(resolved.detail)
+    private fun updateGame(
+        playing: WebCrownsState.Playing,
+        updated: CrownsGameState,
+        isHintLoading: Boolean,
+    ) {
+        state = playing.copy(game = updated, isHintLoading = isHintLoading)
+        if (!playing.game.status.isTerminal && updated.status == CrownsGameStatus.SOLVED) {
+            completion.saveSolved(playing.attempt)
         }
     }
 
+    private fun resolveLevel(levelId: CatalogLevelId): CatalogLevelDefinition =
+        when (val resolved = levelPack.resolve(levelId)) {
+            is CatalogLevelPackResult.Success -> resolved.value
+            is CatalogLevelPackResult.Failure -> error(resolved.detail)
+        }
+
     companion object {
-        fun create(loader: BrowserPuzzleDataLoader): WebCrownsController =
+        fun create(
+            loader: BrowserPuzzleDataLoader,
+            progression: WebCatalogProgressAccess,
+        ): WebCrownsController =
             WebCrownsController(
                 loadPack = { difficulty ->
                     loader.loadCatalogLevelPack(
@@ -183,6 +240,7 @@ internal class WebCrownsController(
                         difficulty = difficulty,
                     )
                 },
+                progression = progression,
             )
     }
 }

@@ -1,6 +1,6 @@
 # Логика дня
 
-Logica contains the native Android application with playable Balance, Crowns, Word, Sudoku, and 2048 puzzles plus initial playable Yandex Games Web Level 1 slices for all five games. The deterministic core and canonical puzzle data are shared through `:puzzle-core`, their Compose Multiplatform presentation lives in `:shared-ui`, and neutral Store, Ads, Player, Cloud Save, lifecycle, and capability contracts live in `:platform-contracts`. Android remains the complete application; Web automatically binds local/cloud progress storage to the current Yandex Player when available, but its playable Catalog flows do not yet advance that durable progress.
+Logica contains the native Android application and a playable Yandex Games Web Catalog for Balance, Crowns, Word, Sudoku, and 2048. The deterministic core and canonical puzzle data are shared through `:puzzle-core`, their Compose Multiplatform presentation lives in `:shared-ui`, and neutral Store, Ads, Player, Cloud Save, lifecycle, and capability contracts live in `:platform-contracts`. Android remains the complete application; Web resumes and advances each game's saved Catalog level using local storage scoped to the automatic current Yandex Player and best-effort cloud synchronization.
 
 Every catalog game is played as a numbered sequence of fixed levels. Level 1 of Легко is the same
 puzzle for everyone, and so is level 743 — each game and each difficulty keeps its own level number,
@@ -37,11 +37,11 @@ where supported and falls back to JavaScript. Build the Web outputs and the uplo
 ```
 
 The ZIP is written to `web-app/build/distributions/logica-yandex.zip`. The current Web host includes
-SDK bootstrap, lifecycle/gameplay activity handling, automatic current-Player progress synchronization,
-Player-isolated local progress storage, lazy frozen Level Pack loading, responsive 9:16 presentation, and playable Catalog
-Level 1 flows for all five games and all four difficulties. Durable gameplay progression integration is not
-complete: the game flows still launch Level 1, and Payments, ads, Store, Profile, Daily, and a sticky banner
-are not included.
+SDK bootstrap, lifecycle/gameplay activity handling, automatic current-Player local/cloud progress persistence,
+lazy frozen Level Pack loading, responsive 9:16 presentation, and durable sequential Catalog play for all five
+games and all four difficulties. Solved levels advance once, failed attempts stay on the same level, and unfinished
+attempts remain session-only and are discarded on exit or Player change. Payments, ads, Store, Profile, Daily, and
+a sticky banner are not included.
 
 Crowns, the second puzzle type, now has a pure-Kotlin domain model, deterministic solving and generation, solve-based difficulty evaluation, and unique/multiple-solution detection in `puzzle-core/`.
 
@@ -119,7 +119,7 @@ Modules:
 - `puzzle-core/` — Kotlin Multiplatform deterministic Balance, Crowns, Word, Sudoku, and 2048 runtime in `commonMain`, with Android/JVM/JS/Wasm library targets and JVM-only developer tooling.
 - `shared-ui/` — the Compose Multiplatform presentation shared by Android and Web, including all five game screens, difficulty selection, and the artwork-based Game catalog.
 - `platform-contracts/` — small platform-neutral contracts for Store, ads, Player identity, Cloud Save, lifecycle, metadata, and capabilities.
-- `web-app/` — the browser/Yandex host with responsive 9:16 layout, browser data loading, lifecycle integration, automatic current-Player cloud synchronization, Player-scoped local Catalog progress, and lightweight Level 1 game controllers.
+- `web-app/` — the browser/Yandex host with responsive 9:16 layout, browser data loading, lifecycle integration, automatic current-Player cloud synchronization, Player-scoped local Catalog progress, and lightweight controllers for all five sequential Catalog games.
 - `puzzle-data/` — the canonical frozen Catalog Level Pack and Sudoku Dataset V1 corpus shared by Android and Web builds.
 - `lexicon/word/` — curated offline Word corpus sources and their provenance note.
 
