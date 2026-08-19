@@ -241,16 +241,7 @@
     <string name="sudoku_dataset_corrupt">Встроенный набор судоку повреждён.</string>
     <string name="sudoku_puzzle_missing">Это судоку не найдено во встроенном наборе.</string>
     <string name="game_2048_title">2048</string>
-    <string name="game_2048_target">Цель</string>
-    <string name="game_2048_score">Счёт</string>
     <string name="game_2048_swipe_help">Смахивайте по полю, чтобы объединять одинаковые плитки.</string>
-    <string name="game_2048_board_description">Поле 2048. Доступны действия движения в четырёх направлениях.</string>
-    <string name="game_2048_move_left">Поле 2048: сдвинуть влево</string>
-    <string name="game_2048_move_right">Поле 2048: сдвинуть вправо</string>
-    <string name="game_2048_move_up">Поле 2048: сдвинуть вверх</string>
-    <string name="game_2048_move_down">Поле 2048: сдвинуть вниз</string>
-    <string name="game_2048_tile_description">Строка %1$d, столбец %2$d. Плитка %3$d.</string>
-    <string name="game_2048_empty_cell_description">Строка %1$d, столбец %2$d. Пустая клетка.</string>
     <string name="game_2048_solved_title">Цель достигнута</string>
     <string name="game_2048_solved_body">Собрана плитка %1$d.</string>
     <string name="game_2048_solved_body_score">Цель %1$s очков достигнута.</string>
@@ -258,7 +249,6 @@
     <string name="game_2048_failed_body">Максимальная плитка: %1$d.</string>
     <string name="game_2048_failed_body_score">До цели %1$s очков не хватило.</string>
     <string name="game_2048_final_score">Итоговый счёт: %1$s</string>
-    <string name="game_2048_target_reached">%1$s ✓</string>
     <string name="game_2048_catalog_description">Объединяйте плитки, набирайте очки и держитесь до последнего хода.</string>
     <string name="game_2048_rules_intro">Смахивайте поле в четырёх направлениях: все плитки сдвигаются вместе.</string>
     <string name="game_2048_rule_merge">• Одинаковые соседние плитки объединяются; одна плитка участвует только в одном объединении за ход.</string>
@@ -281,8 +271,6 @@
     <string name="game_2048_loading">Загружаем 2048…</string>
     <string name="game_2048_start_error">Не удалось начать игру 2048.</string>
     <!-- Catalog 2048 clears at the score target and then keeps running as freeplay. -->
-    <string name="game_2048_level_cleared">Уровень %1$d ✓</string>
-    <string name="game_2048_level_cleared_hint">Цель достигнута — можно продолжать игру</string>
     <string name="game_2048_cleared_title">Уровень пройден</string>
     <string name="game_2048_cleared_body">Цель достигнута, уровень зачтён. Ходов больше нет.</string>
     <string name="game_2048_played">Сыграно</string>

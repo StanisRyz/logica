@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,7 +33,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -45,30 +43,43 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.stanisryz.logica.R
-import com.stanisryz.logica.game2048.Game2048MotionEvent
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Direction
+import com.stanisryz.logica.puzzle.core.game2048.Game2048MoveTrace
 import com.stanisryz.logica.puzzle.core.game2048.Game2048State
 import com.stanisryz.logica.puzzle.core.game2048.Game2048TileMovement
+import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.game_2048_board_description
+import com.stanisryz.logica.shared.ui.generated.resources.game_2048_empty_cell_description
+import com.stanisryz.logica.shared.ui.generated.resources.game_2048_move_down
+import com.stanisryz.logica.shared.ui.generated.resources.game_2048_move_left
+import com.stanisryz.logica.shared.ui.generated.resources.game_2048_move_right
+import com.stanisryz.logica.shared.ui.generated.resources.game_2048_move_up
+import com.stanisryz.logica.shared.ui.generated.resources.game_2048_tile_description
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import org.jetbrains.compose.resources.stringResource
 
+/** Shared 4x4 board, gestures, accessibility actions, and deterministic trace animation. */
 @Composable
-internal fun Game2048Board(
+fun Game2048Board(
     game: Game2048State,
-    motionEvent: Game2048MotionEvent?,
+    motionRevision: Long?,
+    motionTrace: Game2048MoveTrace?,
     onMove: (Game2048Direction) -> Unit,
     onMotionFinished: (Long) -> Unit,
     modifier: Modifier = Modifier,
     inputEnabled: Boolean = !game.status.isTerminal,
 ) {
-    val moveLeft = stringResource(R.string.game_2048_move_left)
-    val moveRight = stringResource(R.string.game_2048_move_right)
-    val moveUp = stringResource(R.string.game_2048_move_up)
-    val moveDown = stringResource(R.string.game_2048_move_down)
-    val boardDescription = stringResource(R.string.game_2048_board_description)
-    val enabled = inputEnabled && motionEvent == null && !game.status.isTerminal
+    require((motionRevision == null) == (motionTrace == null)) {
+        "2048 motion revision and trace must either both be present or both be absent."
+    }
+    val moveLeft = stringResource(Res.string.game_2048_move_left)
+    val moveRight = stringResource(Res.string.game_2048_move_right)
+    val moveUp = stringResource(Res.string.game_2048_move_up)
+    val moveDown = stringResource(Res.string.game_2048_move_down)
+    val boardDescription = stringResource(Res.string.game_2048_board_description)
+    val enabled = inputEnabled && motionTrace == null && !game.status.isTerminal
     val actions =
         if (enabled) {
             listOf(
@@ -81,60 +92,68 @@ internal fun Game2048Board(
             emptyList()
         }
     var phase by
-        remember(motionEvent?.revision) {
-            mutableStateOf(if (motionEvent == null) Game2048MotionPhase.IDLE else Game2048MotionPhase.MOVING)
+        remember(motionRevision) {
+            mutableStateOf(if (motionTrace == null) Game2048MotionPhase.IDLE else Game2048MotionPhase.MOVING)
         }
-    val movementProgress = remember(motionEvent?.revision) { Animatable(if (motionEvent == null) 1f else 0f) }
-    val mergeScale = remember(motionEvent?.revision) { Animatable(1f) }
-    val spawnScale = remember(motionEvent?.revision) { Animatable(SPAWN_INITIAL_SCALE) }
+    val movementProgress = remember(motionRevision) { Animatable(if (motionTrace == null) 1f else 0f) }
+    val mergeScale = remember(motionRevision) { Animatable(1f) }
+    val spawnScale = remember(motionRevision) { Animatable(SPAWN_INITIAL_SCALE) }
 
-    LaunchedEffect(motionEvent?.revision) {
-        val event = motionEvent ?: return@LaunchedEffect
+    LaunchedEffect(motionRevision) {
+        val revision = motionRevision ?: return@LaunchedEffect
+        val trace = motionTrace ?: return@LaunchedEffect
         phase = Game2048MotionPhase.MOVING
         movementProgress.animateTo(
             targetValue = 1f,
             animationSpec = tween(MOVEMENT_MILLIS, easing = FastOutSlowInEasing),
         )
-        if (event.trace.merges.isNotEmpty()) {
+        if (trace.merges.isNotEmpty()) {
             phase = Game2048MotionPhase.MERGING
             mergeScale.animateTo(MERGE_POP_SCALE, tween(MERGE_HALF_MILLIS))
             mergeScale.animateTo(1f, tween(MERGE_HALF_MILLIS))
         }
-        if (event.trace.spawnedTile != null) {
+        if (trace.spawnedTile != null) {
             phase = Game2048MotionPhase.SPAWNING
             spawnScale.animateTo(1f, tween(SPAWN_MILLIS, easing = FastOutSlowInEasing))
         }
         phase = Game2048MotionPhase.IDLE
-        onMotionFinished(event.revision)
+        onMotionFinished(revision)
     }
 
-    Box(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(MaterialTheme.shapes.medium)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                .game2048Swipe(enabled, onMove)
-                .semantics {
-                    contentDescription = boardDescription
-                    customActions = actions
-                }.padding(LogicaSpacing.boardPadding),
+    BoxWithConstraints(
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
     ) {
-        BoxWithConstraints(Modifier.fillMaxSize()) {
-            val cellSize = (maxWidth - LogicaSpacing.boardGap * (Game2048State.BOARD_SIZE - 1)) / Game2048State.BOARD_SIZE
-            val cellStepPx = with(LocalDensity.current) { (cellSize + LogicaSpacing.boardGap).toPx() }
-            Game2048BackgroundGrid(game)
-            Game2048TileOverlay(
-                game = game,
-                motionEvent = motionEvent,
-                phase = phase,
-                movementProgress = movementProgress.value,
-                mergeScale = mergeScale.value,
-                spawnScale = spawnScale.value,
-                cellSize = cellSize,
-                cellStepPx = cellStepPx,
-            )
+        val boardSize = minOf(maxWidth, maxHeight)
+        Box(
+            modifier =
+                Modifier
+                    .size(boardSize)
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .game2048Swipe(enabled, onMove)
+                    .semantics {
+                        contentDescription = boardDescription
+                        customActions = actions
+                    }.padding(LogicaSpacing.boardPadding),
+        ) {
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val cellSize =
+                    (maxWidth - LogicaSpacing.boardGap * (Game2048State.BOARD_SIZE - 1)) /
+                        Game2048State.BOARD_SIZE
+                val cellStepPx = with(LocalDensity.current) { (cellSize + LogicaSpacing.boardGap).toPx() }
+                Game2048BackgroundGrid(game)
+                Game2048TileOverlay(
+                    game = game,
+                    motionTrace = motionTrace,
+                    phase = phase,
+                    movementProgress = movementProgress.value,
+                    mergeScale = mergeScale.value,
+                    spawnScale = spawnScale.value,
+                    cellSize = cellSize,
+                    cellStepPx = cellStepPx,
+                )
+            }
         }
     }
 }
@@ -154,9 +173,9 @@ private fun Game2048BackgroundGrid(game: Game2048State) {
                     val value = game.cellAt(row, column)
                     val description =
                         if (value == 0) {
-                            stringResource(R.string.game_2048_empty_cell_description, row + 1, column + 1)
+                            stringResource(Res.string.game_2048_empty_cell_description, row + 1, column + 1)
                         } else {
-                            stringResource(R.string.game_2048_tile_description, row + 1, column + 1, value)
+                            stringResource(Res.string.game_2048_tile_description, row + 1, column + 1, value)
                         }
                     Box(
                         modifier =
@@ -176,7 +195,7 @@ private fun Game2048BackgroundGrid(game: Game2048State) {
 @Composable
 private fun Game2048TileOverlay(
     game: Game2048State,
-    motionEvent: Game2048MotionEvent?,
+    motionTrace: Game2048MoveTrace?,
     phase: Game2048MotionPhase,
     movementProgress: Float,
     mergeScale: Float,
@@ -184,20 +203,22 @@ private fun Game2048TileOverlay(
     cellSize: Dp,
     cellStepPx: Float,
 ) {
-    val trace = motionEvent?.trace
     when (phase) {
         Game2048MotionPhase.MOVING ->
-            trace?.movements.orEmpty().forEach { movement ->
+            motionTrace?.movements.orEmpty().forEach { movement ->
                 Game2048MovingTile(movement, movementProgress, cellSize, cellStepPx)
             }
         Game2048MotionPhase.MERGING,
         Game2048MotionPhase.SPAWNING,
         Game2048MotionPhase.IDLE,
         -> {
-            val hiddenSpawnIndex = trace?.spawnedTile?.destinationIndex.takeIf { phase != Game2048MotionPhase.IDLE }
+            val hiddenSpawnIndex =
+                motionTrace?.spawnedTile?.destinationIndex.takeIf { phase != Game2048MotionPhase.IDLE }
             game.board.forEachIndexed { index, value ->
                 if (value != 0 && index != hiddenSpawnIndex) {
-                    val isMerging = phase == Game2048MotionPhase.MERGING && trace?.merges?.any { it.destinationIndex == index } == true
+                    val isMerging =
+                        phase == Game2048MotionPhase.MERGING &&
+                            motionTrace?.merges?.any { it.destinationIndex == index } == true
                     Game2048OverlayTile(
                         value = value,
                         index = index,
@@ -208,7 +229,7 @@ private fun Game2048TileOverlay(
                 }
             }
             if (phase == Game2048MotionPhase.SPAWNING) {
-                trace?.spawnedTile?.let { spawned ->
+                motionTrace?.spawnedTile?.let { spawned ->
                     Game2048OverlayTile(
                         value = spawned.value,
                         index = spawned.destinationIndex,

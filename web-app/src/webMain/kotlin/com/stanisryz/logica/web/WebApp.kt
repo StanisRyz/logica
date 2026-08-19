@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import com.stanisryz.logica.platform.PlatformLifecycleState
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
+import com.stanisryz.logica.puzzle.core.game2048.Game2048Status
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameStatus
@@ -47,6 +48,8 @@ import com.stanisryz.logica.puzzle.core.word.WordGameStatus
 import com.stanisryz.logica.ui.balance.BalanceGameContent
 import com.stanisryz.logica.ui.components.DifficultySelector
 import com.stanisryz.logica.ui.crowns.CrownsGameContent
+import com.stanisryz.logica.ui.game2048.Game2048Content
+import com.stanisryz.logica.ui.game2048.formatGame2048Number
 import com.stanisryz.logica.ui.sudoku.SudokuGameContent
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.ui.theme.LogicaTheme
@@ -62,6 +65,8 @@ private sealed interface WebRoute {
     data object Word : WebRoute
 
     data object Sudoku : WebRoute
+
+    data object Game2048 : WebRoute
 }
 
 @Composable
@@ -71,6 +76,7 @@ internal fun WebApp(
     crownsController: WebCrownsController,
     wordController: WebWordController,
     sudokuController: WebSudokuController,
+    game2048Controller: Web2048Controller,
     lifecycle: WebHostLifecycle,
 ) {
     val lifecycleState by lifecycle.state.collectAsState()
@@ -80,13 +86,21 @@ internal fun WebApp(
             withFrameNanos { }
             controller.onComposeRootRendered()
         }
-        DisposableEffect(controller, balanceController, crownsController, wordController, sudokuController) {
+        DisposableEffect(
+            controller,
+            balanceController,
+            crownsController,
+            wordController,
+            sudokuController,
+            game2048Controller,
+        ) {
             onDispose {
                 controller.setGameplayActive(false)
                 balanceController.dispose()
                 crownsController.dispose()
                 wordController.dispose()
                 sudokuController.dispose()
+                game2048Controller.dispose()
             }
         }
 
@@ -102,6 +116,7 @@ internal fun WebApp(
                         crownsController = crownsController,
                         wordController = wordController,
                         sudokuController = sudokuController,
+                        game2048Controller = game2048Controller,
                         onRendered = controller::onInitialHostUiReady,
                     )
                 is WebBootstrapState.FatalError -> FatalContent(state.message)
@@ -152,6 +167,7 @@ private fun ReadyContent(
     crownsController: WebCrownsController,
     wordController: WebWordController,
     sudokuController: WebSudokuController,
+    game2048Controller: Web2048Controller,
     onRendered: () -> Unit,
 ) {
     var route by remember { mutableStateOf<WebRoute>(WebRoute.Landing) }
@@ -159,12 +175,13 @@ private fun ReadyContent(
     val crownsState = crownsController.state
     val wordState = wordController.state
     val sudokuState = sudokuController.state
+    val game2048State = game2048Controller.state
 
     LaunchedEffect(mode) {
         withFrameNanos { }
         onRendered()
     }
-    LaunchedEffect(route, balanceState, crownsState, wordState, sudokuState, lifecycleState) {
+    LaunchedEffect(route, balanceState, crownsState, wordState, sudokuState, game2048State, lifecycleState) {
         controller.setGameplayActive(
             when (route) {
                 WebRoute.Landing -> false
@@ -180,6 +197,9 @@ private fun ReadyContent(
                 WebRoute.Sudoku ->
                     sudokuState is WebSudokuState.Playing &&
                         sudokuState.game.status == SudokuGameStatus.IN_PROGRESS
+                WebRoute.Game2048 ->
+                    game2048State is Web2048State.Playing &&
+                        game2048State.game.status == Game2048Status.IN_PROGRESS
             } &&
                 lifecycleState == PlatformLifecycleState.ACTIVE,
         )
@@ -205,6 +225,10 @@ private fun ReadyContent(
                 onOpenSudoku = {
                     sudokuController.showDifficultySelector()
                     route = WebRoute.Sudoku
+                },
+                onOpenGame2048 = {
+                    game2048Controller.showDifficultySelector()
+                    route = WebRoute.Game2048
                 },
             )
         WebRoute.Balance ->
@@ -243,6 +267,15 @@ private fun ReadyContent(
                     route = WebRoute.Landing
                 },
             )
+        WebRoute.Game2048 ->
+            Game2048Flow(
+                state = game2048State,
+                controller = game2048Controller,
+                onExitGame2048 = {
+                    game2048Controller.showDifficultySelector()
+                    route = WebRoute.Landing
+                },
+            )
     }
 }
 
@@ -254,6 +287,7 @@ private fun LandingContent(
     onOpenCrowns: () -> Unit,
     onOpenWord: () -> Unit,
     onOpenSudoku: () -> Unit,
+    onOpenGame2048: () -> Unit,
 ) {
     CenteredColumn {
         Box(
@@ -283,6 +317,8 @@ private fun LandingContent(
         Button(onClick = onOpenWord) { Text("Играть в Слово") }
         Spacer(Modifier.height(12.dp))
         Button(onClick = onOpenSudoku) { Text("Играть в Судоку") }
+        Spacer(Modifier.height(12.dp))
+        Button(onClick = onOpenGame2048) { Text("Играть в 2048") }
         Spacer(Modifier.height(24.dp))
         Text(
             text =
@@ -429,6 +465,38 @@ private fun SudokuFlow(
             )
         is WebSudokuState.Playing ->
             PlayingSudokuContent(
+                state = state,
+                controller = controller,
+            )
+    }
+}
+
+@Composable
+private fun Game2048Flow(
+    state: Web2048State,
+    controller: Web2048Controller,
+    onExitGame2048: () -> Unit,
+) {
+    when (state) {
+        Web2048State.DifficultySelection ->
+            DifficultyContent(
+                gameTitle = "2048",
+                onBack = onExitGame2048,
+                onStart = controller::selectDifficulty,
+            )
+        is Web2048State.Loading ->
+            LoadingLevelContent(
+                difficulty = state.difficulty,
+                onBack = controller::showDifficultySelector,
+            )
+        is Web2048State.Error ->
+            LevelErrorContent(
+                detail = state.detail,
+                onRetry = { controller.selectDifficulty(state.difficulty) },
+                onBack = controller::showDifficultySelector,
+            )
+        is Web2048State.Playing ->
+            PlayingGame2048Content(
                 state = state,
                 controller = controller,
             )
@@ -720,6 +788,62 @@ private fun PlayingSudokuContent(
             text = { Text("Уровень 1 можно пройти ещё раз или выбрать другую сложность.") },
             confirmButton = {
                 TextButton(onClick = controller::retry) { Text("Пройти заново") }
+            },
+            dismissButton = {
+                TextButton(onClick = controller::showDifficultySelector) { Text("К сложности") }
+            },
+        )
+    }
+}
+
+@Composable
+private fun PlayingGame2048Content(
+    state: Web2048State.Playing,
+    controller: Web2048Controller,
+) {
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = controller::showDifficultySelector) { Text("К сложности") }
+            Spacer(Modifier.weight(1f))
+            Text("2048", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.width(GAME_HEADER_TITLE_SPACER))
+        }
+        Game2048Content(
+            game = state.game,
+            difficulty = state.definition.difficulty,
+            levelNumber = state.definition.levelNumber.value,
+            levelCleared = state.levelCleared,
+            motionRevision = state.motionRevision,
+            motionTrace = state.motionTrace,
+            gameplayEnabled = state.game.status == Game2048Status.IN_PROGRESS,
+            onMove = controller::move,
+            onMotionFinished = controller::finishMotion,
+            modifier = Modifier.weight(1f),
+        )
+    }
+
+    if (state.game.status.isTerminal && state.motionTrace == null) {
+        val cleared = state.levelCleared || state.game.status == Game2048Status.SOLVED
+        AlertDialog(
+            onDismissRequest = {},
+            title = {
+                Text(if (cleared) "Уровень пройден" else "Ходов больше нет")
+            },
+            text = {
+                Text(
+                    if (cleared) {
+                        "Уровень 1 пройден. Итоговый счёт: ${formatGame2048Number(state.game.score)}."
+                    } else {
+                        "Цель не достигнута. Итоговый счёт: ${formatGame2048Number(state.game.score)}."
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = controller::retry) { Text("Сыграть заново") }
             },
             dismissButton = {
                 TextButton(onClick = controller::showDifficultySelector) { Text("К сложности") }

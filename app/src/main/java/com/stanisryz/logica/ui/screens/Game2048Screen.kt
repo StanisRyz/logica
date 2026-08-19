@@ -15,7 +15,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -45,18 +44,13 @@ import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.settings.ThemeMode
 import com.stanisryz.logica.ui.components.EconomyResultFeedback
-import com.stanisryz.logica.ui.components.GameHeaderBadges
 import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.LeaveLevelGuard
 import com.stanisryz.logica.ui.components.LoadingState
-import com.stanisryz.logica.ui.components.Metric
-import com.stanisryz.logica.ui.components.MetricGrid
 import com.stanisryz.logica.ui.components.RetryableErrorState
-import com.stanisryz.logica.ui.components.ScreenColumn
-import com.stanisryz.logica.ui.components.StatusChip
 import com.stanisryz.logica.ui.components.ZeroLivesCard
-import com.stanisryz.logica.ui.components.russianLabel
-import com.stanisryz.logica.ui.game2048.Game2048Board
+import com.stanisryz.logica.ui.game2048.Game2048Content
+import com.stanisryz.logica.ui.game2048.formatGame2048Number
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.ui.theme.LogicaTheme
@@ -203,67 +197,44 @@ private fun Game2048ReadyState(
         }
     }
 
-    ScreenColumn(
+    Game2048Content(
+        game = game,
+        difficulty = game.puzzleId.difficulty,
+        levelNumber = levelNumber,
+        levelCleared = uiState.levelCleared,
+        motionRevision = motionEvent?.revision,
+        motionTrace = motionEvent?.trace,
+        gameplayEnabled = economy.isGameplayAllowed,
+        onMove = onMove,
+        onMotionFinished = { revision ->
+            if (hapticsEnabled && game.status.isTerminal) {
+                view.performHapticFeedback(
+                    if (game.status == Game2048Status.SOLVED) {
+                        HapticFeedbackConstants.CONFIRM
+                    } else {
+                        HapticFeedbackConstants.REJECT
+                    },
+                )
+            }
+            onMotionFinished(revision)
+        },
         modifier = modifier,
-        verticalSpacing = LogicaSpacing.item,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        // The gameplay badge is the plain difficulty plus the level: what the goal actually is lives
-        // in the metrics below, because a V1 attempt targets a tile while a V2 attempt targets a score.
-        GameHeaderBadges(game.puzzleId.difficulty.russianLabel(), levelNumber)
-        MetricGrid(
-            listOf(
-                Metric(stringResource(R.string.game_2048_target), game.targetMetricValue()),
-                Metric(stringResource(R.string.game_2048_score), formatGame2048Number(game.score)),
-            ),
-        )
-        // A cleared Catalog level stays visible while freeplay continues; it never blocks the board.
-        if (uiState.levelCleared) {
-            StatusChip(
-                icon = Icons.Filled.TaskAlt,
-                label =
-                    levelNumber
-                        ?.let { stringResource(R.string.game_2048_level_cleared, it) }
-                        ?: stringResource(R.string.game_2048_solved_title),
-                containerColor = LocalLogicaPalette.current.successContainer,
-                contentColor = LocalLogicaPalette.current.onSuccessContainer,
-            )
-            Text(
-                text = stringResource(R.string.game_2048_level_cleared_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        hostStatusContent = {
             when (uiState.completionPersistence) {
-                CompletionPersistence.Saving -> Text(stringResource(R.string.saving_completion))
-                CompletionPersistence.Error -> {
-                    Text(stringResource(R.string.completion_save_error_body))
-                    TextButton(onClick = onRetryCompletion) { Text(stringResource(R.string.retry)) }
-                }
+                CompletionPersistence.Saving ->
+                    if (uiState.levelCleared) Text(stringResource(R.string.saving_completion))
+                CompletionPersistence.Error ->
+                    if (uiState.levelCleared) {
+                        Text(stringResource(R.string.completion_save_error_body))
+                        TextButton(onClick = onRetryCompletion) { Text(stringResource(R.string.retry)) }
+                    }
                 CompletionPersistence.NotRequired,
                 CompletionPersistence.Saved,
                 -> Unit
             }
-        }
-        ZeroLivesCard(economy, onRestoreLife)
-        Game2048Board(
-            game = game,
-            motionEvent = motionEvent,
-            onMove = onMove,
-            onMotionFinished = { revision ->
-                if (hapticsEnabled && game.status.isTerminal) {
-                    view.performHapticFeedback(
-                        if (game.status == Game2048Status.SOLVED) {
-                            HapticFeedbackConstants.CONFIRM
-                        } else {
-                            HapticFeedbackConstants.REJECT
-                        },
-                    )
-                }
-                onMotionFinished(revision)
-            },
-            inputEnabled = economy.isGameplayAllowed,
-        )
-    }
+            ZeroLivesCard(economy, onRestoreLife)
+        },
+    )
     if (game.status.isTerminal && motionEvent == null) {
         Game2048TerminalDialog(
             game = game,
@@ -368,26 +339,6 @@ private fun Game2048TerminalDialog(
     )
 }
 
-/**
- * The goal tile for a restored V1 attempt, or the V2 score target. Once a V2 target is reached the
- * value is marked as met, which is informational only: the game keeps running until the last move.
- */
-@Composable
-private fun Game2048State.targetMetricValue(): String {
-    val targetScore = puzzleId.rules.targetScore ?: return requireNotNull(puzzleId.rules.targetTile).toString()
-    val target = formatGame2048Number(targetScore)
-    return if (goalReached) stringResource(R.string.game_2048_target_reached, target) else target
-}
-
-/** Grouped thousands, so a six-digit score stays readable at a glance. */
-private fun formatGame2048Number(value: Long): String =
-    value
-        .toString()
-        .reversed()
-        .chunked(GROUP_SIZE)
-        .joinToString(GROUP_SEPARATOR)
-        .reversed()
-
 @Composable
 private fun Game2048GameError.message(): String =
     stringResource(
@@ -397,9 +348,6 @@ private fun Game2048GameError.message(): String =
             Game2048GameError.NO_LIVES -> R.string.economy_no_lives_short
         },
     )
-
-private const val GROUP_SIZE = 3
-private const val GROUP_SEPARATOR = "\u00A0"
 
 @Preview(name = "2048", widthDp = 360, heightDp = 760, showBackground = true)
 @Composable

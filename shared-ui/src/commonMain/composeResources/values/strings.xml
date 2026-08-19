@@ -84,6 +84,20 @@
     <string name="crowns_technique_region_column">Все возможные клетки области лежат в одном столбце, поэтому остальные клетки столбца исключаются.</string>
     <string name="crowns_hint_legend">Выделение показывает цель подсказки; соседний цвет — клетки, на которых основан вывод.</string>
 
+    <string name="game_2048_target">Цель</string>
+    <string name="game_2048_score">Счёт</string>
+    <string name="game_2048_board_description">Поле 2048. Доступны действия движения в четырёх направлениях.</string>
+    <string name="game_2048_move_left">Поле 2048: сдвинуть влево</string>
+    <string name="game_2048_move_right">Поле 2048: сдвинуть вправо</string>
+    <string name="game_2048_move_up">Поле 2048: сдвинуть вверх</string>
+    <string name="game_2048_move_down">Поле 2048: сдвинуть вниз</string>
+    <string name="game_2048_tile_description">Строка %1$d, столбец %2$d. Плитка %3$d.</string>
+    <string name="game_2048_empty_cell_description">Строка %1$d, столбец %2$d. Пустая клетка.</string>
+    <string name="game_2048_target_reached">%1$s ✓</string>
+    <string name="game_2048_level_cleared">Уровень %1$d ✓</string>
+    <string name="game_2048_goal_reached">Цель достигнута</string>
+    <string name="game_2048_level_cleared_hint">Цель достигнута — можно продолжать игру</string>
+
     <string name="sudoku_cell_description">Строка %1$d, столбец %2$d. Значение: %3$s. %4$s%5$s</string>
     <string name="sudoku_selected_suffix"> Клетка выбрана.</string>
     <string name="sudoku_hint_naked_single">В клетке %1$d:%2$d подходит только число %3$d.</string>

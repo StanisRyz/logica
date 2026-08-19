@@ -11,13 +11,11 @@ import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Direction
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Engine
-import com.stanisryz.logica.puzzle.core.game2048.Game2048GeneratorVersion
 import com.stanisryz.logica.puzzle.core.game2048.Game2048MoveTrace
 import com.stanisryz.logica.puzzle.core.game2048.Game2048PuzzleId
-import com.stanisryz.logica.puzzle.core.game2048.Game2048Ruleset
 import com.stanisryz.logica.puzzle.core.game2048.Game2048State
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Status
-import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
+import com.stanisryz.logica.puzzle.core.game2048.toGame2048GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
@@ -110,7 +108,7 @@ internal class Game2048ViewModel(
                     Game2048PuzzleId(
                         seed = resolved.seed,
                         difficulty = resolved.difficulty,
-                        generatorVersion = resolved.generatorVersion.toGame2048Version(),
+                        generatorVersion = resolved.generatorVersion.toGame2048GeneratorVersion(),
                     )
                 val gameEngine = Game2048Engine(puzzleId)
                 engine = gameEngine
@@ -223,12 +221,6 @@ internal class Game2048ViewModel(
         if (current is Game2048UiState.Ready && attempt?.resultId == resultId) {
             mutableUiState.value = current.copy(completionPersistence = persistence)
         }
-    }
-
-    private fun GeneratorVersion.toGame2048Version(): Game2048GeneratorVersion {
-        val version = Game2048GeneratorVersion(value)
-        require(Game2048Ruleset.isSupported(version)) { "Unsupported 2048 rules version: $value." }
-        return version
     }
 
     private class NoLivesException : Exception()

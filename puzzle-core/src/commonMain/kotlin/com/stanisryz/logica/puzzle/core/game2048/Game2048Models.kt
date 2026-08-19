@@ -1,6 +1,7 @@
 package com.stanisryz.logica.puzzle.core.game2048
 
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import kotlin.jvm.JvmInline
 
@@ -36,6 +37,13 @@ value class Game2048GeneratorVersion(
         /** Score-target rules used by every new game. */
         val V2 = Game2048GeneratorVersion(2)
     }
+}
+
+/** Resolves a frozen Catalog/Daily generator identity through the supported 2048 rules contract. */
+fun GeneratorVersion.toGame2048GeneratorVersion(): Game2048GeneratorVersion {
+    val version = Game2048GeneratorVersion(value)
+    require(Game2048Ruleset.isSupported(version)) { "Unsupported 2048 rules version: $value." }
+    return version
 }
 
 /**

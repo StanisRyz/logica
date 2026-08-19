@@ -1,6 +1,6 @@
 # Логика дня
 
-Logica contains the native Android application with playable Balance, Crowns, Word, Sudoku, and 2048 puzzles plus initial playable Yandex Games Web slices for Balance, Crowns, Word, and Sudoku. The deterministic core and canonical puzzle data are shared through `:puzzle-core`, their Compose Multiplatform presentation lives in `:shared-ui`, and neutral Store, Ads, Player, Cloud Save, lifecycle, and capability contracts live in `:platform-contracts`. Android remains the complete application; Web does not yet provide full application parity or durable progression.
+Logica contains the native Android application with playable Balance, Crowns, Word, Sudoku, and 2048 puzzles plus initial playable Yandex Games Web Level 1 slices for all five games. The deterministic core and canonical puzzle data are shared through `:puzzle-core`, their Compose Multiplatform presentation lives in `:shared-ui`, and neutral Store, Ads, Player, Cloud Save, lifecycle, and capability contracts live in `:platform-contracts`. Android remains the complete application; Web does not yet provide full application parity or durable progression.
 
 Every catalog game is played as a numbered sequence of fixed levels. Level 1 of Легко is the same
 puzzle for everyone, and so is level 743 — each game and each difficulty keeps its own level number,
@@ -38,9 +38,8 @@ where supported and falls back to JavaScript. Build the Web outputs and the uplo
 
 The ZIP is written to `web-app/build/distributions/logica-yandex.zip`. The current Web host includes
 SDK bootstrap, lifecycle/gameplay activity handling, lazy frozen Level Pack loading, responsive 9:16
-presentation, and playable Balance, Crowns, Word, and Sudoku Catalog Level 1 flows for all four difficulties. It does not yet
-include durable progression, 2048, Player, Payments, ads, Store, Profile, Daily, or a
-sticky banner.
+presentation, and playable Catalog Level 1 flows for all five games and all four difficulties. It does not yet
+include durable progression, Player, Payments, ads, Store, Profile, Daily, or a sticky banner.
 
 Crowns, the second puzzle type, now has a pure-Kotlin domain model, deterministic solving and generation, solve-based difficulty evaluation, and unique/multiple-solution detection in `puzzle-core/`.
 

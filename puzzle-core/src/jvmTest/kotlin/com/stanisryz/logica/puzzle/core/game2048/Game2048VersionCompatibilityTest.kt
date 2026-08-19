@@ -1,10 +1,12 @@
 package com.stanisryz.logica.puzzle.core.game2048
 
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -13,6 +15,15 @@ import org.junit.Test
  * board, the merge, the score, and the deterministic spawn; only the win condition differs.
  */
 class Game2048VersionCompatibilityTest {
+    @Test
+    fun `common generator version resolver accepts v1 and v2 only`() {
+        assertEquals(Game2048GeneratorVersion.V1, GeneratorVersion(1).toGame2048GeneratorVersion())
+        assertEquals(Game2048GeneratorVersion.V2, GeneratorVersion(2).toGame2048GeneratorVersion())
+        assertThrows(IllegalArgumentException::class.java) {
+            GeneratorVersion(3).toGame2048GeneratorVersion()
+        }
+    }
+
     @Test
     fun `v1 keeps its target tiles and immediate victory`() {
         assertEquals(256, Game2048RulesetV1(Difficulty.EASY).targetTile)
