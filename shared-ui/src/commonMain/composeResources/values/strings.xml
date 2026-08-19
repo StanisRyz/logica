@@ -83,4 +83,12 @@
     <string name="crowns_technique_region_row">Все возможные клетки области лежат в одной строке, поэтому остальные клетки строки исключаются.</string>
     <string name="crowns_technique_region_column">Все возможные клетки области лежат в одном столбце, поэтому остальные клетки столбца исключаются.</string>
     <string name="crowns_hint_legend">Выделение показывает цель подсказки; соседний цвет — клетки, на которых основан вывод.</string>
+
+    <string name="sudoku_cell_description">Строка %1$d, столбец %2$d. Значение: %3$s. %4$s%5$s</string>
+    <string name="sudoku_selected_suffix"> Клетка выбрана.</string>
+    <string name="sudoku_hint_naked_single">В клетке %1$d:%2$d подходит только число %3$d.</string>
+    <string name="sudoku_hint_hidden_row">Число %1$d может стоять только в столбце %3$d строки %2$d.</string>
+    <string name="sudoku_hint_hidden_column">Число %1$d может стоять только в строке %3$d столбца %2$d.</string>
+    <string name="sudoku_hint_hidden_block">Число %1$d может стоять только в клетке %3$d:%4$d блока %2$d.</string>
+    <string name="sudoku_hint_fallback">Простые ходы не найдены: в клетке %1$d:%2$d подтверждено число %3$d.</string>
 </resources>

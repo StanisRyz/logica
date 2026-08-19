@@ -9,9 +9,8 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.sudoku.BinarySudokuDataset
+import com.stanisryz.logica.puzzle.core.sudoku.SudokuCatalogProvider
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetResult
-import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetVersion
-import com.stanisryz.logica.puzzle.core.sudoku.SudokuDifficulty
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
@@ -42,10 +41,10 @@ class SharedSudokuDataParityTest {
         val puzzle =
             when (
                 val result =
-                    dataset.selectPuzzle(
-                        SudokuDatasetVersion.V1,
-                        SudokuDifficulty.EASY,
-                        definition.seed.value,
+                    SudokuCatalogProvider(dataset).select(
+                        definition.difficulty,
+                        definition.seed,
+                        definition.generatorVersion,
                     )
             ) {
                 is SudokuDatasetResult.Success -> result.value

@@ -15,9 +15,10 @@ fun main() {
     val balanceController = WebBalanceController.create(controller.puzzleDataLoader)
     val crownsController = WebCrownsController.create(controller.puzzleDataLoader)
     val wordController = WebWordController.create(controller.puzzleDataLoader)
+    val sudokuController = WebSudokuController.create(controller.puzzleDataLoader)
 
     ComposeViewport {
-        WebApp(controller, balanceController, crownsController, wordController, lifecycle)
+        WebApp(controller, balanceController, crownsController, wordController, sudokuController, lifecycle)
     }
     controller.start()
 }

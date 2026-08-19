@@ -1,20 +1,15 @@
-package com.stanisryz.logica.sudoku
+package com.stanisryz.logica.puzzle.core.sudoku
 
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
-import com.stanisryz.logica.puzzle.core.sudoku.SudokuDataset
-import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetResult
-import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetVersion
-import com.stanisryz.logica.puzzle.core.sudoku.SudokuDifficulty
-import com.stanisryz.logica.puzzle.core.sudoku.SudokuPuzzle
 
 /**
- * Catalog identity adapter for the immutable Sudoku Dataset V1. The generic platform identity
- * stores the selected difficulty, selector seed, and this provider version; the resulting puzzle
- * keeps its authoritative dataset version and SHA-256 fingerprint in [SudokuPuzzle.id].
+ * Catalog identity adapter for the immutable Sudoku Dataset V1. The platform Catalog identity
+ * supplies the difficulty, frozen selector seed, and provider version; the selected record keeps
+ * its authoritative dataset version and fingerprint in [SudokuPuzzle.id].
  */
-internal class SudokuCatalogProvider(
+class SudokuCatalogProvider(
     private val dataset: SudokuDataset,
 ) {
     val version: GeneratorVersion = VERSION
@@ -24,7 +19,9 @@ internal class SudokuCatalogProvider(
         selectorSeed: PuzzleSeed,
         providerVersion: GeneratorVersion = version,
     ): SudokuDatasetResult<SudokuPuzzle> {
-        require(providerVersion == version) { "Unsupported Sudoku Catalog provider version: ${providerVersion.value}." }
+        require(providerVersion == version) {
+            "Unsupported Sudoku Catalog provider version: ${providerVersion.value}."
+        }
         return dataset.selectPuzzle(
             version = SudokuDatasetVersion.V1,
             difficulty = difficulty.toSudokuDifficulty(),
@@ -37,7 +34,7 @@ internal class SudokuCatalogProvider(
     }
 }
 
-internal fun Difficulty.toSudokuDifficulty(): SudokuDifficulty =
+fun Difficulty.toSudokuDifficulty(): SudokuDifficulty =
     when (this) {
         Difficulty.EASY -> SudokuDifficulty.EASY
         Difficulty.MEDIUM -> SudokuDifficulty.MEDIUM
@@ -45,7 +42,7 @@ internal fun Difficulty.toSudokuDifficulty(): SudokuDifficulty =
         Difficulty.EXPERT -> SudokuDifficulty.EXPERT
     }
 
-internal fun SudokuDifficulty.toPlatformDifficulty(): Difficulty =
+fun SudokuDifficulty.toPlatformDifficulty(): Difficulty =
     when (this) {
         SudokuDifficulty.EASY -> Difficulty.EASY
         SudokuDifficulty.MEDIUM -> Difficulty.MEDIUM

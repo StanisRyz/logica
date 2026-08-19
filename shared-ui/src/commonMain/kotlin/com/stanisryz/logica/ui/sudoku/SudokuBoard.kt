@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lock
@@ -28,66 +27,87 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import com.stanisryz.logica.R
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellState
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameState
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuPosition
+import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.cell_empty
+import com.stanisryz.logica.shared.ui.generated.resources.confirmed_cell
+import com.stanisryz.logica.shared.ui.generated.resources.editable_cell
+import com.stanisryz.logica.shared.ui.generated.resources.fixed_cell
+import com.stanisryz.logica.shared.ui.generated.resources.incorrect_cell
+import com.stanisryz.logica.shared.ui.generated.resources.pencil_marks_suffix
+import com.stanisryz.logica.shared.ui.generated.resources.sudoku_cell_description
+import com.stanisryz.logica.shared.ui.generated.resources.sudoku_selected_suffix
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
-internal fun SudokuBoard(
+fun SudokuBoard(
     game: SudokuGameState,
     selectedCell: SudokuPosition?,
     onCellSelected: (SudokuPosition) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    BoxWithConstraints(
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
+    ) {
+        val boardSide = minOf(maxWidth, maxHeight, MAX_BOARD_SIDE)
+        SudokuGrid(
+            game = game,
+            selectedCell = selectedCell,
+            onCellSelected = onCellSelected,
+            enabled = enabled,
+            modifier = Modifier.size(boardSide),
+        )
+    }
+}
+
+@Composable
+private fun SudokuGrid(
+    game: SudokuGameState,
+    selectedCell: SudokuPosition?,
+    onCellSelected: (SudokuPosition) -> Unit,
+    enabled: Boolean,
+    modifier: Modifier,
+) {
     val selectedValue = selectedCell?.let(game::cellAt)?.value?.takeIf { it != 0 }
     val colors = MaterialTheme.colorScheme
     BoxWithConstraints(
         modifier =
-            modifier
-                .widthIn(max = 560.dp)
-                .fillMaxWidth()
-                .drawWithContent {
-                    drawContent()
-                    val cellSize = size.width / BOARD_SIZE
-                    for (line in 0..BOARD_SIZE) {
-                        val coordinate = line * cellSize
-                        val strong = line % BLOCK_SIZE == 0
-                        val stroke = if (strong) STRONG_GRID_WIDTH.toPx() else THIN_GRID_WIDTH.toPx()
-                        val color = if (strong) colors.outline else colors.outlineVariant
-                        drawLine(color, Offset(coordinate, 0f), Offset(coordinate, size.height), stroke, StrokeCap.Square)
-                        drawLine(color, Offset(0f, coordinate), Offset(size.width, coordinate), stroke, StrokeCap.Square)
-                    }
-                    selectedCell?.let { position ->
-                        drawCellOutline(position, cellSize, colors.primary, SELECTED_WIDTH.toPx())
-                    } ?: game.currentHint?.position?.let { position ->
-                        drawCellOutline(position, cellSize, colors.tertiary, HINT_WIDTH.toPx())
-                    }
-                },
+            modifier.drawWithContent {
+                drawContent()
+                val cellSize = size.width / BOARD_SIZE
+                for (line in 0..BOARD_SIZE) {
+                    val coordinate = line * cellSize
+                    val strong = line % BLOCK_SIZE == 0
+                    val stroke = if (strong) STRONG_GRID_WIDTH.toPx() else THIN_GRID_WIDTH.toPx()
+                    val color = if (strong) colors.outline else colors.outlineVariant
+                    drawLine(color, Offset(coordinate, 0f), Offset(coordinate, size.height), stroke, StrokeCap.Square)
+                    drawLine(color, Offset(0f, coordinate), Offset(size.width, coordinate), stroke, StrokeCap.Square)
+                }
+                selectedCell?.let { position ->
+                    drawCellOutline(position, cellSize, colors.primary, SELECTED_WIDTH.toPx())
+                } ?: game.currentHint?.position?.let { position ->
+                    drawCellOutline(position, cellSize, colors.tertiary, HINT_WIDTH.toPx())
+                }
+            },
     ) {
         val cellWidth = maxWidth / BOARD_SIZE
-        /*
-         * Both text sizes are derived from the cell the board actually got, and converted through
-         * the current density rather than written as fixed `sp`: a cell does not grow with the
-         * system font scale, so a candidate expressed in scaled units is exactly what leaves the
-         * digits clipped or hanging outside their cell on a real device.
-         */
+        // Text follows the actual cell size, including on a height-limited Web board.
         val candidateTextSize =
             with(LocalDensity.current) {
                 (cellWidth * CANDIDATE_TEXT_RATIO).coerceIn(CANDIDATE_MIN_TEXT, CANDIDATE_MAX_TEXT).toSp()
@@ -96,7 +116,7 @@ internal fun SudokuBoard(
             with(LocalDensity.current) {
                 (cellWidth * VALUE_TEXT_RATIO).coerceIn(VALUE_MIN_TEXT, VALUE_MAX_TEXT).toSp()
             }
-        Column(Modifier.size(maxWidth)) {
+        Column(Modifier.fillMaxSize()) {
             repeat(BOARD_SIZE) { row ->
                 Row(Modifier.fillMaxWidth().weight(1f)) {
                     repeat(BOARD_SIZE) { column ->
@@ -154,23 +174,23 @@ private fun SudokuCell(
     val stateLabel =
         stringResource(
             when (cell.status) {
-                SudokuCellStatus.EMPTY -> R.string.editable_cell
-                SudokuCellStatus.GIVEN -> R.string.fixed_cell
-                SudokuCellStatus.CORRECT -> R.string.confirmed_cell
-                SudokuCellStatus.INCORRECT -> R.string.incorrect_cell
+                SudokuCellStatus.EMPTY -> Res.string.editable_cell
+                SudokuCellStatus.GIVEN -> Res.string.fixed_cell
+                SudokuCellStatus.CORRECT -> Res.string.confirmed_cell
+                SudokuCellStatus.INCORRECT -> Res.string.incorrect_cell
             },
         )
-    val valueLabel = if (cell.value == 0) stringResource(R.string.cell_empty) else cell.value.toString()
+    val valueLabel = if (cell.value == 0) stringResource(Res.string.cell_empty) else cell.value.toString()
     val candidateSuffix =
         if (cell.candidates.isEmpty) {
             ""
         } else {
-            stringResource(R.string.pencil_marks_suffix, cell.candidates.digits.joinToString())
+            stringResource(Res.string.pencil_marks_suffix, cell.candidates.digits.joinToString())
         }
-    val selectedSuffix = if (isSelected) stringResource(R.string.sudoku_selected_suffix) else ""
+    val selectedSuffix = if (isSelected) stringResource(Res.string.sudoku_selected_suffix) else ""
     val description =
         stringResource(
-            R.string.sudoku_cell_description,
+            Res.string.sudoku_cell_description,
             position.row + 1,
             position.column + 1,
             valueLabel,
@@ -211,8 +231,8 @@ private fun SudokuCell(
 }
 
 /**
- * Outlines are painted after the board grid, covering any divider beneath them. Perimeter lines
- * move inward by half a stroke so all four selected edges retain their full visual thickness.
+ * Outlines are painted after the grid. Perimeter strokes move inward by half their width, keeping
+ * the selected cell equally thick on all four sides without recreating the old top/left bias.
  */
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawCellOutline(
     position: SudokuPosition,
@@ -235,11 +255,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawCellOutline(
     drawLine(color, Offset(outlineRight, outlineTop), Offset(outlineRight, outlineBottom), width, StrokeCap.Butt)
 }
 
-/**
- * The 3x3 candidate grid, kept strictly inside its own cell. Each digit is a single centred line
- * whose line box is its own font size — the inherited body line height is taller than a third of a
- * cell, which is what used to push the lower candidates over the grid lines and out of the cell.
- */
+/** Compact 3x3 candidate cells with no inherited font padding or extra leading. */
 @Composable
 private fun SudokuCandidates(
     cell: SudokuCellState,
@@ -293,10 +309,8 @@ private val SudokuPosition.blockIndex: Int
 private val SudokuCellStatus.isConfirmedValue: Boolean
     get() = this == SudokuCellStatus.GIVEN || this == SudokuCellStatus.CORRECT
 
-/** No font padding and no extra leading: the glyph gets the whole box a small cell can spare. */
 private val COMPACT_CELL_TEXT_STYLE =
     TextStyle(
-        platformStyle = PlatformTextStyle(includeFontPadding = false),
         lineHeightStyle =
             LineHeightStyle(
                 alignment = LineHeightStyle.Alignment.Center,
@@ -308,6 +322,7 @@ private const val BOARD_SIZE = 9
 private const val BLOCK_SIZE = 3
 private const val CANDIDATE_TEXT_RATIO = 0.24f
 private const val VALUE_TEXT_RATIO = 0.54f
+private val MAX_BOARD_SIDE = 560.dp
 private val CANDIDATE_PADDING = 1.dp
 private val CANDIDATE_MIN_TEXT = 6.dp
 private val CANDIDATE_MAX_TEXT = 11.dp

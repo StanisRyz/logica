@@ -14,28 +14,35 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.stanisryz.logica.R
+import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.hint
+import com.stanisryz.logica.shared.ui.generated.resources.tool_off
+import com.stanisryz.logica.shared.ui.generated.resources.tool_on
+import com.stanisryz.logica.shared.ui.generated.resources.tool_pencil
 import com.stanisryz.logica.ui.components.PuzzleTool
 import com.stanisryz.logica.ui.components.PuzzleToolBar
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
-internal fun SudokuNumberPad(
+fun SudokuNumberPad(
     enabled: Boolean,
     onDigit: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    spacing: Dp = SUDOKU_DIGIT_ROW_SPACING,
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(SUDOKU_DIGIT_ROW_SPACING),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(spacing),
     ) {
         (1..DIGIT_COUNT).chunked(DIGITS_PER_ROW).forEach { row ->
             Row(
-                horizontalArrangement = Arrangement.spacedBy(SUDOKU_DIGIT_ROW_SPACING),
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(spacing),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 row.forEach { digit ->
                     SudokuDigitButton(digit = digit, enabled = enabled, onClick = { onDigit(digit) })
@@ -45,7 +52,6 @@ internal fun SudokuNumberPad(
     }
 }
 
-/** A focused, padding-free circular key so every digit sits at the exact center of its control. */
 @Composable
 private fun SudokuDigitButton(
     digit: Int,
@@ -63,7 +69,7 @@ private fun SudokuDigitButton(
 }
 
 @Composable
-internal fun SudokuToolBar(
+fun SudokuToolBar(
     isPencilMode: Boolean,
     onToggle: () -> Unit,
     onHint: () -> Unit,
@@ -74,15 +80,9 @@ internal fun SudokuToolBar(
     PuzzleToolBar(
         tools =
             listOf(
+                pencilTool(isPencilMode, onToggle),
                 PuzzleTool(
-                    label = stringResource(R.string.tool_pencil),
-                    stateDescription = stringResource(if (isPencilMode) R.string.tool_on else R.string.tool_off),
-                    selected = isPencilMode,
-                    onClick = onToggle,
-                    symbol = { Icon(Icons.Filled.Edit, contentDescription = null) },
-                ),
-                PuzzleTool(
-                    label = stringResource(R.string.hint),
+                    label = stringResource(Res.string.hint),
                     stateDescription = null,
                     selected = null,
                     enabled = hintEnabled,
@@ -95,36 +95,36 @@ internal fun SudokuToolBar(
     )
 }
 
-/** Tutorial mode exposes only Pencil, but keeps the production control's icon and semantics. */
+/** Tutorial mode exposes the same production Pencil control and semantics. */
 @Composable
-internal fun SudokuPencilToggle(
+fun SudokuPencilToggle(
     isPencilMode: Boolean,
     enabled: Boolean,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     PuzzleToolBar(
-        tools =
-            listOf(
-                PuzzleTool(
-                    label = stringResource(R.string.tool_pencil),
-                    stateDescription = stringResource(if (isPencilMode) R.string.tool_on else R.string.tool_off),
-                    selected = isPencilMode,
-                    onClick = onToggle,
-                    symbol = { Icon(Icons.Filled.Edit, contentDescription = null) },
-                ),
-            ),
+        tools = listOf(pencilTool(isPencilMode, onToggle)),
         modifier = modifier,
         enabled = enabled,
     )
 }
 
+@Composable
+private fun pencilTool(
+    isPencilMode: Boolean,
+    onToggle: () -> Unit,
+): PuzzleTool =
+    PuzzleTool(
+        label = stringResource(Res.string.tool_pencil),
+        stateDescription = stringResource(if (isPencilMode) Res.string.tool_on else Res.string.tool_off),
+        selected = isPencilMode,
+        onClick = onToggle,
+        symbol = { Icon(Icons.Filled.Edit, contentDescription = null) },
+    )
+
 private const val DIGIT_COUNT = 9
 private const val DIGITS_PER_ROW = 3
-private const val KEYPAD_ROW_COUNT = DIGIT_COUNT / DIGITS_PER_ROW
 
 internal val SUDOKU_DIGIT_CONTROL_SIZE = 44.dp
 internal val SUDOKU_DIGIT_ROW_SPACING = 8.dp
-
-internal val SudokuNumberPadHeight =
-    SUDOKU_DIGIT_CONTROL_SIZE * KEYPAD_ROW_COUNT + SUDOKU_DIGIT_ROW_SPACING * (KEYPAD_ROW_COUNT - 1)

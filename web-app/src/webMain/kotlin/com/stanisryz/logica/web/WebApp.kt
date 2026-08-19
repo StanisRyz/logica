@@ -41,10 +41,13 @@ import com.stanisryz.logica.platform.PlatformLifecycleState
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
+import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameStatus
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
 import com.stanisryz.logica.ui.balance.BalanceGameContent
 import com.stanisryz.logica.ui.components.DifficultySelector
 import com.stanisryz.logica.ui.crowns.CrownsGameContent
+import com.stanisryz.logica.ui.sudoku.SudokuGameContent
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.ui.theme.LogicaTheme
 import com.stanisryz.logica.ui.word.WordGameContent
@@ -57,6 +60,8 @@ private sealed interface WebRoute {
     data object Crowns : WebRoute
 
     data object Word : WebRoute
+
+    data object Sudoku : WebRoute
 }
 
 @Composable
@@ -65,6 +70,7 @@ internal fun WebApp(
     balanceController: WebBalanceController,
     crownsController: WebCrownsController,
     wordController: WebWordController,
+    sudokuController: WebSudokuController,
     lifecycle: WebHostLifecycle,
 ) {
     val lifecycleState by lifecycle.state.collectAsState()
@@ -74,12 +80,13 @@ internal fun WebApp(
             withFrameNanos { }
             controller.onComposeRootRendered()
         }
-        DisposableEffect(controller, balanceController, crownsController, wordController) {
+        DisposableEffect(controller, balanceController, crownsController, wordController, sudokuController) {
             onDispose {
                 controller.setGameplayActive(false)
                 balanceController.dispose()
                 crownsController.dispose()
                 wordController.dispose()
+                sudokuController.dispose()
             }
         }
 
@@ -94,6 +101,7 @@ internal fun WebApp(
                         balanceController = balanceController,
                         crownsController = crownsController,
                         wordController = wordController,
+                        sudokuController = sudokuController,
                         onRendered = controller::onInitialHostUiReady,
                     )
                 is WebBootstrapState.FatalError -> FatalContent(state.message)
@@ -143,18 +151,20 @@ private fun ReadyContent(
     balanceController: WebBalanceController,
     crownsController: WebCrownsController,
     wordController: WebWordController,
+    sudokuController: WebSudokuController,
     onRendered: () -> Unit,
 ) {
     var route by remember { mutableStateOf<WebRoute>(WebRoute.Landing) }
     val balanceState = balanceController.state
     val crownsState = crownsController.state
     val wordState = wordController.state
+    val sudokuState = sudokuController.state
 
     LaunchedEffect(mode) {
         withFrameNanos { }
         onRendered()
     }
-    LaunchedEffect(route, balanceState, crownsState, wordState, lifecycleState) {
+    LaunchedEffect(route, balanceState, crownsState, wordState, sudokuState, lifecycleState) {
         controller.setGameplayActive(
             when (route) {
                 WebRoute.Landing -> false
@@ -167,6 +177,9 @@ private fun ReadyContent(
                 WebRoute.Word ->
                     wordState is WebWordState.Playing &&
                         wordState.game.status == WordGameStatus.IN_PROGRESS
+                WebRoute.Sudoku ->
+                    sudokuState is WebSudokuState.Playing &&
+                        sudokuState.game.status == SudokuGameStatus.IN_PROGRESS
             } &&
                 lifecycleState == PlatformLifecycleState.ACTIVE,
         )
@@ -188,6 +201,10 @@ private fun ReadyContent(
                 onOpenWord = {
                     wordController.showDifficultySelector()
                     route = WebRoute.Word
+                },
+                onOpenSudoku = {
+                    sudokuController.showDifficultySelector()
+                    route = WebRoute.Sudoku
                 },
             )
         WebRoute.Balance ->
@@ -217,6 +234,15 @@ private fun ReadyContent(
                     route = WebRoute.Landing
                 },
             )
+        WebRoute.Sudoku ->
+            SudokuFlow(
+                state = sudokuState,
+                controller = sudokuController,
+                onExitSudoku = {
+                    sudokuController.showDifficultySelector()
+                    route = WebRoute.Landing
+                },
+            )
     }
 }
 
@@ -227,6 +253,7 @@ private fun LandingContent(
     onOpenBalance: () -> Unit,
     onOpenCrowns: () -> Unit,
     onOpenWord: () -> Unit,
+    onOpenSudoku: () -> Unit,
 ) {
     CenteredColumn {
         Box(
@@ -254,6 +281,8 @@ private fun LandingContent(
         Button(onClick = onOpenCrowns) { Text("Играть в Короны") }
         Spacer(Modifier.height(12.dp))
         Button(onClick = onOpenWord) { Text("Играть в Слово") }
+        Spacer(Modifier.height(12.dp))
+        Button(onClick = onOpenSudoku) { Text("Играть в Судоку") }
         Spacer(Modifier.height(24.dp))
         Text(
             text =
@@ -368,6 +397,38 @@ private fun WordFlow(
             )
         is WebWordState.Playing ->
             PlayingWordContent(
+                state = state,
+                controller = controller,
+            )
+    }
+}
+
+@Composable
+private fun SudokuFlow(
+    state: WebSudokuState,
+    controller: WebSudokuController,
+    onExitSudoku: () -> Unit,
+) {
+    when (state) {
+        WebSudokuState.DifficultySelection ->
+            DifficultyContent(
+                gameTitle = "Судоку",
+                onBack = onExitSudoku,
+                onStart = controller::selectDifficulty,
+            )
+        is WebSudokuState.Loading ->
+            LoadingLevelContent(
+                difficulty = state.difficulty,
+                onBack = controller::showDifficultySelector,
+            )
+        is WebSudokuState.Error ->
+            LevelErrorContent(
+                detail = state.detail,
+                onRetry = { controller.selectDifficulty(state.difficulty) },
+                onBack = controller::showDifficultySelector,
+            )
+        is WebSudokuState.Playing ->
+            PlayingSudokuContent(
                 state = state,
                 controller = controller,
             )
@@ -593,6 +654,70 @@ private fun PlayingWordContent(
                     },
                 )
             },
+            confirmButton = {
+                TextButton(onClick = controller::retry) { Text("Пройти заново") }
+            },
+            dismissButton = {
+                TextButton(onClick = controller::showDifficultySelector) { Text("К сложности") }
+            },
+        )
+    }
+}
+
+@Composable
+private fun PlayingSudokuContent(
+    state: WebSudokuState.Playing,
+    controller: WebSudokuController,
+) {
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = controller::showDifficultySelector) { Text("К сложности") }
+            Spacer(Modifier.weight(1f))
+            Text("Судоку", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.width(GAME_HEADER_TITLE_SPACER))
+        }
+        val selectedStatus = state.selectedCell?.let(state.game::cellAt)?.status
+        val gameplayEnabled = state.game.status == SudokuGameStatus.IN_PROGRESS
+        val inputEnabled =
+            gameplayEnabled &&
+                if (state.isPencilMode) {
+                    selectedStatus == SudokuCellStatus.EMPTY
+                } else {
+                    selectedStatus == SudokuCellStatus.EMPTY || selectedStatus == SudokuCellStatus.INCORRECT
+                }
+        SudokuGameContent(
+            puzzle = state.puzzle,
+            game = state.game,
+            selectedCell = state.selectedCell,
+            isPencilMode = state.isPencilMode,
+            levelNumber = state.definition.levelNumber.value,
+            gameplayEnabled = gameplayEnabled,
+            inputEnabled = inputEnabled,
+            onCellSelected = controller::selectCell,
+            onDigit = controller::inputDigit,
+            onTogglePencil = controller::togglePencilMode,
+            onHint = controller::requestHint,
+            modifier = Modifier.weight(1f),
+        )
+    }
+
+    if (state.game.status.isTerminal) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = {
+                Text(
+                    if (state.game.status == SudokuGameStatus.SOLVED) {
+                        "Уровень решён"
+                    } else {
+                        "Попытка не пройдена"
+                    },
+                )
+            },
+            text = { Text("Уровень 1 можно пройти ещё раз или выбрать другую сложность.") },
             confirmButton = {
                 TextButton(onClick = controller::retry) { Text("Пройти заново") }
             },

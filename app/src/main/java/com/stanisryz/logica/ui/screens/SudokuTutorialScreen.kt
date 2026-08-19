@@ -2,6 +2,7 @@ package com.stanisryz.logica.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lightbulb
@@ -83,7 +84,12 @@ private fun SudokuTutorialScreen(
         Text(stringResource(STEP_BODIES[step]), style = MaterialTheme.typography.bodyMedium)
         if (step > 0) {
             MistakeIndicator(game.mistakesUsed, SudokuGameState.MAX_MISTAKES)
-            SudokuBoard(game, selectedCell, onCellSelected = { selectedCell = it })
+            SudokuBoard(
+                game,
+                selectedCell,
+                onCellSelected = { selectedCell = it },
+                modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+            )
             if (step == 2) {
                 SudokuPencilToggle(pencil, enabled = true, onToggle = { pencil = !pencil })
             }
