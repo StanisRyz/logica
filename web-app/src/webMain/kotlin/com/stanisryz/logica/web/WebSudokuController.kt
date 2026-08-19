@@ -71,7 +71,7 @@ internal class WebSudokuController(
     private val provider = SudokuCatalogProvider(dataset)
     private var operation: Job? = null
     private var engine: SudokuGameEngine? = null
-    private val completion = WebCatalogCompletionController(progression, scope)
+    private val completion = WebCatalogCompletionController(progression)
 
     var state by mutableStateOf<WebSudokuState>(WebSudokuState.DifficultySelection)
         private set

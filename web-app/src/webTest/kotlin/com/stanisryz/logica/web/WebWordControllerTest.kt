@@ -27,6 +27,35 @@ import kotlin.test.assertTrue
 class WebWordControllerTest {
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
+    fun solvedLevelIsDurableBeforeImmediateExitCanResetCompletion() =
+        runTest {
+            val progression = FakeWebCatalogProgressAccess(initialLevel = 7)
+            val controller =
+                WebWordController(
+                    loadPack = {},
+                    loadRuntimeResources = {},
+                    progression = progression,
+                    levelPack = fixedEasyLevels,
+                    runtimeResolver = { testRuntime },
+                    scope = this,
+                )
+
+            controller.selectDifficulty(Difficulty.EASY)
+            advanceUntilIdle()
+            TEST_ANSWER.forEachIndexed(controller::setLetter)
+            controller.submit()
+            controller.showDifficultySelector()
+
+            val current =
+                assertIs<WebCatalogLevelResolution.Resolved>(
+                    progression.resolveCurrentLevel(PuzzleType.WORD, Difficulty.EASY),
+                )
+            assertEquals(8, current.attempt.levelId.levelNumber.value)
+            assertEquals(1, progression.advanceCalls)
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
     fun authoritativeLevelAdvancesOnceAndNextReloadsTheDurableLevelAfterReveal() =
         runTest {
             var loadedDifficulty: Difficulty? = null

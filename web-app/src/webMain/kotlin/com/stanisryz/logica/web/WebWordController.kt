@@ -73,7 +73,7 @@ internal class WebWordController(
 ) {
     private var operation: Job? = null
     private var engine: WordGameEngine? = null
-    private val completion = WebCatalogCompletionController(progression, scope)
+    private val completion = WebCatalogCompletionController(progression)
 
     var state by mutableStateOf<WebWordState>(WebWordState.DifficultySelection)
         private set

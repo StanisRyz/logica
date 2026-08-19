@@ -64,7 +64,7 @@ internal class WebBalanceController(
 ) {
     private var operation: Job? = null
     private var engine: BalanceGameEngine? = null
-    private val completion = WebCatalogCompletionController(progression, scope)
+    private val completion = WebCatalogCompletionController(progression)
 
     var state by mutableStateOf<WebBalanceState>(WebBalanceState.DifficultySelection)
         private set

@@ -73,38 +73,64 @@ class Web2048ControllerTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun firstV2TargetCrossingAdvancesOnceWhileFreeplayContinuesThroughGameOver() =
+    fun firstV2TargetCrossingSurvivesImmediateExitAndFreeplayCannotAdvanceTwice() =
         runTest {
-            val progression = FakeWebCatalogProgressAccess()
-            val controller =
+            val exitProgression = FakeWebCatalogProgressAccess()
+            val exitController =
                 Web2048Controller(
                     loadPack = {},
-                    progression = progression,
+                    progression = exitProgression,
                     levelPack = fixedMediumLevelOne,
                     engineFactory = { puzzleId -> scriptedV2Engine(puzzleId) },
                     scope = this,
                 )
 
-            controller.selectDifficulty(Difficulty.MEDIUM)
+            exitController.selectDifficulty(Difficulty.MEDIUM)
             advanceUntilIdle()
-            controller.move(Game2048Direction.LEFT)
-            advanceUntilIdle()
+            exitController.move(Game2048Direction.LEFT)
+            exitController.showDifficultySelector()
 
-            val freeplay = assertIs<Web2048State.Playing>(controller.state)
+            val current =
+                assertIs<WebCatalogLevelResolution.Resolved>(
+                    exitProgression.resolveCurrentLevel(PuzzleType.GAME_2048, Difficulty.MEDIUM),
+                )
+            assertEquals(2, current.attempt.levelId.levelNumber.value)
+            assertEquals(1, exitProgression.advanceCalls)
+
+            val freeplayProgression = FakeWebCatalogProgressAccess()
+            val freeplayController =
+                Web2048Controller(
+                    loadPack = {},
+                    progression = freeplayProgression,
+                    levelPack = fixedMediumLevelOne,
+                    engineFactory = { puzzleId -> scriptedV2Engine(puzzleId) },
+                    scope = this,
+                )
+
+            freeplayController.selectDifficulty(Difficulty.MEDIUM)
+            advanceUntilIdle()
+            freeplayController.move(Game2048Direction.LEFT)
+
+            val freeplay = assertIs<Web2048State.Playing>(freeplayController.state)
             assertEquals(Game2048Status.IN_PROGRESS, freeplay.game.status)
             assertEquals(true, freeplay.game.goalReached)
-            assertEquals(1, progression.advanceCalls)
-            assertEquals(2, assertIs<WebCatalogCompletionState.Saved>(controller.completionState).nextLevel.levelNumber.value)
+            assertEquals(1, freeplayProgression.advanceCalls)
+            assertEquals(
+                2,
+                assertIs<WebCatalogCompletionState.Saved>(freeplayController.completionState).nextLevel.levelNumber.value,
+            )
 
-            controller.finishMotion(assertNotNull(freeplay.motionRevision))
-            controller.move(Game2048Direction.RIGHT)
-            val terminal = assertIs<Web2048State.Playing>(controller.state)
-            controller.finishMotion(assertNotNull(terminal.motionRevision))
-            advanceUntilIdle()
+            freeplayController.finishMotion(assertNotNull(freeplay.motionRevision))
+            freeplayController.move(Game2048Direction.RIGHT)
+            val terminal = assertIs<Web2048State.Playing>(freeplayController.state)
+            freeplayController.finishMotion(assertNotNull(terminal.motionRevision))
 
-            assertEquals(Game2048Status.SOLVED, assertIs<Web2048State.Playing>(controller.state).game.status)
-            assertEquals(1, progression.advanceCalls)
-            assertEquals(2, assertIs<WebCatalogCompletionState.Saved>(controller.completionState).nextLevel.levelNumber.value)
+            assertEquals(Game2048Status.SOLVED, assertIs<Web2048State.Playing>(freeplayController.state).game.status)
+            assertEquals(1, freeplayProgression.advanceCalls)
+            assertEquals(
+                2,
+                assertIs<WebCatalogCompletionState.Saved>(freeplayController.completionState).nextLevel.levelNumber.value,
+            )
         }
 
     private fun scriptedV2Engine(puzzleId: Game2048PuzzleId): Web2048GameEngine {

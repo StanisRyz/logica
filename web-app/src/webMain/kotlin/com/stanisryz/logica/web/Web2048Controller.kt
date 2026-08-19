@@ -89,7 +89,7 @@ internal class Web2048Controller(
     private var operation: Job? = null
     private var engine: Web2048GameEngine? = null
     private var nextMotionRevision = 0L
-    private val completion = WebCatalogCompletionController(progression, scope)
+    private val completion = WebCatalogCompletionController(progression)
 
     var state by mutableStateOf<Web2048State>(Web2048State.DifficultySelection)
         private set

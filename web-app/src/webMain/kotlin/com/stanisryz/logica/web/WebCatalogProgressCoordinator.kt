@@ -7,10 +7,7 @@ import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlin.jvm.JvmInline
 
 @JvmInline
@@ -158,20 +155,16 @@ internal sealed interface WebCatalogCompletionState {
     ) : WebCatalogCompletionState
 }
 
-/** Owns the common Saving/Saved/Error transition and guarantees one live save job per attempt. */
+/** Owns the common synchronous local Saving/Saved/Error transition for one attempt. */
 internal class WebCatalogCompletionController(
     private val progression: WebCatalogProgressAccess,
-    private val scope: CoroutineScope,
 ) {
     private var attempt: WebCatalogAttempt? = null
-    private var operation: Job? = null
 
     var state by mutableStateOf<WebCatalogCompletionState>(WebCatalogCompletionState.Idle)
         private set
 
     fun startAttempt(attempt: WebCatalogAttempt) {
-        operation?.cancel()
-        operation = null
         this.attempt = attempt
         state = WebCatalogCompletionState.Idle
     }
@@ -180,26 +173,19 @@ internal class WebCatalogCompletionController(
         if (this.attempt != attempt) return
         if (state != WebCatalogCompletionState.Idle && state !is WebCatalogCompletionState.SaveError) return
         state = WebCatalogCompletionState.Saving
-        operation =
-            scope.launch {
-                val result = progression.advanceSolved(attempt)
-                if (this@WebCatalogCompletionController.attempt != attempt) return@launch
-                state =
-                    when (result) {
-                        is WebCatalogCompletionResult.Saved -> WebCatalogCompletionState.Saved(result.nextLevel)
-                        is WebCatalogCompletionResult.PersistenceFailed ->
-                            WebCatalogCompletionState.SaveError(result.detail)
-                        WebCatalogCompletionResult.Rejected ->
-                            WebCatalogCompletionState.SaveError("The authoritative Catalog level no longer matches this attempt.")
-                        WebCatalogCompletionResult.ContextChanged ->
-                            WebCatalogCompletionState.SaveError("The Player context changed before progress could be saved.")
-                    }
+        state =
+            when (val result = progression.advanceSolved(attempt)) {
+                is WebCatalogCompletionResult.Saved -> WebCatalogCompletionState.Saved(result.nextLevel)
+                is WebCatalogCompletionResult.PersistenceFailed ->
+                    WebCatalogCompletionState.SaveError(result.detail)
+                WebCatalogCompletionResult.Rejected ->
+                    WebCatalogCompletionState.SaveError("The authoritative Catalog level no longer matches this attempt.")
+                WebCatalogCompletionResult.ContextChanged ->
+                    WebCatalogCompletionState.SaveError("The Player context changed before progress could be saved.")
             }
     }
 
     fun reset() {
-        operation?.cancel()
-        operation = null
         attempt = null
         state = WebCatalogCompletionState.Idle
     }

@@ -64,7 +64,7 @@ internal class WebCrownsController(
 ) {
     private var operation: Job? = null
     private var engine: CrownsGameEngine? = null
-    private val completion = WebCatalogCompletionController(progression, scope)
+    private val completion = WebCatalogCompletionController(progression)
 
     var state by mutableStateOf<WebCrownsState>(WebCrownsState.DifficultySelection)
         private set
