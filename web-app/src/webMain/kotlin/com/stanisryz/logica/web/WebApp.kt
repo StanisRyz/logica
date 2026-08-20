@@ -2,6 +2,7 @@ package com.stanisryz.logica.web
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -12,8 +13,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.PersonOutline
+import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -22,6 +29,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,6 +48,9 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameStatus
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
+import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.primary_games
+import com.stanisryz.logica.shared.ui.generated.resources.primary_profile
 import com.stanisryz.logica.ui.balance.BalanceGameContent
 import com.stanisryz.logica.ui.components.DifficultySelector
 import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
@@ -47,13 +58,18 @@ import com.stanisryz.logica.ui.components.GameHubContent
 import com.stanisryz.logica.ui.crowns.CrownsGameContent
 import com.stanisryz.logica.ui.game2048.Game2048Content
 import com.stanisryz.logica.ui.game2048.formatGame2048Number
+import com.stanisryz.logica.ui.profile.ProfileContent
+import com.stanisryz.logica.ui.profile.ProfileUiState
 import com.stanisryz.logica.ui.sudoku.SudokuGameContent
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.ui.theme.LogicaTheme
 import com.stanisryz.logica.ui.word.WordGameContent
+import org.jetbrains.compose.resources.stringResource
 
 private sealed interface WebRoute {
     data object GameHub : WebRoute
+
+    data object Profile : WebRoute
 
     data object Balance : WebRoute
 
@@ -198,7 +214,7 @@ private fun ReadyContent(
     LaunchedEffect(route, balanceState, crownsState, wordState, sudokuState, game2048State, lifecycleState) {
         controller.setGameplayActive(
             when (route) {
-                WebRoute.GameHub -> false
+                WebRoute.GameHub, WebRoute.Profile -> false
                 WebRoute.Balance ->
                     balanceState is WebBalanceState.Playing &&
                         balanceState.game.status == BalanceGameStatus.IN_PROGRESS
@@ -221,36 +237,51 @@ private fun ReadyContent(
 
     when (route) {
         WebRoute.GameHub ->
-            GameHubContent(
-                puzzleTypes = GAME_CATALOG_PUZZLE_TYPES,
-                catalogEnabled = true,
-                onGameSelected = { puzzleType ->
-                    route =
-                        when (puzzleType) {
-                            PuzzleType.BALANCE -> {
-                                balanceController.showDifficultySelector()
-                                WebRoute.Balance
+            PrimaryDestinationShell(
+                selected = WebRoute.GameHub,
+                onSelect = { route = it },
+            ) {
+                GameHubContent(
+                    puzzleTypes = GAME_CATALOG_PUZZLE_TYPES,
+                    catalogEnabled = true,
+                    onGameSelected = { puzzleType ->
+                        route =
+                            when (puzzleType) {
+                                PuzzleType.BALANCE -> {
+                                    balanceController.showDifficultySelector()
+                                    WebRoute.Balance
+                                }
+                                PuzzleType.CROWNS -> {
+                                    crownsController.showDifficultySelector()
+                                    WebRoute.Crowns
+                                }
+                                PuzzleType.WORD -> {
+                                    wordController.showDifficultySelector()
+                                    WebRoute.Word
+                                }
+                                PuzzleType.SUDOKU -> {
+                                    sudokuController.showDifficultySelector()
+                                    WebRoute.Sudoku
+                                }
+                                PuzzleType.GAME_2048 -> {
+                                    game2048Controller.showDifficultySelector()
+                                    WebRoute.Game2048
+                                }
+                                else -> error("$puzzleType has no Web game flow.")
                             }
-                            PuzzleType.CROWNS -> {
-                                crownsController.showDifficultySelector()
-                                WebRoute.Crowns
-                            }
-                            PuzzleType.WORD -> {
-                                wordController.showDifficultySelector()
-                                WebRoute.Word
-                            }
-                            PuzzleType.SUDOKU -> {
-                                sudokuController.showDifficultySelector()
-                                WebRoute.Sudoku
-                            }
-                            PuzzleType.GAME_2048 -> {
-                                game2048Controller.showDifficultySelector()
-                                WebRoute.Game2048
-                            }
-                            else -> error("$puzzleType has no Web game flow.")
-                        }
-                },
-            )
+                    },
+                )
+            }
+        WebRoute.Profile ->
+            PrimaryDestinationShell(
+                selected = WebRoute.Profile,
+                onSelect = { route = it },
+            ) {
+                WebProfileRoute(
+                    binding = playerSession.statisticsBinding.collectAsState().value,
+                    onRetry = playerSession::retryCurrentContext,
+                )
+            }
         WebRoute.Balance ->
             BalanceFlow(
                 state = balanceState,
@@ -296,6 +327,62 @@ private fun ReadyContent(
                     route = WebRoute.GameHub
                 },
             )
+    }
+}
+
+@Composable
+private fun PrimaryDestinationShell(
+    selected: WebRoute,
+    onSelect: (WebRoute) -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Column(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(1f)) { content() }
+        NavigationBar(modifier = Modifier.fillMaxWidth().height(PRIMARY_NAVIGATION_HEIGHT)) {
+            NavigationBarItem(
+                selected = selected == WebRoute.GameHub,
+                onClick = { onSelect(WebRoute.GameHub) },
+                icon = { Icon(Icons.Outlined.SportsEsports, contentDescription = null) },
+                label = { Text(stringResource(Res.string.primary_games)) },
+            )
+            NavigationBarItem(
+                selected = selected == WebRoute.Profile,
+                onClick = { onSelect(WebRoute.Profile) },
+                icon = { Icon(Icons.Outlined.PersonOutline, contentDescription = null) },
+                label = { Text(stringResource(Res.string.primary_profile)) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun WebProfileRoute(
+    binding: WebStatisticsBinding,
+    onRetry: () -> Unit,
+) {
+    when (binding) {
+        WebStatisticsBinding.Loading ->
+            ProfileContent(
+                uiState = ProfileUiState.Loading,
+                onRetry = onRetry,
+            )
+        is WebStatisticsBinding.Unavailable ->
+            ProfileContent(
+                uiState = ProfileUiState.Error,
+                onRetry = onRetry,
+            )
+        is WebStatisticsBinding.Ready ->
+            key(binding.token) {
+                val snapshot by binding.repository.snapshot.collectAsState()
+                ProfileContent(
+                    uiState =
+                        WebStatisticsAggregator
+                            .aggregate(snapshot)
+                            .toProfileStatistics()
+                            .toUiState(),
+                    onRetry = onRetry,
+                )
+            }
     }
 }
 
@@ -551,7 +638,6 @@ private fun PlayingBalanceContent(
         onRetrySave = controller::retrySave,
         onBack = controller::showDifficultySelector,
     )
-
 }
 
 @Composable
@@ -597,7 +683,6 @@ private fun PlayingCrownsContent(
         onRetrySave = controller::retrySave,
         onBack = controller::showDifficultySelector,
     )
-
 }
 
 @Composable
@@ -645,7 +730,6 @@ private fun PlayingWordContent(
         onRetrySave = controller::retrySave,
         onBack = controller::showDifficultySelector,
     )
-
 }
 
 @Composable
@@ -699,7 +783,6 @@ private fun PlayingSudokuContent(
         onRetrySave = controller::retrySave,
         onBack = controller::showDifficultySelector,
     )
-
 }
 
 @Composable
@@ -747,7 +830,6 @@ private fun PlayingGame2048Content(
         onRetrySave = controller::retrySave,
         onBack = controller::showDifficultySelector,
     )
-
 }
 
 @Composable
@@ -789,6 +871,7 @@ private fun Difficulty.webLabel(): String =
     }
 
 private val DIFFICULTY_HEADER_HEIGHT = 48.dp
+private val PRIMARY_NAVIGATION_HEIGHT = 64.dp
 private val MIN_DIFFICULTY_CARD_HEIGHT = 96.dp
 private val MAX_DIFFICULTY_CARD_HEIGHT = 152.dp
 private val GAME_HEADER_HEIGHT = 52.dp

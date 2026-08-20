@@ -1,6 +1,6 @@
 # Логика дня
 
-Logica contains the native Android application and a playable Yandex Games Web Catalog for Balance, Crowns, Word, Sudoku, and 2048. The deterministic core and canonical puzzle data are shared through `:puzzle-core`, their Compose Multiplatform presentation lives in `:shared-ui`, and neutral Store, Ads, Player, Cloud Save, lifecycle, and capability contracts live in `:platform-contracts`. Android remains the complete application; Web resumes and advances each game's saved Catalog level and persists Player-scoped gameplay statistics locally with best-effort cloud synchronization. A Web Profile is not included yet.
+Logica contains the native Android application and a playable Yandex Games Web Catalog for Balance, Crowns, Word, Sudoku, and 2048. The deterministic core and canonical puzzle data are shared through `:puzzle-core`, their Compose Multiplatform presentation lives in `:shared-ui`, and neutral Store, Ads, Player, Cloud Save, lifecycle, and capability contracts live in `:platform-contracts`. Android remains the complete application; Web resumes and advances each game's saved Catalog level and shows Player-scoped gameplay statistics in a Profile backed by local persistence with best-effort cloud synchronization.
 
 Every catalog game is played as a numbered sequence of fixed levels. Level 1 of Легко is the same
 puzzle for everyone, and so is level 743 — each game and each difficulty keeps its own level number,
@@ -40,9 +40,10 @@ The ZIP is written to `web-app/build/distributions/logica-yandex.zip`. The curre
 SDK bootstrap, lifecycle/gameplay activity handling, automatic current-Player local/cloud progress persistence,
 Player-scoped local/cloud terminal gameplay statistics,
 lazy frozen Level Pack loading, responsive 9:16 presentation, and durable sequential Catalog play for all five
-games and all four difficulties. Solved levels advance once, failed attempts stay on the same level, and unfinished
-attempts remain session-only and are discarded on exit or Player change. Payments, ads, Store, Profile, Daily, and
-a sticky banner are not included.
+games and all four difficulties. Its compact primary navigation contains Games and Profile; opening Profile reads
+the already-bound local aggregate and does not trigger another cloud load. Solved levels advance once, failed attempts
+stay on the same level, and unfinished attempts remain session-only and are discarded on exit or Player change.
+Payments, ads, Store, Daily, and a sticky banner are not included.
 
 Crowns, the second puzzle type, now has a pure-Kotlin domain model, deterministic solving and generation, solve-based difficulty evaluation, and unique/multiple-solution detection in `puzzle-core/`.
 
@@ -118,7 +119,7 @@ Modules:
 
 - `app/` — the Android application host: shell, ViewModels, navigation, persistence, economy, and Android service adapters.
 - `puzzle-core/` — Kotlin Multiplatform deterministic Balance, Crowns, Word, Sudoku, and 2048 runtime in `commonMain`, with Android/JVM/JS/Wasm library targets and JVM-only developer tooling.
-- `shared-ui/` — the Compose Multiplatform presentation shared by Android and Web, including all five game screens, difficulty selection, and the artwork-based Game catalog.
+- `shared-ui/` — the Compose Multiplatform presentation shared by Android and Web, including all five game screens, difficulty selection, the artwork-based Game catalog, and the gameplay statistics Profile.
 - `platform-contracts/` — small platform-neutral contracts for Store, ads, Player identity, Cloud Save, lifecycle, metadata, and capabilities.
 - `web-app/` — the browser/Yandex host with responsive 9:16 layout, browser data loading, lifecycle integration, automatic current-Player cloud synchronization, separate Player-scoped Catalog/statistics persistence, and lightweight controllers for all five sequential Catalog games.
 - `puzzle-data/` — the canonical frozen Catalog Level Pack and Sudoku Dataset V1 corpus shared by Android and Web builds.

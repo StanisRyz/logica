@@ -91,9 +91,6 @@
     <string name="puzzle_generation_error">Не удалось создать головоломку.</string>
     <string name="daily_load_error">Не удалось загрузить задачу дня.</string>
     <string name="daily_start_error">Не удалось начать задачу дня.</string>
-    <string name="statistics_load_error">Не удалось загрузить статистику.</string>
-    <string name="total_solved">Всего решено</string>
-    <string name="daily_completed_count">Задач дня выполнено</string>
     <string name="current_daily_streak">Текущая серия</string>
     <string name="best_daily_streak">Лучшая серия</string>
     <string name="total_hints_used">Подсказок использовано</string>
@@ -105,9 +102,6 @@
     <string name="daily_result_word_failed_description">%1$s — не угадано</string>
     <string name="share_daily_result">Поделиться</string>
     <string name="share_daily_result_description">Поделиться результатом испытания дня</string>
-    <string name="statistics_overall">Всего</string>
-    <string name="statistics_empty_title">Пока нет завершённых игр</string>
-    <string name="statistics_empty_body">Сыграйте задачу дня или головоломку из каталога — здесь появится статистика.</string>
     <string name="settings_appearance">Оформление</string>
     <string name="settings_gameplay">Игра</string>
     <string name="settings_theme">Тема</string>
@@ -166,13 +160,6 @@
     <string name="word_tutorial_offer_body">Короткое объяснение покажет правила и разбор одной попытки.</string>
     <string name="word_tutorial_example_title">Разбор попытки</string>
     <string name="word_tutorial_example_body">Загадано слово «ПОЛКА», попытка — «ЛАМПА». Последняя «А» стоит на своём месте, а первая «А» отмечена как отсутствующая: в загаданном слове только одна «А».</string>
-    <string name="word_played">Сыграно</string>
-    <string name="word_solved_count">Отгадано</string>
-    <string name="word_failed_count">Не отгадано</string>
-    <string name="word_win_rate">Доля побед</string>
-    <string name="word_percent_value">%1$d %%</string>
-    <string name="word_attempt_distribution">Отгадано за N попыток</string>
-    <string name="word_attempt_bar_description">Отгадано за %1$d попыток: %2$d</string>
     <string name="close">Закрыть</string>
     <string name="economy_lives_short">%1$d/%2$d</string>
     <string name="economy_lives_title">Жизни</string>
@@ -231,9 +218,6 @@
     <string name="sudoku_tutorial_pencil_body">Включите карандаш, выберите пустую клетку и добавьте возможное число. Маленькие заметки не проверяются как ответ.</string>
     <string name="sudoku_tutorial_hint_title">Ошибки и подсказки</string>
     <string name="sudoku_tutorial_hint_body">После третьей ошибки попытка заканчивается. Подсказка находит следующий логический ход и заполняет клетку — попробуйте её сейчас.</string>
-    <string name="sudoku_played">Сыграно</string>
-    <string name="sudoku_solved_count">Решено</string>
-    <string name="sudoku_failed_count">Не решено</string>
     <string name="sudoku_loading">Загружаем судоку…</string>
     <string name="sudoku_select_cell_help">Выберите клетку</string>
     <string name="sudoku_pencil_on_help">Карандаш включён</string>
@@ -273,7 +257,4 @@
     <!-- Catalog 2048 clears at the score target and then keeps running as freeplay. -->
     <string name="game_2048_cleared_title">Уровень пройден</string>
     <string name="game_2048_cleared_body">Цель достигнута, уровень зачтён. Ходов больше нет.</string>
-    <string name="game_2048_played">Сыграно</string>
-    <string name="game_2048_solved_count">Цель достигнута</string>
-    <string name="game_2048_failed_count">Ходы закончились</string>
 </resources>
