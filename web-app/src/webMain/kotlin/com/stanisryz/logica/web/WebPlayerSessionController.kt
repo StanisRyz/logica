@@ -75,6 +75,35 @@ internal sealed interface WebStatisticsBinding {
     ) : WebStatisticsBinding
 }
 
+internal enum class WebDailyCloudSyncStatus {
+    LOCAL_ONLY,
+    SYNCING,
+    SYNCED,
+    ERROR,
+}
+
+internal sealed interface WebDailyBinding {
+    data object Loading : WebDailyBinding
+
+    data class Ready(
+        val token: WebPlayerContextToken,
+        val repository: WebDailyRepository,
+        val identity: PlayerIdentity?,
+        val syncStatus: WebDailyCloudSyncStatus,
+    ) : WebDailyBinding
+
+    data class Unavailable(
+        val detail: String,
+    ) : WebDailyBinding
+}
+
+/** Token-bound session seam for the Stage 45.8b gameplay adapter. */
+internal interface WebDailySessionAccess {
+    val dailyBinding: StateFlow<WebDailyBinding>
+
+    fun requestDailyCloudSynchronization(binding: WebDailyBinding.Ready)
+}
+
 /** Binds one freshly loaded local repository to one current Yandex Player before any cloud merge. */
 internal class WebPlayerSessionController(
     private val playerIdentityGateway: PlayerIdentityGateway,
@@ -82,9 +111,12 @@ internal class WebPlayerSessionController(
     private val progressRepositoryFactory: WebCatalogProgressRepositoryFactory,
     private val statisticsCloudSaveGateway: CloudSaveGateway,
     private val statisticsRepositoryFactory: WebStatisticsRepositoryFactory,
+    private val dailyCloudSaveGateway: CloudSaveGateway,
+    private val dailyRepositoryFactory: WebDailyRepositoryFactory,
     private val playerContextEvents: WebPlayerContextEvents,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
-) : WebStatisticsSessionAccess {
+) : WebStatisticsSessionAccess,
+    WebDailySessionAccess {
     private var started = false
     private var contextRevision = 0L
     private var accountSelectionOpen = false
@@ -92,9 +124,12 @@ internal class WebPlayerSessionController(
     private val cloudWriteMutex = Mutex()
     private val mutableProgressBinding = MutableStateFlow<WebCatalogProgressBinding>(WebCatalogProgressBinding.Loading)
     private val mutableStatisticsBinding = MutableStateFlow<WebStatisticsBinding>(WebStatisticsBinding.Loading)
+    private val mutableDailyBinding = MutableStateFlow<WebDailyBinding>(WebDailyBinding.Loading)
+    private var dailyCloudSnapshot: WebDailySnapshotV1? = null
 
     val progressBinding: StateFlow<WebCatalogProgressBinding> = mutableProgressBinding.asStateFlow()
     override val statisticsBinding: StateFlow<WebStatisticsBinding> = mutableStatisticsBinding.asStateFlow()
+    override val dailyBinding: StateFlow<WebDailyBinding> = mutableDailyBinding.asStateFlow()
 
     var state by mutableStateOf<WebPlayerSessionState>(WebPlayerSessionState.Loading)
         private set
@@ -103,6 +138,9 @@ internal class WebPlayerSessionController(
         private set
 
     var statisticsRepository: WebStatisticsRepository? = null
+        private set
+
+    var dailyRepository: WebDailyRepository? = null
         private set
 
     var accountChangeRevision by mutableStateOf(0L)
@@ -192,13 +230,50 @@ internal class WebPlayerSessionController(
         }
     }
 
+    override fun requestDailyCloudSynchronization(binding: WebDailyBinding.Ready) {
+        if (!isCurrentDaily(binding)) return
+        val identity = binding.identity ?: return
+        scope.launch {
+            cloudWriteMutex.withLock {
+                if (!isCurrentDaily(binding)) return@withLock
+                val snapshot = binding.repository.snapshot.value
+                if (snapshot == dailyCloudSnapshot) return@withLock
+                publishDailyReady(
+                    binding.token.value,
+                    identity,
+                    binding.repository,
+                    WebDailyCloudSyncStatus.SYNCING,
+                )
+                val result =
+                    runCatching {
+                        dailyCloudSaveGateway.write(WebDailyCodec.encode(snapshot))
+                    }.getOrElse { CloudSaveWriteResult.Failed(it) }
+                if (!isCurrentDaily(binding)) return@withLock
+                if (result == CloudSaveWriteResult.Saved) dailyCloudSnapshot = snapshot
+                publishDailyReady(
+                    binding.token.value,
+                    identity,
+                    binding.repository,
+                    if (result == CloudSaveWriteResult.Saved) {
+                        WebDailyCloudSyncStatus.SYNCED
+                    } else {
+                        WebDailyCloudSyncStatus.ERROR
+                    },
+                )
+            }
+        }
+    }
+
     private fun bindCurrentContext() {
         operation?.cancel()
         val revision = ++contextRevision
         progressRepository = null
         statisticsRepository = null
+        dailyRepository = null
+        dailyCloudSnapshot = null
         mutableProgressBinding.value = WebCatalogProgressBinding.Loading
         mutableStatisticsBinding.value = WebStatisticsBinding.Loading
+        mutableDailyBinding.value = WebDailyBinding.Loading
         state = WebPlayerSessionState.Loading
         operation = scope.launch { resolveAndSynchronize(revision) }
     }
@@ -208,8 +283,11 @@ internal class WebPlayerSessionController(
         operation?.cancel()
         progressRepository = null
         statisticsRepository = null
+        dailyRepository = null
+        dailyCloudSnapshot = null
         mutableProgressBinding.value = WebCatalogProgressBinding.Loading
         mutableStatisticsBinding.value = WebStatisticsBinding.Loading
+        mutableDailyBinding.value = WebDailyBinding.Loading
         state = WebPlayerSessionState.Loading
     }
 
@@ -235,9 +313,13 @@ internal class WebPlayerSessionController(
             if (!isCurrent(revision)) return
             progressRepository = repository
             val scopedStatistics = bindStatisticsLocal(revision, playerScope, identity)
+            val scopedDaily = bindDailyLocal(revision, playerScope, identity)
             synchronize(revision, identity, repository)
             if (scopedStatistics != null && isCurrent(revision)) {
                 synchronizeStatisticsSafely(revision, identity, scopedStatistics)
+            }
+            if (scopedDaily != null && isCurrent(revision)) {
+                synchronizeDailySafely(revision, identity, scopedDaily)
             }
         } catch (error: CancellationException) {
             throw error
@@ -253,6 +335,7 @@ internal class WebPlayerSessionController(
         if (!isCurrent(revision)) return
         progressRepository = repository
         bindStatisticsLocal(revision, standaloneScope, identity = null)
+        bindDailyLocal(revision, standaloneScope, identity = null)
         state = WebPlayerSessionState.LocalOnly
         mutableProgressBinding.value =
             WebCatalogProgressBinding.Ready(
@@ -285,7 +368,12 @@ internal class WebPlayerSessionController(
             is WebCatalogMergeResult.PersistenceFailed -> syncFailed(revision, identity, repository)
             is WebCatalogMergeResult.Merged -> {
                 if (merge.cloudWriteRequired) {
-                    when (cloudSaveGateway.write(WebCatalogProgressCodec.encode(merge.snapshot))) {
+                    val writeResult =
+                        cloudWriteMutex.withLock {
+                            if (!isCurrent(revision)) return@withLock null
+                            cloudSaveGateway.write(WebCatalogProgressCodec.encode(merge.snapshot))
+                        } ?: return
+                    when (writeResult) {
                         CloudSaveWriteResult.Saved -> Unit
                         CloudSaveWriteResult.Unsupported,
                         is CloudSaveWriteResult.Failed,
@@ -327,6 +415,39 @@ internal class WebPlayerSessionController(
                         WebStatisticsCloudSyncStatus.LOCAL_ONLY
                     } else {
                         WebStatisticsCloudSyncStatus.SYNCING
+                    },
+            )
+        return repository
+    }
+
+    private fun bindDailyLocal(
+        revision: Long,
+        playerScope: WebCatalogProgressScope,
+        identity: PlayerIdentity?,
+    ): WebDailyRepository? {
+        val repository =
+            runCatching {
+                dailyRepositoryFactory.create(playerScope).also { it.loadLocal() }
+            }.getOrElse {
+                if (isCurrent(revision)) {
+                    dailyRepository = null
+                    mutableDailyBinding.value =
+                        WebDailyBinding.Unavailable("The current Web Daily context is unavailable.")
+                }
+                return null
+            }
+        if (!isCurrent(revision)) return null
+        dailyRepository = repository
+        mutableDailyBinding.value =
+            WebDailyBinding.Ready(
+                token = WebPlayerContextToken(revision),
+                repository = repository,
+                identity = identity,
+                syncStatus =
+                    if (identity == null) {
+                        WebDailyCloudSyncStatus.LOCAL_ONLY
+                    } else {
+                        WebDailyCloudSyncStatus.SYNCING
                     },
             )
         return repository
@@ -425,6 +546,98 @@ internal class WebPlayerSessionController(
             )
     }
 
+    private suspend fun synchronizeDailySafely(
+        revision: Long,
+        identity: PlayerIdentity,
+        repository: WebDailyRepository,
+    ) {
+        try {
+            synchronizeDaily(revision, identity, repository)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            dailySyncFailed(revision, identity, repository)
+        }
+    }
+
+    private suspend fun synchronizeDaily(
+        revision: Long,
+        identity: PlayerIdentity,
+        repository: WebDailyRepository,
+    ) {
+        if (!isCurrentDaily(revision, repository)) return
+        val cloud =
+            when (val result = dailyCloudSaveGateway.read()) {
+                is CloudSaveReadResult.Found ->
+                    WebDailyCodec.decode(result.payload)
+                        ?: return dailySyncFailed(revision, identity, repository)
+                CloudSaveReadResult.Missing -> WebDailySnapshotV1.EMPTY
+                CloudSaveReadResult.Unsupported,
+                is CloudSaveReadResult.Failed,
+                -> return dailySyncFailed(revision, identity, repository)
+            }
+        if (!isCurrentDaily(revision, repository)) return
+
+        when (val merge = repository.mergeCloud(cloud)) {
+            is WebDailyMergeResult.PolicyConflict,
+            is WebDailyMergeResult.PersistenceFailed,
+            -> dailySyncFailed(revision, identity, repository)
+            is WebDailyMergeResult.Merged -> {
+                if (merge.cloudWriteRequired) {
+                    val writeResult =
+                        cloudWriteMutex.withLock {
+                            if (!isCurrentDaily(revision, repository)) return@withLock null
+                            dailyCloudSaveGateway.write(WebDailyCodec.encode(merge.snapshot))
+                        } ?: return
+                    when (writeResult) {
+                        CloudSaveWriteResult.Saved -> Unit
+                        CloudSaveWriteResult.Unsupported,
+                        is CloudSaveWriteResult.Failed,
+                        -> return dailySyncFailed(revision, identity, repository)
+                    }
+                    if (!isCurrentDaily(revision, repository)) return
+                }
+                if (!isCurrentDaily(revision, repository)) return
+                dailyCloudSnapshot = merge.snapshot
+                publishDailyReady(
+                    revision,
+                    identity,
+                    repository,
+                    WebDailyCloudSyncStatus.SYNCED,
+                )
+            }
+        }
+    }
+
+    private fun dailySyncFailed(
+        revision: Long,
+        identity: PlayerIdentity,
+        repository: WebDailyRepository,
+    ) {
+        publishDailyReady(
+            revision,
+            identity,
+            repository,
+            WebDailyCloudSyncStatus.ERROR,
+        )
+    }
+
+    private fun publishDailyReady(
+        revision: Long,
+        identity: PlayerIdentity,
+        repository: WebDailyRepository,
+        syncStatus: WebDailyCloudSyncStatus,
+    ) {
+        if (!isCurrentDaily(revision, repository)) return
+        mutableDailyBinding.value =
+            WebDailyBinding.Ready(
+                token = WebPlayerContextToken(revision),
+                repository = repository,
+                identity = identity,
+                syncStatus = syncStatus,
+            )
+    }
+
     private fun syncFailed(
         revision: Long,
         identity: PlayerIdentity,
@@ -457,9 +670,12 @@ internal class WebPlayerSessionController(
         if (!isCurrent(revision)) return
         progressRepository = null
         statisticsRepository = null
+        dailyRepository = null
+        dailyCloudSnapshot = null
         state = WebPlayerSessionState.LocalOnly
         mutableProgressBinding.value = WebCatalogProgressBinding.Unavailable(detail)
         mutableStatisticsBinding.value = WebStatisticsBinding.Unavailable(detail)
+        mutableDailyBinding.value = WebDailyBinding.Unavailable(detail)
     }
 
     private fun isCurrent(revision: Long): Boolean = revision == contextRevision && !accountSelectionOpen
@@ -479,6 +695,19 @@ internal class WebPlayerSessionController(
             binding.token.value == contextRevision &&
             statisticsRepository === binding.repository &&
             (mutableStatisticsBinding.value as? WebStatisticsBinding.Ready)?.let {
+                it.token == binding.token && it.repository === binding.repository
+            } == true
+
+    private fun isCurrentDaily(
+        revision: Long,
+        repository: WebDailyRepository,
+    ): Boolean = isCurrent(revision) && dailyRepository === repository
+
+    private fun isCurrentDaily(binding: WebDailyBinding.Ready): Boolean =
+        !accountSelectionOpen &&
+            binding.token.value == contextRevision &&
+            dailyRepository === binding.repository &&
+            (mutableDailyBinding.value as? WebDailyBinding.Ready)?.let {
                 it.token == binding.token && it.repository === binding.repository
             } == true
 }

@@ -1,5 +1,7 @@
 package com.stanisryz.logica.daily
 
+import com.stanisryz.logica.puzzle.core.daily.DailyStreak
+import com.stanisryz.logica.puzzle.core.daily.DailyStreakCalculator
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.LocalDate

@@ -77,6 +77,7 @@ internal class YandexCloudSaveGateway(
     companion object {
         const val CLOUD_STATE_KEY = "logica_state_v1"
         const val STATISTICS_STATE_KEY = "logica_statistics_v1"
+        const val DAILY_STATE_KEY = "logica_daily_v1"
     }
 }
 

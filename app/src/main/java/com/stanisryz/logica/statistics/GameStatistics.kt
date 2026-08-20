@@ -1,7 +1,7 @@
 package com.stanisryz.logica.statistics
 
-import com.stanisryz.logica.daily.DailyStreakCalculator
 import com.stanisryz.logica.daily.DailyStreakQualification
+import com.stanisryz.logica.puzzle.core.daily.DailyStreakCalculator
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordRules

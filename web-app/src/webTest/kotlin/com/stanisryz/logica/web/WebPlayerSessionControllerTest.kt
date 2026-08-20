@@ -10,6 +10,8 @@ import com.stanisryz.logica.platform.PlayerIdentity
 import com.stanisryz.logica.platform.PlayerIdentityGateway
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV5
+import com.stanisryz.logica.puzzle.core.daily.DailyDate
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -47,6 +49,10 @@ class WebPlayerSessionControllerTest {
             val statisticsCloud = FakeCloudSaveGateway(identity)
             statisticsCloud.snapshots[playerA] = statisticsSnapshot(7L)
             statisticsCloud.snapshots[playerB] = statisticsSnapshot(7L)
+            val dailyDate = DailyDate(2026, 8, 20)
+            val dailyCloud = FakeCloudSaveGateway(identity)
+            dailyCloud.snapshots[playerA] = dailySnapshot(dailyDate, solved = PuzzleType.WORD)
+            dailyCloud.snapshots[playerB] = dailySnapshot(dailyDate, solved = PuzzleType.SUDOKU)
             val stores =
                 mutableMapOf(
                     scopeA to FakeProgressStore(snapshot(balance, 12)),
@@ -56,6 +62,11 @@ class WebPlayerSessionControllerTest {
                 mutableMapOf(
                     scopeA to FakeStatisticsStore(checkNotNull(WebStatisticsCodec.decode(statisticsSnapshot(12L)))),
                     scopeB to FakeStatisticsStore(checkNotNull(WebStatisticsCodec.decode(statisticsSnapshot(4L)))),
+                )
+            val dailyStores =
+                mutableMapOf(
+                    scopeA to FakeDailyStore(dailySnapshotValue(dailyDate, failed = PuzzleType.BALANCE)),
+                    scopeB to FakeDailyStore(WebDailySnapshotV1.EMPTY),
                 )
             val events = FakePlayerContextEvents()
             val controller =
@@ -70,6 +81,11 @@ class WebPlayerSessionControllerTest {
                     statisticsRepositoryFactory =
                         WebStatisticsRepositoryFactory { scope ->
                             WebStatisticsRepository(scope, INSTALLATION_ID, statisticsStores.getValue(scope))
+                        },
+                    dailyCloudSaveGateway = dailyCloud,
+                    dailyRepositoryFactory =
+                        WebDailyRepositoryFactory { scope ->
+                            WebDailyRepository(scope, dailyStores.getValue(scope)) { dailyDate }
                         },
                     playerContextEvents = events,
                     scope = this,
@@ -94,6 +110,17 @@ class WebPlayerSessionControllerTest {
                     ?.totals()
                     ?.played,
             )
+            assertEquals(scopeA, controller.dailyRepository?.scope)
+            val playerADaily =
+                checkNotNull(
+                    controller.dailyRepository
+                        ?.snapshot
+                        ?.value
+                        ?.days
+                        ?.get(dailyDate),
+                )
+            assertEquals(true, playerADaily.facts(PuzzleType.BALANCE).failedSeen)
+            assertEquals(true, playerADaily.facts(PuzzleType.WORD).solved)
             assertEquals(
                 12L,
                 WebStatisticsCodec
@@ -107,6 +134,8 @@ class WebPlayerSessionControllerTest {
             assertIs<WebCatalogCompletionResult.ContextChanged>(progression.advanceSolved(playerAAttempt))
             assertNull(controller.statisticsRepository)
             assertIs<WebStatisticsBinding.Loading>(controller.statisticsBinding.value)
+            assertNull(controller.dailyRepository)
+            assertIs<WebDailyBinding.Loading>(controller.dailyBinding.value)
             assertEquals(
                 12,
                 stores
@@ -123,6 +152,17 @@ class WebPlayerSessionControllerTest {
             assertEquals(scopeB, controller.progressRepository?.scope)
             assertEquals(7, controller.progressRepository?.currentLevel(balance)?.value)
             assertEquals(scopeB, controller.statisticsRepository?.scope)
+            assertEquals(scopeB, controller.dailyRepository?.scope)
+            assertEquals(
+                true,
+                controller.dailyRepository
+                    ?.snapshot
+                    ?.value
+                    ?.days
+                    ?.get(dailyDate)
+                    ?.facts(PuzzleType.SUDOKU)
+                    ?.solved,
+            )
             assertEquals(
                 7L,
                 controller.statisticsRepository
@@ -176,6 +216,26 @@ class WebPlayerSessionControllerTest {
                     ),
             ),
         )
+
+    private fun dailySnapshot(
+        date: DailyDate,
+        solved: PuzzleType,
+    ): ByteArray = WebDailyCodec.encode(dailySnapshotValue(date, solved = solved))
+
+    private fun dailySnapshotValue(
+        date: DailyDate,
+        failed: PuzzleType? = null,
+        solved: PuzzleType? = null,
+    ): WebDailySnapshotV1 {
+        val record =
+            WebDailyDayRecord(
+                date = date,
+                policyVersion = DailyChallengePolicyV5.VERSION,
+                failedMask = failed?.let(WebDailyPuzzleOrder::bit) ?: 0,
+                solvedMask = solved?.let(WebDailyPuzzleOrder::bit) ?: 0,
+            )
+        return WebDailySnapshotV1(days = mapOf(date to record))
+    }
 
     private class FakePlayerIdentityGateway(
         var playerId: String,
@@ -244,6 +304,16 @@ class WebPlayerSessionControllerTest {
         override fun load(): WebStatisticsSnapshot = snapshot
 
         override fun save(snapshot: WebStatisticsSnapshot) {
+            this.snapshot = snapshot
+        }
+    }
+
+    private class FakeDailyStore(
+        var snapshot: WebDailySnapshotV1,
+    ) : WebDailyStore {
+        override fun load(): WebDailySnapshotV1 = snapshot
+
+        override fun save(snapshot: WebDailySnapshotV1) {
             this.snapshot = snapshot
         }
     }

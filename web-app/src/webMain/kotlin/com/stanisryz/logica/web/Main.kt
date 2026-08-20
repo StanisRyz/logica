@@ -29,6 +29,14 @@ fun main() {
                 localStore = WebStatisticsLocalStore(scope),
             )
         }
+    val dailyRepositoryFactory =
+        WebDailyRepositoryFactory { scope ->
+            WebDailyRepository(
+                scope = scope,
+                localStore = WebDailyLocalStore(scope),
+                dateProvider = BrowserLocalWebDailyDateProvider,
+            )
+        }
     val playerSession =
         if (bridge.isAvailable) {
             WebPlayerSessionController(
@@ -41,6 +49,12 @@ fun main() {
                         dataKey = YandexCloudSaveGateway.STATISTICS_STATE_KEY,
                     ),
                 statisticsRepositoryFactory = statisticsRepositoryFactory,
+                dailyCloudSaveGateway =
+                    YandexCloudSaveGateway(
+                        bridge,
+                        dataKey = YandexCloudSaveGateway.DAILY_STATE_KEY,
+                    ),
+                dailyRepositoryFactory = dailyRepositoryFactory,
                 playerContextEvents = bridge,
             )
         } else {
@@ -50,6 +64,8 @@ fun main() {
                 progressRepositoryFactory = progressRepositoryFactory,
                 statisticsCloudSaveGateway = UnsupportedWebCloudSaveGateway,
                 statisticsRepositoryFactory = statisticsRepositoryFactory,
+                dailyCloudSaveGateway = UnsupportedWebCloudSaveGateway,
+                dailyRepositoryFactory = dailyRepositoryFactory,
                 playerContextEvents = bridge,
             )
         }
