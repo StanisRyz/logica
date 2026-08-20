@@ -41,12 +41,17 @@ internal class YandexPlayerIdentityGateway(
 
 internal class YandexCloudSaveGateway(
     private val bridge: YandexGamesBridge,
+    private val dataKey: String = CLOUD_STATE_KEY,
 ) : CloudSaveGateway {
+    init {
+        require(dataKey.isNotBlank()) { "A Yandex Cloud Save data key is required." }
+    }
+
     override val availability: CloudSaveAvailability = CloudSaveAvailability.AVAILABLE
 
     override suspend fun read(): CloudSaveReadResult =
         try {
-            val encoded = bridge.readPlayerData(CLOUD_STATE_KEY) ?: return CloudSaveReadResult.Missing
+            val encoded = bridge.readPlayerData(dataKey) ?: return CloudSaveReadResult.Missing
             val payload = WebBase64.decode(encoded) ?: error("Yandex cloud save payload is not valid Base64.")
             CloudSaveReadResult.Found(payload)
         } catch (error: CancellationException) {
@@ -58,7 +63,7 @@ internal class YandexCloudSaveGateway(
     override suspend fun write(payload: ByteArray): CloudSaveWriteResult =
         try {
             bridge.writePlayerData(
-                key = CLOUD_STATE_KEY,
+                key = dataKey,
                 value = WebBase64.encode(payload),
                 flush = true,
             )
@@ -69,8 +74,9 @@ internal class YandexCloudSaveGateway(
             CloudSaveWriteResult.Failed(error)
         }
 
-    private companion object {
+    companion object {
         const val CLOUD_STATE_KEY = "logica_state_v1"
+        const val STATISTICS_STATE_KEY = "logica_statistics_v1"
     }
 }
 

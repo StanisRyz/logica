@@ -19,6 +19,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNull
 
 class WebPlayerSessionControllerTest {
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -43,10 +44,18 @@ class WebPlayerSessionControllerTest {
             val cloud = FakeCloudSaveGateway(identity)
             cloud.snapshots[playerA] = snapshot(balance, 7)
             cloud.snapshots[playerB] = snapshot(balance, 7)
+            val statisticsCloud = FakeCloudSaveGateway(identity)
+            statisticsCloud.snapshots[playerA] = statisticsSnapshot(7L)
+            statisticsCloud.snapshots[playerB] = statisticsSnapshot(7L)
             val stores =
                 mutableMapOf(
                     scopeA to FakeProgressStore(snapshot(balance, 12)),
                     scopeB to FakeProgressStore(snapshot(balance, 4)),
+                )
+            val statisticsStores =
+                mutableMapOf(
+                    scopeA to FakeStatisticsStore(checkNotNull(WebStatisticsCodec.decode(statisticsSnapshot(12L)))),
+                    scopeB to FakeStatisticsStore(checkNotNull(WebStatisticsCodec.decode(statisticsSnapshot(4L)))),
                 )
             val events = FakePlayerContextEvents()
             val controller =
@@ -56,6 +65,11 @@ class WebPlayerSessionControllerTest {
                     progressRepositoryFactory =
                         WebCatalogProgressRepositoryFactory { scope ->
                             WebCatalogProgressRepository(scope, stores.getValue(scope))
+                        },
+                    statisticsCloudSaveGateway = statisticsCloud,
+                    statisticsRepositoryFactory =
+                        WebStatisticsRepositoryFactory { scope ->
+                            WebStatisticsRepository(scope, INSTALLATION_ID, statisticsStores.getValue(scope))
                         },
                     playerContextEvents = events,
                     scope = this,
@@ -72,9 +86,27 @@ class WebPlayerSessionControllerTest {
             assertEquals(scopeA, controller.progressRepository?.scope)
             assertEquals(12, controller.progressRepository?.currentLevel(balance)?.value)
             assertEquals(12, WebCatalogProgressCodec.decode(cloud.snapshots.getValue(playerA))?.currentLevel(balance)?.value)
+            assertEquals(scopeA, controller.statisticsRepository?.scope)
+            assertEquals(
+                12L,
+                controller.statisticsRepository
+                    ?.aggregate()
+                    ?.totals()
+                    ?.played,
+            )
+            assertEquals(
+                12L,
+                WebStatisticsCodec
+                    .decode(statisticsCloud.snapshots.getValue(playerA))
+                    ?.let(WebStatisticsAggregator::aggregate)
+                    ?.totals()
+                    ?.played,
+            )
 
             events.fireOpened()
             assertIs<WebCatalogCompletionResult.ContextChanged>(progression.advanceSolved(playerAAttempt))
+            assertNull(controller.statisticsRepository)
+            assertIs<WebStatisticsBinding.Loading>(controller.statisticsBinding.value)
             assertEquals(
                 12,
                 stores
@@ -90,6 +122,14 @@ class WebPlayerSessionControllerTest {
 
             assertEquals(scopeB, controller.progressRepository?.scope)
             assertEquals(7, controller.progressRepository?.currentLevel(balance)?.value)
+            assertEquals(scopeB, controller.statisticsRepository?.scope)
+            assertEquals(
+                7L,
+                controller.statisticsRepository
+                    ?.aggregate()
+                    ?.totals()
+                    ?.played,
+            )
             assertEquals(
                 12,
                 stores
@@ -99,6 +139,7 @@ class WebPlayerSessionControllerTest {
                     .value,
             )
             assertIs<WebCatalogCompletionResult.ContextChanged>(progression.advanceSolved(playerAAttempt))
+            assertEquals(12L, WebStatisticsAggregator.aggregate(statisticsStores.getValue(scopeA).snapshot).totals().played)
             assertEquals(
                 7,
                 stores
@@ -117,6 +158,23 @@ class WebPlayerSessionControllerTest {
     ): ByteArray =
         WebCatalogProgressCodec.encode(
             WebCatalogProgressSnapshot(levels = mapOf(bucket to CatalogLevelNumber(level))),
+        )
+
+    private fun statisticsSnapshot(played: Long): ByteArray =
+        WebStatisticsCodec.encode(
+            WebStatisticsSnapshot(
+                components =
+                    mapOf(
+                        INSTALLATION_ID to
+                            WebStatisticsDeviceComponent(
+                                buckets =
+                                    mapOf(
+                                        WebStatisticsBucket(PuzzleType.WORD, Difficulty.EASY) to
+                                            WebStatisticsCounters(played = played),
+                                    ),
+                            ),
+                    ),
+            ),
         )
 
     private class FakePlayerIdentityGateway(
@@ -178,5 +236,19 @@ class WebPlayerSessionControllerTest {
         override fun save(snapshot: WebCatalogProgressSnapshot) {
             this.snapshot = snapshot
         }
+    }
+
+    private class FakeStatisticsStore(
+        var snapshot: WebStatisticsSnapshot,
+    ) : WebStatisticsStore {
+        override fun load(): WebStatisticsSnapshot = snapshot
+
+        override fun save(snapshot: WebStatisticsSnapshot) {
+            this.snapshot = snapshot
+        }
+    }
+
+    private companion object {
+        const val INSTALLATION_ID = "browser-installation-0001"
     }
 }

@@ -20,12 +20,27 @@ fun main() {
                 localStore = WebCatalogProgressLocalStore(scope),
             )
         }
+    val installationIdProvider = WebInstallationIdProvider()
+    val statisticsRepositoryFactory =
+        WebStatisticsRepositoryFactory { scope ->
+            WebStatisticsRepository(
+                scope = scope,
+                installationId = installationIdProvider.getOrCreate(),
+                localStore = WebStatisticsLocalStore(scope),
+            )
+        }
     val playerSession =
         if (bridge.isAvailable) {
             WebPlayerSessionController(
                 playerIdentityGateway = YandexPlayerIdentityGateway(bridge),
                 cloudSaveGateway = YandexCloudSaveGateway(bridge),
                 progressRepositoryFactory = progressRepositoryFactory,
+                statisticsCloudSaveGateway =
+                    YandexCloudSaveGateway(
+                        bridge,
+                        dataKey = YandexCloudSaveGateway.STATISTICS_STATE_KEY,
+                    ),
+                statisticsRepositoryFactory = statisticsRepositoryFactory,
                 playerContextEvents = bridge,
             )
         } else {
@@ -33,6 +48,8 @@ fun main() {
                 playerIdentityGateway = UnsupportedWebPlayerIdentityGateway,
                 cloudSaveGateway = UnsupportedWebCloudSaveGateway,
                 progressRepositoryFactory = progressRepositoryFactory,
+                statisticsCloudSaveGateway = UnsupportedWebCloudSaveGateway,
+                statisticsRepositoryFactory = statisticsRepositoryFactory,
                 playerContextEvents = bridge,
             )
         }

@@ -53,11 +53,35 @@ internal sealed interface WebCatalogProgressBinding {
     ) : WebCatalogProgressBinding
 }
 
+internal enum class WebStatisticsCloudSyncStatus {
+    LOCAL_ONLY,
+    SYNCING,
+    SYNCED,
+    ERROR,
+}
+
+internal sealed interface WebStatisticsBinding {
+    data object Loading : WebStatisticsBinding
+
+    data class Ready(
+        val token: WebPlayerContextToken,
+        val repository: WebStatisticsRepository,
+        val identity: PlayerIdentity?,
+        val syncStatus: WebStatisticsCloudSyncStatus,
+    ) : WebStatisticsBinding
+
+    data class Unavailable(
+        val detail: String,
+    ) : WebStatisticsBinding
+}
+
 /** Binds one freshly loaded local repository to one current Yandex Player before any cloud merge. */
 internal class WebPlayerSessionController(
     private val playerIdentityGateway: PlayerIdentityGateway,
     private val cloudSaveGateway: CloudSaveGateway,
     private val progressRepositoryFactory: WebCatalogProgressRepositoryFactory,
+    private val statisticsCloudSaveGateway: CloudSaveGateway,
+    private val statisticsRepositoryFactory: WebStatisticsRepositoryFactory,
     private val playerContextEvents: WebPlayerContextEvents,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
@@ -67,13 +91,18 @@ internal class WebPlayerSessionController(
     private var operation: Job? = null
     private val cloudWriteMutex = Mutex()
     private val mutableProgressBinding = MutableStateFlow<WebCatalogProgressBinding>(WebCatalogProgressBinding.Loading)
+    private val mutableStatisticsBinding = MutableStateFlow<WebStatisticsBinding>(WebStatisticsBinding.Loading)
 
     val progressBinding: StateFlow<WebCatalogProgressBinding> = mutableProgressBinding.asStateFlow()
+    val statisticsBinding: StateFlow<WebStatisticsBinding> = mutableStatisticsBinding.asStateFlow()
 
     var state by mutableStateOf<WebPlayerSessionState>(WebPlayerSessionState.Loading)
         private set
 
     var progressRepository: WebCatalogProgressRepository? = null
+        private set
+
+    var statisticsRepository: WebStatisticsRepository? = null
         private set
 
     var accountChangeRevision by mutableStateOf(0L)
@@ -134,7 +163,9 @@ internal class WebPlayerSessionController(
         operation?.cancel()
         val revision = ++contextRevision
         progressRepository = null
+        statisticsRepository = null
         mutableProgressBinding.value = WebCatalogProgressBinding.Loading
+        mutableStatisticsBinding.value = WebStatisticsBinding.Loading
         state = WebPlayerSessionState.Loading
         operation = scope.launch { resolveAndSynchronize(revision) }
     }
@@ -143,7 +174,9 @@ internal class WebPlayerSessionController(
         accountSelectionOpen = true
         operation?.cancel()
         progressRepository = null
+        statisticsRepository = null
         mutableProgressBinding.value = WebCatalogProgressBinding.Loading
+        mutableStatisticsBinding.value = WebStatisticsBinding.Loading
         state = WebPlayerSessionState.Loading
     }
 
@@ -163,12 +196,16 @@ internal class WebPlayerSessionController(
                 return
             }
 
-            val repository =
-                progressRepositoryFactory.create(WebCatalogProgressScope.yandexPlayer(playerId))
+            val playerScope = WebCatalogProgressScope.yandexPlayer(playerId)
+            val repository = progressRepositoryFactory.create(playerScope)
             repository.loadLocal()
             if (!isCurrent(revision)) return
             progressRepository = repository
+            val scopedStatistics = bindStatisticsLocal(revision, playerScope, identity)
             synchronize(revision, identity, repository)
+            if (scopedStatistics != null && isCurrent(revision)) {
+                synchronizeStatisticsSafely(revision, identity, scopedStatistics)
+            }
         } catch (error: CancellationException) {
             throw error
         } catch (_: Throwable) {
@@ -177,10 +214,12 @@ internal class WebPlayerSessionController(
     }
 
     private fun bindStandalone(revision: Long) {
-        val repository = progressRepositoryFactory.create(WebCatalogProgressScope.STANDALONE)
+        val standaloneScope = WebCatalogProgressScope.STANDALONE
+        val repository = progressRepositoryFactory.create(standaloneScope)
         repository.loadLocal()
         if (!isCurrent(revision)) return
         progressRepository = repository
+        bindStatisticsLocal(revision, standaloneScope, identity = null)
         state = WebPlayerSessionState.LocalOnly
         mutableProgressBinding.value =
             WebCatalogProgressBinding.Ready(
@@ -227,6 +266,125 @@ internal class WebPlayerSessionController(
         }
     }
 
+    private fun bindStatisticsLocal(
+        revision: Long,
+        playerScope: WebCatalogProgressScope,
+        identity: PlayerIdentity?,
+    ): WebStatisticsRepository? {
+        val repository =
+            runCatching {
+                statisticsRepositoryFactory.create(playerScope).also { it.loadLocal() }
+            }.getOrElse {
+                if (isCurrent(revision)) {
+                    statisticsRepository = null
+                    mutableStatisticsBinding.value =
+                        WebStatisticsBinding.Unavailable("The current Web statistics context is unavailable.")
+                }
+                return null
+            }
+        if (!isCurrent(revision)) return null
+        statisticsRepository = repository
+        mutableStatisticsBinding.value =
+            WebStatisticsBinding.Ready(
+                token = WebPlayerContextToken(revision),
+                repository = repository,
+                identity = identity,
+                syncStatus =
+                    if (identity == null) {
+                        WebStatisticsCloudSyncStatus.LOCAL_ONLY
+                    } else {
+                        WebStatisticsCloudSyncStatus.SYNCING
+                    },
+            )
+        return repository
+    }
+
+    private suspend fun synchronizeStatisticsSafely(
+        revision: Long,
+        identity: PlayerIdentity,
+        repository: WebStatisticsRepository,
+    ) {
+        try {
+            synchronizeStatistics(revision, identity, repository)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            statisticsSyncFailed(revision, identity, repository)
+        }
+    }
+
+    private suspend fun synchronizeStatistics(
+        revision: Long,
+        identity: PlayerIdentity,
+        repository: WebStatisticsRepository,
+    ) {
+        if (!isCurrentStatistics(revision, repository)) return
+        val cloud =
+            when (val result = statisticsCloudSaveGateway.read()) {
+                is CloudSaveReadResult.Found ->
+                    WebStatisticsCodec.decode(result.payload)
+                        ?: return statisticsSyncFailed(revision, identity, repository)
+                CloudSaveReadResult.Missing -> WebStatisticsSnapshot.EMPTY
+                CloudSaveReadResult.Unsupported,
+                is CloudSaveReadResult.Failed,
+                -> return statisticsSyncFailed(revision, identity, repository)
+            }
+        if (!isCurrentStatistics(revision, repository)) return
+
+        when (val merge = repository.mergeCloud(cloud)) {
+            WebStatisticsMergeResult.Invalid,
+            is WebStatisticsMergeResult.PersistenceFailed,
+            -> statisticsSyncFailed(revision, identity, repository)
+            is WebStatisticsMergeResult.Merged -> {
+                if (merge.cloudWriteRequired) {
+                    if (!isCurrentStatistics(revision, repository)) return
+                    when (statisticsCloudSaveGateway.write(WebStatisticsCodec.encode(merge.snapshot))) {
+                        CloudSaveWriteResult.Saved -> Unit
+                        CloudSaveWriteResult.Unsupported,
+                        is CloudSaveWriteResult.Failed,
+                        -> return statisticsSyncFailed(revision, identity, repository)
+                    }
+                    if (!isCurrentStatistics(revision, repository)) return
+                }
+                publishStatisticsReady(
+                    revision,
+                    identity,
+                    repository,
+                    WebStatisticsCloudSyncStatus.SYNCED,
+                )
+            }
+        }
+    }
+
+    private fun statisticsSyncFailed(
+        revision: Long,
+        identity: PlayerIdentity,
+        repository: WebStatisticsRepository,
+    ) {
+        publishStatisticsReady(
+            revision,
+            identity,
+            repository,
+            WebStatisticsCloudSyncStatus.ERROR,
+        )
+    }
+
+    private fun publishStatisticsReady(
+        revision: Long,
+        identity: PlayerIdentity,
+        repository: WebStatisticsRepository,
+        syncStatus: WebStatisticsCloudSyncStatus,
+    ) {
+        if (!isCurrentStatistics(revision, repository)) return
+        mutableStatisticsBinding.value =
+            WebStatisticsBinding.Ready(
+                token = WebPlayerContextToken(revision),
+                repository = repository,
+                identity = identity,
+                syncStatus = syncStatus,
+            )
+    }
+
     private fun syncFailed(
         revision: Long,
         identity: PlayerIdentity,
@@ -258,8 +416,10 @@ internal class WebPlayerSessionController(
     ) {
         if (!isCurrent(revision)) return
         progressRepository = null
+        statisticsRepository = null
         state = WebPlayerSessionState.LocalOnly
         mutableProgressBinding.value = WebCatalogProgressBinding.Unavailable(detail)
+        mutableStatisticsBinding.value = WebStatisticsBinding.Unavailable(detail)
     }
 
     private fun isCurrent(revision: Long): Boolean = revision == contextRevision && !accountSelectionOpen
@@ -268,4 +428,9 @@ internal class WebPlayerSessionController(
         !accountSelectionOpen &&
             binding.token.value == contextRevision &&
             mutableProgressBinding.value === binding
+
+    private fun isCurrentStatistics(
+        revision: Long,
+        repository: WebStatisticsRepository,
+    ): Boolean = isCurrent(revision) && statisticsRepository === repository
 }
