@@ -54,11 +54,17 @@ fun main() {
             )
         }
     val progressCoordinator = WebCatalogProgressCoordinator(playerSession)
-    val balanceController = WebBalanceController.create(controller.puzzleDataLoader, progressCoordinator)
-    val crownsController = WebCrownsController.create(controller.puzzleDataLoader, progressCoordinator)
-    val wordController = WebWordController.create(controller.puzzleDataLoader, progressCoordinator)
-    val sudokuController = WebSudokuController.create(controller.puzzleDataLoader, progressCoordinator)
-    val game2048Controller = Web2048Controller.create(controller.puzzleDataLoader, progressCoordinator)
+    val statisticsCoordinator = WebGameplayStatisticsCoordinator(playerSession)
+    val balanceController =
+        WebBalanceController.create(controller.puzzleDataLoader, progressCoordinator, statisticsCoordinator)
+    val crownsController =
+        WebCrownsController.create(controller.puzzleDataLoader, progressCoordinator, statisticsCoordinator)
+    val wordController =
+        WebWordController.create(controller.puzzleDataLoader, progressCoordinator, statisticsCoordinator)
+    val sudokuController =
+        WebSudokuController.create(controller.puzzleDataLoader, progressCoordinator, statisticsCoordinator)
+    val game2048Controller =
+        Web2048Controller.create(controller.puzzleDataLoader, progressCoordinator, statisticsCoordinator)
 
     ComposeViewport {
         WebApp(

@@ -76,12 +76,14 @@ class Web2048ControllerTest {
     fun firstV2TargetCrossingSurvivesImmediateExitAndFreeplayCannotAdvanceTwice() =
         runTest {
             val exitProgression = FakeWebCatalogProgressAccess()
+            val exitStatistics = RecordingGameplayStatistics()
             val exitController =
                 Web2048Controller(
                     loadPack = {},
                     progression = exitProgression,
                     levelPack = fixedMediumLevelOne,
                     engineFactory = { puzzleId -> scriptedV2Engine(puzzleId) },
+                    statistics = exitStatistics,
                     scope = this,
                 )
 
@@ -96,14 +98,17 @@ class Web2048ControllerTest {
                 )
             assertEquals(2, current.attempt.levelId.levelNumber.value)
             assertEquals(1, exitProgression.advanceCalls)
+            assertEquals(listOf(WebStatisticsTerminalOutcome.SOLVED), exitStatistics.outcomes)
 
             val freeplayProgression = FakeWebCatalogProgressAccess()
+            val freeplayStatistics = RecordingGameplayStatistics()
             val freeplayController =
                 Web2048Controller(
                     loadPack = {},
                     progression = freeplayProgression,
                     levelPack = fixedMediumLevelOne,
                     engineFactory = { puzzleId -> scriptedV2Engine(puzzleId) },
+                    statistics = freeplayStatistics,
                     scope = this,
                 )
 
@@ -131,6 +136,22 @@ class Web2048ControllerTest {
                 2,
                 assertIs<WebCatalogCompletionState.Saved>(freeplayController.completionState).nextLevel.levelNumber.value,
             )
+            assertEquals(listOf(WebStatisticsTerminalOutcome.SOLVED), freeplayStatistics.outcomes)
+
+            val failedStatistics = RecordingGameplayStatistics()
+            val failedController =
+                Web2048Controller(
+                    loadPack = {},
+                    progression = FakeWebCatalogProgressAccess(),
+                    levelPack = fixedMediumLevelOne,
+                    engineFactory = { puzzleId -> scriptedV2FailureEngine(puzzleId) },
+                    statistics = failedStatistics,
+                    scope = this,
+                )
+            failedController.selectDifficulty(Difficulty.MEDIUM)
+            advanceUntilIdle()
+            failedController.move(Game2048Direction.LEFT)
+            assertEquals(listOf(WebStatisticsTerminalOutcome.FAILED), failedStatistics.outcomes)
         }
 
     private fun scriptedV2Engine(puzzleId: Game2048PuzzleId): Web2048GameEngine {
@@ -159,6 +180,60 @@ class Web2048ControllerTest {
                 )
 
             override fun retry(state: Game2048State): Game2048State = start
+        }
+    }
+
+    private fun scriptedV2FailureEngine(puzzleId: Game2048PuzzleId): Web2048GameEngine {
+        val start = Game2048Engine(puzzleId).start()
+        val gameOver =
+            Game2048State(
+                puzzleId = puzzleId,
+                board = listOf(2, 4, 2, 4, 4, 2, 4, 2, 2, 4, 2, 4, 4, 2, 4, 2),
+                score = 0L,
+                nextSpawnIndex = start.nextSpawnIndex,
+                status = Game2048Status.FAILED,
+            )
+        return object : Web2048GameEngine {
+            override fun start(): Game2048State = start
+
+            override fun moveWithTrace(
+                state: Game2048State,
+                direction: Game2048Direction,
+            ): Game2048MoveTransition =
+                Game2048MoveTransition(
+                    state = gameOver,
+                    trace = Game2048MoveTrace(direction, emptyList(), emptyList(), null, 0L),
+                )
+
+            override fun retry(state: Game2048State): Game2048State = start
+        }
+    }
+
+    private class RecordingGameplayStatistics : WebGameplayStatistics {
+        private var nextAttemptIdentity = 0L
+
+        val outcomes = mutableListOf<WebStatisticsTerminalOutcome>()
+
+        override fun startAttempt(
+            puzzleType: PuzzleType,
+            difficulty: Difficulty,
+        ): WebStatisticsAttempt =
+            WebStatisticsAttempt(
+                identity = WebStatisticsAttemptIdentity(++nextAttemptIdentity),
+                playerContextToken = null,
+                repository = null,
+                puzzleType = puzzleType,
+                difficulty = difficulty,
+            )
+
+        override fun recordTerminalResult(
+            attempt: WebStatisticsAttempt,
+            outcome: WebStatisticsTerminalOutcome,
+            hintsUsed: Int,
+            wordAttemptsUsed: Int?,
+        ): WebStatisticsAttemptRecordResult {
+            outcomes += outcome
+            return WebStatisticsAttemptRecordResult.Recorded
         }
     }
 

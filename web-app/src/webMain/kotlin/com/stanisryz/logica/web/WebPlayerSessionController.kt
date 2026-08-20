@@ -84,7 +84,7 @@ internal class WebPlayerSessionController(
     private val statisticsRepositoryFactory: WebStatisticsRepositoryFactory,
     private val playerContextEvents: WebPlayerContextEvents,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
-) {
+) : WebStatisticsSessionAccess {
     private var started = false
     private var contextRevision = 0L
     private var accountSelectionOpen = false
@@ -94,7 +94,7 @@ internal class WebPlayerSessionController(
     private val mutableStatisticsBinding = MutableStateFlow<WebStatisticsBinding>(WebStatisticsBinding.Loading)
 
     val progressBinding: StateFlow<WebCatalogProgressBinding> = mutableProgressBinding.asStateFlow()
-    val statisticsBinding: StateFlow<WebStatisticsBinding> = mutableStatisticsBinding.asStateFlow()
+    override val statisticsBinding: StateFlow<WebStatisticsBinding> = mutableStatisticsBinding.asStateFlow()
 
     var state by mutableStateOf<WebPlayerSessionState>(WebPlayerSessionState.Loading)
         private set
@@ -155,6 +155,39 @@ internal class WebPlayerSessionController(
                             WebCloudSyncStatus.ERROR
                         },
                     )
+            }
+        }
+    }
+
+    override fun requestStatisticsCloudSynchronization(binding: WebStatisticsBinding.Ready) {
+        if (!isCurrentStatistics(binding)) return
+        val identity = binding.identity ?: return
+        scope.launch {
+            cloudWriteMutex.withLock {
+                if (!isCurrentStatistics(binding)) return@withLock
+                publishStatisticsReady(
+                    binding.token.value,
+                    identity,
+                    binding.repository,
+                    WebStatisticsCloudSyncStatus.SYNCING,
+                )
+                val result =
+                    runCatching {
+                        statisticsCloudSaveGateway.write(
+                            WebStatisticsCodec.encode(binding.repository.snapshot.value),
+                        )
+                    }.getOrElse { CloudSaveWriteResult.Failed(it) }
+                if (!isCurrentStatistics(binding)) return@withLock
+                publishStatisticsReady(
+                    binding.token.value,
+                    identity,
+                    binding.repository,
+                    if (result == CloudSaveWriteResult.Saved) {
+                        WebStatisticsCloudSyncStatus.SYNCED
+                    } else {
+                        WebStatisticsCloudSyncStatus.ERROR
+                    },
+                )
             }
         }
     }
@@ -338,7 +371,14 @@ internal class WebPlayerSessionController(
             is WebStatisticsMergeResult.Merged -> {
                 if (merge.cloudWriteRequired) {
                     if (!isCurrentStatistics(revision, repository)) return
-                    when (statisticsCloudSaveGateway.write(WebStatisticsCodec.encode(merge.snapshot))) {
+                    val writeResult =
+                        cloudWriteMutex.withLock {
+                            if (!isCurrentStatistics(revision, repository)) return@withLock null
+                            statisticsCloudSaveGateway.write(
+                                WebStatisticsCodec.encode(repository.snapshot.value),
+                            )
+                        } ?: return
+                    when (writeResult) {
                         CloudSaveWriteResult.Saved -> Unit
                         CloudSaveWriteResult.Unsupported,
                         is CloudSaveWriteResult.Failed,
@@ -433,4 +473,12 @@ internal class WebPlayerSessionController(
         revision: Long,
         repository: WebStatisticsRepository,
     ): Boolean = isCurrent(revision) && statisticsRepository === repository
+
+    private fun isCurrentStatistics(binding: WebStatisticsBinding.Ready): Boolean =
+        !accountSelectionOpen &&
+            binding.token.value == contextRevision &&
+            statisticsRepository === binding.repository &&
+            (mutableStatisticsBinding.value as? WebStatisticsBinding.Ready)?.let {
+                it.token == binding.token && it.repository === binding.repository
+            } == true
 }

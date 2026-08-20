@@ -2,6 +2,9 @@
 
 package com.stanisryz.logica.web
 
+import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.puzzle.core.word.WordRules
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -60,8 +63,8 @@ internal class WebStatisticsLocalStore(
 
     override fun load(): WebStatisticsSnapshot {
         val encoded = statisticsLocalStorageGet(storageKey) ?: return WebStatisticsSnapshot.EMPTY
-        val payload = WebBase64.decode(encoded) ?: return WebStatisticsSnapshot.EMPTY
-        return WebStatisticsCodec.decode(payload) ?: WebStatisticsSnapshot.EMPTY
+        val payload = requireNotNull(WebBase64.decode(encoded)) { "Stored Web statistics are not valid Base64." }
+        return requireNotNull(WebStatisticsCodec.decode(payload)) { "Stored Web statistics are invalid or over budget." }
     }
 
     override fun save(snapshot: WebStatisticsSnapshot) {
@@ -90,7 +93,47 @@ internal sealed interface WebStatisticsMergeResult {
     ) : WebStatisticsMergeResult
 }
 
-/** Current-scope durable statistics. Gameplay recording is intentionally deferred to Stage 45.7b. */
+internal enum class WebStatisticsTerminalOutcome {
+    SOLVED,
+    FAILED,
+}
+
+/** Final gameplay-only facts accepted by Web statistics; no transient board state crosses this boundary. */
+internal data class WebStatisticsTerminalResult(
+    val puzzleType: PuzzleType,
+    val difficulty: Difficulty,
+    val outcome: WebStatisticsTerminalOutcome,
+    val hintsUsed: Int,
+    val wordAttemptsUsed: Int? = null,
+) {
+    init {
+        require(hintsUsed >= 0) { "Final Web hint usage must not be negative." }
+        when {
+            puzzleType == PuzzleType.WORD &&
+                outcome == WebStatisticsTerminalOutcome.SOLVED ->
+                require(wordAttemptsUsed in 1..WordRules.MAXIMUM_ATTEMPTS) {
+                    "A solved Web Word result requires attempts used in the supported range."
+                }
+            else -> require(wordAttemptsUsed == null) { "Attempts used are stored only for solved Web Word results." }
+        }
+    }
+}
+
+internal sealed interface WebStatisticsRecordResult {
+    data class Recorded(
+        val snapshot: WebStatisticsSnapshot,
+    ) : WebStatisticsRecordResult
+
+    data class Rejected(
+        val cause: Throwable,
+    ) : WebStatisticsRecordResult
+
+    data class PersistenceFailed(
+        val cause: Throwable,
+    ) : WebStatisticsRecordResult
+}
+
+/** Current-scope durable statistics, updated only in this installation's monotonic component. */
 internal class WebStatisticsRepository(
     val scope: WebCatalogProgressScope,
     val installationId: String,
@@ -119,6 +162,40 @@ internal class WebStatisticsRepository(
     }
 
     fun aggregate(): WebStatisticsAggregate = WebStatisticsAggregator.aggregate(mutableSnapshot.value)
+
+    fun recordTerminalResult(result: WebStatisticsTerminalResult): WebStatisticsRecordResult {
+        val updated =
+            runCatching {
+                val current = mutableSnapshot.value
+                val component = requireNotNull(current.components[installationId]) {
+                    "The current Web installation component has not been initialized."
+                }
+                val bucket = WebStatisticsBucket(result.puzzleType, result.difficulty)
+                val counters = component.buckets[bucket] ?: WebStatisticsCounters()
+                val wordAttemptIncrement = result.wordAttemptsUsed?.let { mapOf(it to 1L) } ?: emptyMap()
+                val increment =
+                    WebStatisticsCounters(
+                        played = 1L,
+                        solved = if (result.outcome == WebStatisticsTerminalOutcome.SOLVED) 1L else 0L,
+                        failed = if (result.outcome == WebStatisticsTerminalOutcome.FAILED) 1L else 0L,
+                        hints = result.hintsUsed.toLong(),
+                        wordSolvedAttempts = wordAttemptIncrement,
+                    )
+                val updatedComponent =
+                    WebStatisticsDeviceComponent(
+                        component.buckets + (bucket to counters.addChecked(increment)),
+                    )
+                current.copy(components = current.components + (installationId to updatedComponent))
+            }.getOrElse { return WebStatisticsRecordResult.Rejected(it) }
+
+        runCatching {
+            WebStatisticsCodec.encode(updated)
+            localStore.save(updated)
+        }.exceptionOrNull()?.let { return WebStatisticsRecordResult.PersistenceFailed(it) }
+
+        mutableSnapshot.value = updated
+        return WebStatisticsRecordResult.Recorded(updated)
+    }
 
     fun mergeCloud(cloud: WebStatisticsSnapshot): WebStatisticsMergeResult {
         val local = mutableSnapshot.value

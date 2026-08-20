@@ -92,7 +92,7 @@ internal data class WebStatisticsSnapshot(
 
     companion object {
         const val CURRENT_SCHEMA_VERSION = 1
-        const val MAX_DEVICE_COMPONENTS = 1_024
+        const val MAX_DEVICE_COMPONENTS = WebStatisticsPayloadLimits.MAX_DEVICE_COMPONENTS
         val EMPTY = WebStatisticsSnapshot()
     }
 }
@@ -167,10 +167,10 @@ internal object WebStatisticsMerger {
 /** Compact deterministic binary format. All lifetime counters are signed-safe 64-bit values. */
 internal object WebStatisticsCodec {
     private val magic = byteArrayOf('L'.code.toByte(), 'G'.code.toByte(), 'S'.code.toByte(), 'T'.code.toByte())
-    private const val HEADER_SIZE = 12
-    private const val COMPONENT_HEADER_SIZE = 6
-    private const val BUCKET_SIZE = 2 + (4 + WordRules.MAXIMUM_ATTEMPTS) * Long.SIZE_BYTES
-    private const val MAX_PAYLOAD_SIZE = 2 * 1024 * 1024
+    private const val HEADER_SIZE = WebStatisticsPayloadLimits.HEADER_SIZE
+    private const val COMPONENT_HEADER_SIZE = WebStatisticsPayloadLimits.COMPONENT_HEADER_SIZE
+    private const val BUCKET_SIZE = WebStatisticsPayloadLimits.BUCKET_SIZE
+    internal const val MAX_PAYLOAD_SIZE = WebStatisticsPayloadLimits.MAX_RAW_PAYLOAD_SIZE
 
     fun encode(snapshot: WebStatisticsSnapshot): ByteArray {
         val components = snapshot.components.entries.sortedBy(Map.Entry<String, *>::key)
@@ -341,6 +341,19 @@ internal object WebStatisticsCodec {
             destination[offset + index] = (value ushr (56 - index * 8)).toByte()
         }
     }
+}
+
+/** Leaves headroom for Base64, the Catalog payload, property names, and Yandex Player data overhead. */
+private object WebStatisticsPayloadLimits {
+    const val HEADER_SIZE = 12
+    const val COMPONENT_HEADER_SIZE = 6
+    const val BUCKET_SIZE = 2 + (4 + WordRules.MAXIMUM_ATTEMPTS) * Long.SIZE_BYTES
+    const val MAX_RAW_PAYLOAD_SIZE = 120 * 1024
+    private const val MAX_COMPONENT_SIZE =
+        COMPONENT_HEADER_SIZE +
+            WebInstallationId.MAX_LENGTH +
+            WebStatisticsDeviceComponent.MAX_BUCKETS * BUCKET_SIZE
+    const val MAX_DEVICE_COMPONENTS = (MAX_RAW_PAYLOAD_SIZE - HEADER_SIZE) / MAX_COMPONENT_SIZE
 }
 
 internal object WebInstallationId {

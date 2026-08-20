@@ -60,10 +60,12 @@ internal class WebCrownsController(
     private val progression: WebCatalogProgressAccess,
     private val levelPack: CatalogLevelPack = BinaryCatalogLevelPack(WebPuzzleData),
     private val generator: CrownsGeneratorV1 = CrownsGeneratorV1(),
+    private val statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private var operation: Job? = null
     private var engine: CrownsGameEngine? = null
+    private var statisticsAttempt: WebStatisticsAttempt? = null
     private val completion = WebCatalogCompletionController(progression)
 
     var state by mutableStateOf<WebCrownsState>(WebCrownsState.DifficultySelection)
@@ -74,6 +76,7 @@ internal class WebCrownsController(
 
     fun selectDifficulty(difficulty: Difficulty) {
         operation?.cancel()
+        statisticsAttempt = null
         state = WebCrownsState.Loading(difficulty)
         operation =
             scope.launch {
@@ -106,11 +109,13 @@ internal class WebCrownsController(
                     val nextEngine = CrownsGameEngine(puzzle)
                     engine = nextEngine
                     completion.startAttempt(attempt)
+                    statisticsAttempt = statistics.startAttempt(PuzzleType.CROWNS, difficulty)
                     state = WebCrownsState.Playing(attempt, definition, puzzle, nextEngine.start())
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (exception: Exception) {
                     engine = null
+                    statisticsAttempt = null
                     completion.reset()
                     state = WebCrownsState.Error(difficulty, levelNumber, exception.message ?: "Crowns level is unavailable.")
                 }
@@ -179,6 +184,7 @@ internal class WebCrownsController(
         val activeEngine = engine ?: return
         operation?.cancel()
         completion.startAttempt(playing.attempt)
+        statisticsAttempt = statistics.startAttempt(PuzzleType.CROWNS, playing.definition.difficulty)
         state =
             playing.copy(
                 game = activeEngine.start(),
@@ -202,6 +208,7 @@ internal class WebCrownsController(
     fun showDifficultySelector() {
         operation?.cancel()
         engine = null
+        statisticsAttempt = null
         completion.reset()
         state = WebCrownsState.DifficultySelection
     }
@@ -216,8 +223,20 @@ internal class WebCrownsController(
         isHintLoading: Boolean,
     ) {
         state = playing.copy(game = updated, isHintLoading = isHintLoading)
-        if (!playing.game.status.isTerminal && updated.status == CrownsGameStatus.SOLVED) {
-            completion.saveSolved(playing.attempt)
+        if (!playing.game.status.isTerminal && updated.status.isTerminal) {
+            statisticsAttempt?.let {
+                statistics.recordTerminalResult(
+                    attempt = it,
+                    outcome =
+                        if (updated.status == CrownsGameStatus.SOLVED) {
+                            WebStatisticsTerminalOutcome.SOLVED
+                        } else {
+                            WebStatisticsTerminalOutcome.FAILED
+                        },
+                    hintsUsed = updated.hintsUsed,
+                )
+            }
+            if (updated.status == CrownsGameStatus.SOLVED) completion.saveSolved(playing.attempt)
         }
     }
 
@@ -231,6 +250,7 @@ internal class WebCrownsController(
         fun create(
             loader: BrowserPuzzleDataLoader,
             progression: WebCatalogProgressAccess,
+            statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
         ): WebCrownsController =
             WebCrownsController(
                 loadPack = { difficulty ->
@@ -241,6 +261,7 @@ internal class WebCrownsController(
                     )
                 },
                 progression = progression,
+                statistics = statistics,
             )
     }
 }

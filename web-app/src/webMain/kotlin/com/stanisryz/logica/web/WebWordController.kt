@@ -69,10 +69,12 @@ internal class WebWordController(
     private val progression: WebCatalogProgressAccess,
     private val levelPack: CatalogLevelPack = BinaryCatalogLevelPack(WebPuzzleData),
     private val runtimeResolver: (GeneratorVersion) -> WordRuntime = WordRuntimeResolver::resolve,
+    private val statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private var operation: Job? = null
     private var engine: WordGameEngine? = null
+    private var statisticsAttempt: WebStatisticsAttempt? = null
     private val completion = WebCatalogCompletionController(progression)
 
     var state by mutableStateOf<WebWordState>(WebWordState.DifficultySelection)
@@ -83,6 +85,7 @@ internal class WebWordController(
 
     fun selectDifficulty(difficulty: Difficulty) {
         operation?.cancel()
+        statisticsAttempt = null
         state = WebWordState.Loading(difficulty)
         operation =
             scope.launch {
@@ -120,11 +123,13 @@ internal class WebWordController(
                     val nextEngine = WordGameEngine(puzzle, runtime.allowedGuesses)
                     engine = nextEngine
                     completion.startAttempt(attempt)
+                    statisticsAttempt = statistics.startAttempt(PuzzleType.WORD, difficulty)
                     state = WebWordState.Playing(attempt, definition, puzzle, nextEngine.start())
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (exception: Exception) {
                     engine = null
+                    statisticsAttempt = null
                     completion.reset()
                     state = WebWordState.Error(difficulty, levelNumber, exception.message ?: "Word level is unavailable.")
                 }
@@ -166,8 +171,23 @@ internal class WebWordController(
                         acceptedAttemptRevision = playing.acceptedAttemptRevision + 1,
                     ).also { updated ->
                         state = updated
-                        if (playing.game.status != WordGameStatus.SOLVED && updated.game.status == WordGameStatus.SOLVED) {
-                            completion.saveSolved(playing.attempt)
+                        if (!playing.game.isFinished && updated.game.isFinished) {
+                            statisticsAttempt?.let {
+                                statistics.recordTerminalResult(
+                                    attempt = it,
+                                    outcome =
+                                        if (updated.game.status == WordGameStatus.SOLVED) {
+                                            WebStatisticsTerminalOutcome.SOLVED
+                                        } else {
+                                            WebStatisticsTerminalOutcome.FAILED
+                                        },
+                                    wordAttemptsUsed =
+                                        updated.game.attempts.size.takeIf {
+                                            updated.game.status == WordGameStatus.SOLVED
+                                        },
+                                )
+                            }
+                            if (updated.game.status == WordGameStatus.SOLVED) completion.saveSolved(playing.attempt)
                         }
                     }
         }
@@ -190,6 +210,7 @@ internal class WebWordController(
         val activeEngine = engine ?: return
         operation?.cancel()
         completion.startAttempt(playing.attempt)
+        statisticsAttempt = statistics.startAttempt(PuzzleType.WORD, playing.definition.difficulty)
         state =
             playing.copy(
                 game = activeEngine.start(),
@@ -215,6 +236,7 @@ internal class WebWordController(
     fun showDifficultySelector() {
         operation?.cancel()
         engine = null
+        statisticsAttempt = null
         completion.reset()
         state = WebWordState.DifficultySelection
     }
@@ -245,6 +267,7 @@ internal class WebWordController(
         fun create(
             loader: BrowserPuzzleDataLoader,
             progression: WebCatalogProgressAccess,
+            statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
         ): WebWordController =
             WebWordController(
                 loadPack = { difficulty ->
@@ -256,6 +279,7 @@ internal class WebWordController(
                 },
                 loadRuntimeResources = loader::loadWordResources,
                 progression = progression,
+                statistics = statistics,
             )
     }
 }

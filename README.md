@@ -1,6 +1,6 @@
 # Логика дня
 
-Logica contains the native Android application and a playable Yandex Games Web Catalog for Balance, Crowns, Word, Sudoku, and 2048. The deterministic core and canonical puzzle data are shared through `:puzzle-core`, their Compose Multiplatform presentation lives in `:shared-ui`, and neutral Store, Ads, Player, Cloud Save, lifecycle, and capability contracts live in `:platform-contracts`. Android remains the complete application; Web resumes and advances each game's saved Catalog level and now has separate Player-scoped local/cloud persistence foundations for future gameplay statistics. A Web Profile is not included yet.
+Logica contains the native Android application and a playable Yandex Games Web Catalog for Balance, Crowns, Word, Sudoku, and 2048. The deterministic core and canonical puzzle data are shared through `:puzzle-core`, their Compose Multiplatform presentation lives in `:shared-ui`, and neutral Store, Ads, Player, Cloud Save, lifecycle, and capability contracts live in `:platform-contracts`. Android remains the complete application; Web resumes and advances each game's saved Catalog level and persists Player-scoped gameplay statistics locally with best-effort cloud synchronization. A Web Profile is not included yet.
 
 Every catalog game is played as a numbered sequence of fixed levels. Level 1 of Легко is the same
 puzzle for everyone, and so is level 743 — each game and each difficulty keeps its own level number,
@@ -38,7 +38,7 @@ where supported and falls back to JavaScript. Build the Web outputs and the uplo
 
 The ZIP is written to `web-app/build/distributions/logica-yandex.zip`. The current Web host includes
 SDK bootstrap, lifecycle/gameplay activity handling, automatic current-Player local/cloud progress persistence,
-an isolated local/cloud statistics persistence foundation,
+Player-scoped local/cloud terminal gameplay statistics,
 lazy frozen Level Pack loading, responsive 9:16 presentation, and durable sequential Catalog play for all five
 games and all four difficulties. Solved levels advance once, failed attempts stay on the same level, and unfinished
 attempts remain session-only and are discarded on exit or Player change. Payments, ads, Store, Profile, Daily, and

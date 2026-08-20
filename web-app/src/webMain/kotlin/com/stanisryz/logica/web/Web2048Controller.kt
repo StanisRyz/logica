@@ -16,6 +16,7 @@ import com.stanisryz.logica.puzzle.core.game2048.Game2048MoveTrace
 import com.stanisryz.logica.puzzle.core.game2048.Game2048MoveTransition
 import com.stanisryz.logica.puzzle.core.game2048.Game2048PuzzleId
 import com.stanisryz.logica.puzzle.core.game2048.Game2048State
+import com.stanisryz.logica.puzzle.core.game2048.Game2048Status
 import com.stanisryz.logica.puzzle.core.game2048.toGame2048GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
@@ -84,10 +85,12 @@ internal class Web2048Controller(
     private val progression: WebCatalogProgressAccess,
     private val levelPack: CatalogLevelPack = BinaryCatalogLevelPack(WebPuzzleData),
     private val engineFactory: (Game2048PuzzleId) -> Web2048GameEngine = ::CoreWeb2048GameEngine,
+    private val statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private var operation: Job? = null
     private var engine: Web2048GameEngine? = null
+    private var statisticsAttempt: WebStatisticsAttempt? = null
     private var nextMotionRevision = 0L
     private val completion = WebCatalogCompletionController(progression)
 
@@ -99,6 +102,7 @@ internal class Web2048Controller(
 
     fun selectDifficulty(difficulty: Difficulty) {
         operation?.cancel()
+        statisticsAttempt = null
         state = Web2048State.Loading(difficulty)
         operation =
             scope.launch {
@@ -134,11 +138,13 @@ internal class Web2048Controller(
                     engine = nextEngine
                     nextMotionRevision = 0L
                     completion.startAttempt(attempt)
+                    statisticsAttempt = statistics.startAttempt(PuzzleType.GAME_2048, difficulty)
                     state = Web2048State.Playing(attempt, definition, nextEngine.start())
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (exception: Exception) {
                     engine = null
+                    statisticsAttempt = null
                     completion.reset()
                     state = Web2048State.Error(difficulty, levelNumber, exception.message ?: "2048 level is unavailable.")
                 }
@@ -163,8 +169,16 @@ internal class Web2048Controller(
                 motionRevision = nextMotionRevision,
                 motionTrace = trace,
             )
-        if (!playing.game.goalReached && transition.state.goalReached) {
+        val firstGoalCrossing = !playing.game.goalReached && transition.state.goalReached
+        if (firstGoalCrossing) {
+            statisticsAttempt?.let {
+                statistics.recordTerminalResult(it, WebStatisticsTerminalOutcome.SOLVED)
+            }
             completion.saveSolved(playing.attempt)
+        } else if (!playing.game.status.isTerminal && transition.state.status == Game2048Status.FAILED) {
+            statisticsAttempt?.let {
+                statistics.recordTerminalResult(it, WebStatisticsTerminalOutcome.FAILED)
+            }
         }
     }
 
@@ -188,6 +202,7 @@ internal class Web2048Controller(
         val activeEngine = engine ?: return
         operation?.cancel()
         completion.startAttempt(playing.attempt)
+        statisticsAttempt = statistics.startAttempt(PuzzleType.GAME_2048, playing.definition.difficulty)
         state =
             playing.copy(
                 game = activeEngine.retry(playing.game),
@@ -211,6 +226,7 @@ internal class Web2048Controller(
     fun showDifficultySelector() {
         operation?.cancel()
         engine = null
+        statisticsAttempt = null
         completion.reset()
         state = Web2048State.DifficultySelection
     }
@@ -229,6 +245,7 @@ internal class Web2048Controller(
         fun create(
             loader: BrowserPuzzleDataLoader,
             progression: WebCatalogProgressAccess,
+            statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
         ): Web2048Controller =
             Web2048Controller(
                 loadPack = { difficulty ->
@@ -239,6 +256,7 @@ internal class Web2048Controller(
                     )
                 },
                 progression = progression,
+                statistics = statistics,
             )
     }
 }

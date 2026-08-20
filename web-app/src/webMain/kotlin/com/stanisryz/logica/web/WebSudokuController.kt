@@ -66,11 +66,13 @@ internal class WebSudokuController(
     private val progression: WebCatalogProgressAccess,
     private val levelPack: CatalogLevelPack = BinaryCatalogLevelPack(WebPuzzleData),
     dataset: SudokuDataset = BinarySudokuDataset(WebPuzzleData),
+    private val statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private val provider = SudokuCatalogProvider(dataset)
     private var operation: Job? = null
     private var engine: SudokuGameEngine? = null
+    private var statisticsAttempt: WebStatisticsAttempt? = null
     private val completion = WebCatalogCompletionController(progression)
 
     var state by mutableStateOf<WebSudokuState>(WebSudokuState.DifficultySelection)
@@ -81,6 +83,7 @@ internal class WebSudokuController(
 
     fun selectDifficulty(difficulty: Difficulty) {
         operation?.cancel()
+        statisticsAttempt = null
         state = WebSudokuState.Loading(difficulty)
         operation =
             scope.launch {
@@ -115,11 +118,13 @@ internal class WebSudokuController(
                     val nextEngine = SudokuGameEngine(puzzle)
                     engine = nextEngine
                     completion.startAttempt(attempt)
+                    statisticsAttempt = statistics.startAttempt(PuzzleType.SUDOKU, difficulty)
                     state = WebSudokuState.Playing(attempt, definition, puzzle, nextEngine.start())
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (exception: Exception) {
                     engine = null
+                    statisticsAttempt = null
                     completion.reset()
                     state = WebSudokuState.Error(difficulty, levelNumber, exception.message ?: "Sudoku level is unavailable.")
                 }
@@ -176,6 +181,7 @@ internal class WebSudokuController(
         val activeEngine = engine ?: return
         operation?.cancel()
         completion.startAttempt(playing.attempt)
+        statisticsAttempt = statistics.startAttempt(PuzzleType.SUDOKU, playing.definition.difficulty)
         state = playing.copy(game = activeEngine.start(), selectedCell = null, isPencilMode = false)
     }
 
@@ -194,6 +200,7 @@ internal class WebSudokuController(
     fun showDifficultySelector() {
         operation?.cancel()
         engine = null
+        statisticsAttempt = null
         completion.reset()
         state = WebSudokuState.DifficultySelection
     }
@@ -208,8 +215,20 @@ internal class WebSudokuController(
         selectedCell: SudokuPosition? = playing.selectedCell,
     ) {
         state = playing.copy(game = updated, selectedCell = selectedCell)
-        if (!playing.game.status.isTerminal && updated.status == SudokuGameStatus.SOLVED) {
-            completion.saveSolved(playing.attempt)
+        if (!playing.game.status.isTerminal && updated.status.isTerminal) {
+            statisticsAttempt?.let {
+                statistics.recordTerminalResult(
+                    attempt = it,
+                    outcome =
+                        if (updated.status == SudokuGameStatus.SOLVED) {
+                            WebStatisticsTerminalOutcome.SOLVED
+                        } else {
+                            WebStatisticsTerminalOutcome.FAILED
+                        },
+                    hintsUsed = updated.hintsUsed,
+                )
+            }
+            if (updated.status == SudokuGameStatus.SOLVED) completion.saveSolved(playing.attempt)
         }
     }
 
@@ -229,6 +248,7 @@ internal class WebSudokuController(
         fun create(
             loader: BrowserPuzzleDataLoader,
             progression: WebCatalogProgressAccess,
+            statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
         ): WebSudokuController =
             WebSudokuController(
                 loadPack = { difficulty ->
@@ -240,6 +260,7 @@ internal class WebSudokuController(
                 },
                 loadDataset = loader::loadSudokuDataset,
                 progression = progression,
+                statistics = statistics,
             )
     }
 }
