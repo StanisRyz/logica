@@ -72,16 +72,47 @@ fun main() {
     val progressCoordinator = WebCatalogProgressCoordinator(playerSession)
     val statisticsCoordinator = WebGameplayStatisticsCoordinator(playerSession)
     val dailyCoordinator = WebDailyGameplayCoordinator(playerSession)
+    val economyCoordinator = WebGameplayEconomyCoordinator(playerSession)
     val balanceController =
-        WebBalanceController.create(controller.puzzleDataLoader, progressCoordinator, statisticsCoordinator, dailyCoordinator)
+        WebBalanceController.create(
+            controller.puzzleDataLoader,
+            progressCoordinator,
+            statisticsCoordinator,
+            dailyCoordinator,
+            economyCoordinator,
+        )
     val crownsController =
-        WebCrownsController.create(controller.puzzleDataLoader, progressCoordinator, statisticsCoordinator, dailyCoordinator)
+        WebCrownsController.create(
+            controller.puzzleDataLoader,
+            progressCoordinator,
+            statisticsCoordinator,
+            dailyCoordinator,
+            economyCoordinator,
+        )
     val wordController =
-        WebWordController.create(controller.puzzleDataLoader, progressCoordinator, statisticsCoordinator, dailyCoordinator)
+        WebWordController.create(
+            controller.puzzleDataLoader,
+            progressCoordinator,
+            statisticsCoordinator,
+            dailyCoordinator,
+            economyCoordinator,
+        )
     val sudokuController =
-        WebSudokuController.create(controller.puzzleDataLoader, progressCoordinator, statisticsCoordinator, dailyCoordinator)
+        WebSudokuController.create(
+            controller.puzzleDataLoader,
+            progressCoordinator,
+            statisticsCoordinator,
+            dailyCoordinator,
+            economyCoordinator,
+        )
     val game2048Controller =
-        Web2048Controller.create(controller.puzzleDataLoader, progressCoordinator, statisticsCoordinator, dailyCoordinator)
+        Web2048Controller.create(
+            controller.puzzleDataLoader,
+            progressCoordinator,
+            statisticsCoordinator,
+            dailyCoordinator,
+            economyCoordinator,
+        )
 
     ComposeViewport {
         WebApp(

@@ -1,0 +1,318 @@
+@file:OptIn(ExperimentalWasmJsInterop::class)
+
+package com.stanisryz.logica.web
+
+import com.stanisryz.logica.platform.EconomyConsumptionType
+import com.stanisryz.logica.platform.EconomyEvent
+import com.stanisryz.logica.platform.EconomyPolicy
+import com.stanisryz.logica.platform.EconomyRewardType
+import com.stanisryz.logica.platform.EconomyState
+import com.stanisryz.logica.platform.PlayerIdentity
+import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
+/**
+ * Versioned Player-scoped economy save model. Intentionally simple and migration-ready: a new
+ * schema version can be introduced without infrastructure because every read validates the
+ * version explicitly.
+ */
+internal data class WebEconomySnapshot(
+    val version: Int = CURRENT_VERSION,
+    val gems: Int,
+    val lives: Int,
+    val nextLifeRestoreAtEpochMs: Long?,
+) {
+    init {
+        require(version == CURRENT_VERSION) { "Unsupported Web economy schema $version." }
+        require(gems >= 0) { "Stored Web gems must never be negative." }
+        require(lives in 0..EconomyPolicy.MAXIMUM_LIVES) { "Stored Web lives are outside the supported range." }
+    }
+
+    fun toState(): EconomyState =
+        EconomyState(gems = gems, lives = lives, nextLifeRestoreAtEpochMs = nextLifeRestoreAtEpochMs)
+
+    companion object {
+        const val CURRENT_VERSION = 1
+
+        val DEFAULT =
+            WebEconomySnapshot(
+                gems = EconomyPolicy.STARTING_GEMS,
+                lives = EconomyPolicy.STARTING_LIVES,
+                nextLifeRestoreAtEpochMs = null,
+            )
+    }
+}
+
+/** Deterministic compact binary format with an explicit schema version byte. */
+internal object WebEconomyCodec {
+    private val magic = byteArrayOf('L'.code.toByte(), 'G'.code.toByte(), 'E'.code.toByte(), 'C'.code.toByte())
+    private const val SIZE = 4 + 1 + 4 + 1 + 1 + 8
+
+    fun encode(snapshot: WebEconomySnapshot): ByteArray {
+        val result = ByteArray(SIZE)
+        magic.copyInto(result)
+        result[4] = snapshot.version.toByte()
+        writeInt(result, 5, snapshot.gems)
+        result[9] = snapshot.lives.toByte()
+        val restore = snapshot.nextLifeRestoreAtEpochMs
+        result[10] = if (restore == null) 0 else 1
+        if (restore != null) {
+            for (index in 0 until 8) {
+                result[11 + index] = (restore ushr ((7 - index) * 8)).toByte()
+            }
+        } else {
+            for (index in 0 until 8) {
+                result[11 + index] = 0
+            }
+        }
+        return result
+    }
+
+    fun decode(payload: ByteArray): WebEconomySnapshot? =
+        runCatching {
+            require(payload.size == SIZE)
+            require(magic.indices.all { payload[it] == magic[it] })
+            val version = payload[4].toInt() and 0xff
+            require(version == WebEconomySnapshot.CURRENT_VERSION)
+            val gems = readInt(payload, 5)
+            val lives = payload[9].toInt() and 0xff
+            val hasRestore = payload[10].toInt() != 0
+            var restore = 0L
+            if (hasRestore) {
+                for (index in 0 until 8) {
+                    restore = (restore shl 8) or (payload[11 + index].toLong() and 0xff)
+                }
+            }
+            WebEconomySnapshot(
+                version = version,
+                gems = gems,
+                lives = lives,
+                nextLifeRestoreAtEpochMs = if (hasRestore) restore else null,
+            )
+        }.getOrNull()
+
+    private fun writeInt(
+        destination: ByteArray,
+        offset: Int,
+        value: Int,
+    ) {
+        destination[offset] = (value ushr 24).toByte()
+        destination[offset + 1] = (value ushr 16).toByte()
+        destination[offset + 2] = (value ushr 8).toByte()
+        destination[offset + 3] = value.toByte()
+    }
+
+    private fun readInt(
+        source: ByteArray,
+        offset: Int,
+    ): Int = ((source[offset].toInt() and 0xff) shl 24) or
+        ((source[offset + 1].toInt() and 0xff) shl 16) or
+        ((source[offset + 2].toInt() and 0xff) shl 8) or
+        (source[offset + 3].toInt() and 0xff)
+}
+
+internal interface WebEconomyStore {
+    fun load(): WebEconomySnapshot
+
+    fun save(snapshot: WebEconomySnapshot)
+}
+
+/** Economy uses its own Player-scoped local key and never shares another domain's payload. */
+internal class WebEconomyLocalStore(
+    scope: WebCatalogProgressScope,
+) : WebEconomyStore {
+    internal val storageKey = "$LOCAL_STORAGE_KEY_PREFIX:${scope.keySuffix}"
+
+    override fun load(): WebEconomySnapshot {
+        val encoded = economyLocalStorageGet(storageKey) ?: return WebEconomySnapshot.DEFAULT
+        val payload = WebBase64.decode(encoded) ?: return WebEconomySnapshot.DEFAULT
+        return WebEconomyCodec.decode(payload) ?: WebEconomySnapshot.DEFAULT
+    }
+
+    override fun save(snapshot: WebEconomySnapshot) {
+        economyLocalStorageSet(storageKey, WebBase64.encode(WebEconomyCodec.encode(snapshot)))
+    }
+
+    private companion object {
+        const val LOCAL_STORAGE_KEY_PREFIX = "logica_economy_v1"
+    }
+}
+
+private fun economyLocalStorageGet(key: String): String? = js("globalThis.localStorage.getItem(key)")
+
+private fun economyLocalStorageSet(
+    key: String,
+    value: String,
+) {
+    js("globalThis.localStorage.setItem(key, value)")
+}
+
+internal fun interface WebEconomyRepositoryFactory {
+    fun create(scope: WebCatalogProgressScope): WebPlayerEconomyRepository
+}
+
+internal sealed interface WebEconomyBinding {
+    data object Loading : WebEconomyBinding
+
+    data class Ready(
+        val token: WebPlayerContextToken,
+        val repository: WebPlayerEconomyRepository,
+        val identity: PlayerIdentity?,
+    ) : WebEconomyBinding
+
+    data class Unavailable(
+        val detail: String,
+    ) : WebEconomyBinding
+}
+
+/** Session-facing economy surface used by gameplay and Profile; cloud sync joins later stages. */
+internal interface WebEconomySessionAccess {
+    val economyBinding: StateFlow<WebEconomyBinding>
+}
+
+/**
+ * Catalog-only gameplay economy seam. Daily challenges never consume lives and never grant
+ * Catalog rewards, so no Daily path exists on this interface by design.
+ */
+internal interface WebGameplayEconomy {
+    fun recordCatalogTerminalResult(
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+        solved: Boolean,
+    )
+}
+
+internal object DisabledWebGameplayEconomy : WebGameplayEconomy {
+    override fun recordCatalogTerminalResult(
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+        solved: Boolean,
+    ) = Unit
+}
+
+/** Dynamically applies Catalog economy effects to the repository bound to the current Player. */
+internal class WebGameplayEconomyCoordinator(
+    private val playerSession: WebEconomySessionAccess,
+) : WebGameplayEconomy {
+    override fun recordCatalogTerminalResult(
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+        solved: Boolean,
+    ) {
+        val binding = playerSession.economyBinding.value as? WebEconomyBinding.Ready ?: return
+        binding.repository.applyCatalogTerminalResult(puzzleType, difficulty, solved)
+    }
+}
+
+
+/**
+ * The pure economy processing pipeline: gameplay facts in, new state plus events out. UI never
+ * mutates wallet values directly; every change flows through here.
+ */
+internal object WebEconomyProcessor {
+    /** Mirrors the established solved-gem rewards by difficulty (1/2/3/4 for Easy..Expert). */
+    fun gemRewardFor(difficulty: Difficulty): Int =
+        when (difficulty) {
+            Difficulty.EASY -> 1
+            Difficulty.MEDIUM -> 2
+            Difficulty.HARD -> 3
+            Difficulty.EXPERT -> 4
+        }
+
+    fun onCatalogTerminalResult(
+        state: EconomyState,
+        difficulty: Difficulty,
+        solved: Boolean,
+    ): Pair<EconomyState, List<EconomyEvent>> =
+        if (solved) {
+            val reward = gemRewardFor(difficulty)
+            EconomyState(state.gems + reward, state.lives, state.nextLifeRestoreAtEpochMs) to
+                listOf(EconomyEvent.GameCompleted, EconomyEvent.RewardGranted(EconomyRewardType.GEMS, reward))
+        } else {
+            val consumed = minOf(EconomyPolicy.FAILED_ATTEMPT_LIFE_COST, state.lives)
+            EconomyState(state.gems, state.lives - consumed, null) to
+                listOf(EconomyEvent.GameFailed, EconomyEvent.ResourceConsumed(EconomyConsumptionType.LIFE, consumed))
+        }
+}
+
+/**
+ * Player-scoped wallet foundation. The repository owns persistence; all mutations go through
+ * [WebEconomyProcessor] and land durably before the observable state is published.
+ */
+internal class WebPlayerEconomyRepository(
+    val scope: WebCatalogProgressScope,
+    private val store: WebEconomyStore,
+) {
+    private val mutableState =
+        MutableStateFlow(EconomyState(EconomyPolicy.STARTING_GEMS, EconomyPolicy.STARTING_LIVES, null))
+    val state: StateFlow<EconomyState> = mutableState.asStateFlow()
+
+    fun loadLocal() {
+        mutableState.value = store.load().toState()
+    }
+
+    /** Solved Catalog puzzle: grants the difficulty's gem reward through the processor. */
+    fun applyCatalogTerminalResult(
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+        solved: Boolean,
+    ): List<EconomyEvent> =
+        mutate { state -> WebEconomyProcessor.onCatalogTerminalResult(state, difficulty, solved) }
+
+    /** Wallet foundation: adds a positive amount of gems. */
+    fun addGems(amount: Int): Boolean {
+        if (amount <= 0) return false
+        mutate { state ->
+            EconomyState(state.gems + amount, state.lives, state.nextLifeRestoreAtEpochMs) to emptyList()
+        }
+        return true
+    }
+
+    /** Wallet foundation: spends gems only when the balance allows it; never negative. */
+    fun spendGems(amount: Int): Boolean {
+        if (amount <= 0) return false
+        var spent = false
+        mutate { state ->
+            if (state.gems >= amount) {
+                spent = true
+                EconomyState(state.gems - amount, state.lives, state.nextLifeRestoreAtEpochMs) to emptyList()
+            } else {
+                state to emptyList()
+            }
+        }
+        return spent
+    }
+
+    /** Wallet foundation: consumes one life when available; never negative. */
+    fun consumeLife(): Boolean {
+        var consumed = false
+        mutate { state ->
+            if (state.lives > 0) {
+                consumed = true
+                EconomyState(state.gems, state.lives - 1, null) to emptyList()
+            } else {
+                state to emptyList()
+            }
+        }
+        return consumed
+    }
+
+    private inline fun mutate(update: (EconomyState) -> Pair<EconomyState, List<EconomyEvent>>): List<EconomyEvent> {
+        val previous = mutableState.value
+        val (updated, events) = update(previous)
+        if (updated == previous) return events
+        // Local durability precedes publication: a failed save leaves the wallet untouched.
+        runCatching {
+            store.save(updated.toSnapshot())
+        }.onFailure { return events }
+        mutableState.value = updated
+        return events
+    }
+
+    private fun EconomyState.toSnapshot(): WebEconomySnapshot =
+        WebEconomySnapshot(gems = gems, lives = lives, nextLifeRestoreAtEpochMs = nextLifeRestoreAtEpochMs)
+}
+

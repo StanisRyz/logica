@@ -25,6 +25,9 @@
 - Completed Daily count remains full-completion based while current/best streak follow policy qualification rules (V5: any solved entry qualifies its date).
 - Daily sharing uses one shared platform-neutral spoiler-free payload/formatter with platform-host share actions: Android keeps Intent-based sharing, Web shares user-initiated through the browser Web Share API with a clipboard fallback.
 - Sharing is presentation-only and never changes Daily persistence, Statistics, or Catalog state; the Web Daily block is functionally complete after this stage.
+- The Web economy foundation exists in `:platform-contracts` (EconomyState/events/policy) plus a Player-scoped `WebPlayerEconomyRepository` bound per Player context like Catalog/Statistics/Daily; wallet mutations flow through one processor and persist locally before publication. Economy cloud synchronization joins the session later.
+- Catalog terminals feed the economy (difficulty gem rewards / failure life cost) through one gameplay seam; Daily is intentionally absent from that seam and stays independent from the economy.
+- Profile optionally shows a compact wallet section; Store, payments, rewarded/interstitial ads, leaderboards, and achievements are intentionally not implemented yet.
 - Daily never advances Catalog progression — no level change, Next Level, or completion writes; `WebCatalogCompletionController` stays Catalog-only.
 - Daily terminal attempts are real gameplay: they record normal Web Statistics (played/solved/failed plus hints and Word attempts), while unfinished voluntary exits persist nothing anywhere.
 - V5 first-solve streak qualification stays visibly separate from full 5/5 completion everywhere, including the shared hub presentation.

@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.platform.PlatformLifecycleState
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
@@ -67,6 +68,7 @@ import com.stanisryz.logica.ui.daily.DailyShareEntry
 import com.stanisryz.logica.ui.daily.DailyShareFormatter
 import com.stanisryz.logica.ui.daily.DailySharePayload
 import com.stanisryz.logica.ui.profile.DailyProfileMetrics
+import com.stanisryz.logica.ui.profile.ProfileEconomyMetrics
 import com.stanisryz.logica.ui.game2048.Game2048Content
 import com.stanisryz.logica.ui.game2048.formatGame2048Number
 import com.stanisryz.logica.ui.profile.ProfileContent
@@ -528,12 +530,17 @@ private fun WebProfileRoute(
                         dailyBinding = playerSession.dailyBinding.collectAsState().value,
                         statisticsToken = binding.token,
                     )
+                val economyMetrics =
+                    webEconomyMetricsOrNull(
+                        economyBinding = playerSession.economyBinding.collectAsState().value,
+                        statisticsToken = binding.token,
+                    )
                 ProfileContent(
                     uiState =
                         WebStatisticsAggregator
                             .aggregate(snapshot)
                             .toProfileStatistics()
-                            .copy(dailyMetrics = dailyMetrics)
+                            .copy(dailyMetrics = dailyMetrics, economy = economyMetrics)
                             .toUiState(),
                     onRetry = onRetry,
                 )
@@ -551,6 +558,26 @@ private fun webDailyProfileMetricsOrNull(
         dailyBinding is WebDailyBinding.Ready && dailyBinding.token == statisticsToken -> {
             val snapshot by dailyBinding.repository.snapshot.collectAsState()
             snapshot.dailyProfileMetrics(BrowserLocalWebDailyDateProvider.currentDate())
+        }
+        else -> null
+    }
+
+/** Wallet display from the economy repository bound to exactly this Player context, else absent. */
+@Composable
+private fun webEconomyMetricsOrNull(
+    economyBinding: WebEconomyBinding,
+    statisticsToken: WebPlayerContextToken,
+): ProfileEconomyMetrics? =
+    when {
+        economyBinding is WebEconomyBinding.Ready && economyBinding.token == statisticsToken -> {
+            val state by economyBinding.repository.state.collectAsState()
+            state.let {
+                ProfileEconomyMetrics(
+                    gems = it.gems.toLong(),
+                    lives = it.lives.toLong(),
+                    maximumLives = EconomyPolicy.MAXIMUM_LIVES.toLong(),
+                )
+            }
         }
         else -> null
     }

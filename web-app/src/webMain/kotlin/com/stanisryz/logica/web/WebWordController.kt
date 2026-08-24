@@ -72,6 +72,7 @@ internal class WebWordController(
     private val runtimeResolver: (GeneratorVersion) -> WordRuntime = WordRuntimeResolver::resolve,
     private val statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
     private val daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
+    private val economy: WebGameplayEconomy = DisabledWebGameplayEconomy,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private var operation: Job? = null
@@ -268,9 +269,16 @@ internal class WebWordController(
                                 )
                             }
                             when (val source = playing.source) {
-                                is WebGameplaySource.CatalogLevel ->
+                                is WebGameplaySource.CatalogLevel -> {
                                     // Daily never advances Catalog progression; Catalog completion stays here only.
                                     if (solved) completion.saveSolved(source.attempt)
+                                    // Catalog terminals feed the wallet; Daily is intentionally absent here.
+                                    economy.recordCatalogTerminalResult(
+                                        PuzzleType.WORD,
+                                        source.attempt.levelId.difficulty,
+                                        solved = solved,
+                                    )
+                                }
                                 is WebGameplaySource.DailyChallenge ->
                                     dailyCompletion.saveTerminal(source.attempt, outcome, wordAttemptsUsed)
                             }
@@ -372,6 +380,7 @@ internal class WebWordController(
             progression: WebCatalogProgressAccess,
             statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
             daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
+            economy: WebGameplayEconomy = DisabledWebGameplayEconomy,
         ): WebWordController =
             WebWordController(
                 loadPack = { difficulty ->
@@ -385,6 +394,7 @@ internal class WebWordController(
                 progression = progression,
                 statistics = statistics,
                 daily = daily,
+                economy = economy,
             )
     }
 }

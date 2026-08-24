@@ -27,12 +27,25 @@ data class ProfileStatistics(
     val game2048: Game2048ProfileStatistics,
     val word: WordProfileStatistics,
     val dailyMetrics: DailyProfileMetrics?,
+    val economy: ProfileEconomyMetrics? = null,
 ) {
     init {
         require(totalSolved >= 0L && totalHintsUsed >= 0L && completedTerminalResults >= 0L)
     }
 
     fun toUiState(): ProfileUiState = if (completedTerminalResults == 0L) ProfileUiState.Empty else ProfileUiState.Ready(this)
+}
+
+/** Compact wallet display for the Profile; restore text is a pre-localized host string. */
+data class ProfileEconomyMetrics(
+    val gems: Long,
+    val lives: Long,
+    val maximumLives: Long,
+    val restoreLabel: String? = null,
+) {
+    init {
+        require(gems >= 0L && lives >= 0L && maximumLives > 0L && lives <= maximumLives)
+    }
 }
 
 /**

@@ -48,6 +48,10 @@
     <string name="daily_completed_count">Задач дня выполнено</string>
     <string name="current_daily_streak">Текущая серия</string>
     <string name="best_daily_streak">Лучшая серия</string>
+
+    <string name="profile_economy">Кошелёк</string>
+    <string name="profile_gems">Кристаллы</string>
+    <string name="profile_lives">Жизни</string>
     <string name="total_hints_used">Подсказок использовано</string>
     <string name="sudoku_played">Сыграно</string>
     <string name="sudoku_solved_count">Решено</string>

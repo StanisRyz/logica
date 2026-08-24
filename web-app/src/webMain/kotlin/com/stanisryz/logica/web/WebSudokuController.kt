@@ -69,6 +69,7 @@ internal class WebSudokuController(
     dataset: SudokuDataset = BinarySudokuDataset(WebPuzzleData),
     private val statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
     private val daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
+    private val economy: WebGameplayEconomy = DisabledWebGameplayEconomy,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private val provider = SudokuCatalogProvider(dataset)
@@ -333,9 +334,16 @@ internal class WebSudokuController(
                 )
             }
             when (val source = playing.source) {
-                is WebGameplaySource.CatalogLevel ->
+                is WebGameplaySource.CatalogLevel -> {
                     // Daily never advances Catalog progression; Catalog completion stays here only.
                     if (updated.status == SudokuGameStatus.SOLVED) completion.saveSolved(source.attempt)
+                    // Catalog terminals feed the wallet; Daily is intentionally absent here.
+                    economy.recordCatalogTerminalResult(
+                        PuzzleType.SUDOKU,
+                        source.attempt.levelId.difficulty,
+                        solved = updated.status == SudokuGameStatus.SOLVED,
+                    )
+                }
                 is WebGameplaySource.DailyChallenge ->
                     dailyCompletion.saveTerminal(source.attempt, outcome)
             }
@@ -360,6 +368,7 @@ internal class WebSudokuController(
             progression: WebCatalogProgressAccess,
             statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
             daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
+            economy: WebGameplayEconomy = DisabledWebGameplayEconomy,
         ): WebSudokuController =
             WebSudokuController(
                 loadPack = { difficulty ->
@@ -373,6 +382,7 @@ internal class WebSudokuController(
                 progression = progression,
                 statistics = statistics,
                 daily = daily,
+                economy = economy,
             )
     }
 }

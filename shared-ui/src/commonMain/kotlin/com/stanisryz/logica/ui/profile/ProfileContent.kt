@@ -49,6 +49,9 @@ import com.stanisryz.logica.shared.ui.generated.resources.best_daily_streak
 import com.stanisryz.logica.shared.ui.generated.resources.current_daily_streak
 import com.stanisryz.logica.shared.ui.generated.resources.daily_challenge
 import com.stanisryz.logica.shared.ui.generated.resources.daily_completed_count
+import com.stanisryz.logica.shared.ui.generated.resources.profile_economy
+import com.stanisryz.logica.shared.ui.generated.resources.profile_gems
+import com.stanisryz.logica.shared.ui.generated.resources.profile_lives
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_easy
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_expert
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_hard
@@ -158,6 +161,29 @@ private fun ReadyProfileContent(
                     add(ProfileMetric(stringResource(Res.string.total_hints_used), statistics.totalHintsUsed.toString()))
                 }
             ProfileMetricGrid(metrics)
+        }
+        if (statistics.economy != null) {
+            val economy = statistics.economy
+            ProfileSection(stringResource(Res.string.profile_economy)) {
+                ProfileMetricGrid(
+                    buildList {
+                        add(ProfileMetric(stringResource(Res.string.profile_gems), economy.gems.toString()))
+                        add(
+                            ProfileMetric(
+                                stringResource(Res.string.profile_lives),
+                                "${economy.lives} / ${economy.maximumLives}",
+                            ),
+                        )
+                    },
+                )
+                economy.restoreLabel?.let { restore ->
+                    Text(
+                        text = restore,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
         if (!statistics.dailyMetrics?.recentDays.isNullOrEmpty()) {
             ProfileSection(stringResource(Res.string.daily_challenge)) {

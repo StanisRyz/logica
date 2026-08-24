@@ -88,6 +88,7 @@ internal class Web2048Controller(
     private val engineFactory: (Game2048PuzzleId) -> Web2048GameEngine = ::CoreWeb2048GameEngine,
     private val statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
     private val daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
+    private val economy: WebGameplayEconomy = DisabledWebGameplayEconomy,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private var operation: Job? = null
@@ -259,10 +260,22 @@ internal class Web2048Controller(
                         statistics.recordTerminalResult(it, WebStatisticsTerminalOutcome.SOLVED)
                     }
                     completion.saveSolved(source.attempt)
+                    // The first V2 target crossing is the Catalog result; it also feeds the wallet.
+                    economy.recordCatalogTerminalResult(
+                        PuzzleType.GAME_2048,
+                        source.attempt.levelId.difficulty,
+                        solved = true,
+                    )
                 } else if (!playing.game.status.isTerminal && transition.state.status == Game2048Status.FAILED) {
                     statisticsAttempt?.let {
                         statistics.recordTerminalResult(it, WebStatisticsTerminalOutcome.FAILED)
                     }
+                    // A pre-target game over is the normal Catalog failure and costs one life.
+                    economy.recordCatalogTerminalResult(
+                        PuzzleType.GAME_2048,
+                        source.attempt.levelId.difficulty,
+                        solved = false,
+                    )
                 }
             }
             is WebGameplaySource.DailyChallenge -> {
@@ -367,6 +380,7 @@ internal class Web2048Controller(
             progression: WebCatalogProgressAccess,
             statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
             daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
+            economy: WebGameplayEconomy = DisabledWebGameplayEconomy,
         ): Web2048Controller =
             Web2048Controller(
                 loadPack = { difficulty ->
@@ -379,6 +393,7 @@ internal class Web2048Controller(
                 progression = progression,
                 statistics = statistics,
                 daily = daily,
+                economy = economy,
             )
     }
 }

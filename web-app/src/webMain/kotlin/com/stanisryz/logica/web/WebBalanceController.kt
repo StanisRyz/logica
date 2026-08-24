@@ -63,6 +63,7 @@ internal class WebBalanceController(
     private val generator: BalanceGeneratorV1 = BalanceGeneratorV1(),
     private val statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
     private val daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
+    private val economy: WebGameplayEconomy = DisabledWebGameplayEconomy,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private var operation: Job? = null
@@ -335,9 +336,16 @@ internal class WebBalanceController(
                 )
             }
             when (val source = playing.source) {
-                is WebGameplaySource.CatalogLevel ->
+                is WebGameplaySource.CatalogLevel -> {
                     // Daily never advances Catalog progression; Catalog completion stays here only.
                     if (updated.status == BalanceGameStatus.SOLVED) completion.saveSolved(source.attempt)
+                    // Catalog terminals feed the wallet; Daily is intentionally absent here.
+                    economy.recordCatalogTerminalResult(
+                        PuzzleType.BALANCE,
+                        source.attempt.levelId.difficulty,
+                        solved = updated.status == BalanceGameStatus.SOLVED,
+                    )
+                }
                 is WebGameplaySource.DailyChallenge ->
                     dailyCompletion.saveTerminal(source.attempt, outcome)
             }
@@ -356,6 +364,7 @@ internal class WebBalanceController(
             progression: WebCatalogProgressAccess,
             statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
             daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
+            economy: WebGameplayEconomy = DisabledWebGameplayEconomy,
         ): WebBalanceController =
             WebBalanceController(
                 loadPack = { difficulty ->
@@ -368,6 +377,7 @@ internal class WebBalanceController(
                 progression = progression,
                 statistics = statistics,
                 daily = daily,
+                economy = economy,
             )
     }
 }
