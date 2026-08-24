@@ -282,6 +282,12 @@ internal class WebPlayerStoreRepository(
         mutableSnapshot.value = updated
         return true
     }
+
+    /** Restores an externally supplied durable snapshot (unified cloud save); durable-first. */
+    fun applyExternal(snapshot: WebStoreSnapshot) {
+        runCatching { store.save(snapshot) }
+        mutableSnapshot.value = snapshot
+    }
 }
 
 /** Session-facing Store surface used by the Store UI and gameplay inventory consumption. */

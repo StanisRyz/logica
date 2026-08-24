@@ -340,6 +340,15 @@ internal class WebPlayerEconomyRepository(
         return granted
     }
 
+    /** Restores an externally supplied durable snapshot (unified cloud save); durable-first. */
+    fun applyExternal(snapshot: WebEconomySnapshot) {
+        runCatching { store.save(snapshot) }
+        mutableState.value = snapshot.toState()
+    }
+
+    private fun EconomyState.toSnapshot(): WebEconomySnapshot =
+        WebEconomySnapshot(gems = gems, lives = lives, nextLifeRestoreAtEpochMs = nextLifeRestoreAtEpochMs)
+
     private inline fun mutate(update: (EconomyState) -> Pair<EconomyState, List<EconomyEvent>>): List<EconomyEvent> {
         val previous = mutableState.value
         val (updated, events) = update(previous)
@@ -352,7 +361,9 @@ internal class WebPlayerEconomyRepository(
         return events
     }
 
-    private fun EconomyState.toSnapshot(): WebEconomySnapshot =
-        WebEconomySnapshot(gems = gems, lives = lives, nextLifeRestoreAtEpochMs = nextLifeRestoreAtEpochMs)
+
 }
 
+
+internal fun EconomyState.toWebEconomySnapshot(): WebEconomySnapshot =
+    WebEconomySnapshot(gems = gems, lives = lives, nextLifeRestoreAtEpochMs = nextLifeRestoreAtEpochMs)

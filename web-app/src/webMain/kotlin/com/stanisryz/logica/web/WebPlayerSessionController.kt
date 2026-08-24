@@ -114,6 +114,8 @@ internal class WebPlayerSessionController(
     private val dailyCloudSaveGateway: CloudSaveGateway,
     private val dailyRepositoryFactory: WebDailyRepositoryFactory,
     private val playerContextEvents: WebPlayerContextEvents,
+    /** Invoked after a Player context is fully bound (identity resolved, all domains loaded). */
+    var postBindAction: suspend (WebPlayerContextToken) -> Unit = { _ -> },
     private val economyRepositoryFactory: WebEconomyRepositoryFactory =
         WebEconomyRepositoryFactory { scope -> WebPlayerEconomyRepository(scope, WebEconomyLocalStore(scope)) },
     private val storeRepositoryFactory: WebStoreRepositoryFactory =
@@ -347,6 +349,10 @@ internal class WebPlayerSessionController(
             if (scopedDaily != null && isCurrent(revision)) {
                 synchronizeDailySafely(revision, identity, scopedDaily)
             }
+            // Unified cloud save restore: identity resolved, all domains local-loaded.
+            if (isCurrent(revision)) {
+                postBindAction(WebPlayerContextToken(revision))
+            }
         } catch (error: CancellationException) {
             throw error
         } catch (_: Throwable) {
@@ -354,7 +360,7 @@ internal class WebPlayerSessionController(
         }
     }
 
-    private fun bindStandalone(revision: Long) {
+    private suspend fun bindStandalone(revision: Long) {
         val standaloneScope = WebCatalogProgressScope.STANDALONE
         val repository = progressRepositoryFactory.create(standaloneScope)
         repository.loadLocal()
@@ -371,6 +377,7 @@ internal class WebPlayerSessionController(
                 repository = repository,
                 identity = null,
             )
+        postBindAction(WebPlayerContextToken(revision))
     }
 
     private suspend fun synchronize(

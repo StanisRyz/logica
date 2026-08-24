@@ -83,6 +83,23 @@ fun main() {
             storeRepository = { playerSession.storeRepository },
             currentTimeMs = ::currentTimeMillis,
         )
+    // Unified cloud save foundation: identity through the SDK, payload over a dedicated key.
+    val playerProvider =
+        YandexPlayerProvider(
+            if (bridge.isAvailable) {
+                YandexPlayerIdentityGateway(bridge)
+            } else {
+                UnsupportedWebPlayerIdentityGateway
+            },
+        )
+    val unifiedSaveRepository =
+        YandexCloudSaveRepository(
+            YandexCloudSaveGateway(bridge, dataKey = UNIFIED_SAVE_STATE_KEY),
+        )
+    val saveManager =
+        WebSaveManager(WebSaveSections(playerSession).all(), unifiedSaveRepository)
+    playerSession.postBindAction = { saveManager.restore() }
+    playerProvider.let { /* identity is consumed automatically by the session controller */ }
     val balanceController =
         WebBalanceController.create(
             controller.puzzleDataLoader,
@@ -143,3 +160,5 @@ fun main() {
 }
 
 private fun currentTimeMillis(): Long = js("Date.now()")
+
+private const val UNIFIED_SAVE_STATE_KEY = "logica_unified_save_v1"
