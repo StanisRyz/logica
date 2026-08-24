@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.platform.PlatformLifecycleState
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Status
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
@@ -59,8 +60,13 @@ import com.stanisryz.logica.ui.components.DifficultySelector
 import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
 import com.stanisryz.logica.ui.components.GameHubContent
 import com.stanisryz.logica.ui.crowns.CrownsGameContent
+import com.stanisryz.logica.ui.daily.DailyHubResultRow
 import com.stanisryz.logica.ui.daily.DailyHubSection
 import com.stanisryz.logica.ui.daily.DailyHubUiState
+import com.stanisryz.logica.ui.daily.DailyShareEntry
+import com.stanisryz.logica.ui.daily.DailyShareFormatter
+import com.stanisryz.logica.ui.daily.DailySharePayload
+import com.stanisryz.logica.ui.profile.DailyProfileMetrics
 import com.stanisryz.logica.ui.game2048.Game2048Content
 import com.stanisryz.logica.ui.game2048.formatGame2048Number
 import com.stanisryz.logica.ui.profile.ProfileContent
@@ -331,6 +337,7 @@ private fun ReadyContent(
                 onSelect = { route = it },
             ) {
                 WebProfileRoute(
+                    playerSession = playerSession,
                     binding = playerSession.statisticsBinding.collectAsState().value,
                     onRetry = playerSession::retryCurrentContext,
                 )
@@ -440,14 +447,52 @@ private fun WebDailyHubRoute(
                 // Re-read the calendar date only on resume ticks, so a passed midnight re-renders
                 // the new day's definition without polling while the hub simply stays visible.
                 val currentDate = remember(dateRefreshKey) { BrowserLocalWebDailyDateProvider.currentDate() }
-                val uiState =
+                val hubState =
                     if (coordinator.lastStartWasRejected) {
                         DailyHubUiState.Error(stringResource(Res.string.daily_start_error))
                     } else {
                         buildWebDailyHubUiState(snapshot, currentDate)
                     }
+                // The Web share action exists only for a fully completed, still-current Daily day;
+                // it is user-initiated from the shared completion card's optional callback.
+                val uiStateWithShare =
+                    if (hubState is DailyHubUiState.Content) {
+                        val sharePayload =
+                            webDailySharePayloadOrNull(
+                                snapshot.days[currentDate],
+                                currentDate,
+                                hubState.streak.current,
+                            )
+                        val completionWithShare =
+                            hubState.completion?.let { completion ->
+                                val record = snapshot.days.getValue(currentDate)
+                                if (sharePayload == null) {
+                                    completion
+                                } else {
+                                    val definition =
+                                        DailyChallengePolicyResolver.definitionFor(record.date, record.policyVersion)
+                                    completion.copy(
+                                        resultRows =
+                                            definition.entries.map { entry ->
+                                                DailyHubResultRow(
+                                                    puzzleType = entry.puzzleType,
+                                                    solved = true,
+                                                    wordAttemptsUsed =
+                                                        record.wordSolvedAttemptsUsed.takeIf { entry.puzzleType == PuzzleType.WORD },
+                                                )
+                                            },
+                                        onShare = {
+                                            WebDailyTextSharer.share(DailyShareFormatter.format(sharePayload))
+                                        },
+                                    )
+                                }
+                            }
+                        if (completionWithShare != null) hubState.copy(completion = completionWithShare) else hubState
+                    } else {
+                        hubState
+                    }
                 DailyHubSection(
-                    uiState = uiState,
+                    uiState = uiStateWithShare,
                     gameplayAllowed = true,
                     onStart = onStartDaily,
                     onRetryLoad = coordinator::clearStartRejection,
@@ -458,6 +503,7 @@ private fun WebDailyHubRoute(
 
 @Composable
 private fun WebProfileRoute(
+    playerSession: WebPlayerSessionController,
     binding: WebStatisticsBinding,
     onRetry: () -> Unit,
 ) {
@@ -475,17 +521,39 @@ private fun WebProfileRoute(
         is WebStatisticsBinding.Ready ->
             key(binding.token) {
                 val snapshot by binding.repository.snapshot.collectAsState()
+                // Real Daily metrics come from the currently bound Player's Daily repository and
+                // update locally after gameplay; opening Profile never triggers a cloud read.
+                val dailyMetrics =
+                    webDailyProfileMetricsOrNull(
+                        dailyBinding = playerSession.dailyBinding.collectAsState().value,
+                        statisticsToken = binding.token,
+                    )
                 ProfileContent(
                     uiState =
                         WebStatisticsAggregator
                             .aggregate(snapshot)
                             .toProfileStatistics()
+                            .copy(dailyMetrics = dailyMetrics)
                             .toUiState(),
                     onRetry = onRetry,
                 )
             }
     }
 }
+
+/** Daily metrics from the Daily repository bound to exactly this Player context, else absent. */
+@Composable
+private fun webDailyProfileMetricsOrNull(
+    dailyBinding: WebDailyBinding,
+    statisticsToken: WebPlayerContextToken,
+): DailyProfileMetrics? =
+    when {
+        dailyBinding is WebDailyBinding.Ready && dailyBinding.token == statisticsToken -> {
+            val snapshot by dailyBinding.repository.snapshot.collectAsState()
+            snapshot.dailyProfileMetrics(BrowserLocalWebDailyDateProvider.currentDate())
+        }
+        else -> null
+    }
 
 @Composable
 private fun BalanceFlow(

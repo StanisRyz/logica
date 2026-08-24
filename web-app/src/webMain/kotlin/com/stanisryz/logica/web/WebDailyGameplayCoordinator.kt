@@ -15,6 +15,10 @@ import com.stanisryz.logica.ui.daily.DailyHubEntry
 import com.stanisryz.logica.ui.daily.DailyHubEntryState
 import com.stanisryz.logica.ui.daily.DailyHubStreak
 import com.stanisryz.logica.ui.daily.DailyHubUiState
+import com.stanisryz.logica.ui.daily.DailyShareEntry
+import com.stanisryz.logica.ui.daily.DailySharePayload
+import com.stanisryz.logica.ui.profile.DailyProfileMetrics
+import com.stanisryz.logica.ui.profile.DailyRecentDay
 
 /** One transient, runtime-only Web Daily attempt. It is never persisted in any form. */
 internal data class WebDailyAttempt(
@@ -164,24 +168,86 @@ internal class WebDailyGameplayCoordinator(
 }
 
 /** Host-owned deterministic date label; the shared presentation never formats dates itself. */
-internal fun formatWebDailyDateLabel(date: DailyDate): String {
-    val month =
-        when (date.getMonthValue()) {
-            1 -> "января"
-            2 -> "февраля"
-            3 -> "марта"
-            4 -> "апреля"
-            5 -> "мая"
-            6 -> "июня"
-            7 -> "июля"
-            8 -> "августа"
-            9 -> "сентября"
-            10 -> "октября"
-            11 -> "ноября"
-            else -> "декабря"
-        }
-    return "${date.getDayOfMonth()} $month ${date.getYear()} г."
+internal fun formatWebDailyDateLabel(date: DailyDate): String = "${date.getDayOfMonth()} ${russianGenitiveMonth(date.getMonthValue())} ${date.getYear()} г."
+
+/** Short display date shared with the spoiler-free Daily share payload ("24 августа"). */
+internal fun formatWebDailyShortDate(date: DailyDate): String = "${date.getDayOfMonth()} ${russianGenitiveMonth(date.getMonthValue())}"
+
+private fun russianGenitiveMonth(month: Int): String =
+    when (month) {
+        1 -> "января"
+        2 -> "февраля"
+        3 -> "марта"
+        4 -> "апреля"
+        5 -> "мая"
+        6 -> "июня"
+        7 -> "июля"
+        8 -> "августа"
+        9 -> "сентября"
+        10 -> "октября"
+        11 -> "ноября"
+        else -> "декабря"
+    }
+
+/**
+ * Real Web Daily Profile metrics derived only from durable history — completed count stays
+ * full-completion based while current/best streak follow policy qualification rules.
+ */
+internal fun WebDailySnapshotV1.dailyProfileMetrics(currentDate: DailyDate): DailyProfileMetrics {
+    val relevant = days.values.filterNot { it.date.isAfter(currentDate) }
+    val qualifiedDates = relevant.filter(WebDailyDayRecord::qualifiedForStreak).mapTo(linkedSetOf()) { it.date }
+    val streak = DailyStreakCalculator.calculate(currentDate, qualifiedDates)
+    return DailyProfileMetrics(
+        completedCount = relevant.count(WebDailyDayRecord::fullyCompleted).toLong(),
+        currentStreak = streak.current.toLong(),
+        bestStreak = streak.best.toLong(),
+        recentDays = recentDailyDays(relevant),
+    )
 }
+
+private fun WebDailySnapshotV1.recentDailyDays(relevant: List<WebDailyDayRecord>): List<DailyRecentDay> =
+    relevant
+        .sortedWith(compareBy(webDailyDateComparator) { it.date })
+        .takeLast(DailyProfileMetrics.MAXIMUM_RECENT_DAYS)
+        .reversed()
+        .map { record ->
+            val definition = DailyChallengePolicyResolver.definitionFor(record.date, record.policyVersion)
+            DailyRecentDay(
+                dateLabel = formatWebDailyShortDate(record.date),
+                solvedCount = record.completedEntryCount,
+                totalCount = definition.entries.size,
+                fullyCompleted = record.fullyCompleted,
+            )
+        }
+
+/**
+ * The spoiler-free Web share payload for one day, or null while the day is not fully completed
+ * under its persisted policy — a partially qualified V5 date is never a completed share result.
+ */
+internal fun webDailySharePayloadOrNull(
+    record: WebDailyDayRecord?,
+    currentDate: DailyDate,
+    currentStreak: Int,
+): DailySharePayload? {
+    if (record == null || !record.fullyCompleted || record.date != currentDate) return null
+    val definition = DailyChallengePolicyResolver.definitionFor(record.date, record.policyVersion)
+    return DailySharePayload(
+        dateLabel = formatWebDailyShortDate(record.date),
+        entries =
+            definition.entries.map { entry ->
+                val facts = record.facts(entry.puzzleType)
+                DailyShareEntry(
+                    puzzleType = entry.puzzleType,
+                    solved = facts.solved,
+                    wordAttemptsUsed = record.wordSolvedAttemptsUsed.takeIf { entry.puzzleType == PuzzleType.WORD },
+                )
+            },
+        completedCount = record.completedEntryCount,
+        totalCount = definition.entries.size,
+        currentStreak = currentStreak,
+    )
+}
+
 
 /**
  * Pure reactive mapping from the durable Daily snapshot to the shared hub model. Reading today's

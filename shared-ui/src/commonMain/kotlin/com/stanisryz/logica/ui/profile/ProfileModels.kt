@@ -35,13 +35,35 @@ data class ProfileStatistics(
     fun toUiState(): ProfileUiState = if (completedTerminalResults == 0L) ProfileUiState.Empty else ProfileUiState.Ready(this)
 }
 
+/**
+ * One compact, spoiler-free durable Daily day for the optional recent-history rows. The date
+ * label is host-formatted; only solved/required counts and full completion are exposed.
+ */
+data class DailyRecentDay(
+    val dateLabel: String,
+    val solvedCount: Int,
+    val totalCount: Int,
+    val fullyCompleted: Boolean,
+) {
+    init {
+        require(solvedCount in 0..totalCount && totalCount > 0)
+    }
+}
+
 data class DailyProfileMetrics(
     val completedCount: Long,
     val currentStreak: Long,
     val bestStreak: Long,
+    val recentDays: List<DailyRecentDay> = emptyList(),
 ) {
     init {
         require(completedCount >= 0L && currentStreak >= 0L && bestStreak >= 0L)
+        require(recentDays.size <= MAXIMUM_RECENT_DAYS)
+    }
+
+    companion object {
+        /** The recent-history block stays compact; hosts show at most a few last durable days. */
+        const val MAXIMUM_RECENT_DAYS = 5
     }
 }
 

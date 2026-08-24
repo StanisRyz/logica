@@ -47,6 +47,7 @@ import com.stanisryz.logica.puzzle.core.word.WordRules
 import com.stanisryz.logica.shared.ui.generated.resources.Res
 import com.stanisryz.logica.shared.ui.generated.resources.best_daily_streak
 import com.stanisryz.logica.shared.ui.generated.resources.current_daily_streak
+import com.stanisryz.logica.shared.ui.generated.resources.daily_challenge
 import com.stanisryz.logica.shared.ui.generated.resources.daily_completed_count
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_easy
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_expert
@@ -157,6 +158,26 @@ private fun ReadyProfileContent(
                     add(ProfileMetric(stringResource(Res.string.total_hints_used), statistics.totalHintsUsed.toString()))
                 }
             ProfileMetricGrid(metrics)
+        }
+        if (!statistics.dailyMetrics?.recentDays.isNullOrEmpty()) {
+            ProfileSection(stringResource(Res.string.daily_challenge)) {
+                statistics.dailyMetrics?.recentDays?.forEach { day ->
+                    val dayLabel =
+                        buildString {
+                            append(day.dateLabel)
+                            append(" · ")
+                            append(day.solvedCount)
+                            append(" / ")
+                            append(day.totalCount)
+                            if (day.fullyCompleted) append(" ✓")
+                        }
+                    Text(
+                        text = dayLabel,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
         }
         ProfileSection(stringResource(Res.string.profile_statistics)) {
             SolvedPuzzleCard(PuzzleType.BALANCE, statistics.balance)
