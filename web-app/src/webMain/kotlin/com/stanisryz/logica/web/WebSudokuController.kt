@@ -43,8 +43,7 @@ internal sealed interface WebSudokuState {
     ) : WebSudokuState
 
     data class Playing(
-        val attempt: WebCatalogAttempt,
-        val definition: CatalogLevelDefinition,
+        val source: WebGameplaySource,
         val puzzle: SudokuPuzzle,
         val game: SudokuGameState,
         val selectedCell: SudokuPosition? = null,
@@ -67,6 +66,7 @@ internal class WebSudokuController(
     private val levelPack: CatalogLevelPack = BinaryCatalogLevelPack(WebPuzzleData),
     dataset: SudokuDataset = BinarySudokuDataset(WebPuzzleData),
     private val statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
+    private val daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private val provider = SudokuCatalogProvider(dataset)
@@ -119,7 +119,12 @@ internal class WebSudokuController(
                     engine = nextEngine
                     completion.startAttempt(attempt)
                     statisticsAttempt = statistics.startAttempt(PuzzleType.SUDOKU, difficulty)
-                    state = WebSudokuState.Playing(attempt, definition, puzzle, nextEngine.start())
+                    state =
+                        WebSudokuState.Playing(
+                            WebGameplaySource.CatalogLevel(attempt, definition),
+                            puzzle,
+                            nextEngine.start(),
+                        )
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (exception: Exception) {
@@ -135,6 +140,52 @@ internal class WebSudokuController(
         val error = state as? WebSudokuState.Error ?: return
         if (error.progressionUnavailable) progression.retryContextBinding()
         selectDifficulty(error.difficulty)
+    }
+
+    /**
+     * Starts the deterministic Daily Sudoku puzzle: the frozen selector resolves the same Dataset
+     * V1 record from the Daily identity alone — never a Catalog level — while mistakes, Pencil,
+     * hints, and shared presentation behave exactly as in Catalog gameplay.
+     */
+    fun startDaily(dailyAttempt: WebDailyAttempt) {
+        operation?.cancel()
+        statisticsAttempt = null
+        completion.reset()
+        state = WebSudokuState.Loading(dailyAttempt.entry.difficulty)
+        operation =
+            scope.launch {
+                try {
+                    require(dailyAttempt.entry.generatorVersion == provider.version) {
+                        "Sudoku Daily requires provider ${dailyAttempt.entry.generatorVersion.value}."
+                    }
+                    val difficulty = dailyAttempt.entry.difficulty
+                    loadDataset(SudokuDatasetVersion.V1, difficulty.toSudokuDifficulty())
+                    val puzzle =
+                        provider
+                            .select(difficulty, dailyAttempt.entry.seed, dailyAttempt.entry.generatorVersion)
+                            .requirePuzzle()
+                    val nextEngine = SudokuGameEngine(puzzle)
+                    engine = nextEngine
+                    statisticsAttempt = statistics.startAttempt(PuzzleType.SUDOKU, difficulty)
+                    state =
+                        WebSudokuState.Playing(
+                            WebGameplaySource.DailyChallenge(dailyAttempt),
+                            puzzle,
+                            nextEngine.start(),
+                        )
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (exception: Exception) {
+                    engine = null
+                    statisticsAttempt = null
+                    state =
+                        WebSudokuState.Error(
+                            dailyAttempt.entry.difficulty,
+                            null,
+                            exception.message ?: "Sudoku Daily is unavailable.",
+                        )
+                }
+            }
     }
 
     fun selectCell(position: SudokuPosition) {
@@ -180,21 +231,24 @@ internal class WebSudokuController(
         if (playing.game.status != SudokuGameStatus.FAILED) return
         val activeEngine = engine ?: return
         operation?.cancel()
-        completion.startAttempt(playing.attempt)
-        statisticsAttempt = statistics.startAttempt(PuzzleType.SUDOKU, playing.definition.difficulty)
+        val source = playing.source
+        if (source is WebGameplaySource.CatalogLevel) completion.startAttempt(source.attempt)
+        statisticsAttempt = statistics.startAttempt(PuzzleType.SUDOKU, playing.source.difficulty)
         state = playing.copy(game = activeEngine.start(), selectedCell = null, isPencilMode = false)
     }
 
     fun nextLevel() {
         val playing = state as? WebSudokuState.Playing ?: return
+        val source = playing.source as? WebGameplaySource.CatalogLevel ?: return
         if (completion.state !is WebCatalogCompletionState.Saved) return
-        selectDifficulty(playing.attempt.levelId.difficulty)
+        selectDifficulty(source.attempt.levelId.difficulty)
     }
 
     fun retrySave() {
         val playing = state as? WebSudokuState.Playing ?: return
+        val source = playing.source as? WebGameplaySource.CatalogLevel ?: return
         if (playing.game.status != SudokuGameStatus.SOLVED) return
-        completion.saveSolved(playing.attempt)
+        completion.saveSolved(source.attempt)
     }
 
     fun showDifficultySelector() {
@@ -216,19 +270,25 @@ internal class WebSudokuController(
     ) {
         state = playing.copy(game = updated, selectedCell = selectedCell)
         if (!playing.game.status.isTerminal && updated.status.isTerminal) {
+            val outcome =
+                if (updated.status == SudokuGameStatus.SOLVED) {
+                    WebStatisticsTerminalOutcome.SOLVED
+                } else {
+                    WebStatisticsTerminalOutcome.FAILED
+                }
             statisticsAttempt?.let {
                 statistics.recordTerminalResult(
                     attempt = it,
-                    outcome =
-                        if (updated.status == SudokuGameStatus.SOLVED) {
-                            WebStatisticsTerminalOutcome.SOLVED
-                        } else {
-                            WebStatisticsTerminalOutcome.FAILED
-                        },
+                    outcome = outcome,
                     hintsUsed = updated.hintsUsed,
                 )
             }
-            if (updated.status == SudokuGameStatus.SOLVED) completion.saveSolved(playing.attempt)
+            when (val source = playing.source) {
+                is WebGameplaySource.CatalogLevel ->
+                    // Daily never advances Catalog progression; Catalog completion stays here only.
+                    if (updated.status == SudokuGameStatus.SOLVED) completion.saveSolved(source.attempt)
+                is WebGameplaySource.DailyChallenge -> daily.recordTerminalResult(source.attempt, outcome)
+            }
         }
     }
 
@@ -249,6 +309,7 @@ internal class WebSudokuController(
             loader: BrowserPuzzleDataLoader,
             progression: WebCatalogProgressAccess,
             statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
+            daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
         ): WebSudokuController =
             WebSudokuController(
                 loadPack = { difficulty ->
@@ -261,6 +322,7 @@ internal class WebSudokuController(
                 loadDataset = loader::loadSudokuDataset,
                 progression = progression,
                 statistics = statistics,
+                daily = daily,
             )
     }
 }

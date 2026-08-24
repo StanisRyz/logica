@@ -56,6 +56,7 @@ fun SudokuGameContent(
     onDigit: (Int) -> Unit,
     onTogglePencil: () -> Unit,
     onHint: () -> Unit,
+    contextBadgeLabel: String? = null,
     modifier: Modifier = Modifier,
     hostStatusContent: @Composable ColumnScope.() -> Unit = {},
 ) {
@@ -82,6 +83,7 @@ fun SudokuGameContent(
                             .labelResource(),
                     ),
                 levelNumber = levelNumber,
+                contextLabel = contextBadgeLabel,
             )
             MistakeIndicator(game.mistakesUsed, SudokuGameState.MAX_MISTAKES)
             hostStatusContent()
@@ -187,3 +189,6 @@ private val NORMAL_CONTEXT_HEIGHT = 76.dp
 private val COMPACT_KEYPAD_SPACING = 4.dp
 private val CONTEXT_CARD_PADDING = 10.dp
 private const val MAX_HINT_LINES = 3
+
+
+

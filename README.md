@@ -1,6 +1,6 @@
 # Логика дня
 
-Logica contains the native Android application and a playable Yandex Games Web Catalog for Balance, Crowns, Word, Sudoku, and 2048. The deterministic core and canonical puzzle data are shared through `:puzzle-core`, their Compose Multiplatform presentation lives in `:shared-ui`, and neutral Store, Ads, Player, Cloud Save, lifecycle, and capability contracts live in `:platform-contracts`. Android remains the complete application; Web resumes and advances each game's saved Catalog level, shows Player-scoped gameplay statistics, and now has the isolated local/cloud Daily history foundation for future Web Daily support.
+Logica contains the native Android application and a playable Yandex Games Web Catalog for Balance, Crowns, Word, Sudoku, and 2048, plus a Daily challenge that is playable on both platforms. The deterministic core and canonical puzzle data are shared through `:puzzle-core`, their Compose Multiplatform presentation lives in `:shared-ui`, and neutral Store, Ads, Player, Cloud Save, lifecycle, and capability contracts live in `:platform-contracts`. Android remains the complete application; Web resumes and advances each game's saved Catalog level, shows Player-scoped gameplay statistics, and offers the same daily challenge, synchronized through Player-scoped local/cloud Daily storage.
 
 Every catalog game is played as a numbered sequence of fixed levels. Level 1 of Легко is the same
 puzzle for everyone, and so is level 743 — each game and each difficulty keeps its own level number,
@@ -43,7 +43,7 @@ lazy frozen Level Pack loading, responsive 9:16 presentation, and durable sequen
 games and all four difficulties. Its compact primary navigation contains Games and Profile; opening Profile reads
 the already-bound local aggregate and does not trigger another cloud load. Solved levels advance once, failed attempts
 stay on the same level, and unfinished attempts remain session-only and are discarded on exit or Player change.
-Web Daily gameplay, UI, and Profile metrics are not connected yet. Payments, ads, Store, and a sticky banner are not included.
+The same Daily challenge is playable in the Web/Yandex build: the Game hub shows today's challenge above the catalog, each entry launches its deterministic puzzle directly (no difficulty choice), and results synchronize through Player-scoped local/cloud Daily storage. Daily 2048 resolves only at the real end of the game, unlike Catalog 2048 whose goal instantly clears the level. Web Profile Daily metrics and sharing are not connected yet. Payments, ads, Store, and a sticky banner are not included.
 
 Crowns, the second puzzle type, now has a pure-Kotlin domain model, deterministic solving and generation, solve-based difficulty evaluation, and unique/multiple-solution detection in `puzzle-core/`.
 
@@ -121,7 +121,7 @@ Modules:
 - `puzzle-core/` — Kotlin Multiplatform deterministic Balance, Crowns, Word, Sudoku, and 2048 runtime in `commonMain`, with Android/JVM/JS/Wasm library targets and JVM-only developer tooling.
 - `shared-ui/` — the Compose Multiplatform presentation shared by Android and Web, including all five game screens, difficulty selection, the artwork-based Game catalog, and the gameplay statistics Profile.
 - `platform-contracts/` — small platform-neutral contracts for Store, ads, Player identity, Cloud Save, lifecycle, metadata, and capabilities.
-- `web-app/` — the browser/Yandex host with responsive 9:16 layout, browser data loading, lifecycle integration, automatic current-Player cloud synchronization, separate Player-scoped Catalog/statistics/Daily persistence, and lightweight controllers for all five sequential Catalog games.
+- `web-app/` — the browser/Yandex host with responsive 9:16 layout, browser data loading, lifecycle integration, automatic current-Player cloud synchronization, separate Player-scoped Catalog/statistics/Daily persistence, and lightweight controllers that run all five games from both the Catalog and the Daily challenge.
 - `puzzle-data/` — the canonical frozen Catalog Level Pack and Sudoku Dataset V1 corpus shared by Android and Web builds.
 - `lexicon/word/` — curated offline Word corpus sources and their provenance note.
 

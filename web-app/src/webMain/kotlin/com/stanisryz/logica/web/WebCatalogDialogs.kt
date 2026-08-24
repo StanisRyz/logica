@@ -127,6 +127,33 @@ internal fun WebOrdinaryCatalogTerminalDialog(
 }
 
 @Composable
+internal fun WebDailyOrdinaryTerminalDialog(
+    visible: Boolean,
+    solved: Boolean,
+    scoreDetail: String? = null,
+    onRetry: () -> Unit,
+    onExit: () -> Unit,
+) {
+    if (!visible) return
+    AlertDialog(
+        onDismissRequest = {},
+        title = { Text(if (solved) "Задача дня выполнена ✓" else "Задача дня не пройдена") },
+        text = {
+            Text(
+                when {
+                    scoreDetail != null && solved -> "Результат сохранён. $scoreDetail"
+                    scoreDetail != null -> "$scoreDetail Попробуйте ещё раз."
+                    solved -> "Результат сохранён."
+                    else -> "Попробуйте ещё раз."
+                },
+            )
+        },
+        confirmButton = { TextButton(onClick = onRetry) { Text("Повторить") } },
+        dismissButton = { TextButton(onClick = onExit) { Text("К играм") } },
+    )
+}
+
+@Composable
 internal fun WebCatalogSaveErrorBanner(
     completion: WebCatalogCompletionState,
     onRetrySave: () -> Unit,

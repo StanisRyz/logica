@@ -38,8 +38,7 @@ internal sealed interface Web2048State {
     ) : Web2048State
 
     data class Playing(
-        val attempt: WebCatalogAttempt,
-        val definition: CatalogLevelDefinition,
+        val source: WebGameplaySource,
         val game: Game2048State,
         val motionRevision: Long? = null,
         val motionTrace: Game2048MoveTrace? = null,
@@ -86,6 +85,7 @@ internal class Web2048Controller(
     private val levelPack: CatalogLevelPack = BinaryCatalogLevelPack(WebPuzzleData),
     private val engineFactory: (Game2048PuzzleId) -> Web2048GameEngine = ::CoreWeb2048GameEngine,
     private val statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
+    private val daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private var operation: Job? = null
@@ -139,7 +139,11 @@ internal class Web2048Controller(
                     nextMotionRevision = 0L
                     completion.startAttempt(attempt)
                     statisticsAttempt = statistics.startAttempt(PuzzleType.GAME_2048, difficulty)
-                    state = Web2048State.Playing(attempt, definition, nextEngine.start())
+                    state =
+                        Web2048State.Playing(
+                            WebGameplaySource.CatalogLevel(attempt, definition),
+                            nextEngine.start(),
+                        )
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (exception: Exception) {
@@ -157,6 +161,49 @@ internal class Web2048Controller(
         selectDifficulty(error.difficulty)
     }
 
+    /**
+     * Starts Daily 2048 with explicitly different terminal semantics from Catalog: the V2 target
+     * crossing is not a result here, and only the real final game state resolves the attempt.
+     */
+    fun startDaily(dailyAttempt: WebDailyAttempt) {
+        operation?.cancel()
+        statisticsAttempt = null
+        completion.reset()
+        state = Web2048State.Loading(dailyAttempt.entry.difficulty)
+        operation =
+            scope.launch {
+                try {
+                    val difficulty = dailyAttempt.entry.difficulty
+                    val puzzleId =
+                        Game2048PuzzleId(
+                            seed = dailyAttempt.entry.seed,
+                            difficulty = difficulty,
+                            generatorVersion = dailyAttempt.entry.generatorVersion.toGame2048GeneratorVersion(),
+                        )
+                    val nextEngine = engineFactory(puzzleId)
+                    engine = nextEngine
+                    nextMotionRevision = 0L
+                    statisticsAttempt = statistics.startAttempt(PuzzleType.GAME_2048, difficulty)
+                    state =
+                        Web2048State.Playing(
+                            WebGameplaySource.DailyChallenge(dailyAttempt),
+                            nextEngine.start(),
+                        )
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (exception: Exception) {
+                    engine = null
+                    statisticsAttempt = null
+                    state =
+                        Web2048State.Error(
+                            dailyAttempt.entry.difficulty,
+                            null,
+                            exception.message ?: "2048 Daily is unavailable.",
+                        )
+                }
+            }
+    }
+
     fun move(direction: Game2048Direction) {
         val playing = state as? Web2048State.Playing ?: return
         if (playing.game.status.isTerminal || playing.motionTrace != null) return
@@ -170,14 +217,32 @@ internal class Web2048Controller(
                 motionTrace = trace,
             )
         val firstGoalCrossing = !playing.game.goalReached && transition.state.goalReached
-        if (firstGoalCrossing) {
-            statisticsAttempt?.let {
-                statistics.recordTerminalResult(it, WebStatisticsTerminalOutcome.SOLVED)
+        when (val source = playing.source) {
+            is WebGameplaySource.CatalogLevel -> {
+                if (firstGoalCrossing) {
+                    statisticsAttempt?.let {
+                        statistics.recordTerminalResult(it, WebStatisticsTerminalOutcome.SOLVED)
+                    }
+                    completion.saveSolved(source.attempt)
+                } else if (!playing.game.status.isTerminal && transition.state.status == Game2048Status.FAILED) {
+                    statisticsAttempt?.let {
+                        statistics.recordTerminalResult(it, WebStatisticsTerminalOutcome.FAILED)
+                    }
+                }
             }
-            completion.saveSolved(playing.attempt)
-        } else if (!playing.game.status.isTerminal && transition.state.status == Game2048Status.FAILED) {
-            statisticsAttempt?.let {
-                statistics.recordTerminalResult(it, WebStatisticsTerminalOutcome.FAILED)
+            is WebGameplaySource.DailyChallenge -> {
+                // Daily 2048: a target crossing records nothing; only the real final game state
+                // (game over) resolves exactly one Daily result and one Statistics result.
+                if (!playing.game.status.isTerminal && transition.state.status.isTerminal) {
+                    val outcome =
+                        if (transition.state.status == Game2048Status.SOLVED) {
+                            WebStatisticsTerminalOutcome.SOLVED
+                        } else {
+                            WebStatisticsTerminalOutcome.FAILED
+                        }
+                    statisticsAttempt?.let { statistics.recordTerminalResult(it, outcome) }
+                    daily.recordTerminalResult(source.attempt, outcome)
+                }
             }
         }
     }
@@ -191,18 +256,18 @@ internal class Web2048Controller(
 
     fun retry() {
         val playing = state as? Web2048State.Playing ?: return
-        if (
-            !playing.game.status.isTerminal ||
-            playing.game.goalReached ||
-            playing.motionTrace != null ||
-            completion.state != WebCatalogCompletionState.Idle
-        ) {
+        if (!playing.game.status.isTerminal || playing.motionTrace != null) return
+        val source = playing.source
+        val catalog = source as? WebGameplaySource.CatalogLevel
+        // Catalog blocks a retry once the level is already cleared; Daily always allows one more
+        // attempt at the same deterministic puzzle, even after a post-goal game over.
+        if (catalog != null && (playing.game.goalReached || completion.state != WebCatalogCompletionState.Idle)) {
             return
         }
         val activeEngine = engine ?: return
         operation?.cancel()
-        completion.startAttempt(playing.attempt)
-        statisticsAttempt = statistics.startAttempt(PuzzleType.GAME_2048, playing.definition.difficulty)
+        if (catalog != null) completion.startAttempt(catalog.attempt)
+        statisticsAttempt = statistics.startAttempt(PuzzleType.GAME_2048, source.difficulty)
         state =
             playing.copy(
                 game = activeEngine.retry(playing.game),
@@ -213,14 +278,17 @@ internal class Web2048Controller(
 
     fun nextLevel() {
         val playing = state as? Web2048State.Playing ?: return
-        if (!playing.game.status.isTerminal || completion.state !is WebCatalogCompletionState.Saved) return
-        selectDifficulty(playing.attempt.levelId.difficulty)
+        if (!playing.game.status.isTerminal) return
+        val source = playing.source as? WebGameplaySource.CatalogLevel ?: return
+        if (completion.state !is WebCatalogCompletionState.Saved) return
+        selectDifficulty(source.attempt.levelId.difficulty)
     }
 
     fun retrySave() {
         val playing = state as? Web2048State.Playing ?: return
+        val source = playing.source as? WebGameplaySource.CatalogLevel ?: return
         if (!playing.game.goalReached) return
-        completion.saveSolved(playing.attempt)
+        completion.saveSolved(source.attempt)
     }
 
     fun showDifficultySelector() {
@@ -246,6 +314,7 @@ internal class Web2048Controller(
             loader: BrowserPuzzleDataLoader,
             progression: WebCatalogProgressAccess,
             statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
+            daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
         ): Web2048Controller =
             Web2048Controller(
                 loadPack = { difficulty ->
@@ -257,6 +326,7 @@ internal class Web2048Controller(
                 },
                 progression = progression,
                 statistics = statistics,
+                daily = daily,
             )
     }
 }

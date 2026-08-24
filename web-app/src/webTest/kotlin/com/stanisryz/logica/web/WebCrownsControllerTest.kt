@@ -38,9 +38,9 @@ class WebCrownsControllerTest {
 
             val playing = assertIs<WebCrownsState.Playing>(controller.state)
             assertEquals(Difficulty.MEDIUM, loadedDifficulty)
-            assertEquals(PuzzleType.CROWNS, playing.definition.puzzleType)
-            assertEquals(CatalogLevelPacks.FIRST_LEVEL, playing.definition.levelNumber)
-            assertEquals(PuzzleSeed(22), playing.definition.seed)
+            assertEquals(PuzzleType.CROWNS, (playing.source as WebGameplaySource.CatalogLevel).definition.puzzleType)
+            assertEquals(CatalogLevelPacks.FIRST_LEVEL, (playing.source as WebGameplaySource.CatalogLevel).definition.levelNumber)
+            assertEquals(PuzzleSeed(22), (playing.source as WebGameplaySource.CatalogLevel).definition.seed)
 
             controller.selectValue(CrownsPlayerCell.MARKED)
             controller.togglePencilMode()

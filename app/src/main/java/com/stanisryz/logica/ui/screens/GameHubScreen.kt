@@ -23,11 +23,13 @@ import com.stanisryz.logica.daily.DailyResultRepository
 import com.stanisryz.logica.daily.TodayUiState
 import com.stanisryz.logica.daily.TodayViewModel
 import com.stanisryz.logica.daily.TodayViewModelFactory
+import com.stanisryz.logica.daily.toDailyHubUiState
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.ui.components.GameHubContent
 import com.stanisryz.logica.ui.components.ZeroLivesCard
+import com.stanisryz.logica.ui.daily.DailyHubSection
 import com.stanisryz.logica.ui.theme.LogicaMotion
 
 /**
@@ -113,8 +115,8 @@ private fun GameHubScreen(
         onGameSelected = onGameSelected,
         modifier = modifier,
         headerContent = {
-            DailySection(
-                uiState = dailyState,
+            DailyHubSection(
+                uiState = dailyState.toDailyHubUiState(),
                 gameplayAllowed = economy.isGameplayAllowed,
                 onStart = onStartDaily,
                 onRetryLoad = onRetryDaily,

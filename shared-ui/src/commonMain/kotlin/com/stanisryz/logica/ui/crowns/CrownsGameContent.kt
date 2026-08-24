@@ -86,13 +86,14 @@ fun CrownsGameContent(
     onSelectValue: (CrownsPlayerCell) -> Unit,
     onTogglePencil: () -> Unit,
     onHint: () -> Unit,
+    contextBadgeLabel: String? = null,
     modifier: Modifier = Modifier,
     hostStatusContent: @Composable ColumnScope.() -> Unit = {},
 ) {
     SquareGameLayout(
         modifier = modifier,
         metadataContent = {
-            GameHeaderBadges(stringResource(difficulty.labelResource()), levelNumber)
+            GameHeaderBadges(stringResource(difficulty.labelResource()), levelNumber, contextLabel = contextBadgeLabel)
             MistakeIndicator(game.mistakesUsed, PuzzleMistakes.MAX_MISTAKES)
         },
         hostStatusContent = hostStatusContent,
@@ -319,3 +320,5 @@ private val CONTEXT_CARD_PADDING = 12.dp
 private const val COMPACT_HINT_LINES = 3
 private const val NORMAL_HINT_LINES = 3
 private const val HINT_LEGEND_LINES = 2
+
+

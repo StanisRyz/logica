@@ -30,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -49,6 +50,8 @@ import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameStatus
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
 import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.daily_marker
+import com.stanisryz.logica.shared.ui.generated.resources.daily_start_error
 import com.stanisryz.logica.shared.ui.generated.resources.primary_games
 import com.stanisryz.logica.shared.ui.generated.resources.primary_profile
 import com.stanisryz.logica.ui.balance.BalanceGameContent
@@ -56,6 +59,8 @@ import com.stanisryz.logica.ui.components.DifficultySelector
 import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
 import com.stanisryz.logica.ui.components.GameHubContent
 import com.stanisryz.logica.ui.crowns.CrownsGameContent
+import com.stanisryz.logica.ui.daily.DailyHubSection
+import com.stanisryz.logica.ui.daily.DailyHubUiState
 import com.stanisryz.logica.ui.game2048.Game2048Content
 import com.stanisryz.logica.ui.game2048.formatGame2048Number
 import com.stanisryz.logica.ui.profile.ProfileContent
@@ -92,6 +97,7 @@ internal fun WebApp(
     game2048Controller: Web2048Controller,
     lifecycle: WebHostLifecycle,
     playerSession: WebPlayerSessionController,
+    dailyCoordinator: WebDailyGameplayCoordinator,
 ) {
     val lifecycleState by lifecycle.state.collectAsState()
 
@@ -134,6 +140,7 @@ internal fun WebApp(
                         sudokuController = sudokuController,
                         game2048Controller = game2048Controller,
                         playerSession = playerSession,
+                        dailyCoordinator = dailyCoordinator,
                         onRendered = controller::onInitialHostUiReady,
                     )
                 is WebBootstrapState.FatalError -> FatalContent(state.message)
@@ -186,6 +193,7 @@ private fun ReadyContent(
     sudokuController: WebSudokuController,
     game2048Controller: Web2048Controller,
     playerSession: WebPlayerSessionController,
+    dailyCoordinator: WebDailyGameplayCoordinator,
     onRendered: () -> Unit,
 ) {
     var route by remember { mutableStateOf<WebRoute>(WebRoute.GameHub) }
@@ -195,6 +203,13 @@ private fun ReadyContent(
     val sudokuState = sudokuController.state
     val game2048State = game2048Controller.state
     val accountChangeRevision = playerSession.accountChangeRevision
+
+    // A passed midnight must re-render the new day's Daily definition; gameplay attempts keep
+    // their own captured challenge date, so this only affects hub presentation.
+    var dateRefreshKey by remember { mutableIntStateOf(0) }
+    LaunchedEffect(lifecycleState) {
+        if (lifecycleState == PlatformLifecycleState.ACTIVE) dateRefreshKey++
+    }
 
     LaunchedEffect(mode) {
         playerSession.start()
@@ -269,6 +284,44 @@ private fun ReadyContent(
                                 }
                                 else -> error("$puzzleType has no Web game flow.")
                             }
+                    },
+                    headerContent = {
+                        WebDailyHubRoute(
+                            playerSession = playerSession,
+                            coordinator = dailyCoordinator,
+                            dateRefreshKey = dateRefreshKey,
+                            onStartDaily = { puzzleType ->
+                                when (val started = dailyCoordinator.start(puzzleType)) {
+                                    is WebDailyStartResult.Started -> {
+                                        route =
+                                            when (puzzleType) {
+                                                PuzzleType.BALANCE -> {
+                                                    balanceController.startDaily(started.attempt)
+                                                    WebRoute.Balance
+                                                }
+                                                PuzzleType.CROWNS -> {
+                                                    crownsController.startDaily(started.attempt)
+                                                    WebRoute.Crowns
+                                                }
+                                                PuzzleType.WORD -> {
+                                                    wordController.startDaily(started.attempt)
+                                                    WebRoute.Word
+                                                }
+                                                PuzzleType.SUDOKU -> {
+                                                    sudokuController.startDaily(started.attempt)
+                                                    WebRoute.Sudoku
+                                                }
+                                                PuzzleType.GAME_2048 -> {
+                                                    game2048Controller.startDaily(started.attempt)
+                                                    WebRoute.Game2048
+                                                }
+                                                else -> error("$puzzleType has no Daily gameplay.")
+                                            }
+                                    }
+                                    else -> Unit // surfaced as a start error by the shared hub section
+                                }
+                            },
+                        )
                     },
                 )
             }
@@ -355,6 +408,54 @@ private fun PrimaryDestinationShell(
     }
 }
 
+/**
+ * Reactive Web Daily Hub presentation over the current Player-scoped binding. It performs no
+ * cloud read and mutates nothing: the durable run is created only when gameplay actually starts.
+ */
+@Composable
+private fun WebDailyHubRoute(
+    playerSession: WebPlayerSessionController,
+    coordinator: WebDailyGameplayCoordinator,
+    dateRefreshKey: Int,
+    onStartDaily: (PuzzleType) -> Unit,
+) {
+    val binding by playerSession.dailyBinding.collectAsState()
+    when (val current = binding) {
+        WebDailyBinding.Loading ->
+            DailyHubSection(
+                uiState = DailyHubUiState.Loading,
+                gameplayAllowed = true,
+                onStart = {},
+            )
+        is WebDailyBinding.Unavailable ->
+            DailyHubSection(
+                uiState = DailyHubUiState.Error(),
+                gameplayAllowed = true,
+                onStart = {},
+                onRetryLoad = playerSession::retryCurrentContext,
+            )
+        is WebDailyBinding.Ready ->
+            key(current.token) {
+                val snapshot by current.repository.snapshot.collectAsState()
+                // Re-read the calendar date only on resume ticks, so a passed midnight re-renders
+                // the new day's definition without polling while the hub simply stays visible.
+                val currentDate = remember(dateRefreshKey) { BrowserLocalWebDailyDateProvider.currentDate() }
+                val uiState =
+                    if (coordinator.lastStartWasRejected) {
+                        DailyHubUiState.Error(stringResource(Res.string.daily_start_error))
+                    } else {
+                        buildWebDailyHubUiState(snapshot, currentDate)
+                    }
+                DailyHubSection(
+                    uiState = uiState,
+                    gameplayAllowed = true,
+                    onStart = onStartDaily,
+                    onRetryLoad = coordinator::clearStartRejection,
+                )
+            }
+    }
+}
+
 @Composable
 private fun WebProfileRoute(
     binding: WebStatisticsBinding,
@@ -416,6 +517,7 @@ private fun BalanceFlow(
             PlayingBalanceContent(
                 state = state,
                 controller = controller,
+                onExitBalance = onExitBalance,
             )
     }
 }
@@ -450,6 +552,7 @@ private fun CrownsFlow(
             PlayingCrownsContent(
                 state = state,
                 controller = controller,
+                onExitCrowns = onExitCrowns,
             )
     }
 }
@@ -484,6 +587,7 @@ private fun WordFlow(
             PlayingWordContent(
                 state = state,
                 controller = controller,
+                onExitWord = onExitWord,
             )
     }
 }
@@ -518,6 +622,7 @@ private fun SudokuFlow(
             PlayingSudokuContent(
                 state = state,
                 controller = controller,
+                onExitSudoku = onExitSudoku,
             )
     }
 }
@@ -552,6 +657,7 @@ private fun Game2048Flow(
             PlayingGame2048Content(
                 state = state,
                 controller = controller,
+                onExitGame2048 = onExitGame2048,
             )
     }
 }
@@ -599,13 +705,14 @@ private fun DifficultyContent(
 private fun PlayingBalanceContent(
     state: WebBalanceState.Playing,
     controller: WebBalanceController,
+    onExitBalance: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = controller::showDifficultySelector) { Text("К сложности") }
+            TextButton(onClick = controller::showDifficultySelector) { Text(if (state.source.isDaily) "К играм" else "К сложности") }
             Spacer(Modifier.weight(1f))
             Text("Баланс", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
@@ -614,8 +721,9 @@ private fun PlayingBalanceContent(
         BalanceGameContent(
             puzzle = state.puzzle,
             game = state.game,
-            difficulty = state.definition.difficulty,
-            levelNumber = state.definition.levelNumber.value,
+            difficulty = state.source.difficulty,
+            levelNumber = state.source.catalogLevelNumberOrNull,
+            contextBadgeLabel = state.source.contextBadgeLabelOrNull(),
             selectedValue = state.selectedValue,
             isPencilMode = state.isPencilMode,
             isHintLoading = state.isHintLoading,
@@ -628,29 +736,43 @@ private fun PlayingBalanceContent(
         )
     }
 
-    WebOrdinaryCatalogTerminalDialog(
-        visible = state.game.status.isTerminal,
-        levelNumber = state.definition.levelNumber.value,
-        solved = state.game.status == BalanceGameStatus.SOLVED,
-        completion = controller.completionState,
-        onNextLevel = controller::nextLevel,
-        onRetry = controller::retry,
-        onRetrySave = controller::retrySave,
-        onBack = controller::showDifficultySelector,
-    )
+    if (state.source.isDaily) {
+        WebDailyOrdinaryTerminalDialog(
+            visible = state.game.status.isTerminal,
+            solved = state.game.status == BalanceGameStatus.SOLVED,
+            onRetry = controller::retry,
+            onExit = onExitBalance,
+        )
+    } else {
+        WebCatalogSaveErrorBanner(
+            completion = controller.completionState,
+            onRetrySave = controller::retrySave,
+        )
+        WebOrdinaryCatalogTerminalDialog(
+            visible = state.game.status.isTerminal,
+            levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
+            solved = state.game.status == BalanceGameStatus.SOLVED,
+            completion = controller.completionState,
+            onNextLevel = controller::nextLevel,
+            onRetry = controller::retry,
+            onRetrySave = controller::retrySave,
+            onBack = controller::showDifficultySelector,
+        )
+    }
 }
 
 @Composable
 private fun PlayingCrownsContent(
     state: WebCrownsState.Playing,
     controller: WebCrownsController,
+    onExitCrowns: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = controller::showDifficultySelector) { Text("К сложности") }
+            TextButton(onClick = controller::showDifficultySelector) { Text(if (state.source.isDaily) "К играм" else "К сложности") }
             Spacer(Modifier.weight(1f))
             Text("Короны", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
@@ -659,8 +781,9 @@ private fun PlayingCrownsContent(
         CrownsGameContent(
             puzzle = state.puzzle,
             game = state.game,
-            difficulty = state.definition.difficulty,
-            levelNumber = state.definition.levelNumber.value,
+            difficulty = state.source.difficulty,
+            levelNumber = state.source.catalogLevelNumberOrNull,
+            contextBadgeLabel = state.source.contextBadgeLabelOrNull(),
             selectedValue = state.selectedValue,
             isPencilMode = state.isPencilMode,
             isHintLoading = state.isHintLoading,
@@ -673,29 +796,43 @@ private fun PlayingCrownsContent(
         )
     }
 
-    WebOrdinaryCatalogTerminalDialog(
-        visible = state.game.status.isTerminal,
-        levelNumber = state.definition.levelNumber.value,
-        solved = state.game.status == CrownsGameStatus.SOLVED,
-        completion = controller.completionState,
-        onNextLevel = controller::nextLevel,
-        onRetry = controller::retry,
-        onRetrySave = controller::retrySave,
-        onBack = controller::showDifficultySelector,
-    )
+    if (state.source.isDaily) {
+        WebDailyOrdinaryTerminalDialog(
+            visible = state.game.status.isTerminal,
+            solved = state.game.status == CrownsGameStatus.SOLVED,
+            onRetry = controller::retry,
+            onExit = onExitCrowns,
+        )
+    } else {
+        WebCatalogSaveErrorBanner(
+            completion = controller.completionState,
+            onRetrySave = controller::retrySave,
+        )
+        WebOrdinaryCatalogTerminalDialog(
+            visible = state.game.status.isTerminal,
+            levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
+            solved = state.game.status == CrownsGameStatus.SOLVED,
+            completion = controller.completionState,
+            onNextLevel = controller::nextLevel,
+            onRetry = controller::retry,
+            onRetrySave = controller::retrySave,
+            onBack = controller::showDifficultySelector,
+        )
+    }
 }
 
 @Composable
 private fun PlayingWordContent(
     state: WebWordState.Playing,
     controller: WebWordController,
+    onExitWord: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = controller::showDifficultySelector) { Text("К сложности") }
+            TextButton(onClick = controller::showDifficultySelector) { Text(if (state.source.isDaily) "К играм" else "К сложности") }
             Spacer(Modifier.weight(1f))
             Text("Слово", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
@@ -704,7 +841,8 @@ private fun PlayingWordContent(
         WordGameContent(
             puzzle = state.puzzle,
             game = state.game,
-            levelNumber = state.definition.levelNumber.value,
+            levelNumber = state.source.catalogLevelNumberOrNull,
+            contextBadgeLabel = state.source.contextBadgeLabelOrNull(),
             rejection = state.rejection,
             rejectionRevision = state.rejectionRevision,
             acceptedAttemptRevision = state.acceptedAttemptRevision,
@@ -718,31 +856,47 @@ private fun PlayingWordContent(
         )
     }
 
-    WebOrdinaryCatalogTerminalDialog(
-        visible = state.isTerminalRevealReady,
-        levelNumber = state.definition.levelNumber.value,
-        solved = state.game.status == WordGameStatus.SOLVED,
-        completion = controller.completionState,
-        solvedDetail = "Уровень пройден за ${state.game.attempts.size} попыток.",
-        failedDetail = "Загаданное слово: ${state.puzzle.answer.uppercase()}",
-        onNextLevel = controller::nextLevel,
-        onRetry = controller::retry,
-        onRetrySave = controller::retrySave,
-        onBack = controller::showDifficultySelector,
-    )
+    if (state.source.isDaily) {
+        WebDailyOrdinaryTerminalDialog(
+            visible = state.isTerminalRevealReady,
+            solved = state.game.status == WordGameStatus.SOLVED,
+            // Spoiler-free: the Daily dialog never reveals the answer, unlike the Catalog one.
+            scoreDetail = "Отгадано за ${state.game.attempts.size} попыток.",
+            onRetry = controller::retry,
+            onExit = onExitWord,
+        )
+    } else {
+        WebCatalogSaveErrorBanner(
+            completion = controller.completionState,
+            onRetrySave = controller::retrySave,
+        )
+        WebOrdinaryCatalogTerminalDialog(
+            visible = state.isTerminalRevealReady,
+            levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
+            solved = state.game.status == WordGameStatus.SOLVED,
+            completion = controller.completionState,
+            solvedDetail = "Уровень пройден за ${state.game.attempts.size} попыток.",
+            failedDetail = "Загаданное слово: ${state.puzzle.answer.uppercase()}",
+            onNextLevel = controller::nextLevel,
+            onRetry = controller::retry,
+            onRetrySave = controller::retrySave,
+            onBack = controller::showDifficultySelector,
+        )
+    }
 }
 
 @Composable
 private fun PlayingSudokuContent(
     state: WebSudokuState.Playing,
     controller: WebSudokuController,
+    onExitSudoku: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = controller::showDifficultySelector) { Text("К сложности") }
+            TextButton(onClick = controller::showDifficultySelector) { Text(if (state.source.isDaily) "К играм" else "К сложности") }
             Spacer(Modifier.weight(1f))
             Text("Судоку", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
@@ -762,7 +916,8 @@ private fun PlayingSudokuContent(
             game = state.game,
             selectedCell = state.selectedCell,
             isPencilMode = state.isPencilMode,
-            levelNumber = state.definition.levelNumber.value,
+            levelNumber = state.source.catalogLevelNumberOrNull,
+            contextBadgeLabel = state.source.contextBadgeLabelOrNull(),
             gameplayEnabled = gameplayEnabled,
             inputEnabled = inputEnabled,
             onCellSelected = controller::selectCell,
@@ -773,43 +928,61 @@ private fun PlayingSudokuContent(
         )
     }
 
-    WebOrdinaryCatalogTerminalDialog(
-        visible = state.game.status.isTerminal,
-        levelNumber = state.definition.levelNumber.value,
-        solved = state.game.status == SudokuGameStatus.SOLVED,
-        completion = controller.completionState,
-        onNextLevel = controller::nextLevel,
-        onRetry = controller::retry,
-        onRetrySave = controller::retrySave,
-        onBack = controller::showDifficultySelector,
-    )
+    if (state.source.isDaily) {
+        WebDailyOrdinaryTerminalDialog(
+            visible = state.game.status.isTerminal,
+            solved = state.game.status == SudokuGameStatus.SOLVED,
+            onRetry = controller::retry,
+            onExit = onExitSudoku,
+        )
+    } else {
+        WebCatalogSaveErrorBanner(
+            completion = controller.completionState,
+            onRetrySave = controller::retrySave,
+        )
+        WebOrdinaryCatalogTerminalDialog(
+            visible = state.game.status.isTerminal,
+            levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
+            solved = state.game.status == SudokuGameStatus.SOLVED,
+            completion = controller.completionState,
+            onNextLevel = controller::nextLevel,
+            onRetry = controller::retry,
+            onRetrySave = controller::retrySave,
+            onBack = controller::showDifficultySelector,
+        )
+    }
 }
 
 @Composable
 private fun PlayingGame2048Content(
     state: Web2048State.Playing,
     controller: Web2048Controller,
+    onExitGame2048: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = controller::showDifficultySelector) { Text("К сложности") }
+            TextButton(onClick = controller::showDifficultySelector) { Text(if (state.source.isDaily) "К играм" else "К сложности") }
             Spacer(Modifier.weight(1f))
             Text("2048", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
             Spacer(Modifier.width(GAME_HEADER_TITLE_SPACER))
         }
-        WebCatalogSaveErrorBanner(
-            completion = controller.completionState,
-            onRetrySave = controller::retrySave,
-        )
+        // Catalog-only: the save banner and cleared marker belong to Catalog progression.
+        if (!state.source.isDaily) {
+            WebCatalogSaveErrorBanner(
+                completion = controller.completionState,
+                onRetrySave = controller::retrySave,
+            )
+        }
         Game2048Content(
             game = state.game,
-            difficulty = state.definition.difficulty,
-            levelNumber = state.definition.levelNumber.value,
-            levelCleared = controller.completionState is WebCatalogCompletionState.Saved,
+            difficulty = state.source.difficulty,
+            levelNumber = state.source.catalogLevelNumberOrNull,
+            contextBadgeLabel = state.source.contextBadgeLabelOrNull(),
+            levelCleared = !state.source.isDaily && controller.completionState is WebCatalogCompletionState.Saved,
             motionRevision = state.motionRevision,
             motionTrace = state.motionTrace,
             gameplayEnabled = state.game.status == Game2048Status.IN_PROGRESS,
@@ -819,17 +992,27 @@ private fun PlayingGame2048Content(
         )
     }
 
-    Web2048CatalogTerminalDialog(
-        visible = state.game.status.isTerminal && state.motionTrace == null,
-        levelNumber = state.definition.levelNumber.value,
-        goalReached = state.game.goalReached,
-        score = formatGame2048Number(state.game.score),
-        completion = controller.completionState,
-        onNextLevel = controller::nextLevel,
-        onRetry = controller::retry,
-        onRetrySave = controller::retrySave,
-        onBack = controller::showDifficultySelector,
-    )
+    if (state.source.isDaily) {
+        WebDailyOrdinaryTerminalDialog(
+            visible = state.game.status.isTerminal && state.motionTrace == null,
+            solved = state.game.goalReached,
+            scoreDetail = "Итоговый счёт: ${formatGame2048Number(state.game.score)}.",
+            onRetry = controller::retry,
+            onExit = onExitGame2048,
+        )
+    } else {
+        Web2048CatalogTerminalDialog(
+            visible = state.game.status.isTerminal && state.motionTrace == null,
+            levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
+            goalReached = state.game.goalReached,
+            score = formatGame2048Number(state.game.score),
+            completion = controller.completionState,
+            onNextLevel = controller::nextLevel,
+            onRetry = controller::retry,
+            onRetrySave = controller::retrySave,
+            onBack = controller::showDifficultySelector,
+        )
+    }
 }
 
 @Composable
@@ -851,6 +1034,11 @@ private fun FatalContent(message: String) {
         )
     }
 }
+
+/** Compact Daily marker instead of a Catalog level number; Catalog keeps its normal metadata. */
+@Composable
+private fun WebGameplaySource.contextBadgeLabelOrNull(): String? =
+    if (isDaily) stringResource(Res.string.daily_marker) else null
 
 @Composable
 internal fun CenteredColumn(content: @Composable ColumnScope.() -> Unit) {

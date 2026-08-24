@@ -73,6 +73,7 @@ fun WordGameContent(
     onClearLetter: (Int) -> Unit,
     onSubmit: () -> Unit,
     onDismissRejection: () -> Unit,
+    contextBadgeLabel: String? = null,
     modifier: Modifier = Modifier,
     onInputInteraction: () -> Unit = {},
     onRejectionPresented: (WordGuessRejection) -> Unit = {},
@@ -137,7 +138,7 @@ fun WordGameContent(
                 horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.action, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                GameHeaderBadges(stringResource(puzzle.id.difficulty.labelResource()), levelNumber)
+                GameHeaderBadges(stringResource(puzzle.id.difficulty.labelResource()), levelNumber, contextLabel = contextBadgeLabel)
                 if (rejectionMessage != null) {
                     Box(
                         modifier =
@@ -264,3 +265,6 @@ private val HEADER_HEIGHT_BUDGET = 56.dp
 private val MIN_BOARD_HEIGHT = 180.dp
 private const val TERMINAL_APPEAR_MILLIS = 180
 private const val TERMINAL_INITIAL_SCALE = 0.98f
+
+
+

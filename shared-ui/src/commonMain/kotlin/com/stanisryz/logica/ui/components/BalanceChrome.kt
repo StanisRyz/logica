@@ -53,6 +53,7 @@ fun GameHeaderBadges(
     difficultyLabel: String,
     levelNumber: Int?,
     modifier: Modifier = Modifier,
+    contextLabel: String? = null,
 ) {
     Row(
         modifier = modifier,
@@ -61,6 +62,7 @@ fun GameHeaderBadges(
     ) {
         DifficultyBadge(difficultyLabel)
         levelNumber?.let { level -> DifficultyBadge(stringResource(Res.string.catalog_level, level)) }
+        contextLabel?.let { extra -> DifficultyBadge(extra) }
     }
 }
 

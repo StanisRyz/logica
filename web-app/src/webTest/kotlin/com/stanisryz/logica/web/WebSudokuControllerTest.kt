@@ -48,7 +48,7 @@ class WebSudokuControllerTest {
             val playing = assertIs<WebSudokuState.Playing>(controller.state)
             assertEquals(Difficulty.MEDIUM, loadedPack)
             assertEquals(SudokuDatasetVersion.V1 to SudokuDifficulty.MEDIUM, loadedDataset)
-            assertEquals(PuzzleSeed(22), playing.definition.seed)
+            assertEquals(PuzzleSeed(22), (playing.source as WebGameplaySource.CatalogLevel).definition.seed)
 
             val position = SudokuPosition(0, 0)
             controller.selectCell(position)

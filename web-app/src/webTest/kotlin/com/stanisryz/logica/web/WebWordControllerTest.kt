@@ -77,8 +77,8 @@ class WebWordControllerTest {
             val playing = assertIs<WebWordState.Playing>(controller.state)
             assertEquals(Difficulty.EASY, loadedDifficulty)
             assertEquals(testRuntime.requiredResourcePaths, loadedResources)
-            assertEquals(PuzzleSeed(17), playing.definition.seed)
-            assertEquals(7, playing.definition.levelNumber.value)
+            assertEquals(PuzzleSeed(17), (playing.source as WebGameplaySource.CatalogLevel).definition.seed)
+            assertEquals(7, (playing.source as WebGameplaySource.CatalogLevel).definition.levelNumber.value)
             TEST_ANSWER.forEachIndexed(controller::setLetter)
             controller.submit()
 
@@ -97,7 +97,7 @@ class WebWordControllerTest {
 
             controller.nextLevel()
             advanceUntilIdle()
-            assertEquals(8, assertIs<WebWordState.Playing>(controller.state).definition.levelNumber.value)
+            assertEquals(8, (assertIs<WebWordState.Playing>(controller.state).source as WebGameplaySource.CatalogLevel).definition.levelNumber.value)
         }
 
     private val testRuntime =

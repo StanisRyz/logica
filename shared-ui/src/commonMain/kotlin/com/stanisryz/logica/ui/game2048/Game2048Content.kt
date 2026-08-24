@@ -56,6 +56,7 @@ fun Game2048Content(
     gameplayEnabled: Boolean,
     onMove: (Game2048Direction) -> Unit,
     onMotionFinished: (Long) -> Unit,
+    contextBadgeLabel: String? = null,
     modifier: Modifier = Modifier,
     hostStatusContent: @Composable ColumnScope.() -> Unit = {},
 ) {
@@ -75,7 +76,7 @@ fun Game2048Content(
             verticalArrangement = Arrangement.spacedBy(sectionSpacing),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            GameHeaderBadges(stringResource(difficulty.labelResource()), levelNumber)
+            GameHeaderBadges(stringResource(difficulty.labelResource()), levelNumber, contextLabel = contextBadgeLabel)
             Game2048Metrics(game)
             if (levelCleared) Game2048ClearedStatus(levelNumber, compact)
             hostStatusContent()
@@ -214,3 +215,7 @@ private val COMPACT_SECTION_SPACING = 6.dp
 private val METRIC_PADDING = 12.dp
 private const val GROUP_SIZE = 3
 private const val GROUP_SEPARATOR = "\u00A0"
+
+
+
+

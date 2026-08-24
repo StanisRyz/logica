@@ -39,8 +39,7 @@ internal sealed interface WebWordState {
     ) : WebWordState
 
     data class Playing(
-        val attempt: WebCatalogAttempt,
-        val definition: CatalogLevelDefinition,
+        val source: WebGameplaySource,
         val puzzle: WordPuzzle,
         val game: WordGameState,
         val rejection: WordGuessRejection? = null,
@@ -70,6 +69,7 @@ internal class WebWordController(
     private val levelPack: CatalogLevelPack = BinaryCatalogLevelPack(WebPuzzleData),
     private val runtimeResolver: (GeneratorVersion) -> WordRuntime = WordRuntimeResolver::resolve,
     private val statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
+    private val daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private var operation: Job? = null
@@ -124,7 +124,12 @@ internal class WebWordController(
                     engine = nextEngine
                     completion.startAttempt(attempt)
                     statisticsAttempt = statistics.startAttempt(PuzzleType.WORD, difficulty)
-                    state = WebWordState.Playing(attempt, definition, puzzle, nextEngine.start())
+                    state =
+                        WebWordState.Playing(
+                            WebGameplaySource.CatalogLevel(attempt, definition),
+                            puzzle,
+                            nextEngine.start(),
+                        )
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (exception: Exception) {
@@ -140,6 +145,48 @@ internal class WebWordController(
         val error = state as? WebWordState.Error ?: return
         if (error.progressionUnavailable) progression.retryContextBinding()
         selectDifficulty(error.difficulty)
+    }
+
+    /** Starts the deterministic Daily Word puzzle from its policy entry identity and runtime. */
+    fun startDaily(dailyAttempt: WebDailyAttempt) {
+        operation?.cancel()
+        statisticsAttempt = null
+        completion.reset()
+        state = WebWordState.Loading(dailyAttempt.entry.difficulty)
+        operation =
+            scope.launch {
+                try {
+                    val difficulty = dailyAttempt.entry.difficulty
+                    val runtime = runtimeResolver(dailyAttempt.entry.generatorVersion)
+                    require(runtime.generator.version == dailyAttempt.entry.generatorVersion) {
+                        "Word Daily requires generator ${dailyAttempt.entry.generatorVersion.value}."
+                    }
+                    loadRuntimeResources(runtime.requiredResourcePaths)
+                    val puzzle = runtime.generator.generate(dailyAttempt.entry.seed, difficulty)
+                    require(puzzle.id.generatorVersion == dailyAttempt.entry.generatorVersion)
+                    runtime.allowedGuesses.size
+                    val nextEngine = WordGameEngine(puzzle, runtime.allowedGuesses)
+                    engine = nextEngine
+                    statisticsAttempt = statistics.startAttempt(PuzzleType.WORD, difficulty)
+                    state =
+                        WebWordState.Playing(
+                            WebGameplaySource.DailyChallenge(dailyAttempt),
+                            puzzle,
+                            nextEngine.start(),
+                        )
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (exception: Exception) {
+                    engine = null
+                    statisticsAttempt = null
+                    state =
+                        WebWordState.Error(
+                            dailyAttempt.entry.difficulty,
+                            null,
+                            exception.message ?: "Word Daily is unavailable.",
+                        )
+                }
+            }
     }
 
     fun setLetter(
@@ -172,22 +219,26 @@ internal class WebWordController(
                     ).also { updated ->
                         state = updated
                         if (!playing.game.isFinished && updated.game.isFinished) {
+                            val solved = updated.game.status == WordGameStatus.SOLVED
+                            val outcome =
+                                if (solved) WebStatisticsTerminalOutcome.SOLVED else WebStatisticsTerminalOutcome.FAILED
+                            // Terminal persistence happens here immediately — it never waits for
+                            // the reveal animation, and the reveal is never shortened by it.
+                            val wordAttemptsUsed = updated.game.attempts.size.takeIf { solved }
                             statisticsAttempt?.let {
                                 statistics.recordTerminalResult(
                                     attempt = it,
-                                    outcome =
-                                        if (updated.game.status == WordGameStatus.SOLVED) {
-                                            WebStatisticsTerminalOutcome.SOLVED
-                                        } else {
-                                            WebStatisticsTerminalOutcome.FAILED
-                                        },
-                                    wordAttemptsUsed =
-                                        updated.game.attempts.size.takeIf {
-                                            updated.game.status == WordGameStatus.SOLVED
-                                        },
+                                    outcome = outcome,
+                                    wordAttemptsUsed = wordAttemptsUsed,
                                 )
                             }
-                            if (updated.game.status == WordGameStatus.SOLVED) completion.saveSolved(playing.attempt)
+                            when (val source = playing.source) {
+                                is WebGameplaySource.CatalogLevel ->
+                                    // Daily never advances Catalog progression; Catalog completion stays here only.
+                                    if (solved) completion.saveSolved(source.attempt)
+                                is WebGameplaySource.DailyChallenge ->
+                                    daily.recordTerminalResult(source.attempt, outcome, wordAttemptsUsed)
+                            }
                         }
                     }
         }
@@ -209,8 +260,9 @@ internal class WebWordController(
         if (playing.game.status != WordGameStatus.FAILED) return
         val activeEngine = engine ?: return
         operation?.cancel()
-        completion.startAttempt(playing.attempt)
-        statisticsAttempt = statistics.startAttempt(PuzzleType.WORD, playing.definition.difficulty)
+        val source = playing.source
+        if (source is WebGameplaySource.CatalogLevel) completion.startAttempt(source.attempt)
+        statisticsAttempt = statistics.startAttempt(PuzzleType.WORD, playing.source.difficulty)
         state =
             playing.copy(
                 game = activeEngine.start(),
@@ -223,14 +275,16 @@ internal class WebWordController(
 
     fun nextLevel() {
         val playing = state as? WebWordState.Playing ?: return
+        val source = playing.source as? WebGameplaySource.CatalogLevel ?: return
         if (completion.state !is WebCatalogCompletionState.Saved) return
-        selectDifficulty(playing.attempt.levelId.difficulty)
+        selectDifficulty(source.attempt.levelId.difficulty)
     }
 
     fun retrySave() {
         val playing = state as? WebWordState.Playing ?: return
+        val source = playing.source as? WebGameplaySource.CatalogLevel ?: return
         if (playing.game.status != WordGameStatus.SOLVED) return
-        completion.saveSolved(playing.attempt)
+        completion.saveSolved(source.attempt)
     }
 
     fun showDifficultySelector() {
@@ -268,6 +322,7 @@ internal class WebWordController(
             loader: BrowserPuzzleDataLoader,
             progression: WebCatalogProgressAccess,
             statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
+            daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
         ): WebWordController =
             WebWordController(
                 loadPack = { difficulty ->
@@ -280,6 +335,7 @@ internal class WebWordController(
                 loadRuntimeResources = loader::loadWordResources,
                 progression = progression,
                 statistics = statistics,
+                daily = daily,
             )
     }
 }

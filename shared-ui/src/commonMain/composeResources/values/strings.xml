@@ -2,6 +2,29 @@
 <resources>
     <string name="game_catalog_section_title">Игры</string>
     <string name="game_catalog_play_label">Играть в %1$s</string>
+
+    <string name="daily_marker">Задача дня</string>
+    <string name="daily_challenge">Задача дня</string>
+    <string name="daily_available">Не начата</string>
+    <string name="daily_entry_solved">Решено</string>
+    <string name="daily_entry_failed">Не пройдено</string>
+    <string name="daily_completed">Задача дня выполнена</string>
+    <string name="daily_progress_short">%1$d / %2$d</string>
+    <string name="daily_loading">Загружаем задачу дня…</string>
+    <string name="daily_progress_description">Выполнено %1$d из %2$d головоломок дня.</string>
+    <string name="daily_streak_hint">Решите любую игру, чтобы сохранить серию</string>
+    <string name="daily_streak_secured">Серия сохранена на сегодня</string>
+    <string name="daily_load_error">Не удалось загрузить задачу дня.</string>
+    <string name="daily_start_error">Не удалось начать задачу дня.</string>
+    <string name="daily_result_solved">Решено</string>
+    <string name="daily_result_solved_description">%1$s — решено</string>
+    <string name="daily_result_word_attempts">%1$d/%2$d</string>
+    <string name="daily_result_word_solved_description">%1$s — отгадано, использовано попыток: %2$d</string>
+    <string name="daily_result_word_failed">Не угадано</string>
+    <string name="daily_result_word_failed_description">%1$s — не угадано</string>
+    <string name="share_daily_result">Поделиться</string>
+    <string name="share_daily_result_description">Поделиться результатом испытания дня</string>
+
     <string name="game_title_balance">Баланс</string>
     <string name="game_title_crowns">Короны</string>
     <string name="game_title_word">Слово</string>
