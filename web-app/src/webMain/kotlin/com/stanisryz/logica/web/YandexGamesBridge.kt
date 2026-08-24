@@ -153,6 +153,43 @@ internal class YandexGamesBridge : WebPlayerContextEvents {
         }
     }
 
+    /** Shows one rewarded video; callbacks arrive on the JS thread exactly once each. */
+    fun showRewardedVideo(
+        onOpen: () -> Unit,
+        onRewarded: () -> Unit,
+        onClose: () -> Unit,
+        onError: (String) -> Unit,
+    ): Boolean {
+        val initializedSdk = sdk ?: return false
+        val adv = initializedSdk.adv ?: return false
+        return try {
+            adv.showRewardedVideo(rewardedVideoCallbacksJs(onOpen, onRewarded, onClose) { reason ->
+                onError(describeJsFailure(reason))
+            })
+            true
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    /** Shows one fullscreen advertisement; [wasShown] reports whether anything was displayed. */
+    fun showFullscreenAdv(
+        onOpen: () -> Unit,
+        onClose: (wasShown: Boolean) -> Unit,
+        onError: (String) -> Unit,
+    ): Boolean {
+        val initializedSdk = sdk ?: return false
+        val adv = initializedSdk.adv ?: return false
+        return try {
+            adv.showFullscreenAdv(fullscreenCallbacksJs(onOpen, onClose) { reason ->
+                onError(describeJsFailure(reason))
+            })
+            true
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
     fun dispose() {
         if (disposed) return
         disposed = true
@@ -311,6 +348,8 @@ private external interface YandexSdk : JsAny {
     @JsName("EVENTS")
     val events: YandexSdkEvents?
 
+    val adv: YandexAdv?
+
     fun getPlayer(): Promise<YandexPlayer>
 
     fun on(
@@ -322,6 +361,30 @@ private external interface YandexSdk : JsAny {
         eventName: String,
         callback: () -> Unit,
     )
+}
+
+private external interface YandexAdv : JsAny {
+    fun showRewardedVideo(callbacks: YandexRewardedVideoCallbacks)
+
+    fun showFullscreenAdv(callbacks: YandexFullscreenCallbacks)
+}
+
+private external interface YandexRewardedVideoCallbacks : JsAny {
+    fun onOpen()
+
+    fun onRewarded()
+
+    fun onClose()
+
+    fun onError(error: JsAny?)
+}
+
+private external interface YandexFullscreenCallbacks : JsAny {
+    fun onOpen()
+
+    fun onClose(wasShown: Boolean)
+
+    fun onError(error: JsAny?)
 }
 
 private external interface YandexSdkEvents : JsAny {
@@ -383,6 +446,34 @@ private suspend fun <T : JsAny?> Promise<T>.await(): T =
 
 private fun yandexGamesOrNull(): YandexGamesGlobal? = js("typeof globalThis.YaGames === 'undefined' ? null : globalThis.YaGames")
 
+private fun rewardedVideoCallbacksJs(
+    onOpen: () -> Unit,
+    onRewarded: () -> Unit,
+    onClose: () -> Unit,
+    onError: (JsAny?) -> Unit,
+): YandexRewardedVideoCallbacks =
+    js(
+        """({
+            onOpen: () => onOpen(),
+            onRewarded: () => onRewarded(),
+            onClose: () => onClose(),
+            onError: (error) => onError(error),
+        })""",
+    )
+
+private fun fullscreenCallbacksJs(
+    onOpen: () -> Unit,
+    onClose: (Boolean) -> Unit,
+    onError: (JsAny?) -> Unit,
+): YandexFullscreenCallbacks =
+    js(
+        """({
+            onOpen: () => onOpen(),
+            onClose: (wasShown) => onClose(wasShown === true),
+            onError: (error) => onError(error),
+        })""",
+    )
+
 private fun singleStringArray(value: String): JsArray<JsString> = js("[value]")
 
 private fun singlePropertyObject(
@@ -395,4 +486,4 @@ private fun stringPropertyOrNull(
     key: String,
 ): String? = js("typeof data[key] === 'string' ? data[key] : null")
 
-private fun describeJsFailure(reason: JsAny): String = js("reason && reason.message ? String(reason.message) : String(reason)")
+private fun describeJsFailure(reason: JsAny?): String = js("reason && reason.message ? String(reason.message) : String(reason)")
