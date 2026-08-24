@@ -116,10 +116,13 @@ internal class WebPlayerSessionController(
     private val playerContextEvents: WebPlayerContextEvents,
     private val economyRepositoryFactory: WebEconomyRepositoryFactory =
         WebEconomyRepositoryFactory { scope -> WebPlayerEconomyRepository(scope, WebEconomyLocalStore(scope)) },
+    private val storeRepositoryFactory: WebStoreRepositoryFactory =
+        WebStoreRepositoryFactory { scope -> WebPlayerStoreRepository(scope, WebStoreLocalStore(scope)) },
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) : WebStatisticsSessionAccess,
     WebDailySessionAccess,
-    WebEconomySessionAccess {
+    WebEconomySessionAccess,
+    WebStoreSessionAccess {
     private var started = false
     private var contextRevision = 0L
     private var accountSelectionOpen = false
@@ -129,12 +132,14 @@ internal class WebPlayerSessionController(
     private val mutableStatisticsBinding = MutableStateFlow<WebStatisticsBinding>(WebStatisticsBinding.Loading)
     private val mutableDailyBinding = MutableStateFlow<WebDailyBinding>(WebDailyBinding.Loading)
     private val mutableEconomyBinding = MutableStateFlow<WebEconomyBinding>(WebEconomyBinding.Loading)
+    private val mutableStoreBinding = MutableStateFlow<WebStoreBinding>(WebStoreBinding.Loading)
     private var dailyCloudSnapshot: WebDailySnapshotV1? = null
 
     val progressBinding: StateFlow<WebCatalogProgressBinding> = mutableProgressBinding.asStateFlow()
     override val statisticsBinding: StateFlow<WebStatisticsBinding> = mutableStatisticsBinding.asStateFlow()
     override val dailyBinding: StateFlow<WebDailyBinding> = mutableDailyBinding.asStateFlow()
     override val economyBinding: StateFlow<WebEconomyBinding> = mutableEconomyBinding.asStateFlow()
+    override val storeBinding: StateFlow<WebStoreBinding> = mutableStoreBinding.asStateFlow()
 
     var state by mutableStateOf<WebPlayerSessionState>(WebPlayerSessionState.Loading)
         private set
@@ -149,6 +154,9 @@ internal class WebPlayerSessionController(
         private set
 
     var economyRepository: WebPlayerEconomyRepository? = null
+        private set
+
+    var storeRepository: WebPlayerStoreRepository? = null
         private set
 
     var accountChangeRevision by mutableStateOf(0L)
@@ -279,11 +287,13 @@ internal class WebPlayerSessionController(
         statisticsRepository = null
         dailyRepository = null
         economyRepository = null
+        storeRepository = null
         dailyCloudSnapshot = null
         mutableProgressBinding.value = WebCatalogProgressBinding.Loading
         mutableStatisticsBinding.value = WebStatisticsBinding.Loading
         mutableDailyBinding.value = WebDailyBinding.Loading
         mutableEconomyBinding.value = WebEconomyBinding.Loading
+        mutableStoreBinding.value = WebStoreBinding.Loading
         state = WebPlayerSessionState.Loading
         operation = scope.launch { resolveAndSynchronize(revision) }
     }
@@ -295,11 +305,13 @@ internal class WebPlayerSessionController(
         statisticsRepository = null
         dailyRepository = null
         economyRepository = null
+        storeRepository = null
         dailyCloudSnapshot = null
         mutableProgressBinding.value = WebCatalogProgressBinding.Loading
         mutableStatisticsBinding.value = WebStatisticsBinding.Loading
         mutableDailyBinding.value = WebDailyBinding.Loading
         mutableEconomyBinding.value = WebEconomyBinding.Loading
+        mutableStoreBinding.value = WebStoreBinding.Loading
         state = WebPlayerSessionState.Loading
     }
 
@@ -327,6 +339,7 @@ internal class WebPlayerSessionController(
             val scopedStatistics = bindStatisticsLocal(revision, playerScope, identity)
             val scopedDaily = bindDailyLocal(revision, playerScope, identity)
             bindEconomyLocal(revision, playerScope, identity)
+            bindStoreLocal(revision, playerScope, identity)
             synchronize(revision, identity, repository)
             if (scopedStatistics != null && isCurrent(revision)) {
                 synchronizeStatisticsSafely(revision, identity, scopedStatistics)
@@ -350,6 +363,7 @@ internal class WebPlayerSessionController(
         bindStatisticsLocal(revision, standaloneScope, identity = null)
         bindDailyLocal(revision, standaloneScope, identity = null)
         bindEconomyLocal(revision, standaloneScope, identity = null)
+        bindStoreLocal(revision, standaloneScope, identity = null)
         state = WebPlayerSessionState.LocalOnly
         mutableProgressBinding.value =
             WebCatalogProgressBinding.Ready(
@@ -488,6 +502,34 @@ internal class WebPlayerSessionController(
         economyRepository = repository
         mutableEconomyBinding.value =
             WebEconomyBinding.Ready(
+                token = WebPlayerContextToken(revision),
+                repository = repository,
+                identity = identity,
+            )
+        return repository
+    }
+
+    /** Store is local-only for now; future cloud synchronization joins this session like Economy. */
+    private fun bindStoreLocal(
+        revision: Long,
+        playerScope: WebCatalogProgressScope,
+        identity: PlayerIdentity?,
+    ): WebPlayerStoreRepository? {
+        val repository =
+            runCatching {
+                storeRepositoryFactory.create(playerScope).also { it.loadLocal() }
+            }.getOrElse {
+                if (isCurrent(revision)) {
+                    storeRepository = null
+                    mutableStoreBinding.value =
+                        WebStoreBinding.Unavailable("The current Web store context is unavailable.")
+                }
+                return null
+            }
+        if (!isCurrent(revision)) return null
+        storeRepository = repository
+        mutableStoreBinding.value =
+            WebStoreBinding.Ready(
                 token = WebPlayerContextToken(revision),
                 repository = repository,
                 identity = identity,
@@ -714,12 +756,14 @@ internal class WebPlayerSessionController(
         statisticsRepository = null
         dailyRepository = null
         economyRepository = null
+        storeRepository = null
         dailyCloudSnapshot = null
         state = WebPlayerSessionState.LocalOnly
         mutableProgressBinding.value = WebCatalogProgressBinding.Unavailable(detail)
         mutableStatisticsBinding.value = WebStatisticsBinding.Unavailable(detail)
         mutableDailyBinding.value = WebDailyBinding.Unavailable(detail)
         mutableEconomyBinding.value = WebEconomyBinding.Unavailable(detail)
+        mutableStoreBinding.value = WebStoreBinding.Unavailable(detail)
     }
 
     private fun isCurrent(revision: Long): Boolean = revision == contextRevision && !accountSelectionOpen

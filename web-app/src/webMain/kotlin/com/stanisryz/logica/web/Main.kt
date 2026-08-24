@@ -1,7 +1,10 @@
+@file:OptIn(ExperimentalWasmJsInterop::class)
+
 package com.stanisryz.logica.web
 
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport
+import kotlin.js.ExperimentalWasmJsInterop
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
@@ -73,6 +76,13 @@ fun main() {
     val statisticsCoordinator = WebGameplayStatisticsCoordinator(playerSession)
     val dailyCoordinator = WebDailyGameplayCoordinator(playerSession)
     val economyCoordinator = WebGameplayEconomyCoordinator(playerSession)
+    val storeCoordinator = WebGameplayStoreCoordinator(playerSession)
+    val storeProcessor =
+        WebStoreProcessor(
+            economyRepository = { playerSession.economyRepository },
+            storeRepository = { playerSession.storeRepository },
+            currentTimeMs = ::currentTimeMillis,
+        )
     val balanceController =
         WebBalanceController.create(
             controller.puzzleDataLoader,
@@ -104,6 +114,7 @@ fun main() {
             statisticsCoordinator,
             dailyCoordinator,
             economyCoordinator,
+            storeCoordinator,
         )
     val game2048Controller =
         Web2048Controller.create(
@@ -125,7 +136,10 @@ fun main() {
             lifecycle,
             playerSession,
             dailyCoordinator,
+            storeProcessor,
         )
     }
     controller.start()
 }
+
+private fun currentTimeMillis(): Long = js("Date.now()")

@@ -37,6 +37,7 @@
     <string name="difficulty_expert">Эксперт</string>
     <string name="primary_games">Игры</string>
     <string name="primary_profile">Профиль</string>
+    <string name="primary_store">Магазин</string>
 
     <string name="profile_load_error">Не удалось загрузить статистику.</string>
     <string name="retry">Повторить</string>

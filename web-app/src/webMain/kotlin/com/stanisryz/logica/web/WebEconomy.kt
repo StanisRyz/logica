@@ -207,6 +207,30 @@ internal class WebGameplayEconomyCoordinator(
     }
 }
 
+/**
+ * Gameplay inventory consumption seam. Only Sudoku hint usage is integrated in this stage; a
+ * consumption attempt spends exactly one unit of the Player's own inventory and never touches
+ * Daily lifecycle, lives, or Catalog progression.
+ */
+internal interface WebGameplayStore {
+    /** Consumes one hint from the bound Player inventory; false when none is available. */
+    fun tryConsumeHint(): Boolean
+}
+
+internal object DisabledWebGameplayStore : WebGameplayStore {
+    override fun tryConsumeHint(): Boolean = false
+}
+
+internal class WebGameplayStoreCoordinator(
+    private val playerSession: WebStoreSessionAccess,
+) : WebGameplayStore {
+    override fun tryConsumeHint(): Boolean {
+        val binding = playerSession.storeBinding.value as? WebStoreBinding.Ready ?: return false
+        return binding.repository.consumeInventory(STORE_INVENTORY_HINTS)
+    }
+}
+
+
 
 /**
  * The pure economy processing pipeline: gameplay facts in, new state plus events out. UI never
@@ -298,6 +322,22 @@ internal class WebPlayerEconomyRepository(
             }
         }
         return consumed
+    }
+
+    /** Store reward support: restores lives up to the policy maximum. */
+    fun restoreLives(amount: Int): Boolean {
+        if (amount <= 0) return false
+        var granted = false
+        mutate { state ->
+            val restored = minOf(amount, EconomyPolicy.MAXIMUM_LIVES - state.lives)
+            if (restored > 0) {
+                granted = true
+                EconomyState(state.gems, state.lives + restored, state.nextLifeRestoreAtEpochMs) to emptyList()
+            } else {
+                state to emptyList()
+            }
+        }
+        return granted
     }
 
     private inline fun mutate(update: (EconomyState) -> Pair<EconomyState, List<EconomyEvent>>): List<EconomyEvent> {

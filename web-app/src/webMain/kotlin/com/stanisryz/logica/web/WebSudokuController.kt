@@ -70,6 +70,7 @@ internal class WebSudokuController(
     private val statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
     private val daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
     private val economy: WebGameplayEconomy = DisabledWebGameplayEconomy,
+    private val store: WebGameplayStore = DisabledWebGameplayStore,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private val provider = SudokuCatalogProvider(dataset)
@@ -257,9 +258,10 @@ internal class WebSudokuController(
         val playing = state as? WebSudokuState.Playing ?: return
         if (playing.game.status.isTerminal) return
         val updated = engine?.requestHint(playing.game) ?: return
-        if (updated != playing.game) {
-            updateGame(playing, updated, updated.currentHint?.position ?: playing.selectedCell)
-        }
+        // A hint consumes one hint item from the Player's own inventory; without one, no hint.
+        if (updated == playing.game) return
+        if (!store.tryConsumeHint()) return
+        updateGame(playing, updated, updated.currentHint?.position ?: playing.selectedCell)
     }
 
     fun retry() {
@@ -369,6 +371,7 @@ internal class WebSudokuController(
             statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
             daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
             economy: WebGameplayEconomy = DisabledWebGameplayEconomy,
+            store: WebGameplayStore = DisabledWebGameplayStore,
         ): WebSudokuController =
             WebSudokuController(
                 loadPack = { difficulty ->
@@ -383,6 +386,7 @@ internal class WebSudokuController(
                 statistics = statistics,
                 daily = daily,
                 economy = economy,
+                store = store,
             )
     }
 }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.PersonOutline
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -56,6 +57,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.daily_marker
 import com.stanisryz.logica.shared.ui.generated.resources.daily_start_error
 import com.stanisryz.logica.shared.ui.generated.resources.primary_games
 import com.stanisryz.logica.shared.ui.generated.resources.primary_profile
+import com.stanisryz.logica.shared.ui.generated.resources.primary_store
 import com.stanisryz.logica.ui.balance.BalanceGameContent
 import com.stanisryz.logica.ui.components.DifficultySelector
 import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
@@ -84,6 +86,7 @@ private sealed interface WebRoute {
 
     data object Profile : WebRoute
 
+    data object Store : WebRoute
     data object Balance : WebRoute
 
     data object Crowns : WebRoute
@@ -106,6 +109,7 @@ internal fun WebApp(
     lifecycle: WebHostLifecycle,
     playerSession: WebPlayerSessionController,
     dailyCoordinator: WebDailyGameplayCoordinator,
+    storeProcessor: WebStoreProcessor,
 ) {
     val lifecycleState by lifecycle.state.collectAsState()
 
@@ -149,6 +153,7 @@ internal fun WebApp(
                         game2048Controller = game2048Controller,
                         playerSession = playerSession,
                         dailyCoordinator = dailyCoordinator,
+                        storeProcessor = storeProcessor,
                         onRendered = controller::onInitialHostUiReady,
                     )
                 is WebBootstrapState.FatalError -> FatalContent(state.message)
@@ -202,6 +207,7 @@ private fun ReadyContent(
     game2048Controller: Web2048Controller,
     playerSession: WebPlayerSessionController,
     dailyCoordinator: WebDailyGameplayCoordinator,
+    storeProcessor: WebStoreProcessor,
     onRendered: () -> Unit,
 ) {
     var route by remember { mutableStateOf<WebRoute>(WebRoute.GameHub) }
@@ -237,7 +243,7 @@ private fun ReadyContent(
     LaunchedEffect(route, balanceState, crownsState, wordState, sudokuState, game2048State, lifecycleState) {
         controller.setGameplayActive(
             when (route) {
-                WebRoute.GameHub, WebRoute.Profile -> false
+                WebRoute.GameHub, WebRoute.Profile, WebRoute.Store -> false
                 WebRoute.Balance ->
                     balanceState is WebBalanceState.Playing &&
                         balanceState.game.status == BalanceGameStatus.IN_PROGRESS
@@ -344,6 +350,16 @@ private fun ReadyContent(
                     onRetry = playerSession::retryCurrentContext,
                 )
             }
+        WebRoute.Store ->
+            PrimaryDestinationShell(
+                selected = WebRoute.Store,
+                onSelect = { route = it },
+            ) {
+                WebStoreScreen(
+                    playerSession = playerSession,
+                    storeProcessor = storeProcessor,
+                )
+            }
         WebRoute.Balance ->
             BalanceFlow(
                 state = balanceState,
@@ -412,6 +428,12 @@ private fun PrimaryDestinationShell(
                 onClick = { onSelect(WebRoute.Profile) },
                 icon = { Icon(Icons.Outlined.PersonOutline, contentDescription = null) },
                 label = { Text(stringResource(Res.string.primary_profile)) },
+            )
+            NavigationBarItem(
+                selected = selected == WebRoute.Store,
+                onClick = { onSelect(WebRoute.Store) },
+                icon = { Icon(Icons.Outlined.ShoppingCart, contentDescription = null) },
+                label = { Text(stringResource(Res.string.primary_store)) },
             )
         }
     }
