@@ -504,14 +504,26 @@ private fun BalanceFlow(
             WebCatalogLoadingContent(
                 difficulty = state.difficulty,
                 levelNumber = state.levelNumber?.value,
-                onBack = controller::showDifficultySelector,
+                onBack =
+                    if (state.launch.isDaily) {
+                        onExitBalance
+                    } else {
+                        controller::showDifficultySelector
+                    },
+                isDaily = state.launch.isDaily,
             )
         is WebBalanceState.Error ->
             WebCatalogLevelErrorContent(
                 levelNumber = state.levelNumber?.value,
                 detail = state.detail,
                 onRetry = controller::retryLoading,
-                onBack = controller::showDifficultySelector,
+                onBack =
+                    if (state.launch.isDaily) {
+                        onExitBalance
+                    } else {
+                        controller::showDifficultySelector
+                    },
+                isDaily = state.launch.isDaily,
             )
         is WebBalanceState.Playing ->
             PlayingBalanceContent(
@@ -539,14 +551,26 @@ private fun CrownsFlow(
             WebCatalogLoadingContent(
                 difficulty = state.difficulty,
                 levelNumber = state.levelNumber?.value,
-                onBack = controller::showDifficultySelector,
+                onBack =
+                    if (state.launch.isDaily) {
+                        onExitCrowns
+                    } else {
+                        controller::showDifficultySelector
+                    },
+                isDaily = state.launch.isDaily,
             )
         is WebCrownsState.Error ->
             WebCatalogLevelErrorContent(
                 levelNumber = state.levelNumber?.value,
                 detail = state.detail,
                 onRetry = controller::retryLoading,
-                onBack = controller::showDifficultySelector,
+                onBack =
+                    if (state.launch.isDaily) {
+                        onExitCrowns
+                    } else {
+                        controller::showDifficultySelector
+                    },
+                isDaily = state.launch.isDaily,
             )
         is WebCrownsState.Playing ->
             PlayingCrownsContent(
@@ -574,14 +598,26 @@ private fun WordFlow(
             WebCatalogLoadingContent(
                 difficulty = state.difficulty,
                 levelNumber = state.levelNumber?.value,
-                onBack = controller::showDifficultySelector,
+                onBack =
+                    if (state.launch.isDaily) {
+                        onExitWord
+                    } else {
+                        controller::showDifficultySelector
+                    },
+                isDaily = state.launch.isDaily,
             )
         is WebWordState.Error ->
             WebCatalogLevelErrorContent(
                 levelNumber = state.levelNumber?.value,
                 detail = state.detail,
                 onRetry = controller::retryLoading,
-                onBack = controller::showDifficultySelector,
+                onBack =
+                    if (state.launch.isDaily) {
+                        onExitWord
+                    } else {
+                        controller::showDifficultySelector
+                    },
+                isDaily = state.launch.isDaily,
             )
         is WebWordState.Playing ->
             PlayingWordContent(
@@ -609,14 +645,26 @@ private fun SudokuFlow(
             WebCatalogLoadingContent(
                 difficulty = state.difficulty,
                 levelNumber = state.levelNumber?.value,
-                onBack = controller::showDifficultySelector,
+                onBack =
+                    if (state.launch.isDaily) {
+                        onExitSudoku
+                    } else {
+                        controller::showDifficultySelector
+                    },
+                isDaily = state.launch.isDaily,
             )
         is WebSudokuState.Error ->
             WebCatalogLevelErrorContent(
                 levelNumber = state.levelNumber?.value,
                 detail = state.detail,
                 onRetry = controller::retryLoading,
-                onBack = controller::showDifficultySelector,
+                onBack =
+                    if (state.launch.isDaily) {
+                        onExitSudoku
+                    } else {
+                        controller::showDifficultySelector
+                    },
+                isDaily = state.launch.isDaily,
             )
         is WebSudokuState.Playing ->
             PlayingSudokuContent(
@@ -644,14 +692,26 @@ private fun Game2048Flow(
             WebCatalogLoadingContent(
                 difficulty = state.difficulty,
                 levelNumber = state.levelNumber?.value,
-                onBack = controller::showDifficultySelector,
+                onBack =
+                    if (state.launch.isDaily) {
+                        onExitGame2048
+                    } else {
+                        controller::showDifficultySelector
+                    },
+                isDaily = state.launch.isDaily,
             )
         is Web2048State.Error ->
             WebCatalogLevelErrorContent(
                 levelNumber = state.levelNumber?.value,
                 detail = state.detail,
                 onRetry = controller::retryLoading,
-                onBack = controller::showDifficultySelector,
+                onBack =
+                    if (state.launch.isDaily) {
+                        onExitGame2048
+                    } else {
+                        controller::showDifficultySelector
+                    },
+                isDaily = state.launch.isDaily,
             )
         is Web2048State.Playing ->
             PlayingGame2048Content(
@@ -712,7 +772,7 @@ private fun PlayingBalanceContent(
             modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = controller::showDifficultySelector) { Text(if (state.source.isDaily) "К играм" else "К сложности") }
+            TextButton(onClick = if (state.source.isDaily) onExitBalance else controller::showDifficultySelector) { Text(if (state.source.isDaily) "К играм" else "К сложности") }
             Spacer(Modifier.weight(1f))
             Text("Баланс", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
@@ -740,7 +800,9 @@ private fun PlayingBalanceContent(
         WebDailyOrdinaryTerminalDialog(
             visible = state.game.status.isTerminal,
             solved = state.game.status == BalanceGameStatus.SOLVED,
+            completion = controller.dailyCompletionState,
             onRetry = controller::retry,
+            onRetrySave = controller::retryDailySave,
             onExit = onExitBalance,
         )
     } else {
@@ -772,7 +834,7 @@ private fun PlayingCrownsContent(
             modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = controller::showDifficultySelector) { Text(if (state.source.isDaily) "К играм" else "К сложности") }
+            TextButton(onClick = if (state.source.isDaily) onExitCrowns else controller::showDifficultySelector) { Text(if (state.source.isDaily) "К играм" else "К сложности") }
             Spacer(Modifier.weight(1f))
             Text("Короны", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
@@ -800,7 +862,9 @@ private fun PlayingCrownsContent(
         WebDailyOrdinaryTerminalDialog(
             visible = state.game.status.isTerminal,
             solved = state.game.status == CrownsGameStatus.SOLVED,
+            completion = controller.dailyCompletionState,
             onRetry = controller::retry,
+            onRetrySave = controller::retryDailySave,
             onExit = onExitCrowns,
         )
     } else {
@@ -832,7 +896,7 @@ private fun PlayingWordContent(
             modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = controller::showDifficultySelector) { Text(if (state.source.isDaily) "К играм" else "К сложности") }
+            TextButton(onClick = if (state.source.isDaily) onExitWord else controller::showDifficultySelector) { Text(if (state.source.isDaily) "К играм" else "К сложности") }
             Spacer(Modifier.weight(1f))
             Text("Слово", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
@@ -862,7 +926,9 @@ private fun PlayingWordContent(
             solved = state.game.status == WordGameStatus.SOLVED,
             // Spoiler-free: the Daily dialog never reveals the answer, unlike the Catalog one.
             scoreDetail = "Отгадано за ${state.game.attempts.size} попыток.",
+            completion = controller.dailyCompletionState,
             onRetry = controller::retry,
+            onRetrySave = controller::retryDailySave,
             onExit = onExitWord,
         )
     } else {
@@ -896,7 +962,7 @@ private fun PlayingSudokuContent(
             modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = controller::showDifficultySelector) { Text(if (state.source.isDaily) "К играм" else "К сложности") }
+            TextButton(onClick = if (state.source.isDaily) onExitSudoku else controller::showDifficultySelector) { Text(if (state.source.isDaily) "К играм" else "К сложности") }
             Spacer(Modifier.weight(1f))
             Text("Судоку", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
@@ -932,7 +998,9 @@ private fun PlayingSudokuContent(
         WebDailyOrdinaryTerminalDialog(
             visible = state.game.status.isTerminal,
             solved = state.game.status == SudokuGameStatus.SOLVED,
+            completion = controller.dailyCompletionState,
             onRetry = controller::retry,
+            onRetrySave = controller::retryDailySave,
             onExit = onExitSudoku,
         )
     } else {
@@ -964,7 +1032,7 @@ private fun PlayingGame2048Content(
             modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = controller::showDifficultySelector) { Text(if (state.source.isDaily) "К играм" else "К сложности") }
+            TextButton(onClick = if (state.source.isDaily) onExitGame2048 else controller::showDifficultySelector) { Text(if (state.source.isDaily) "К играм" else "К сложности") }
             Spacer(Modifier.weight(1f))
             Text("2048", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
@@ -997,7 +1065,9 @@ private fun PlayingGame2048Content(
             visible = state.game.status.isTerminal && state.motionTrace == null,
             solved = state.game.goalReached,
             scoreDetail = "Итоговый счёт: ${formatGame2048Number(state.game.score)}.",
+            completion = controller.dailyCompletionState,
             onRetry = controller::retry,
+            onRetrySave = controller::retryDailySave,
             onExit = onExitGame2048,
         )
     } else {

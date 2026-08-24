@@ -34,6 +34,7 @@ internal sealed interface WebBalanceState {
     data class Loading(
         val difficulty: Difficulty,
         val levelNumber: CatalogLevelNumber? = null,
+        val launch: WebGameLaunch,
     ) : WebBalanceState
 
     data class Playing(
@@ -50,6 +51,7 @@ internal sealed interface WebBalanceState {
         val levelNumber: CatalogLevelNumber?,
         val detail: String,
         val progressionUnavailable: Boolean = false,
+        val launch: WebGameLaunch,
     ) : WebBalanceState
 }
 
@@ -67,6 +69,7 @@ internal class WebBalanceController(
     private var engine: BalanceGameEngine? = null
     private var statisticsAttempt: WebStatisticsAttempt? = null
     private val completion = WebCatalogCompletionController(progression)
+    private val dailyCompletion = WebDailyCompletionController(daily)
 
     var state by mutableStateOf<WebBalanceState>(WebBalanceState.DifficultySelection)
         private set
@@ -74,10 +77,19 @@ internal class WebBalanceController(
     val completionState: WebCatalogCompletionState
         get() = completion.state
 
+    val dailyCompletionState: WebDailyCompletionState
+        get() = dailyCompletion.state
+
     fun selectDifficulty(difficulty: Difficulty) {
         operation?.cancel()
         statisticsAttempt = null
-        state = WebBalanceState.Loading(difficulty)
+        completion.reset()
+        dailyCompletion.reset()
+        state =
+            WebBalanceState.Loading(
+                difficulty,
+                launch = WebGameLaunch.Catalog(PuzzleType.BALANCE, difficulty),
+            )
         operation =
             scope.launch {
                 var levelNumber: CatalogLevelNumber? = null
@@ -93,12 +105,19 @@ internal class WebBalanceController(
                         ) {
                             is WebCatalogLevelResolution.Resolved -> resolved.attempt
                             is WebCatalogLevelResolution.Unavailable -> {
-                                state = WebBalanceState.Error(difficulty, null, resolved.detail, progressionUnavailable = true)
+                                state =
+                                    WebBalanceState.Error(
+                                        difficulty,
+                                        null,
+                                        resolved.detail,
+                                        progressionUnavailable = true,
+                                        launch = WebGameLaunch.Catalog(PuzzleType.BALANCE, difficulty),
+                                    )
                                 return@launch
                             }
                         }
                     levelNumber = attempt.levelId.levelNumber
-                    state = WebBalanceState.Loading(difficulty, levelNumber)
+                    state = WebBalanceState.Loading(difficulty, levelNumber, WebGameLaunch.Catalog(PuzzleType.BALANCE, difficulty))
                     loadPack(difficulty)
                     if (!progression.isCurrent(attempt)) return@launch
                     val definition = resolveLevel(attempt.levelId)
@@ -127,6 +146,8 @@ internal class WebBalanceController(
                             difficulty,
                             levelNumber,
                             exception.message ?: "Balance level is unavailable.",
+                            progressionUnavailable = false,
+                            launch = WebGameLaunch.Catalog(PuzzleType.BALANCE, difficulty),
                         )
                 }
             }
@@ -134,8 +155,13 @@ internal class WebBalanceController(
 
     fun retryLoading() {
         val error = state as? WebBalanceState.Error ?: return
-        if (error.progressionUnavailable) progression.retryContextBinding()
-        selectDifficulty(error.difficulty)
+        when (val launch = error.launch) {
+            is WebGameLaunch.Catalog -> {
+                if (error.progressionUnavailable) progression.retryContextBinding()
+                selectDifficulty(launch.requestedDifficulty)
+            }
+            is WebGameLaunch.Daily -> startDaily(launch.attempt)
+        }
     }
 
     /**
@@ -147,7 +173,9 @@ internal class WebBalanceController(
         operation?.cancel()
         statisticsAttempt = null
         completion.reset()
-        state = WebBalanceState.Loading(dailyAttempt.entry.difficulty)
+        val launch = WebGameLaunch.Daily(dailyAttempt)
+        dailyCompletion.startAttempt(dailyAttempt)
+        state = WebBalanceState.Loading(dailyAttempt.entry.difficulty, launch = launch)
         operation =
             scope.launch {
                 try {
@@ -174,6 +202,8 @@ internal class WebBalanceController(
                             dailyAttempt.entry.difficulty,
                             null,
                             exception.message ?: "Balance Daily is unavailable.",
+                            progressionUnavailable = false,
+                            launch = launch,
                         )
                 }
             }
@@ -231,10 +261,12 @@ internal class WebBalanceController(
     fun retry() {
         val playing = state as? WebBalanceState.Playing ?: return
         if (playing.game.status != BalanceGameStatus.FAILED) return
+        if (dailyReplayBlocked(playing.source)) return
         val activeEngine = engine ?: return
         operation?.cancel()
         val source = playing.source
         if (source is WebGameplaySource.CatalogLevel) completion.startAttempt(source.attempt)
+        (source as? WebGameplaySource.DailyChallenge)?.let { dailyCompletion.startAttempt(it.attempt) }
         statisticsAttempt = statistics.startAttempt(PuzzleType.BALANCE, playing.source.difficulty)
         state =
             playing.copy(
@@ -263,8 +295,20 @@ internal class WebBalanceController(
         engine = null
         statisticsAttempt = null
         completion.reset()
+        dailyCompletion.reset()
         state = WebBalanceState.DifficultySelection
     }
+
+    /** Repeats only the failed Daily local mutation; never Statistics, never a new gameplay attempt. */
+    fun retryDailySave() {
+        dailyCompletion.retrySave()
+    }
+
+    /** A completed Daily entry is never replayable from the terminal screen. */
+    private fun dailyReplayBlocked(source: WebGameplaySource): Boolean =
+        source is WebGameplaySource.DailyChallenge &&
+            dailyCompletion.state is WebDailyCompletionState.Saved &&
+            (dailyCompletion.state as WebDailyCompletionState.Saved).outcome == WebStatisticsTerminalOutcome.SOLVED
 
     fun dispose() {
         scope.cancel()
@@ -294,7 +338,8 @@ internal class WebBalanceController(
                 is WebGameplaySource.CatalogLevel ->
                     // Daily never advances Catalog progression; Catalog completion stays here only.
                     if (updated.status == BalanceGameStatus.SOLVED) completion.saveSolved(source.attempt)
-                is WebGameplaySource.DailyChallenge -> daily.recordTerminalResult(source.attempt, outcome)
+                is WebGameplaySource.DailyChallenge ->
+                    dailyCompletion.saveTerminal(source.attempt, outcome)
             }
         }
     }

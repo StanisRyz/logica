@@ -35,6 +35,7 @@ internal sealed interface Web2048State {
     data class Loading(
         val difficulty: Difficulty,
         val levelNumber: CatalogLevelNumber? = null,
+        val launch: WebGameLaunch,
     ) : Web2048State
 
     data class Playing(
@@ -49,6 +50,7 @@ internal sealed interface Web2048State {
         val levelNumber: CatalogLevelNumber?,
         val detail: String,
         val progressionUnavailable: Boolean = false,
+        val launch: WebGameLaunch,
     ) : Web2048State
 }
 
@@ -93,6 +95,7 @@ internal class Web2048Controller(
     private var statisticsAttempt: WebStatisticsAttempt? = null
     private var nextMotionRevision = 0L
     private val completion = WebCatalogCompletionController(progression)
+    private val dailyCompletion = WebDailyCompletionController(daily)
 
     var state by mutableStateOf<Web2048State>(Web2048State.DifficultySelection)
         private set
@@ -100,10 +103,19 @@ internal class Web2048Controller(
     val completionState: WebCatalogCompletionState
         get() = completion.state
 
+    val dailyCompletionState: WebDailyCompletionState
+        get() = dailyCompletion.state
+
     fun selectDifficulty(difficulty: Difficulty) {
         operation?.cancel()
         statisticsAttempt = null
-        state = Web2048State.Loading(difficulty)
+        completion.reset()
+        dailyCompletion.reset()
+        state =
+            Web2048State.Loading(
+                difficulty,
+                launch = WebGameLaunch.Catalog(PuzzleType.GAME_2048, difficulty),
+            )
         operation =
             scope.launch {
                 var levelNumber: CatalogLevelNumber? = null
@@ -119,12 +131,19 @@ internal class Web2048Controller(
                         ) {
                             is WebCatalogLevelResolution.Resolved -> resolved.attempt
                             is WebCatalogLevelResolution.Unavailable -> {
-                                state = Web2048State.Error(difficulty, null, resolved.detail, progressionUnavailable = true)
+                                state =
+                                    Web2048State.Error(
+                                        difficulty,
+                                        null,
+                                        resolved.detail,
+                                        progressionUnavailable = true,
+                                        launch = WebGameLaunch.Catalog(PuzzleType.GAME_2048, difficulty),
+                                    )
                                 return@launch
                             }
                         }
                     levelNumber = attempt.levelId.levelNumber
-                    state = Web2048State.Loading(difficulty, levelNumber)
+                    state = Web2048State.Loading(difficulty, levelNumber, WebGameLaunch.Catalog(PuzzleType.GAME_2048, difficulty))
                     loadPack(difficulty)
                     if (!progression.isCurrent(attempt)) return@launch
                     val definition = resolveLevel(attempt.levelId)
@@ -150,15 +169,27 @@ internal class Web2048Controller(
                     engine = null
                     statisticsAttempt = null
                     completion.reset()
-                    state = Web2048State.Error(difficulty, levelNumber, exception.message ?: "2048 level is unavailable.")
+                    state =
+                        Web2048State.Error(
+                            difficulty,
+                            levelNumber,
+                            exception.message ?: "2048 level is unavailable.",
+                            progressionUnavailable = false,
+                            launch = WebGameLaunch.Catalog(PuzzleType.GAME_2048, difficulty),
+                        )
                 }
             }
     }
 
     fun retryLoading() {
         val error = state as? Web2048State.Error ?: return
-        if (error.progressionUnavailable) progression.retryContextBinding()
-        selectDifficulty(error.difficulty)
+        when (val launch = error.launch) {
+            is WebGameLaunch.Catalog -> {
+                if (error.progressionUnavailable) progression.retryContextBinding()
+                selectDifficulty(launch.requestedDifficulty)
+            }
+            is WebGameLaunch.Daily -> startDaily(launch.attempt)
+        }
     }
 
     /**
@@ -169,7 +200,9 @@ internal class Web2048Controller(
         operation?.cancel()
         statisticsAttempt = null
         completion.reset()
-        state = Web2048State.Loading(dailyAttempt.entry.difficulty)
+        val launch = WebGameLaunch.Daily(dailyAttempt)
+        dailyCompletion.startAttempt(dailyAttempt)
+        state = Web2048State.Loading(dailyAttempt.entry.difficulty, launch = launch)
         operation =
             scope.launch {
                 try {
@@ -199,6 +232,8 @@ internal class Web2048Controller(
                             dailyAttempt.entry.difficulty,
                             null,
                             exception.message ?: "2048 Daily is unavailable.",
+                            progressionUnavailable = false,
+                            launch = launch,
                         )
                 }
             }
@@ -241,7 +276,7 @@ internal class Web2048Controller(
                             WebStatisticsTerminalOutcome.FAILED
                         }
                     statisticsAttempt?.let { statistics.recordTerminalResult(it, outcome) }
-                    daily.recordTerminalResult(source.attempt, outcome)
+                    dailyCompletion.saveTerminal(source.attempt, outcome)
                 }
             }
         }
@@ -259,14 +294,19 @@ internal class Web2048Controller(
         if (!playing.game.status.isTerminal || playing.motionTrace != null) return
         val source = playing.source
         val catalog = source as? WebGameplaySource.CatalogLevel
-        // Catalog blocks a retry once the level is already cleared; Daily always allows one more
-        // attempt at the same deterministic puzzle, even after a post-goal game over.
-        if (catalog != null && (playing.game.goalReached || completion.state != WebCatalogCompletionState.Idle)) {
+        // Catalog blocks a retry once the level is already cleared; a completed Daily entry is
+        // never replayable either — only Daily FAILED remains a fresh real attempt.
+        if (catalog != null) {
+            if (playing.game.goalReached || completion.state != WebCatalogCompletionState.Idle) {
+                return
+            }
+        } else if (dailyReplayBlocked(source)) {
             return
         }
         val activeEngine = engine ?: return
         operation?.cancel()
         if (catalog != null) completion.startAttempt(catalog.attempt)
+        (source as? WebGameplaySource.DailyChallenge)?.let { dailyCompletion.startAttempt(it.attempt) }
         statisticsAttempt = statistics.startAttempt(PuzzleType.GAME_2048, source.difficulty)
         state =
             playing.copy(
@@ -296,8 +336,20 @@ internal class Web2048Controller(
         engine = null
         statisticsAttempt = null
         completion.reset()
+        dailyCompletion.reset()
         state = Web2048State.DifficultySelection
     }
+
+    /** Repeats only the failed Daily local mutation; never Statistics, never a new gameplay attempt. */
+    fun retryDailySave() {
+        dailyCompletion.retrySave()
+    }
+
+    /** A completed Daily entry is never replayable from the terminal screen. */
+    private fun dailyReplayBlocked(source: WebGameplaySource): Boolean =
+        source is WebGameplaySource.DailyChallenge &&
+            dailyCompletion.state is WebDailyCompletionState.Saved &&
+            (dailyCompletion.state as WebDailyCompletionState.Saved).outcome == WebStatisticsTerminalOutcome.SOLVED
 
     fun dispose() {
         scope.cancel()

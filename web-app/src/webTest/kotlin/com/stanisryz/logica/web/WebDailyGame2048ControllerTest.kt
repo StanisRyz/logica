@@ -161,18 +161,64 @@ class WebDailyGame2048ControllerTest {
             assertEquals(listOf(WebStatisticsTerminalOutcome.SOLVED), statistics.outcomes)
             assertTrue(repository.snapshot.value.days.getValue(today).facts(PuzzleType.GAME_2048).solved)
 
-            // A separate fresh attempt whose game over stays below the target records one FAILED.
+            // A completed Daily 2048 entry is never replayable from the terminal screen.
             controller.finishMotion(assertNotNull((controller.state as Web2048State.Playing).motionRevision))
+            val terminal = assertIs<Web2048State.Playing>(controller.state)
             controller.retry()
+            assertEquals(terminal, controller.state)
+
+            // A separate fresh attempt whose game over stays below the target records one FAILED
+            // and remains a real retry.
+            val failedStore = FakeDailyStore()
+            val failedRepository =
+                WebDailyRepository(WebCatalogProgressScope.STANDALONE, failedStore) { today }.also { it.loadLocal() }
+            val failedSession = object : WebDailySessionAccess {
+                override val dailyBinding =
+                    MutableStateFlow<WebDailyBinding>(
+                        WebDailyBinding.Ready(
+                            WebPlayerContextToken(6L),
+                            failedRepository,
+                            null,
+                            WebDailyCloudSyncStatus.LOCAL_ONLY,
+                        ),
+                    )
+
+                override fun requestDailyCloudSynchronization(binding: WebDailyBinding.Ready) = Unit
+            }
+            val failedCoordinator = WebDailyGameplayCoordinator(failedSession) { today }
+            val failedStatistics = RecordingStatistics()
+            val failedAttempt =
+                assertIs<WebDailyStartResult.Started>(failedCoordinator.start(PuzzleType.GAME_2048)).attempt
+            val failedController =
+                Web2048Controller(
+                    loadPack = {},
+                    progression = progression,
+                    engineFactory = { puzzleId ->
+                        val start = Game2048Engine(puzzleId).start()
+                        ScriptedEngine(
+                            puzzleId,
+                            firstScript = listOf(gameOver(puzzleId, start, score = 0L)),
+                            retryScript = listOf(gameOver(puzzleId, start, score = 0L)),
+                        )
+                    },
+                    statistics = failedStatistics,
+                    daily = failedCoordinator,
+                    scope = this,
+                )
+            failedController.startDaily(failedAttempt)
             advanceUntilIdle()
-            controller.move(Game2048Direction.LEFT)
-            assertEquals(
-                listOf(WebStatisticsTerminalOutcome.SOLVED, WebStatisticsTerminalOutcome.FAILED),
-                statistics.outcomes,
-            )
-            val recordAfterBoth = repository.snapshot.value.days.getValue(today)
+
+            failedController.move(Game2048Direction.LEFT)
+            failedController.finishMotion(assertNotNull((failedController.state as Web2048State.Playing).motionRevision))
+            assertEquals(listOf(WebStatisticsTerminalOutcome.FAILED), failedStatistics.outcomes)
+            val recordAfterBoth = failedRepository.snapshot.value.days.getValue(today)
             assertTrue(recordAfterBoth.facts(PuzzleType.GAME_2048).failedSeen)
-            assertTrue(recordAfterBoth.facts(PuzzleType.GAME_2048).solved)
+            assertFalse(recordAfterBoth.facts(PuzzleType.GAME_2048).solved)
+
+            failedController.retry()
+            advanceUntilIdle()
+            val retried = assertIs<Web2048State.Playing>(failedController.state)
+            assertEquals(Game2048Status.IN_PROGRESS, retried.game.status)
 
             // Daily never advances Catalog progression in any of these scenarios.
             assertEquals(0, progression.advanceCalls)

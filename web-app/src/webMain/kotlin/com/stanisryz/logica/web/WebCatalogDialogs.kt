@@ -25,6 +25,7 @@ internal fun WebCatalogLoadingContent(
     difficulty: Difficulty,
     levelNumber: Int?,
     onBack: () -> Unit,
+    isDaily: Boolean = false,
 ) {
     CenteredColumn {
         CircularProgressIndicator()
@@ -37,7 +38,7 @@ internal fun WebCatalogLoadingContent(
             },
         )
         Spacer(Modifier.height(12.dp))
-        TextButton(onClick = onBack) { Text("Назад к сложности") }
+        TextButton(onClick = onBack) { Text(if (isDaily) "К играм" else "Назад к сложности") }
     }
 }
 
@@ -47,12 +48,16 @@ internal fun WebCatalogLevelErrorContent(
     detail: String,
     onRetry: () -> Unit,
     onBack: () -> Unit,
+    isDaily: Boolean = false,
 ) {
     CenteredColumn {
         Text(
             text =
-                levelNumber?.let { "Не удалось открыть уровень $it" }
-                    ?: "Не удалось загрузить прогресс",
+                when {
+                    isDaily -> "Не удалось открыть задачу дня"
+                    levelNumber != null -> "Не удалось открыть уровень $levelNumber"
+                    else -> "Не удалось загрузить прогресс"
+                },
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.error,
             textAlign = TextAlign.Center,
@@ -66,7 +71,7 @@ internal fun WebCatalogLevelErrorContent(
         )
         Spacer(Modifier.height(20.dp))
         Button(onClick = onRetry) { Text("Повторить") }
-        TextButton(onClick = onBack) { Text("К сложности") }
+        TextButton(onClick = onBack) { Text(if (isDaily) "К играм" else "К сложности") }
     }
 }
 
@@ -130,8 +135,10 @@ internal fun WebOrdinaryCatalogTerminalDialog(
 internal fun WebDailyOrdinaryTerminalDialog(
     visible: Boolean,
     solved: Boolean,
+    completion: WebDailyCompletionState,
     scoreDetail: String? = null,
     onRetry: () -> Unit,
+    onRetrySave: () -> Unit,
     onExit: () -> Unit,
 ) {
     if (!visible) return
@@ -141,14 +148,31 @@ internal fun WebDailyOrdinaryTerminalDialog(
         text = {
             Text(
                 when {
-                    scoreDetail != null && solved -> "Результат сохранён. $scoreDetail"
-                    scoreDetail != null -> "$scoreDetail Попробуйте ещё раз."
-                    solved -> "Результат сохранён."
-                    else -> "Попробуйте ещё раз."
+                    completion is WebDailyCompletionState.SaveError ->
+                        "Игра завершена, но прогресс задачи дня не сохранён. ${completion.detail}"
+                    completion is WebDailyCompletionState.Saved ->
+                        buildString {
+                            append("Результат сохранён.")
+                            if (!solved) append(" Попробуйте ещё раз.")
+                            scoreDetail?.let { append(" $it") }
+                        }
+                    else -> "Сохраняем результат…"
                 },
             )
         },
-        confirmButton = { TextButton(onClick = onRetry) { Text("Повторить") } },
+        confirmButton = {
+            when {
+                completion is WebDailyCompletionState.SaveError ->
+                    TextButton(onClick = onRetrySave) { Text("Сохранить ещё раз") }
+                completion is WebDailyCompletionState.Saved && !solved ->
+                    // A failed Daily entry stays open for a fresh real attempt of the same puzzle.
+                    TextButton(onClick = onRetry) { Text("Повторить") }
+                completion is WebDailyCompletionState.Idle ->
+                    TextButton(onClick = {}, enabled = false) { Text("Сохраняем…") }
+                // Saved + solved: no replay, no next level; returning to Games is the only action.
+                else -> {}
+            }
+        },
         dismissButton = { TextButton(onClick = onExit) { Text("К играм") } },
     )
 }

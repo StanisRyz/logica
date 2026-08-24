@@ -34,6 +34,7 @@ internal sealed interface WebCrownsState {
     data class Loading(
         val difficulty: Difficulty,
         val levelNumber: CatalogLevelNumber? = null,
+        val launch: WebGameLaunch,
     ) : WebCrownsState
 
     data class Playing(
@@ -50,6 +51,7 @@ internal sealed interface WebCrownsState {
         val levelNumber: CatalogLevelNumber?,
         val detail: String,
         val progressionUnavailable: Boolean = false,
+        val launch: WebGameLaunch,
     ) : WebCrownsState
 }
 
@@ -67,6 +69,7 @@ internal class WebCrownsController(
     private var engine: CrownsGameEngine? = null
     private var statisticsAttempt: WebStatisticsAttempt? = null
     private val completion = WebCatalogCompletionController(progression)
+    private val dailyCompletion = WebDailyCompletionController(daily)
 
     var state by mutableStateOf<WebCrownsState>(WebCrownsState.DifficultySelection)
         private set
@@ -74,10 +77,19 @@ internal class WebCrownsController(
     val completionState: WebCatalogCompletionState
         get() = completion.state
 
+    val dailyCompletionState: WebDailyCompletionState
+        get() = dailyCompletion.state
+
     fun selectDifficulty(difficulty: Difficulty) {
         operation?.cancel()
         statisticsAttempt = null
-        state = WebCrownsState.Loading(difficulty)
+        completion.reset()
+        dailyCompletion.reset()
+        state =
+            WebCrownsState.Loading(
+                difficulty,
+                launch = WebGameLaunch.Catalog(PuzzleType.CROWNS, difficulty),
+            )
         operation =
             scope.launch {
                 var levelNumber: CatalogLevelNumber? = null
@@ -93,12 +105,19 @@ internal class WebCrownsController(
                         ) {
                             is WebCatalogLevelResolution.Resolved -> resolved.attempt
                             is WebCatalogLevelResolution.Unavailable -> {
-                                state = WebCrownsState.Error(difficulty, null, resolved.detail, progressionUnavailable = true)
+                                state =
+                                    WebCrownsState.Error(
+                                        difficulty,
+                                        null,
+                                        resolved.detail,
+                                        progressionUnavailable = true,
+                                        launch = WebGameLaunch.Catalog(PuzzleType.CROWNS, difficulty),
+                                    )
                                 return@launch
                             }
                         }
                     levelNumber = attempt.levelId.levelNumber
-                    state = WebCrownsState.Loading(difficulty, levelNumber)
+                    state = WebCrownsState.Loading(difficulty, levelNumber, WebGameLaunch.Catalog(PuzzleType.CROWNS, difficulty))
                     loadPack(difficulty)
                     if (!progression.isCurrent(attempt)) return@launch
                     val definition = resolveLevel(attempt.levelId)
@@ -122,15 +141,27 @@ internal class WebCrownsController(
                     engine = null
                     statisticsAttempt = null
                     completion.reset()
-                    state = WebCrownsState.Error(difficulty, levelNumber, exception.message ?: "Crowns level is unavailable.")
+                    state =
+                        WebCrownsState.Error(
+                            difficulty,
+                            levelNumber,
+                            exception.message ?: "Crowns level is unavailable.",
+                            progressionUnavailable = false,
+                            launch = WebGameLaunch.Catalog(PuzzleType.CROWNS, difficulty),
+                        )
                 }
             }
     }
 
     fun retryLoading() {
         val error = state as? WebCrownsState.Error ?: return
-        if (error.progressionUnavailable) progression.retryContextBinding()
-        selectDifficulty(error.difficulty)
+        when (val launch = error.launch) {
+            is WebGameLaunch.Catalog -> {
+                if (error.progressionUnavailable) progression.retryContextBinding()
+                selectDifficulty(launch.requestedDifficulty)
+            }
+            is WebGameLaunch.Daily -> startDaily(launch.attempt)
+        }
     }
 
     /** Starts the deterministic Daily Crowns puzzle straight from its policy entry identity. */
@@ -138,7 +169,9 @@ internal class WebCrownsController(
         operation?.cancel()
         statisticsAttempt = null
         completion.reset()
-        state = WebCrownsState.Loading(dailyAttempt.entry.difficulty)
+        val launch = WebGameLaunch.Daily(dailyAttempt)
+        dailyCompletion.startAttempt(dailyAttempt)
+        state = WebCrownsState.Loading(dailyAttempt.entry.difficulty, launch = launch)
         operation =
             scope.launch {
                 try {
@@ -165,6 +198,8 @@ internal class WebCrownsController(
                             dailyAttempt.entry.difficulty,
                             null,
                             exception.message ?: "Crowns Daily is unavailable.",
+                            progressionUnavailable = false,
+                            launch = launch,
                         )
                 }
             }
@@ -223,10 +258,12 @@ internal class WebCrownsController(
     fun retry() {
         val playing = state as? WebCrownsState.Playing ?: return
         if (playing.game.status != CrownsGameStatus.FAILED) return
+        if (dailyReplayBlocked(playing.source)) return
         val activeEngine = engine ?: return
         operation?.cancel()
         val source = playing.source
         if (source is WebGameplaySource.CatalogLevel) completion.startAttempt(source.attempt)
+        (source as? WebGameplaySource.DailyChallenge)?.let { dailyCompletion.startAttempt(it.attempt) }
         statisticsAttempt = statistics.startAttempt(PuzzleType.CROWNS, playing.source.difficulty)
         state =
             playing.copy(
@@ -255,8 +292,20 @@ internal class WebCrownsController(
         engine = null
         statisticsAttempt = null
         completion.reset()
+        dailyCompletion.reset()
         state = WebCrownsState.DifficultySelection
     }
+
+    /** Repeats only the failed Daily local mutation; never Statistics, never a new gameplay attempt. */
+    fun retryDailySave() {
+        dailyCompletion.retrySave()
+    }
+
+    /** A completed Daily entry is never replayable from the terminal screen. */
+    private fun dailyReplayBlocked(source: WebGameplaySource): Boolean =
+        source is WebGameplaySource.DailyChallenge &&
+            dailyCompletion.state is WebDailyCompletionState.Saved &&
+            (dailyCompletion.state as WebDailyCompletionState.Saved).outcome == WebStatisticsTerminalOutcome.SOLVED
 
     fun dispose() {
         scope.cancel()
@@ -286,7 +335,8 @@ internal class WebCrownsController(
                 is WebGameplaySource.CatalogLevel ->
                     // Daily never advances Catalog progression; Catalog completion stays here only.
                     if (updated.status == CrownsGameStatus.SOLVED) completion.saveSolved(source.attempt)
-                is WebGameplaySource.DailyChallenge -> daily.recordTerminalResult(source.attempt, outcome)
+                is WebGameplaySource.DailyChallenge ->
+                    dailyCompletion.saveTerminal(source.attempt, outcome)
             }
         }
     }
