@@ -34,6 +34,13 @@ internal interface WebUnifiedSaveAccess {
     /** Reports a meaningful durable Player-state change; coalesced, never per-move. */
     fun markDirty()
 
+    /**
+     * Serialized immediate canonical save for high-value durable changes (e.g., paid
+     * fulfillment). Bypasses debouncing but reuses the same writer mutex, Player-context
+     * checks, payload-budget validation, and canonical Yandex path. False on failure.
+     */
+    suspend fun flushNow(): Boolean
+
     /** Drops all pending state because the Player context changed or is being rebound. */
     fun invalidateContext()
 }
@@ -168,6 +175,12 @@ internal class WebUnifiedSaveScheduler(
     }
 
     private fun isCurrent(token: WebPlayerContextToken?): Boolean = token != null && isTokenCurrent(token)
+
+    override suspend fun flushNow(): Boolean {
+        val token = activeToken ?: return false
+        if (!isTokenCurrent(token)) return false
+        writeMutex.withLock { return persistAttempt(token) }
+    }
 
     private companion object {
         /** Short enough that earned progress is not left unsaved, long enough to coalesce. */

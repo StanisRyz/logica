@@ -150,6 +150,7 @@ internal fun WebApp(
     playerSession: WebPlayerSessionController,
     dailyCoordinator: WebDailyGameplayCoordinator,
     storeProcessor: WebStoreProcessor,
+    paymentsCoordinator: WebPaymentsCoordinator,
     rewardedHintsController: WebStoreRewardedHintsController,
     interstitialController: WebInterstitialContinuationController,
     stickyBannerController: WebStickyBannerController,
@@ -200,6 +201,7 @@ internal fun WebApp(
                         rewardedHintsController = rewardedHintsController,
                         interstitialController = interstitialController,
                         stickyBannerController = stickyBannerController,
+                        paymentsCoordinator = paymentsCoordinator,
                         onRendered = controller::onInitialHostUiReady,
                     )
                 is WebBootstrapState.FatalError -> FatalContent(state.message)
@@ -254,6 +256,7 @@ private fun ReadyContent(
     playerSession: WebPlayerSessionController,
     dailyCoordinator: WebDailyGameplayCoordinator,
     storeProcessor: WebStoreProcessor,
+    paymentsCoordinator: WebPaymentsCoordinator,
     rewardedHintsController: WebStoreRewardedHintsController,
     interstitialController: WebInterstitialContinuationController,
     stickyBannerController: WebStickyBannerController,
@@ -414,6 +417,7 @@ private fun ReadyContent(
                 WebStoreScreen(
                     playerSession = playerSession,
                     storeProcessor = storeProcessor,
+                    paymentsCoordinator = paymentsCoordinator,
                     rewardedHintsController = rewardedHintsController,
                 )
             }

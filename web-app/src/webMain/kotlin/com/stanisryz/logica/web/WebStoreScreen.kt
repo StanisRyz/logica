@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import com.stanisryz.logica.platform.EconomyPolicy
+import com.stanisryz.logica.platform.PaymentProductSnapshot
 import com.stanisryz.logica.platform.PurchaseResult
 import com.stanisryz.logica.platform.PurchaseStatus
 import com.stanisryz.logica.platform.StoreItem
@@ -45,11 +47,17 @@ import org.jetbrains.compose.resources.stringResource
 internal fun WebStoreScreen(
     playerSession: WebPlayerSessionController,
     storeProcessor: WebStoreProcessor,
+    paymentsCoordinator: WebPaymentsCoordinator,
     rewardedHintsController: WebStoreRewardedHintsController,
 ) {
     val economyBinding by playerSession.economyBinding.collectAsState()
     val storeBinding by playerSession.storeBinding.collectAsState()
     var feedback by remember { mutableStateOf<String?>(null) }
+
+    // Real-money catalog loads once per visit; standalone/unsupported hides the section.
+    LaunchedEffect(paymentsCoordinator) { paymentsCoordinator.refreshCatalog() }
+    val paidCatalog by paymentsCoordinator.catalogState.collectAsState()
+    val purchaseState by paymentsCoordinator.purchaseState.collectAsState()
 
     Column(
         modifier =
@@ -96,6 +104,12 @@ internal fun WebStoreScreen(
 
         RewardedHintsCard(rewardedHintsController, storeBinding)
 
+        // Real-money gem top-up (Yandex Payments): price/currency come from the Yandex catalog.
+        if (paidCatalog is WebPaidCatalogState.Ready) {
+            val entries = (paidCatalog as WebPaidCatalogState.Ready).entries
+            entries.forEach { entry -> PaidGemTopUpCard(entry, purchaseState, paymentsCoordinator) }
+        }
+
         WebStoreCatalog.ITEMS.forEach { item -> StoreCatalogRow(item, economyBinding, storeProcessor, { feedback = it }) }
 
         feedback?.let { message ->
@@ -114,6 +128,90 @@ internal fun WebStoreScreen(
         Spacer(Modifier.height(LogicaSpacing.section))
     }
 }
+
+@Composable
+private fun PaidGemTopUpCard(
+    entry: WebPaidCatalogEntry,
+    state: WebPaidPurchaseState,
+    coordinator: WebPaymentsCoordinator,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(LogicaSpacing.cardContent), verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
+            Text(text = "Пополнение кристаллов", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = "+${entry.product.gemReward} кристаллов",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            entry.details.description?.let { description ->
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Portal-supplied price + currency only; never a locally manufactured amount.
+                Text(
+                    text = paidPriceLabel(entry.details),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Button(
+                    onClick = coordinator::purchaseGemsSmall,
+                    enabled = !state.isBusy,
+                ) {
+                    Text("Купить")
+                }
+            }
+            val message = paidPurchaseMessage(state)
+            if (message != null) {
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color =
+                        when (state) {
+                            WebPaidPurchaseState.Success -> MaterialTheme.colorScheme.primary
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                )
+            }
+        }
+    }
+}
+
+private val WebPaidPurchaseState.isBusy: Boolean
+    get() = this == WebPaidPurchaseState.Purchasing ||
+        this == WebPaidPurchaseState.Fulfilling ||
+        this == WebPaidPurchaseState.Saving
+
+/** Price exactly as the Yandex catalog supplies it; currency icon rendering stays host-side. */
+private fun paidPriceLabel(details: PaymentProductSnapshot): String =
+    buildString {
+        append(details.price ?: details.priceValue ?: "")
+        details.priceCurrencyCode?.let { code ->
+            if (isNotEmpty()) append(' ')
+            append(code)
+        }
+    }.ifEmpty { "—" }
+
+@Composable
+private fun paidPurchaseMessage(state: WebPaidPurchaseState): String? =
+    when (state) {
+        WebPaidPurchaseState.Purchasing -> "Открывается оплата…"
+        WebPaidPurchaseState.Fulfilling -> "Начисляем кристаллы…"
+        WebPaidPurchaseState.Saving -> "Сохраняем покупку…"
+        WebPaidPurchaseState.Success -> "Покупка завершена: +100 кристаллов."
+        WebPaidPurchaseState.Cancelled -> "Оплата отменена."
+        WebPaidPurchaseState.Unavailable -> "Оплата сейчас недоступна."
+        WebPaidPurchaseState.CloudPending -> "Покупка сохранена и будет завершена автоматически."
+        WebPaidPurchaseState.Error -> "Не удалось завершить покупку. Попробуйте ещё раз."
+        WebPaidPurchaseState.Idle -> null
+    }
 
 @Composable
 private fun RewardedHintsCard(

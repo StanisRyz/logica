@@ -121,6 +121,9 @@ internal class WebPlayerSessionController(
     private val purchaseTransactionStoreFactory: (
         WebCatalogProgressScope,
     ) -> WebPurchaseTransactionStore = ::BrowserWebPurchaseTransactionStore,
+    private val paymentsRepositoryFactory: WebPaymentsRepositoryFactory =
+        WebPaymentsRepositoryFactory { playerScope -> WebPlayerPaymentsRepository(playerScope, WebPaymentsLocalStore(playerScope)) },
+    private val paymentsJournalStoreFactory: (WebCatalogProgressScope) -> WebPaymentsJournalStore = ::BrowserWebPaymentsJournalStore,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) : WebStatisticsSessionAccess,
     WebDailySessionAccess,
@@ -150,6 +153,20 @@ internal class WebPlayerSessionController(
     /** The active Player-context revision timeline, consumed by the Store purchase processor. */
     val activeStateRevisions: WebPlayerStateRevisions
         get() = contextRevisions
+
+    /** Durable journal of one pending paid fulfillment for the currently bound Player. */
+    var paymentsJournalStore: WebPaymentsJournalStore? = null
+        private set
+
+    /** Player-scoped fulfilled-token ledger for the currently bound Player. */
+    var paymentsRepository: WebPlayerPaymentsRepository? = null
+        private set
+
+    /** Invoked during bind to recover an interrupted paid fulfillment before any cloud merge. */
+    var pendingPaymentsRecoveryAction: suspend () -> Unit = {}
+
+    /** Invoked after the unified restore established state: runs getPurchases() reconcile. */
+    var postRestoreAction: suspend () -> Unit = {}
 
     /** Durable journal of one pending coupled purchase for the currently bound Player. */
     var purchaseTransactionStore: WebPurchaseTransactionStore? = null
@@ -231,6 +248,25 @@ internal class WebPlayerSessionController(
         scope.cancel()
     }
 
+
+    private fun bindPaymentsLocal(
+        revision: Long,
+        playerScope: WebCatalogProgressScope,
+        identity: PlayerIdentity?,
+    ) {
+        val repository =
+            runCatching {
+                paymentsRepositoryFactory.create(playerScope).also {
+                    it.onDurableChange = { unifiedSaveAccess?.markDirty() }
+                    it.loadLocal()
+                }
+            }.getOrElse {
+                return
+            }
+        if (!isCurrent(revision)) return
+        paymentsJournalStore = paymentsJournalStoreFactory(playerScope)
+        paymentsRepository = repository
+    }
     /** Legacy per-domain cloud writes stop once the canonical unified save owns this context. */
     private fun unifiedSaveOwnsCloudWrites(): Boolean = unifiedSaveAccess?.unifiedSaveActive == true
 
@@ -370,6 +406,8 @@ internal class WebPlayerSessionController(
         unifiedSaveAccess?.invalidateContext()
         // Fresh Player-scoped revision timeline and journal for the newly bound context.
         contextRevisions = WebPlayerStateRevisions()
+        paymentsRepository = null
+        paymentsJournalStore = null
         purchaseTransactionStore = null
         val revision = ++contextRevision
         progressRepository = null
@@ -392,6 +430,8 @@ internal class WebPlayerSessionController(
         operation?.cancel()
         unifiedSaveAccess?.invalidateContext()
         contextRevisions = WebPlayerStateRevisions()
+        paymentsRepository = null
+        paymentsJournalStore = null
         purchaseTransactionStore = null
         progressRepository = null
         statisticsRepository = null
@@ -436,6 +476,8 @@ internal class WebPlayerSessionController(
             // Recover an interrupted coupled purchase BEFORE any cloud merge sees this context.
             purchaseTransactionStore = purchaseTransactionStoreFactory(playerScope)
             recoverPendingPurchase(revision)
+            bindPaymentsLocal(revision, playerScope, identity)
+            pendingPaymentsRecoveryAction()
             if (!isCurrent(revision)) return
             synchronize(revision, identity, repository)
             if (scopedStatistics != null && isCurrent(revision)) {
@@ -447,6 +489,8 @@ internal class WebPlayerSessionController(
             // Unified cloud save restore: identity resolved, all domains local-loaded.
             if (isCurrent(revision)) {
                 postBindAction(WebPlayerContextToken(revision))
+        if (isCurrent(revision)) postRestoreAction()
+                postRestoreAction()
             }
         } catch (error: CancellationException) {
             throw error
@@ -469,6 +513,8 @@ internal class WebPlayerSessionController(
         // Standalone contexts get their own isolated revision timeline and journal scope.
         purchaseTransactionStore = purchaseTransactionStoreFactory(standaloneScope)
         recoverPendingPurchase(revision)
+        bindPaymentsLocal(revision, standaloneScope, identity = null)
+        pendingPaymentsRecoveryAction()
         state = WebPlayerSessionState.LocalOnly
         mutableProgressBinding.value =
             WebCatalogProgressBinding.Ready(

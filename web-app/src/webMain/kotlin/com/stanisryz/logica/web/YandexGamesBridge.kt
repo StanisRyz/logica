@@ -2,6 +2,9 @@
 
 package com.stanisryz.logica.web
 
+import com.stanisryz.logica.platform.PaymentProductSnapshot
+import com.stanisryz.logica.platform.PaymentPurchaseSnapshot
+import com.stanisryz.logica.platform.PaymentResult
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -34,6 +37,7 @@ internal class YandexGamesBridge :
     private var cachedPlayer: YandexPlayer? = null
     private var playerRequest: Promise<YandexPlayer>? = null
     private var initializationStarted = false
+    private var paymentsCache: YandexPayments? = null
     private var disposed = false
     private var loadingReadySent = false
     private var gameplayActive = false
@@ -228,6 +232,110 @@ internal class YandexGamesBridge :
             null
         }
 
+    // region Yandex Games Payments (client-side consumable flow)
+
+    /** Whether the loaded SDK exposes the Payments API at all (cheap structural check). */
+    fun isPaymentsSupported(): Boolean =
+        runCatching {
+            val initializedSdk = sdk ?: return false
+            sdkSupportsPayments(initializedSdk)
+        }.getOrDefault(false)
+
+    private suspend fun paymentsOrNull(): YandexPayments? {
+        paymentsCache?.let { return it }
+        val initializedSdk = sdk ?: return null
+        if (!sdkSupportsPayments(initializedSdk)) return null
+        val created =
+            try {
+                initializedSdk.getPayments(paymentsOptions()).await()
+            } catch (_: Throwable) {
+                return null
+            }
+        // Client-side unsigned flow for this stage: no secret key ever reaches the Web build.
+        paymentsCache = created
+        return created
+    }
+
+    /** Yandex catalog snapshot; the portal is the single source of truth for price/currency. */
+    suspend fun paymentsCatalog(): List<PaymentProductSnapshot>? =
+        try {
+            val payments = paymentsOrNull() ?: return null
+            val rawCatalog = payments.getCatalog().await()
+            val count = jsArrayLength(rawCatalog)
+            val result = ArrayList<PaymentProductSnapshot>(count)
+            for (index in 0 until count) {
+                val entry = jsArrayGet(rawCatalog, index)
+                result +=
+                    PaymentProductSnapshot(
+                        productId = stringPropertyOrNull(entry, PRODUCT_ID_KEY) ?: continue,
+                        title = stringPropertyOrNull(entry, TITLE_KEY),
+                        description = stringPropertyOrNull(entry, DESCRIPTION_KEY),
+                        price = stringPropertyOrNull(entry, PRICE_KEY),
+                        priceValue = stringPropertyOrNull(entry, PRICE_VALUE_KEY),
+                        priceCurrencyCode = stringPropertyOrNull(entry, PRICE_CURRENCY_CODE_KEY),
+                        priceCurrencyImageUrl = stringPropertyOrNull(entry, PRICE_CURRENCY_IMAGE_URL_KEY),
+                    )
+            }
+            result
+        } catch (_: Throwable) {
+            null
+        }
+
+    /** Interactive client-side purchase; the frame/cancellation/failure handling stays here. */
+    suspend fun purchaseProduct(productId: String): PaymentResult =
+        try {
+            val payments = paymentsOrNull() ?: return PaymentResult.Unavailable
+            val purchase = payments.purchase(singlePropertyObject(PRODUCT_ID_KEY, productId)).await()
+            val token = stringPropertyOrNull(purchase, PURCHASE_TOKEN_KEY)
+            val purchasedProductId = stringPropertyOrNull(purchase, PURCHASE_PRODUCT_ID_KEY) ?: productId
+            if (token.isNullOrBlank()) {
+                PaymentResult.Failed("The payment response carried no purchase token.")
+            } else {
+                PaymentResult.Completed(PaymentPurchaseSnapshot(purchaseToken = token, productId = purchasedProductId))
+            }
+        } catch (error: Throwable) {
+            val detail = error.message
+            if (detail?.contains(USER_CANCELLED_MARKER) == true) {
+                PaymentResult.Cancelled
+            } else {
+                PaymentResult.Failed(detail)
+            }
+        }
+
+    /** Unconsumed purchases for the current Player; null when unsupported/failed. */
+    suspend fun pendingPurchases(): List<PaymentPurchaseSnapshot>? =
+        try {
+            val payments = paymentsOrNull() ?: return null
+            val rawPurchases = payments.getPurchases().await()
+            val rawList = anyPropertyOrNull(rawPurchases, PURCHASES_LIST_KEY) ?: return emptyList()
+            val count = jsArrayLength(rawList)
+            val result = ArrayList<PaymentPurchaseSnapshot>(count)
+            for (index in 0 until count) {
+                val entry = jsArrayGet(rawList, index)
+                val token = stringPropertyOrNull(entry, PURCHASE_TOKEN_KEY) ?: continue
+                result += PaymentPurchaseSnapshot(
+                    purchaseToken = token,
+                    productId = stringPropertyOrNull(entry, PURCHASE_PRODUCT_ID_KEY) ?: "",
+                )
+            }
+            result
+        } catch (_: Throwable) {
+            null
+        }
+
+    /** Consumes one fulfilled consumable; true only when the platform confirmed it. */
+    suspend fun consumePurchaseToken(purchaseToken: String): Boolean =
+        try {
+            val payments = paymentsOrNull() ?: return false
+            payments.consumePurchase(purchaseToken).await()
+            true
+        } catch (_: Throwable) {
+            false
+        }
+
+    // endregion
+
+
     fun dispose() {
         if (disposed) return
         disposed = true
@@ -368,6 +476,17 @@ internal class YandexGamesBridge :
         const val GAME_API_RESUME = "game_api_resume"
         const val PLAYER_PHOTO_SIZE = "small"
         const val STICKY_BANNER_SHOWING_KEY = "stickyAdvIsShowing"
+        const val PRODUCT_ID_KEY = "id"
+        const val TITLE_KEY = "title"
+        const val DESCRIPTION_KEY = "description"
+        const val PRICE_KEY = "price"
+        const val PRICE_VALUE_KEY = "priceValue"
+        const val PRICE_CURRENCY_CODE_KEY = "priceCurrencyCode"
+        const val PRICE_CURRENCY_IMAGE_URL_KEY = "priceCurrencyImageUrl"
+        const val PURCHASE_TOKEN_KEY = "purchaseToken"
+        const val PURCHASE_PRODUCT_ID_KEY = "productID"
+        const val PURCHASES_LIST_KEY = "purchases"
+        const val USER_CANCELLED_MARKER = "USER_CANCELLED"
     }
 }
 
@@ -383,6 +502,9 @@ private external interface YandexGamesGlobal : JsAny {
 
 private external interface YandexSdk : JsAny {
     val features: YandexFeatures
+
+    @JsName("getPayments")
+    fun getPayments(options: JsAny): Promise<YandexPayments>
 
     @JsName("EVENTS")
     val events: YandexSdkEvents?
@@ -402,6 +524,15 @@ private external interface YandexSdk : JsAny {
     )
 }
 
+private external interface YandexPayments : JsAny {
+    fun getCatalog(): Promise<JsAny>
+
+    fun purchase(options: JsAny): Promise<JsAny>
+
+    fun getPurchases(): Promise<JsAny>
+
+    fun consumePurchase(purchaseToken: String): Promise<JsAny>
+}
 private external interface YandexAdv : JsAny {
     fun showRewardedVideo(callbacks: YandexRewardedVideoCallbacks)
 
@@ -533,6 +664,22 @@ private fun stringPropertyOrNull(
     data: JsAny,
     key: String,
 ): String? = js("typeof data[key] === 'string' ? data[key] : null")
+
+private fun sdkSupportsPayments(sdk: YandexSdk): Boolean = js("typeof sdk.getPayments === 'function'")
+
+private fun paymentsOptions(): JsAny = js("({ signed: false })")
+
+private fun jsArrayLength(array: JsAny): Int = js("array.length")
+
+private fun jsArrayGet(
+    array: JsAny,
+    index: Int,
+): JsAny = js("array[index]")
+
+private fun anyPropertyOrNull(
+    data: JsAny,
+    key: String,
+): JsAny? = js("data[key] === undefined || data[key] === null ? null : data[key]")
 
 private fun booleanPropertyOrNull(
     data: JsAny,

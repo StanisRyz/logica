@@ -3,6 +3,9 @@
 package com.stanisryz.logica.web
 
 import androidx.compose.ui.ExperimentalComposeUiApi
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import androidx.compose.ui.window.ComposeViewport
 import kotlin.js.ExperimentalWasmJsInterop
 
@@ -116,6 +119,20 @@ fun main() {
             currentTimeMs = ::currentTimeMillis,
         )
     val stickyBannerController = WebStickyBannerController(bridge)
+    // Real-money consumable pipeline (client-side Yandex Payments flow).
+    val paymentsCoordinator =
+        WebPaymentsCoordinator(
+            provider = YandexPaymentsProvider(bridge),
+            economyRepository = { playerSession.economyRepository },
+            paymentsRepository = { playerSession.paymentsRepository },
+            journalStore = { playerSession.paymentsJournalStore },
+            revisions = { playerSession.activeStateRevisions },
+            unifiedSaveAccess = { playerSession.unifiedSaveAccess },
+            currentPlayerContext = { playerSession.currentPlayerContextToken() },
+            scope = rememberMainScope(),
+        )
+    playerSession.pendingPaymentsRecoveryAction = { paymentsCoordinator.recoverPendingFulfillment() }
+    playerSession.postRestoreAction = { paymentsCoordinator.reconcilePendingPurchases() }
     // Unified cloud save foundation: identity through the SDK, payload over a dedicated key.
     // Standalone development keeps the unified orchestration fully local and isolated.
     val playerProvider =
@@ -202,6 +219,7 @@ fun main() {
             playerSession,
             dailyCoordinator,
             storeProcessor,
+            paymentsCoordinator,
             rewardedHintsController,
             interstitialController,
             stickyBannerController,
@@ -225,3 +243,5 @@ private const val UNIFIED_SAVE_STATE_KEY = "logica_unified_save_v1"
 
 /** Isolated browser-local key; standalone data never migrates into a real Yandex account. */
 private const val STANDALONE_UNIFIED_SAVE_KEY = "logica_unified_save_standalone_v1"
+
+private fun rememberMainScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)

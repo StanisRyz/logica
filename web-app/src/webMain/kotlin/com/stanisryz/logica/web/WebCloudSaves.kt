@@ -273,6 +273,7 @@ internal object WebSaveSectionIds {
     const val DAILY = "daily"
     const val ECONOMY = "economy"
     const val STORE = "store"
+    const val PAYMENTS = "payments"
 }
 
 /**
@@ -293,6 +294,7 @@ internal class WebSaveSections(
             dailySection(),
             economySection(),
             storeSection(),
+            paymentsSection(),
         )
 
     private fun catalogSection(): WebSaveSection =
@@ -398,6 +400,21 @@ internal class WebSaveSections(
             override fun apply(payload: ByteArray) {
                 // Never used: restoration of both domains is owned by the economy section.
                 error("Economy/Store sections must be restored through the coupled group.")
+            }
+        }
+
+    /** Fulfilled purchase-token ledger; cloud restore unions both devices' knowledge. */
+    private fun paymentsSection(): WebSaveSection =
+        object : WebSaveSection {
+            override val id = WebSaveSectionIds.PAYMENTS
+
+            override fun export(): ByteArray? =
+                playerSession.paymentsRepository?.let { WebPaymentsCodec.encode(it.snapshot.value) }
+
+            override fun apply(payload: ByteArray) {
+                val repository = playerSession.paymentsRepository ?: return
+                val cloud = WebPaymentsCodec.decode(payload) ?: return
+                repository.mergeCloud(cloud)
             }
         }
 }
