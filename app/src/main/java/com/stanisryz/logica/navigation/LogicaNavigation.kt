@@ -41,13 +41,18 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
@@ -149,6 +154,14 @@ internal fun LogicaNavigation(
     val goBack = { exitGuard.requestBack { backStack.removeLastOrNull() } }
     val currentDestination = backStack.last()
     var showLivesDialog by rememberSaveable { mutableStateOf(false) }
+    val density = LocalDensity.current
+    var primaryNavigationBarSize by
+        remember(density) {
+            mutableStateOf(
+                IntSize(width = 0, height = with(density) { PRIMARY_NAVIGATION_BAR_FALLBACK_HEIGHT.roundToPx() }),
+            )
+        }
+    val primaryNavigationBarHeight = with(density) { primaryNavigationBarSize.height.toDp() }
     val activity = LocalActivity.current
     val navigationScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -159,7 +172,7 @@ internal fun LogicaNavigation(
     val openStore = {
         showLivesDialog = false
         selectedTab = PrimaryTab.STORE
-        while (backStack.size > 1) backStack.removeLastOrNull()
+        collapseToHome(backStack)
     }
 
     /*
@@ -248,15 +261,22 @@ internal fun LogicaNavigation(
             navigationScope.launch {
                 runCatching { catalogLevelRepository.currentLevelId(puzzleType, level.levelId.difficulty) }
                     .onSuccess { levelId ->
-                        backStack.removeLastOrNull()
-                        backStack.add(puzzleType.gameDestination(GameAttemptLaunch.Level(levelId)))
+                        backStack[backStack.lastIndex] = puzzleType.gameDestination(GameAttemptLaunch.Level(levelId))
                     }.onFailure { snackbarHostState.showSnackbar(levelUnavailableMessage) }
             }
         }
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(
+                snackbarHostState,
+                modifier =
+                    Modifier.padding(
+                        bottom = if (currentDestination == AppDestination.Home) primaryNavigationBarHeight else 0.dp,
+                    ),
+            )
+        },
         topBar = {
             AppTopBar(
                 title = destinationTitle(currentDestination, selectedTab),
@@ -270,88 +290,96 @@ internal fun LogicaNavigation(
                 onOpenStore = openStore,
             )
         },
-        bottomBar = {
-            if (currentDestination.showsBottomBar()) {
-                AppBottomBar(selectedTab) { selectedTab = it }
-            }
-        },
     ) { contentPadding ->
-        NavDisplay(
-            backStack = backStack,
+        Box(
             modifier =
                 Modifier
                     .padding(contentPadding)
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background),
-            onBack = goBack,
-            transitionSpec = {
-                horizontalSlideTransition(
-                    incomingDirection = 1,
-                    incomingOffsetDivisor = 1,
-                    outgoingDirection = -1,
-                    outgoingOffsetDivisor = LogicaMotion.DESTINATION_OUTGOING_PARALLAX_DIVISOR,
-                )
-            },
-            popTransitionSpec = {
-                horizontalSlideTransition(
-                    incomingDirection = -1,
-                    incomingOffsetDivisor = LogicaMotion.DESTINATION_OUTGOING_PARALLAX_DIVISOR,
-                    outgoingDirection = 1,
-                    outgoingOffsetDivisor = 1,
-                )
-            },
-            entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
-            entryProvider =
-                entryProvider {
+        ) {
+            NavDisplay(
+                backStack = backStack,
+                modifier = Modifier.fillMaxSize().clipToBounds().background(MaterialTheme.colorScheme.background),
+                onBack = goBack,
+                transitionSpec = {
+                    horizontalSlideTransition(
+                        incomingDirection = 1,
+                        outgoingDirection = -1,
+                    )
+                },
+                popTransitionSpec = {
+                    horizontalSlideTransition(
+                        incomingDirection = -1,
+                        outgoingDirection = 1,
+                    )
+                },
+                entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
+                entryProvider =
+                    entryProvider {
                     entry<AppDestination.Home> {
-                        AnimatedContent(
-                            targetState = selectedTab,
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .clipToBounds()
-                                    .background(MaterialTheme.colorScheme.background),
-                            transitionSpec = {
-                                val direction = if (targetState.ordinal >= initialState.ordinal) 1 else -1
-                                horizontalSlideTransition(
-                                    incomingDirection = direction,
-                                    incomingOffsetDivisor = 1,
-                                    outgoingDirection = -direction,
-                                    outgoingOffsetDivisor = 1,
-                                )
-                            },
-                            label = "primaryTab",
-                        ) { tab ->
+                        Box(Modifier.fillMaxSize()) {
                             Box(
                                 Modifier
                                     .fillMaxSize()
-                                    .background(MaterialTheme.colorScheme.background)
-                                    .semantics { if (tab != selectedTab) hideFromAccessibility() },
+                                    .padding(bottom = primaryNavigationBarHeight),
                             ) {
-                                tabStateHolder.SaveableStateProvider(tab) {
-                                    when (tab) {
-                                        PrimaryTab.GAME ->
-                                            GameHubRoute(
-                                                dailyChallengeRepository = dailyChallengeRepository,
-                                                statisticsRepository = statisticsRepository,
-                                                dailyResultRepository = dailyResultRepository,
-                                                catalog = GAME_CATALOG_PUZZLE_TYPES,
-                                                economy = economy,
-                                                onGameSelected = onGameSelected,
-                                                onOpenDaily = openDaily,
-                                                onRestoreLife = onRestoreLife,
-                                            )
-                                        PrimaryTab.STORE ->
-                                            StoreRoute(
-                                                economy = economy,
-                                                economyRepository = economyRepository,
-                                                storeGateway = storeGateway,
-                                                storeProducts = storeProducts,
-                                            )
-                                        PrimaryTab.PROFILE -> ProfileRoute(statisticsRepository)
+                                AnimatedContent(
+                                    targetState = selectedTab,
+                                    modifier =
+                                        Modifier
+                                            .fillMaxSize()
+                                            .clipToBounds()
+                                            .background(MaterialTheme.colorScheme.background),
+                                    transitionSpec = {
+                                        val direction = if (targetState.ordinal >= initialState.ordinal) 1 else -1
+                                        horizontalSlideTransition(
+                                            incomingDirection = direction,
+                                            outgoingDirection = -direction,
+                                        )
+                                    },
+                                    label = "primaryTab",
+                                ) { tab ->
+                                    Box(
+                                        Modifier
+                                            .fillMaxSize()
+                                            .background(MaterialTheme.colorScheme.background)
+                                            .semantics { if (tab != selectedTab) hideFromAccessibility() },
+                                    ) {
+                                        tabStateHolder.SaveableStateProvider(tab) {
+                                            when (tab) {
+                                                PrimaryTab.GAME ->
+                                                    GameHubRoute(
+                                                        dailyChallengeRepository = dailyChallengeRepository,
+                                                        statisticsRepository = statisticsRepository,
+                                                        dailyResultRepository = dailyResultRepository,
+                                                        catalog = GAME_CATALOG_PUZZLE_TYPES,
+                                                        economy = economy,
+                                                        onGameSelected = onGameSelected,
+                                                        onOpenDaily = openDaily,
+                                                        onRestoreLife = onRestoreLife,
+                                                    )
+                                                PrimaryTab.STORE ->
+                                                    StoreRoute(
+                                                        economy = economy,
+                                                        economyRepository = economyRepository,
+                                                        storeGateway = storeGateway,
+                                                        storeProducts = storeProducts,
+                                                    )
+                                                PrimaryTab.PROFILE -> ProfileRoute(statisticsRepository)
+                                            }
+                                        }
                                     }
                                 }
                             }
+                            AppBottomBar(
+                                selectedTab = selectedTab,
+                                onTabSelected = { selectedTab = it },
+                                modifier =
+                                    Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .onSizeChanged { primaryNavigationBarSize = it },
+                            )
                         }
                     }
                     entry<AppDestination.Settings> {
@@ -511,6 +539,7 @@ internal fun LogicaNavigation(
                     }
                 },
         )
+        }
     }
 
     if (showLivesDialog) {
@@ -532,7 +561,12 @@ private fun returnToGameHub(
     onSelectTab: (PrimaryTab) -> Unit,
 ) {
     onSelectTab(PrimaryTab.GAME)
-    while (backStack.size > 1) backStack.removeLastOrNull()
+    collapseToHome(backStack)
+}
+
+/** Keep the Home entry itself so its saved tab and ViewModel state remain intact. */
+private fun collapseToHome(backStack: MutableList<AppDestination>) {
+    if (backStack.size > 1) backStack.subList(1, backStack.size).clear()
 }
 
 private fun PuzzleType.gameDestination(launch: GameAttemptLaunch): AppDestination =
@@ -602,15 +636,13 @@ private fun AppTopBar(
 
 private fun horizontalSlideTransition(
     incomingDirection: Int,
-    incomingOffsetDivisor: Int,
     outgoingDirection: Int,
-    outgoingOffsetDivisor: Int,
 ) =
     slideInHorizontally(navigationSlideSpec()) { width ->
-        incomingDirection * (width / incomingOffsetDivisor)
+        incomingDirection * width
     } togetherWith
         slideOutHorizontally(navigationSlideSpec()) { width ->
-            outgoingDirection * (width / outgoingOffsetDivisor)
+            outgoingDirection * width
         }
 
 private fun navigationSlideSpec() =
@@ -623,8 +655,9 @@ private fun navigationSlideSpec() =
 private fun AppBottomBar(
     selectedTab: PrimaryTab,
     onTabSelected: (PrimaryTab) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    NavigationBar(modifier = Modifier.fillMaxWidth()) {
+    NavigationBar(modifier = modifier.fillMaxWidth()) {
         PrimaryTab.entries.forEach { tab ->
             NavigationBarItem(
                 selected = selectedTab == tab,
@@ -641,6 +674,9 @@ private fun AppBottomBar(
         }
     }
 }
+
+/** Used for the first measure only; [AppBottomBar] immediately supplies its actual inset. */
+private val PRIMARY_NAVIGATION_BAR_FALLBACK_HEIGHT = 80.dp
 
 @Composable
 private fun destinationTitle(

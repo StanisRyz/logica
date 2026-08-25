@@ -110,6 +110,7 @@ internal class TodayViewModel(
     val launches: SharedFlow<DailyGameLaunch> = mutableLaunches.asSharedFlow()
 
     private var refreshJob: Job? = null
+    private var dailyLaunchInFlight = false
 
     /**
      * There is no load on construction. The hub route refreshes whenever it becomes visible — on its
@@ -117,6 +118,9 @@ internal class TodayViewModel(
      * cancelled and restarted a moment later.
      */
     fun refresh() {
+        // Returning to the visible Hub re-enables a fresh Daily attempt after the prior navigation
+        // has completed. Until then, the outgoing Hub cannot emit a second launch on a rapid tap.
+        dailyLaunchInFlight = false
         val challengeDate = dateProvider()
         val retainsSameDayContent =
             (mutableUiState.value as? TodayUiState.Content)?.definition?.challengeDate == challengeDate
@@ -213,12 +217,13 @@ internal class TodayViewModel(
      * the same deterministic puzzle; a solved entry is never reopened.
      */
     fun start(puzzleType: PuzzleType) {
+        if (dailyLaunchInFlight) return
         val content = mutableUiState.value as? TodayUiState.Content ?: return
         val entry = content.definition.entryFor(puzzleType) ?: return
         if (content.entries.stateOf(puzzleType) !in setOf(DailyEntryState.AVAILABLE, DailyEntryState.RETRY)) return
         val definition = content.definition
         val needsRun = content.runStatus == null
-        mutableUiState.value = TodayUiState.Loading
+        dailyLaunchInFlight = true
         viewModelScope.launch {
             try {
                 if (needsRun) dailyChallengeRepository.createRun(definition)
@@ -226,6 +231,7 @@ internal class TodayViewModel(
             } catch (exception: CancellationException) {
                 throw exception
             } catch (_: Exception) {
+                dailyLaunchInFlight = false
                 mutableUiState.value = TodayUiState.Error(TodayError.START)
             }
         }

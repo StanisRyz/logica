@@ -16,8 +16,11 @@ import com.stanisryz.logica.statistics.GameStatistics
 import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.statistics.StatisticsSnapshot
 import com.stanisryz.logica.statistics.WordStatistics
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -190,6 +193,36 @@ class TodayViewModelTest {
             )
         }
 
+    @Test
+    fun startKeepsContentAndEmitsOneLaunchWhileRunCreationIsPending() =
+        runBlocking {
+            val createdRun = CompletableDeferred<SavedDailyRun>()
+            var createCalls = 0
+            val dailyRepository =
+                FakeDailyChallengeRepository(
+                    onCreateRun = {
+                        createCalls += 1
+                        createdRun.await()
+                    },
+                )
+            val todayViewModel = viewModel(dailyRepository)
+            val content = todayViewModel.awaitContent()
+            val launch =
+                async(start = CoroutineStart.UNDISPATCHED) {
+                    todayViewModel.launches.first()
+                }
+
+            todayViewModel.start(PuzzleType.BALANCE)
+            todayViewModel.start(PuzzleType.BALANCE)
+
+            assertEquals(1, createCalls)
+            assertEquals(content, todayViewModel.uiState.value)
+
+            createdRun.complete(savedRun(DailyChallengePolicyV5.VERSION.value, DailyRunStatus.IN_PROGRESS))
+
+            assertEquals(PuzzleType.BALANCE, launch.await().launch.puzzleType)
+        }
+
     // Construction loads nothing: the hub route is the one owner of the initial refresh, so the tests
     // ask for it the same way the route does.
     private fun viewModel(dailyChallengeRepository: DailyChallengeRepository): TodayViewModel =
@@ -236,6 +269,7 @@ class TodayViewModelTest {
     private class FakeDailyChallengeRepository(
         private val run: SavedDailyRun? = null,
         private val entries: Map<PuzzleType, SavedDailyChallenge> = emptyMap(),
+        private val onCreateRun: suspend (DailyChallengeDefinition) -> SavedDailyRun = { error("Unused.") },
     ) : DailyChallengeRepository {
         override suspend fun read(
             challengeDate: LocalDate,
@@ -244,7 +278,7 @@ class TodayViewModelTest {
 
         override suspend fun readRun(challengeDate: LocalDate): SavedDailyRun? = run?.takeIf { it.challengeDate == challengeDate }
 
-        override suspend fun createRun(definition: DailyChallengeDefinition): SavedDailyRun = error("Unused.")
+        override suspend fun createRun(definition: DailyChallengeDefinition): SavedDailyRun = onCreateRun(definition)
     }
 
     private object EmptyStatisticsRepository : StatisticsRepository {
