@@ -8,6 +8,4 @@ internal object LogicaMotion {
     /** Shared timing and offsets for the shell's directional navigation motion. */
     const val NAVIGATION_SLIDE_MILLIS = 220
     const val DESTINATION_OUTGOING_PARALLAX_DIVISOR = 4
-    const val PRIMARY_TAB_INCOMING_OFFSET_DIVISOR = 2
-    const val PRIMARY_TAB_OUTGOING_PARALLAX_DIVISOR = 6
 }

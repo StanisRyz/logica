@@ -2,11 +2,13 @@ package com.stanisryz.logica.ui.daily
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -147,23 +150,21 @@ private fun DailyContent(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
-            val progressDescription =
-                stringResource(Res.string.daily_progress_description, content.completedCount, content.totalCount)
-            Text(
-                text = stringResource(Res.string.daily_progress_short, content.completedCount, content.totalCount),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            LinearProgressIndicator(
-                progress = { completedFraction(content.completedCount, content.totalCount) },
-                modifier =
-                    Modifier.weight(1f).clearAndSetSemantics {
-                        contentDescription = progressDescription
-                    },
-            )
-            DailyStreakChip(content.streak)
-        }
+        val progressDescription =
+            stringResource(Res.string.daily_progress_description, content.completedCount, content.totalCount)
+        Text(
+            text = stringResource(Res.string.daily_progress_short, content.completedCount, content.totalCount),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        LinearProgressIndicator(
+            progress = { completedFraction(content.completedCount, content.totalCount) },
+            modifier =
+                Modifier.fillMaxWidth().clearAndSetSemantics {
+                    contentDescription = progressDescription
+                },
+        )
+        DailyStreakChip(content.streak)
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
             contentPadding = PaddingValues(vertical = LogicaSpacing.text),
@@ -206,10 +207,11 @@ private fun DailyStreakChip(streak: DailyHubStreak) {
         if (streak.qualifiedToday) stringResource(Res.string.daily_streak_secured) else stringResource(Res.string.daily_streak_hint)
     Row(
         modifier =
-            Modifier.clip(MaterialTheme.shapes.small)
+            Modifier.fillMaxWidth()
+                .clip(MaterialTheme.shapes.small)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                 .padding(horizontal = LogicaSpacing.cardContent, vertical = LogicaSpacing.text)
-                .semantics { contentDescription = label },
+                .clearAndSetSemantics { contentDescription = label },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(DAILY_CHIP_GAP),
     ) {
@@ -224,6 +226,7 @@ private fun DailyStreakChip(streak: DailyHubStreak) {
             text = label,
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
         )
     }
 }
@@ -259,11 +262,14 @@ private fun DailyEntryCard(
             verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Icon(
+            Image(
                 painter = painterResource(entry.puzzleType.catalogArtworkResource()),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(DAILY_ARTWORK_SIZE),
+                contentScale = ContentScale.Crop,
+                modifier =
+                    Modifier.fillMaxWidth()
+                        .height(DAILY_ARTWORK_HEIGHT)
+                        .clip(MaterialTheme.shapes.medium),
             )
             Text(text = title, style = MaterialTheme.typography.titleMedium)
             Text(
@@ -429,11 +435,8 @@ private val DAILY_CARD_WIDTH = 156.dp
 
 /** A minimum, never a fixed height: the card grows with a larger font scale instead of clipping. */
 private val DAILY_CARD_MIN_HEIGHT = 168.dp
-private val DAILY_ARTWORK_SIZE = 44.dp
+private val DAILY_ARTWORK_HEIGHT = 64.dp
 private val DAILY_CHIP_ICON_SIZE = 16.dp
 private val DAILY_CHIP_GAP = 4.dp
 private val DAILY_CHIP_VERTICAL_PADDING = 2.dp
-
-
-
 

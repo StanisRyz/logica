@@ -42,6 +42,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
@@ -308,15 +309,15 @@ internal fun LogicaNavigation(
                             modifier =
                                 Modifier
                                     .fillMaxSize()
+                                    .clipToBounds()
                                     .background(MaterialTheme.colorScheme.background),
                             transitionSpec = {
                                 val direction = if (targetState.ordinal >= initialState.ordinal) 1 else -1
                                 horizontalSlideTransition(
                                     incomingDirection = direction,
-                                    incomingOffsetDivisor = LogicaMotion.PRIMARY_TAB_INCOMING_OFFSET_DIVISOR,
+                                    incomingOffsetDivisor = 1,
                                     outgoingDirection = -direction,
-                                    outgoingOffsetDivisor =
-                                        LogicaMotion.PRIMARY_TAB_OUTGOING_PARALLAX_DIVISOR,
+                                    outgoingOffsetDivisor = 1,
                                 )
                             },
                             label = "primaryTab",
@@ -324,6 +325,7 @@ internal fun LogicaNavigation(
                             Box(
                                 Modifier
                                     .fillMaxSize()
+                                    .background(MaterialTheme.colorScheme.background)
                                     .semantics { if (tab != selectedTab) hideFromAccessibility() },
                             ) {
                                 tabStateHolder.SaveableStateProvider(tab) {

@@ -14,6 +14,9 @@ kotlin {
         namespace = "com.stanisryz.logica.shared.ui"
         compileSdk = 36
         minSdk = 26
+        androidResources {
+            enable = true
+        }
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
         }
