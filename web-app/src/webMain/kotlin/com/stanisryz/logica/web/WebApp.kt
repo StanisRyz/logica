@@ -152,7 +152,6 @@ internal fun WebApp(
     storeProcessor: WebStoreProcessor,
     rewardedHintsController: WebStoreRewardedHintsController,
     interstitialController: WebInterstitialContinuationController,
-    fullscreenAdGate: WebFullscreenAdGate,
     stickyBannerController: WebStickyBannerController,
 ) {
     val lifecycleState by lifecycle.state.collectAsState()
@@ -200,7 +199,6 @@ internal fun WebApp(
                         storeProcessor = storeProcessor,
                         rewardedHintsController = rewardedHintsController,
                         interstitialController = interstitialController,
-                        fullscreenAdGate = fullscreenAdGate,
                         stickyBannerController = stickyBannerController,
                         onRendered = controller::onInitialHostUiReady,
                     )
@@ -258,7 +256,6 @@ private fun ReadyContent(
     storeProcessor: WebStoreProcessor,
     rewardedHintsController: WebStoreRewardedHintsController,
     interstitialController: WebInterstitialContinuationController,
-    fullscreenAdGate: WebFullscreenAdGate,
     stickyBannerController: WebStickyBannerController,
     onRendered: () -> Unit,
 ) {
@@ -270,10 +267,25 @@ private fun ReadyContent(
     val game2048State = game2048Controller.state
     val accountChangeRevision = playerSession.accountChangeRevision
 
-    // Fullscreen ads force the host inactive through one seam; closing always re-evaluates the
-    // real browser visibility/focus/Yandex state instead of blindly forcing ACTIVE again.
-    LaunchedEffect(fullscreenAdGate, lifecycleState) { fullscreenAdGate.refresh() }
-    val hostActive by fullscreenAdGate.isActive.collectAsState()
+    // Fullscreen ads are part of the EFFECTIVE lifecycle: WebHostLifecycle owns the suppression
+    // flag, so lifecycleState already reflects ad-driven inactivity for GameplayAPI and audio
+    // consumers; closing an ad recomputes from real browser visibility/focus/Yandex state.
+    val hasActivePuzzle =
+        routeHasActivePuzzle(route, balanceState, crownsState, wordState, sudokuState, game2048State)
+    LaunchedEffect(route, hasActivePuzzle, lifecycleState) {
+        controller.setGameplayActive(hasActivePuzzle && lifecycleState == PlatformLifecycleState.ACTIVE)
+    }
+
+    // Sticky-banner visibility is platform-side (rendered by Yandex, never drawn in Compose).
+    // Applied only while the effective lifecycle is ACTIVE — which also suppresses transitions
+    // during fullscreen ads and reapplies/reconciles the desired state after one closes.
+    val bannerVisible = stickyBannerVisible(route, hasActivePuzzle)
+    LaunchedEffect(bannerVisible, lifecycleState) {
+        if (lifecycleState == PlatformLifecycleState.ACTIVE) {
+            stickyBannerController.applyVisibility(bannerVisible)
+            stickyBannerController.reconcileUsingPlatformStatus()
+        }
+    }
 
     // A passed midnight must re-render the new day's Daily definition; gameplay attempts keep
     // their own captured challenge date, so this only affects hub presentation.
@@ -296,20 +308,6 @@ private fun ReadyContent(
             game2048Controller.showDifficultySelector()
             route = WebRoute.GameHub
         }
-    }
-    val hasActivePuzzle =
-        routeHasActivePuzzle(route, balanceState, crownsState, wordState, sudokuState, game2048State)
-    LaunchedEffect(route, hasActivePuzzle, hostActive) {
-        controller.setGameplayActive(hasActivePuzzle && hostActive)
-    }
-
-    // Sticky-banner visibility is platform-side (rendered by Yandex, never drawn in Compose).
-    // Transitions are suppressed while a fullscreen ad owns the screen and reapplied right
-    // after it closes; repeated identical requests never reach the bridge again.
-    val adShowing by fullscreenAdGate.adShowing.collectAsState()
-    val bannerVisible = stickyBannerVisible(route, hasActivePuzzle)
-    LaunchedEffect(bannerVisible, adShowing) {
-        if (!adShowing) stickyBannerController.applyVisibility(bannerVisible)
     }
 
     // Catalog SOLVED -> Next Level is the first interstitial placement: the user always sees

@@ -95,15 +95,16 @@ fun main() {
             economyRepository = { playerSession.economyRepository },
             storeRepository = { playerSession.storeRepository },
         )
-    val fullscreenAdGate =
-        WebFullscreenAdGate { lifecycle.state.value == com.stanisryz.logica.platform.PlatformLifecycleState.ACTIVE }
+    // Fullscreen ads participate in the real effective lifecycle: WebHostLifecycle itself owns
+    // the suppression flag, so no competing lifecycle and no dependency cycle can exist.
     val rewardedHintsController =
         WebStoreRewardedHintsController(
             provider = YandexRewardedAdProvider(bridge),
             policy = adPolicy,
             rewardService = adRewardService,
             analytics = monetizationAnalytics,
-            adGate = fullscreenAdGate,
+            fullscreenAdActivity = lifecycle,
+            currentPlayerContext = { playerSession.currentPlayerContextToken() },
             currentTimeMs = ::currentTimeMillis,
         )
     val interstitialController =
@@ -111,7 +112,7 @@ fun main() {
             provider = YandexInterstitialAdProvider(bridge),
             policy = adPolicy,
             analytics = monetizationAnalytics,
-            adGate = fullscreenAdGate,
+            fullscreenAdActivity = lifecycle,
             currentTimeMs = ::currentTimeMillis,
         )
     val stickyBannerController = WebStickyBannerController(bridge)
@@ -203,7 +204,6 @@ fun main() {
             storeProcessor,
             rewardedHintsController,
             interstitialController,
-            fullscreenAdGate,
             stickyBannerController,
         )
     }

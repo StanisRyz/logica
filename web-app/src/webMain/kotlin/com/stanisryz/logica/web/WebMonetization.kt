@@ -98,54 +98,82 @@ internal class WebRewardService(
         }
 }
 
+/**
+ * Provider boundary for one rewarded invocation. [onOpened] fires only when the platform actually
+ * starts rendering the advertisement (never for unavailable/failed-to-start requests), so callers
+ * can begin anti-spam cooldowns from real exposure. Terminal results are exactly-once.
+ */
 internal fun interface RewardedAdProvider {
-    fun show(onResult: (AdShowResult) -> Unit)
+    fun show(
+        onOpened: () -> Unit,
+        onResult: (AdShowResult) -> Unit,
+    )
 }
 
+/** Same contract as [RewardedAdProvider] for interstitial invocations. */
 internal fun interface InterstitialAdProvider {
-    fun show(onResult: (AdShowResult) -> Unit)
+    fun show(
+        onOpened: () -> Unit,
+        onResult: (AdShowResult) -> Unit,
+    )
 }
 
 /** Yandex `ysdk.adv.showRewardedVideo` behind the provider abstraction. */
 internal class YandexRewardedAdProvider(
     private val bridge: YandexGamesBridge,
 ) : RewardedAdProvider {
-    private var rewardedGranted = false
+    override fun show(
+        onOpened: () -> Unit,
+        onResult: (AdShowResult) -> Unit,
+    ) {
+        // All mutable state belongs to THIS invocation; two show() calls never share rewards.
+        var rewarded = false
+        var finished = false
 
-    override fun show(onResult: (AdShowResult) -> Unit) {
+        fun finish(result: AdShowResult) {
+            if (finished) return // onError-then-onClose / repeated terminal callbacks: first wins
+            finished = true
+            onResult(result)
+        }
+
         val started =
             bridge.showRewardedVideo(
-                onOpen = {},
-                onRewarded = { rewardedGranted = true },
-                onClose = {
-                    val completed = rewardedGranted
-                    rewardedGranted = false
-                    onResult(if (completed) AdShowResult.Completed else AdShowResult.Dismissed)
-                },
-                onError = { detail ->
-                    rewardedGranted = false
-                    onResult(AdShowResult.Failed(detail))
-                },
+                onOpen = { onOpened() },
+                onRewarded = { rewarded = true },
+                onClose = { finish(if (rewarded) AdShowResult.Completed else AdShowResult.Dismissed) },
+                onError = { detail -> finish(AdShowResult.Failed(detail)) },
             )
-        if (!started) onResult(AdShowResult.Unavailable)
+        if (!started) finish(AdShowResult.Unavailable)
     }
 }
 
-/** Yandex `ysdk.adv.showFullscreenAdv` behind the provider abstraction (foundation only). */
+/** Yandex `ysdk.adv.showFullscreenAdv` behind the provider abstraction. */
 internal class YandexInterstitialAdProvider(
     private val bridge: YandexGamesBridge,
 ) : InterstitialAdProvider {
-    override fun show(onResult: (AdShowResult) -> Unit) {
+    override fun show(
+        onOpened: () -> Unit,
+        onResult: (AdShowResult) -> Unit,
+    ) {
         var shown = false
+        var finished = false
+
+        fun finish(result: AdShowResult) {
+            if (finished) return
+            finished = true
+            onResult(result)
+        }
+
         val started =
             bridge.showFullscreenAdv(
-                onOpen = { shown = true },
-                onClose = { wasShown ->
-                    onResult(if (wasShown || shown) AdShowResult.Completed else AdShowResult.Dismissed)
+                onOpen = {
+                    shown = true
+                    onOpened()
                 },
-                onError = { detail -> onResult(AdShowResult.Failed(detail)) },
+                onClose = { wasShown -> finish(if (wasShown || shown) AdShowResult.Completed else AdShowResult.Dismissed) },
+                onError = { detail -> finish(AdShowResult.Failed(detail)) },
             )
-        if (!started) onResult(AdShowResult.Unavailable)
+        if (!started) finish(AdShowResult.Unavailable)
     }
 }
 
@@ -173,23 +201,24 @@ internal class WebRewardedAdController(
         }
         policy.markShown(AdKind.REWARDED, now)
         analytics.record(now, MonetizationAnalyticsEvent.AD_STARTED)
-        provider.show { result ->
-            when (result) {
-                AdShowResult.Completed -> {
-                    analytics.record(currentTimeMs(), MonetizationAnalyticsEvent.AD_COMPLETED)
-                    val granted = rewardService.apply(reward)
-                    if (granted) {
-                        analytics.record(currentTimeMs(), MonetizationAnalyticsEvent.REWARD_GRANTED)
+        provider.show(
+            onOpened = {},
+            onResult = { result ->
+                when (result) {
+                    AdShowResult.Completed -> {
+                        analytics.record(currentTimeMs(), MonetizationAnalyticsEvent.AD_COMPLETED)
+                        val granted = rewardService.apply(reward)
+                        if (granted) {
+                            analytics.record(currentTimeMs(), MonetizationAnalyticsEvent.REWARD_GRANTED)
+                        }
+                        onFinished(granted)
                     }
-                    onFinished(granted)
+                    else -> {
+                        analytics.record(currentTimeMs(), MonetizationAnalyticsEvent.AD_FAILED)
+                        onFinished(false)
+                    }
                 }
-                else -> {
-                    analytics.record(currentTimeMs(), MonetizationAnalyticsEvent.AD_FAILED)
-                    onFinished(false)
-                }
-            }
-        }
+            },
+        )
     }
 }
-
-

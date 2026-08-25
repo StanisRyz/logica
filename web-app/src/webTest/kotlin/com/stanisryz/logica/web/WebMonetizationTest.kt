@@ -1,6 +1,5 @@
 package com.stanisryz.logica.web
 
-import com.stanisryz.logica.platform.AdKind
 import com.stanisryz.logica.platform.AdRewardDefinition
 import com.stanisryz.logica.platform.AdShowResult
 import com.stanisryz.logica.platform.EconomyPolicy
@@ -8,7 +7,6 @@ import com.stanisryz.logica.platform.MonetizationAnalyticsEvent
 import com.stanisryz.logica.platform.StoreRewardType
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -71,7 +69,7 @@ class WebMonetizationTest {
         var providerResult: AdShowResult = AdShowResult.Completed
         val controller =
             WebRewardedAdController(
-                provider = { onResult -> onResult(providerResult) },
+                provider = { _, onResult -> onResult(providerResult) },
                 policy = policy,
                 rewardService = rewardService,
                 analytics = analytics,

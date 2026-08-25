@@ -136,6 +136,12 @@ internal class WebPlayerSessionController(
     /** True while [token] still identifies the active, non-suspended Player context. */
     fun isSaveTokenCurrent(token: WebPlayerContextToken): Boolean = !accountSelectionOpen && token.value == contextRevision
 
+    /**
+     * The immutable current Player-context token, captured by ad sessions at start and
+     * re-validated before any reward grant; null while account selection suspends the context.
+     */
+    fun currentPlayerContextToken(): WebPlayerContextToken? = if (!accountSelectionOpen) WebPlayerContextToken(contextRevision) else null
+
     // One mutation timeline PER BOUND PLAYER CONTEXT keeps Economy/Store revisions comparable
     // within a Player while never transferring revision ordering across Players. It is reset
     // on every bind and raised to the maximum revision observed from that Player's data.

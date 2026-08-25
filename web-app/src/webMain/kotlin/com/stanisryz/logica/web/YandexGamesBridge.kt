@@ -27,7 +27,9 @@ internal interface WebPlayerContextEvents {
 }
 
 /** The only raw JavaScript boundary for the Yandex Games SDK. */
-internal class YandexGamesBridge : WebPlayerContextEvents {
+internal class YandexGamesBridge :
+    WebPlayerContextEvents,
+    WebStickyBannerBridge {
     private var sdk: YandexSdk? = null
     private var cachedPlayer: YandexPlayer? = null
     private var playerRequest: Promise<YandexPlayer>? = null
@@ -198,7 +200,7 @@ internal class YandexGamesBridge : WebPlayerContextEvents {
      * Sticky banner support. The real advertisement is owned and rendered by Yandex Games; these
      * methods only forward the platform calls. Missing SDK APIs are safe no-ops (return false).
      */
-    fun showStickyBanner(): Boolean =
+    override fun showStickyBanner(): Boolean =
         try {
             val adv = sdk?.adv ?: return false
             adv.showBannerAdv()
@@ -207,7 +209,7 @@ internal class YandexGamesBridge : WebPlayerContextEvents {
             false
         }
 
-    fun hideStickyBanner(): Boolean =
+    override fun hideStickyBanner(): Boolean =
         try {
             val adv = sdk?.adv ?: return false
             adv.hideBannerAdv()
@@ -217,7 +219,7 @@ internal class YandexGamesBridge : WebPlayerContextEvents {
         }
 
     /** Queries whether the platform currently shows the sticky banner; null when unsupported. */
-    suspend fun stickyBannerStatus(): Boolean? =
+    override suspend fun stickyBannerStatus(): Boolean? =
         try {
             val adv = sdk?.adv ?: return null
             val status = adv.getBannerAdvStatus()?.await() ?: return null

@@ -16,38 +16,13 @@ internal object WebAdPlacements {
 }
 
 /**
- * One application-level fullscreen-ad lifecycle seam: while a rewarded/interstitial advertisement
- * is on screen the host is forced inactive (GameplayAPI stopped, audio paused through the same
- * Yandex lifecycle path), and every close re-evaluates real browser visibility/focus conditions
- * instead of blindly forcing ACTIVE.
+ * Write-side fullscreen-ad seam consumed by ad controllers and implemented by `WebHostLifecycle`.
+ * While a rewarded/interstitial advertisement owns the screen the effective lifecycle becomes
+ * INACTIVE (GameplayAPI stopped, audio paused); closing re-evaluates real browser visibility,
+ * focus, and Yandex pause state instead of blindly forcing ACTIVE.
  */
-internal class WebFullscreenAdGate(
-    private val isHostEligible: () -> Boolean,
-) {
-    private var showing = false
-    private val mutableAdShowing = MutableStateFlow(false)
-    private val mutableActive = MutableStateFlow(false)
-
-    /** Whether a rewarded/interstitial advertisement currently owns the screen. */
-    val adShowing: StateFlow<Boolean> = mutableAdShowing.asStateFlow()
-
-    /** Effective host activity; gameplay/audio derive from this, never from ad callbacks alone. */
-    val isActive: StateFlow<Boolean> = mutableActive.asStateFlow()
-
-    init {
-        refresh()
-    }
-
-    fun setAdShowing(value: Boolean) {
-        showing = value
-        mutableAdShowing.value = value
-        refresh()
-    }
-
-    /** Re-evaluates after host signals change (visibility, focus, Yandex pause/resume). */
-    fun refresh() {
-        mutableActive.value = !showing && isHostEligible()
-    }
+internal fun interface WebFullscreenAdActivity {
+    fun setFullscreenAdActive(active: Boolean)
 }
 
 /** Compact UI state of the Store's rewarded-hints placement. */
@@ -65,28 +40,31 @@ internal enum class WebRewardedHintState {
  * The first production rewarded placement: Store -> controller -> Yandex rewarded provider ->
  * [WebRewardService] -> existing Store inventory -> normal durable-change unified save flow.
  *
- * Exactly-once guarantees: only one session may be active for the placement; duplicate SDK
- * terminal callbacks are ignored; a close callback never grants by itself; rewards apply only
- * for real provider completion and land as one ordinary Store inventory mutation (+3 hints)
- * with one fresh Player-scoped revision. Dismissed/Failed/Unavailable grant nothing.
+ * Hardening (45.14a): every invocation owns a runtime-only session id; callbacks may mutate
+ * state only while their session is still active, so late callbacks from a finished ad can
+ * never finish or grant a newer one. The Player context is captured when the session starts
+ * and re-validated right before granting, so an account switch can never pay the new Player
+ * for an old session. Cooldowns begin only after the platform reports the ad actually opened.
  */
 internal class WebStoreRewardedHintsController(
     private val provider: RewardedAdProvider,
     private val policy: WebAdPolicy,
     private val rewardService: WebRewardService,
     private val analytics: WebMonetizationAnalytics,
-    private val adGate: WebFullscreenAdGate,
+    private val fullscreenAdActivity: WebFullscreenAdActivity,
+    private val currentPlayerContext: () -> WebPlayerContextToken?,
     private val currentTimeMs: () -> Long,
 ) {
     private val mutableState = MutableStateFlow(WebRewardedHintState.Idle)
     val state: StateFlow<WebRewardedHintState> = mutableState.asStateFlow()
 
-    private var sessionActive = false
-    private var rewardGrantedInSession = false
-    private var terminalResultSeen = false
+    private var nextSessionId = 0L
+
+    /** The currently active invocation, or null; runtime-only and never persisted. */
+    private var activeSession: Long? = null
 
     val isRequestAllowed: Boolean
-        get() = !sessionActive && mutableState.value != WebRewardedHintState.Showing
+        get() = activeSession == null
 
     fun requestReward() {
         if (!isRequestAllowed) return // double tap / one active session per placement
@@ -96,36 +74,45 @@ internal class WebStoreRewardedHintsController(
             mutableState.value = WebRewardedHintState.Cooldown
             return
         }
-        policy.markShown(AdKind.REWARDED, now)
+        val session = ++nextSessionId
+        activeSession = session
+        val capturedContext = currentPlayerContext()
         analytics.record(now, MonetizationAnalyticsEvent.AD_STARTED)
-        sessionActive = true
-        rewardGrantedInSession = false
-        terminalResultSeen = false
         mutableState.value = WebRewardedHintState.Showing
-        adGate.setAdShowing(true)
-        provider.show(::onProviderResult)
+        provider.show(
+            onOpened = {
+                if (activeSession == session) {
+                    // Cooldown begins only after real platform exposure.
+                    policy.markShown(AdKind.REWARDED, currentTimeMs())
+                    fullscreenAdActivity.setFullscreenAdActive(true)
+                }
+            },
+            onResult = { result -> onProviderResult(session, capturedContext, result) },
+        )
     }
 
-    private fun onProviderResult(result: AdShowResult) {
-        if (terminalResultSeen) return // duplicate SDK terminal callbacks grant nothing extra
-        terminalResultSeen = true
-        sessionActive = false
-        adGate.setAdShowing(false)
+    private fun onProviderResult(
+        session: Long,
+        capturedContext: WebPlayerContextToken?,
+        result: AdShowResult,
+    ) {
+        if (activeSession != session) return // stale/late callback from another invocation
+        activeSession = null
+        fullscreenAdActivity.setFullscreenAdActive(false)
         when (result) {
             AdShowResult.Completed -> {
                 analytics.record(currentTimeMs(), MonetizationAnalyticsEvent.AD_COMPLETED)
-                // Exactly one +3 hints grant per successful session, through the ordinary
-                // durable Store inventory mutation path (fresh revision, unified save dirty).
+                // Re-validate the captured Player context immediately before granting: an
+                // account switch must never let the new Player receive the old session reward.
+                val contextStillValid =
+                    capturedContext != null && capturedContext == currentPlayerContext()
                 val granted =
-                    if (rewardGrantedInSession) {
-                        true
-                    } else {
-                        rewardGrantedInSession = rewardService.apply(HINT_REWARD)
-                        if (rewardGrantedInSession) {
-                            analytics.record(currentTimeMs(), MonetizationAnalyticsEvent.REWARD_GRANTED)
+                    contextStillValid &&
+                        rewardService.apply(HINT_REWARD).also { granted ->
+                            if (granted) {
+                                analytics.record(currentTimeMs(), MonetizationAnalyticsEvent.REWARD_GRANTED)
+                            }
                         }
-                        rewardGrantedInSession
-                    }
                 mutableState.value =
                     if (granted) WebRewardedHintState.RewardGranted else WebRewardedHintState.Error
             }
@@ -154,23 +141,31 @@ internal class WebStoreRewardedHintsController(
  * The interstitial continuation controller: eligibility is checked against [WebAdPolicy], one ad
  * attempt may run, and the requested continuation runs EXACTLY once no matter how many terminal
  * callbacks arrive or whether any ad appears at all. Advertisements never block navigation.
+ *
+ * Hardening (45.14a): while an interstitial transition is active, further Next Level requests
+ * are IGNORED entirely (never queued, never double-advanced); every invocation carries a
+ * runtime session id so late callbacks from an older attempt cannot execute a newer
+ * continuation; cooldowns begin only after the platform reports actual exposure.
  */
 internal class WebInterstitialContinuationController(
     private val provider: InterstitialAdProvider,
     private val policy: WebAdPolicy,
     private val analytics: WebMonetizationAnalytics,
-    private val adGate: WebFullscreenAdGate,
+    private val fullscreenAdActivity: WebFullscreenAdActivity,
     private val currentTimeMs: () -> Long,
 ) {
-    private var attemptActive = false
+    private var nextSessionId = 0L
+
+    /** The currently active transition attempt, or null; runtime-only and never persisted. */
+    private var activeAttempt: Long? = null
 
     fun runWithInterstitial(
         placementId: String,
         continuation: () -> Unit,
     ) {
-        if (attemptActive) {
-            // A second request during an in-flight attempt must not queue another transition.
-            continuation()
+        if (activeAttempt != null) {
+            // A second tap while a transition is active is ignored: one user action must never
+            // advance two Catalog levels.
             return
         }
         val now = currentTimeMs()
@@ -179,43 +174,86 @@ internal class WebInterstitialContinuationController(
             continuation()
             return
         }
-        policy.markShown(AdKind.INTERSTITIAL, now)
+        val session = ++nextSessionId
+        activeAttempt = session
         analytics.record(now, MonetizationAnalyticsEvent.AD_STARTED)
-        attemptActive = true
         var continued = false
 
         fun continueOnce() {
             if (continued) return
             continued = true
-            attemptActive = false
+            if (activeAttempt == session) activeAttempt = null
             continuation()
         }
 
-        adGate.setAdShowing(true)
-        provider.show { result ->
-            adGate.setAdShowing(false)
-            when (result) {
-                AdShowResult.Completed -> analytics.record(currentTimeMs(), MonetizationAnalyticsEvent.AD_COMPLETED)
-                else -> analytics.record(currentTimeMs(), MonetizationAnalyticsEvent.AD_FAILED)
-            }
-            continueOnce()
-        }
+        provider.show(
+            onOpened = {
+                if (activeAttempt == session) {
+                    // Cooldown begins only after real platform exposure.
+                    policy.markShown(AdKind.INTERSTITIAL, currentTimeMs())
+                    fullscreenAdActivity.setFullscreenAdActive(true)
+                }
+            },
+            onResult = { result ->
+                if (activeAttempt != session) return@show // stale/late callback from another attempt
+                fullscreenAdActivity.setFullscreenAdActive(false)
+                when (result) {
+                    AdShowResult.Completed -> analytics.record(currentTimeMs(), MonetizationAnalyticsEvent.AD_COMPLETED)
+                    else -> analytics.record(currentTimeMs(), MonetizationAnalyticsEvent.AD_FAILED)
+                }
+                continueOnce()
+            },
+        )
     }
+}
+
+/** Read/write sticky-banner boundary; implemented by `YandexGamesBridge` only. */
+internal interface WebStickyBannerBridge {
+    fun showStickyBanner(): Boolean
+
+    fun hideStickyBanner(): Boolean
+
+    suspend fun stickyBannerStatus(): Boolean?
 }
 
 /**
  * Sticky-banner visibility controller at the host boundary. The banner itself is rendered by
- * Yandex Games — nothing is drawn in Compose. The last requested state is tracked so route or
- * recomposition churn never issues redundant SDK transitions, and unsupported APIs are no-ops.
+ * Yandex Games — nothing is drawn in Compose.
+ *
+ * Hardening (45.14a): desired visibility and successfully-applied visibility are tracked
+ * separately. A failed show/hide leaves the state unapplied so any later event-driven
+ * reconciliation (route change, lifecycle ACTIVE, fullscreen close) retries it; identical
+ * desired/applied states never issue redundant SDK calls; unsupported APIs are safe no-ops.
  */
 internal class WebStickyBannerController(
-    private val bridge: YandexGamesBridge,
+    private val bridge: WebStickyBannerBridge,
 ) {
-    private var lastRequestedVisible: Boolean? = null
+    private var desiredVisible: Boolean? = null
+    private var appliedVisible: Boolean? = null
 
+    /** Requests a new platform-side visibility; failures remain retryable via [reconcile]. */
     fun applyVisibility(visible: Boolean) {
-        if (lastRequestedVisible == visible) return
-        lastRequestedVisible = visible
-        if (visible) bridge.showStickyBanner() else bridge.hideStickyBanner()
+        desiredVisible = visible
+        reconcile()
+    }
+
+    /** Reconciles desired vs applied visibility; no polling — callers invoke this on events. */
+    fun reconcile() {
+        val desired = desiredVisible ?: return
+        if (appliedVisible == desired) return
+        val applied = if (desired) bridge.showStickyBanner() else bridge.hideStickyBanner()
+        if (applied) appliedVisible = desired
+    }
+
+    /**
+     * Heals unknown applied state from the platform status when supported (e.g., after a failed
+     * transition or initialization); never queries on recomposition — call sites decide when.
+     */
+    suspend fun reconcileUsingPlatformStatus() {
+        val desired = desiredVisible ?: return
+        if (appliedVisible == desired) return
+        val actual = bridge.stickyBannerStatus() ?: return
+        appliedVisible = actual
+        if (appliedVisible != desired) reconcile()
     }
 }
