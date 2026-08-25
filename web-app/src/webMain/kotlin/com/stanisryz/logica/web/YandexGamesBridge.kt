@@ -56,6 +56,13 @@ internal class YandexGamesBridge :
     val isReady: Boolean
         get() = sdk != null
 
+    /**
+     * Platform language reported by `ysdk.environment.i18n.lang`, read after SDK initialization;
+     * raw SDK objects never leave this bridge. Null when unavailable or structurally unexpected.
+     */
+    fun platformLanguage(): String? =
+        runCatching { sdk?.let(::sdkPlatformLanguage) }.getOrNull()
+
     fun initialize(
         lifecycleListener: YandexLifecycleListener,
         onReady: () -> Unit,
@@ -302,16 +309,18 @@ internal class YandexGamesBridge :
             }
         }
 
-    /** Unconsumed purchases for the current Player; null when unsupported/failed. */
+    /** Unconsumed purchases for the current Player; null when unsupported/failed/malformed. */
     suspend fun pendingPurchases(): List<PaymentPurchaseSnapshot>? =
         try {
             val payments = paymentsOrNull() ?: return null
+            // Unsigned client-side contract: getPurchases() resolves to the purchase array
+            // itself, not to a wrapper object carrying a `purchases` property.
             val rawPurchases = payments.getPurchases().await()
-            val rawList = anyPropertyOrNull(rawPurchases, PURCHASES_LIST_KEY) ?: return emptyList()
-            val count = jsArrayLength(rawList)
+            if (!isJsArray(rawPurchases)) return null // malformed result: failed query, NOT "none"
+            val count = jsArrayLength(rawPurchases)
             val result = ArrayList<PaymentPurchaseSnapshot>(count)
             for (index in 0 until count) {
-                val entry = jsArrayGet(rawList, index)
+                val entry = jsArrayGet(rawPurchases, index)
                 val token = stringPropertyOrNull(entry, PURCHASE_TOKEN_KEY) ?: continue
                 result += PaymentPurchaseSnapshot(
                     purchaseToken = token,
@@ -485,7 +494,6 @@ internal class YandexGamesBridge :
         const val PRICE_CURRENCY_IMAGE_URL_KEY = "priceCurrencyImageUrl"
         const val PURCHASE_TOKEN_KEY = "purchaseToken"
         const val PURCHASE_PRODUCT_ID_KEY = "productID"
-        const val PURCHASES_LIST_KEY = "purchases"
         const val USER_CANCELLED_MARKER = "USER_CANCELLED"
     }
 }
@@ -666,6 +674,11 @@ private fun stringPropertyOrNull(
 ): String? = js("typeof data[key] === 'string' ? data[key] : null")
 
 private fun sdkSupportsPayments(sdk: YandexSdk): Boolean = js("typeof sdk.getPayments === 'function'")
+
+private fun isJsArray(value: JsAny): Boolean = js("Array.isArray(value)")
+
+private fun sdkPlatformLanguage(sdk: YandexSdk): String? =
+    js("typeof sdk.environment === 'object' && sdk.environment != null && typeof sdk.environment.i18n === 'object' && sdk.environment.i18n != null && typeof sdk.environment.i18n.lang === 'string' ? sdk.environment.i18n.lang : null")
 
 private fun paymentsOptions(): JsAny = js("({ signed: false })")
 

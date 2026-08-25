@@ -37,6 +37,13 @@ internal class WebBootstrapController(
     var state by mutableStateOf<WebBootstrapState>(WebBootstrapState.Loading)
         private set
 
+    /**
+     * The resolved host presentation language, read from the Yandex SDK I18N environment during
+     * normal Yandex startup. Standalone development keeps the default without any SDK.
+     */
+    var hostLanguage: WebAppLanguage = WebAppLanguage.RUSSIAN
+        private set
+
     fun start() {
         if (applicationStarted) return
         applicationStarted = true
@@ -57,6 +64,9 @@ internal class WebBootstrapController(
         bridge.initialize(
             lifecycleListener = lifecycle,
             onReady = {
+                // Read the real platform language once the SDK is initialized; unsupported or
+                // unexpected values resolve safely to the application default.
+                hostLanguage = resolveWebAppLanguage(bridge.platformLanguage())
                 state = WebBootstrapState.Ready(WebHostMode.YANDEX)
                 notifyGameReadyIfPossible()
             },

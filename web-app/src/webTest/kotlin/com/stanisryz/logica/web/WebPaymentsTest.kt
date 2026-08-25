@@ -237,4 +237,31 @@ class WebPaymentsTest {
             failingFlush.reconcilePendingPurchases()
             assertFalse(provider.consumedTokens.contains("tok-6"))
         }
+
+    /** Stage 45.16: an unknown pending productID stays recoverable but is never granted/consumed. */
+    @Test
+    fun unknownPendingProductIsRecordedButNeverGrantedOrConsumed() =
+        runTest {
+            val revisions = WebPlayerStateRevisions()
+            val economy = economyRepository(FakeEconomyStore(), revisions)
+            val payments = paymentsRepository(FakePaymentsStore())
+            val provider = FakePaymentsProvider()
+            val coordinator =
+                coordinator(
+                    economy,
+                    payments,
+                    FakeJournalStore(),
+                    revisions,
+                    FakeUnifiedSaveAccess(),
+                    provider,
+                )
+
+            provider.pending = listOf(PaymentPurchaseSnapshot("tok-unknown", "mystery_pack"))
+            coordinator.reconcilePendingPurchases()
+
+            assertEquals(listOf(PaymentPurchaseSnapshot("tok-unknown", "mystery_pack")), coordinator.unknownProducts.value)
+            assertEquals(0, provider.consumedTokens.size) // never consumed
+            assertFalse(payments.isFulfilled("tok-unknown")) // never granted
+            assertEquals(0, economy.currentSnapshot.gems)
+        }
 }

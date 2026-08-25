@@ -192,6 +192,50 @@ class WebPlayerSessionControllerTest {
             assertEquals(WebCloudSyncStatus.SYNCED, state.syncStatus)
         }
 
+    /** Stage 45.16: the post-restore Payments reconcile runs exactly once per Player bind. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun postRestoreReconciliationRunsExactlyOncePerBind() =
+        runTest {
+            val balance =
+                WebCatalogProgressBucket(
+                    PuzzleType.BALANCE,
+                    Difficulty.EASY,
+                    CatalogLevelPackVersion.V1,
+                )
+            val player = "player/reconcile-once"
+            val identity = FakePlayerIdentityGateway(player)
+            val cloud = FakeCloudSaveGateway(identity)
+            var postBindCalls = 0
+            var restoreReconciliations = 0
+            val controller =
+                WebPlayerSessionController(
+                    playerIdentityGateway = identity,
+                    cloudSaveGateway = cloud,
+                    progressRepositoryFactory = { scope ->
+                        WebCatalogProgressRepository(scope, FakeProgressStore(snapshot(balance, 3)))
+                    },
+                    statisticsCloudSaveGateway = FakeCloudSaveGateway(identity),
+                    statisticsRepositoryFactory = { scope ->
+                        WebStatisticsRepository(scope, INSTALLATION_ID, FakeStatisticsStore(WebStatisticsSnapshot.EMPTY))
+                    },
+                    dailyCloudSaveGateway = FakeCloudSaveGateway(identity),
+                    dailyRepositoryFactory = { scope ->
+                        WebDailyRepository(scope, FakeDailyStore(WebDailySnapshotV1.EMPTY)) { DailyDate(2026, 8, 20) }
+                    },
+                    playerContextEvents = FakePlayerContextEvents(),
+                    scope = this,
+                )
+            controller.postBindAction = { _ -> postBindCalls += 1 }
+            controller.postRestoreAction = { restoreReconciliations += 1 }
+
+            controller.start()
+            advanceUntilIdle()
+
+            assertEquals(1, postBindCalls)
+            assertEquals(1, restoreReconciliations)
+        }
+
     private fun snapshot(
         bucket: WebCatalogProgressBucket,
         level: Int,

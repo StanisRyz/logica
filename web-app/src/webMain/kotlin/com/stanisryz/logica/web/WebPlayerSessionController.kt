@@ -489,8 +489,7 @@ internal class WebPlayerSessionController(
             // Unified cloud save restore: identity resolved, all domains local-loaded.
             if (isCurrent(revision)) {
                 postBindAction(WebPlayerContextToken(revision))
-        if (isCurrent(revision)) postRestoreAction()
-                postRestoreAction()
+                if (isCurrent(revision)) postRestoreAction()
             }
         } catch (error: CancellationException) {
             throw error
