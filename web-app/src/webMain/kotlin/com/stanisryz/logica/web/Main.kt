@@ -85,6 +85,36 @@ fun main() {
             revisionsProvider = { playerSession.activeStateRevisions },
             transactionStoreProvider = { playerSession.purchaseTransactionStore },
         )
+    // Real Yandex ad product flows over the existing monetization foundation. Without the SDK
+    // every provider degrades safely: rewarded -> Unavailable, interstitial -> skip+continue,
+    // sticky banner -> no-op, so standalone mode keeps working unchanged.
+    val monetizationAnalytics = WebMonetizationAnalytics()
+    val adPolicy = WebAdPolicy()
+    val adRewardService =
+        WebRewardService(
+            economyRepository = { playerSession.economyRepository },
+            storeRepository = { playerSession.storeRepository },
+        )
+    val fullscreenAdGate =
+        WebFullscreenAdGate { lifecycle.state.value == com.stanisryz.logica.platform.PlatformLifecycleState.ACTIVE }
+    val rewardedHintsController =
+        WebStoreRewardedHintsController(
+            provider = YandexRewardedAdProvider(bridge),
+            policy = adPolicy,
+            rewardService = adRewardService,
+            analytics = monetizationAnalytics,
+            adGate = fullscreenAdGate,
+            currentTimeMs = ::currentTimeMillis,
+        )
+    val interstitialController =
+        WebInterstitialContinuationController(
+            provider = YandexInterstitialAdProvider(bridge),
+            policy = adPolicy,
+            analytics = monetizationAnalytics,
+            adGate = fullscreenAdGate,
+            currentTimeMs = ::currentTimeMillis,
+        )
+    val stickyBannerController = WebStickyBannerController(bridge)
     // Unified cloud save foundation: identity through the SDK, payload over a dedicated key.
     // Standalone development keeps the unified orchestration fully local and isolated.
     val playerProvider =
@@ -171,6 +201,10 @@ fun main() {
             playerSession,
             dailyCoordinator,
             storeProcessor,
+            rewardedHintsController,
+            interstitialController,
+            fullscreenAdGate,
+            stickyBannerController,
         )
     }
     controller.start()

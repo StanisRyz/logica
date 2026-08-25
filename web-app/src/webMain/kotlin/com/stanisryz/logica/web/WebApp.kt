@@ -66,14 +66,12 @@ import com.stanisryz.logica.ui.crowns.CrownsGameContent
 import com.stanisryz.logica.ui.daily.DailyHubResultRow
 import com.stanisryz.logica.ui.daily.DailyHubSection
 import com.stanisryz.logica.ui.daily.DailyHubUiState
-import com.stanisryz.logica.ui.daily.DailyShareEntry
 import com.stanisryz.logica.ui.daily.DailyShareFormatter
-import com.stanisryz.logica.ui.daily.DailySharePayload
-import com.stanisryz.logica.ui.profile.DailyProfileMetrics
-import com.stanisryz.logica.ui.profile.ProfileEconomyMetrics
 import com.stanisryz.logica.ui.game2048.Game2048Content
 import com.stanisryz.logica.ui.game2048.formatGame2048Number
+import com.stanisryz.logica.ui.profile.DailyProfileMetrics
 import com.stanisryz.logica.ui.profile.ProfileContent
+import com.stanisryz.logica.ui.profile.ProfileEconomyMetrics
 import com.stanisryz.logica.ui.profile.ProfileUiState
 import com.stanisryz.logica.ui.sudoku.SudokuGameContent
 import com.stanisryz.logica.ui.theme.LogicaSpacing
@@ -87,6 +85,7 @@ private sealed interface WebRoute {
     data object Profile : WebRoute
 
     data object Store : WebRoute
+
     data object Balance : WebRoute
 
     data object Crowns : WebRoute
@@ -97,6 +96,47 @@ private sealed interface WebRoute {
 
     data object Game2048 : WebRoute
 }
+
+private fun routeHasActivePuzzle(
+    route: WebRoute,
+    balanceState: WebBalanceState,
+    crownsState: WebCrownsState,
+    wordState: WebWordState,
+    sudokuState: WebSudokuState,
+    game2048State: Web2048State,
+): Boolean =
+    when (route) {
+        WebRoute.GameHub, WebRoute.Profile, WebRoute.Store -> false
+        WebRoute.Balance ->
+            balanceState is WebBalanceState.Playing &&
+                balanceState.game.status == BalanceGameStatus.IN_PROGRESS
+        WebRoute.Crowns ->
+            crownsState is WebCrownsState.Playing &&
+                crownsState.game.status == CrownsGameStatus.IN_PROGRESS
+        WebRoute.Word ->
+            wordState is WebWordState.Playing &&
+                wordState.game.status == WordGameStatus.IN_PROGRESS
+        WebRoute.Sudoku ->
+            sudokuState is WebSudokuState.Playing &&
+                sudokuState.game.status == SudokuGameStatus.IN_PROGRESS
+        WebRoute.Game2048 ->
+            game2048State is Web2048State.Playing &&
+                game2048State.game.status == Game2048Status.IN_PROGRESS
+    }
+
+/**
+ * Initial sticky-banner policy: hub/profile/store show the Yandex-rendered banner; a game route
+ * hides it while a puzzle is actively being played. Isolated here so real Yandex layout testing
+ * can tune it without touching navigation or ad plumbing.
+ */
+private fun stickyBannerVisible(
+    route: WebRoute,
+    hasActivePuzzle: Boolean,
+): Boolean =
+    when (route) {
+        WebRoute.GameHub, WebRoute.Profile, WebRoute.Store -> true
+        else -> !hasActivePuzzle
+    }
 
 @Composable
 internal fun WebApp(
@@ -110,6 +150,10 @@ internal fun WebApp(
     playerSession: WebPlayerSessionController,
     dailyCoordinator: WebDailyGameplayCoordinator,
     storeProcessor: WebStoreProcessor,
+    rewardedHintsController: WebStoreRewardedHintsController,
+    interstitialController: WebInterstitialContinuationController,
+    fullscreenAdGate: WebFullscreenAdGate,
+    stickyBannerController: WebStickyBannerController,
 ) {
     val lifecycleState by lifecycle.state.collectAsState()
 
@@ -154,6 +198,10 @@ internal fun WebApp(
                         playerSession = playerSession,
                         dailyCoordinator = dailyCoordinator,
                         storeProcessor = storeProcessor,
+                        rewardedHintsController = rewardedHintsController,
+                        interstitialController = interstitialController,
+                        fullscreenAdGate = fullscreenAdGate,
+                        stickyBannerController = stickyBannerController,
                         onRendered = controller::onInitialHostUiReady,
                     )
                 is WebBootstrapState.FatalError -> FatalContent(state.message)
@@ -208,6 +256,10 @@ private fun ReadyContent(
     playerSession: WebPlayerSessionController,
     dailyCoordinator: WebDailyGameplayCoordinator,
     storeProcessor: WebStoreProcessor,
+    rewardedHintsController: WebStoreRewardedHintsController,
+    interstitialController: WebInterstitialContinuationController,
+    fullscreenAdGate: WebFullscreenAdGate,
+    stickyBannerController: WebStickyBannerController,
     onRendered: () -> Unit,
 ) {
     var route by remember { mutableStateOf<WebRoute>(WebRoute.GameHub) }
@@ -217,6 +269,11 @@ private fun ReadyContent(
     val sudokuState = sudokuController.state
     val game2048State = game2048Controller.state
     val accountChangeRevision = playerSession.accountChangeRevision
+
+    // Fullscreen ads force the host inactive through one seam; closing always re-evaluates the
+    // real browser visibility/focus/Yandex state instead of blindly forcing ACTIVE again.
+    LaunchedEffect(fullscreenAdGate, lifecycleState) { fullscreenAdGate.refresh() }
+    val hostActive by fullscreenAdGate.isActive.collectAsState()
 
     // A passed midnight must re-render the new day's Daily definition; gameplay attempts keep
     // their own captured challenge date, so this only affects hub presentation.
@@ -240,27 +297,28 @@ private fun ReadyContent(
             route = WebRoute.GameHub
         }
     }
-    LaunchedEffect(route, balanceState, crownsState, wordState, sudokuState, game2048State, lifecycleState) {
-        controller.setGameplayActive(
-            when (route) {
-                WebRoute.GameHub, WebRoute.Profile, WebRoute.Store -> false
-                WebRoute.Balance ->
-                    balanceState is WebBalanceState.Playing &&
-                        balanceState.game.status == BalanceGameStatus.IN_PROGRESS
-                WebRoute.Crowns ->
-                    crownsState is WebCrownsState.Playing &&
-                        crownsState.game.status == CrownsGameStatus.IN_PROGRESS
-                WebRoute.Word ->
-                    wordState is WebWordState.Playing &&
-                        wordState.game.status == WordGameStatus.IN_PROGRESS
-                WebRoute.Sudoku ->
-                    sudokuState is WebSudokuState.Playing &&
-                        sudokuState.game.status == SudokuGameStatus.IN_PROGRESS
-                WebRoute.Game2048 ->
-                    game2048State is Web2048State.Playing &&
-                        game2048State.game.status == Game2048Status.IN_PROGRESS
-            } &&
-                lifecycleState == PlatformLifecycleState.ACTIVE,
+    val hasActivePuzzle =
+        routeHasActivePuzzle(route, balanceState, crownsState, wordState, sudokuState, game2048State)
+    LaunchedEffect(route, hasActivePuzzle, hostActive) {
+        controller.setGameplayActive(hasActivePuzzle && hostActive)
+    }
+
+    // Sticky-banner visibility is platform-side (rendered by Yandex, never drawn in Compose).
+    // Transitions are suppressed while a fullscreen ad owns the screen and reapplied right
+    // after it closes; repeated identical requests never reach the bridge again.
+    val adShowing by fullscreenAdGate.adShowing.collectAsState()
+    val bannerVisible = stickyBannerVisible(route, hasActivePuzzle)
+    LaunchedEffect(bannerVisible, adShowing) {
+        if (!adShowing) stickyBannerController.applyVisibility(bannerVisible)
+    }
+
+    // Catalog SOLVED -> Next Level is the first interstitial placement: the user always sees
+    // the terminal success state first, and the continuation runs exactly once even when no ad
+    // can be shown.
+    val runSolvedNextLevel: (() -> Unit) -> Unit = { continuation ->
+        interstitialController.runWithInterstitial(
+            WebAdPlacements.CATALOG_NEXT_LEVEL_INTERSTITIAL,
+            continuation,
         )
     }
 
@@ -358,12 +416,14 @@ private fun ReadyContent(
                 WebStoreScreen(
                     playerSession = playerSession,
                     storeProcessor = storeProcessor,
+                    rewardedHintsController = rewardedHintsController,
                 )
             }
         WebRoute.Balance ->
             BalanceFlow(
                 state = balanceState,
                 controller = balanceController,
+                onSolvedNextLevel = runSolvedNextLevel,
                 onExitBalance = {
                     balanceController.showDifficultySelector()
                     route = WebRoute.GameHub
@@ -373,6 +433,7 @@ private fun ReadyContent(
             CrownsFlow(
                 state = crownsState,
                 controller = crownsController,
+                onSolvedNextLevel = runSolvedNextLevel,
                 onExitCrowns = {
                     crownsController.showDifficultySelector()
                     route = WebRoute.GameHub
@@ -382,6 +443,7 @@ private fun ReadyContent(
             WordFlow(
                 state = wordState,
                 controller = wordController,
+                onSolvedNextLevel = runSolvedNextLevel,
                 onExitWord = {
                     wordController.showDifficultySelector()
                     route = WebRoute.GameHub
@@ -391,6 +453,7 @@ private fun ReadyContent(
             SudokuFlow(
                 state = sudokuState,
                 controller = sudokuController,
+                onSolvedNextLevel = runSolvedNextLevel,
                 onExitSudoku = {
                     sudokuController.showDifficultySelector()
                     route = WebRoute.GameHub
@@ -400,6 +463,7 @@ private fun ReadyContent(
             Game2048Flow(
                 state = game2048State,
                 controller = game2048Controller,
+                onSolvedNextLevel = runSolvedNextLevel,
                 onExitGame2048 = {
                     game2048Controller.showDifficultySelector()
                     route = WebRoute.GameHub
@@ -609,6 +673,7 @@ private fun BalanceFlow(
     state: WebBalanceState,
     controller: WebBalanceController,
     onExitBalance: () -> Unit,
+    onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
     when (state) {
         WebBalanceState.DifficultySelection ->
@@ -647,6 +712,7 @@ private fun BalanceFlow(
                 state = state,
                 controller = controller,
                 onExitBalance = onExitBalance,
+                onSolvedNextLevel = onSolvedNextLevel,
             )
     }
 }
@@ -656,6 +722,7 @@ private fun CrownsFlow(
     state: WebCrownsState,
     controller: WebCrownsController,
     onExitCrowns: () -> Unit,
+    onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
     when (state) {
         WebCrownsState.DifficultySelection ->
@@ -694,6 +761,7 @@ private fun CrownsFlow(
                 state = state,
                 controller = controller,
                 onExitCrowns = onExitCrowns,
+                onSolvedNextLevel = onSolvedNextLevel,
             )
     }
 }
@@ -703,6 +771,7 @@ private fun WordFlow(
     state: WebWordState,
     controller: WebWordController,
     onExitWord: () -> Unit,
+    onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
     when (state) {
         WebWordState.DifficultySelection ->
@@ -741,6 +810,7 @@ private fun WordFlow(
                 state = state,
                 controller = controller,
                 onExitWord = onExitWord,
+                onSolvedNextLevel = onSolvedNextLevel,
             )
     }
 }
@@ -750,6 +820,7 @@ private fun SudokuFlow(
     state: WebSudokuState,
     controller: WebSudokuController,
     onExitSudoku: () -> Unit,
+    onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
     when (state) {
         WebSudokuState.DifficultySelection ->
@@ -788,6 +859,7 @@ private fun SudokuFlow(
                 state = state,
                 controller = controller,
                 onExitSudoku = onExitSudoku,
+                onSolvedNextLevel = onSolvedNextLevel,
             )
     }
 }
@@ -797,6 +869,7 @@ private fun Game2048Flow(
     state: Web2048State,
     controller: Web2048Controller,
     onExitGame2048: () -> Unit,
+    onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
     when (state) {
         Web2048State.DifficultySelection ->
@@ -835,6 +908,7 @@ private fun Game2048Flow(
                 state = state,
                 controller = controller,
                 onExitGame2048 = onExitGame2048,
+                onSolvedNextLevel = onSolvedNextLevel,
             )
     }
 }
@@ -883,13 +957,16 @@ private fun PlayingBalanceContent(
     state: WebBalanceState.Playing,
     controller: WebBalanceController,
     onExitBalance: () -> Unit,
+    onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = if (state.source.isDaily) onExitBalance else controller::showDifficultySelector) { Text(if (state.source.isDaily) "К играм" else "К сложности") }
+            TextButton(onClick = if (state.source.isDaily) onExitBalance else controller::showDifficultySelector) {
+                Text(if (state.source.isDaily) "К играм" else "К сложности")
+            }
             Spacer(Modifier.weight(1f))
             Text("Баланс", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
@@ -932,7 +1009,7 @@ private fun PlayingBalanceContent(
             levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
             solved = state.game.status == BalanceGameStatus.SOLVED,
             completion = controller.completionState,
-            onNextLevel = controller::nextLevel,
+            onNextLevel = { onSolvedNextLevel { controller.nextLevel() } },
             onRetry = controller::retry,
             onRetrySave = controller::retrySave,
             onBack = controller::showDifficultySelector,
@@ -945,13 +1022,16 @@ private fun PlayingCrownsContent(
     state: WebCrownsState.Playing,
     controller: WebCrownsController,
     onExitCrowns: () -> Unit,
+    onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = if (state.source.isDaily) onExitCrowns else controller::showDifficultySelector) { Text(if (state.source.isDaily) "К играм" else "К сложности") }
+            TextButton(onClick = if (state.source.isDaily) onExitCrowns else controller::showDifficultySelector) {
+                Text(if (state.source.isDaily) "К играм" else "К сложности")
+            }
             Spacer(Modifier.weight(1f))
             Text("Короны", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
@@ -994,7 +1074,7 @@ private fun PlayingCrownsContent(
             levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
             solved = state.game.status == CrownsGameStatus.SOLVED,
             completion = controller.completionState,
-            onNextLevel = controller::nextLevel,
+            onNextLevel = { onSolvedNextLevel { controller.nextLevel() } },
             onRetry = controller::retry,
             onRetrySave = controller::retrySave,
             onBack = controller::showDifficultySelector,
@@ -1007,13 +1087,16 @@ private fun PlayingWordContent(
     state: WebWordState.Playing,
     controller: WebWordController,
     onExitWord: () -> Unit,
+    onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = if (state.source.isDaily) onExitWord else controller::showDifficultySelector) { Text(if (state.source.isDaily) "К играм" else "К сложности") }
+            TextButton(onClick = if (state.source.isDaily) onExitWord else controller::showDifficultySelector) {
+                Text(if (state.source.isDaily) "К играм" else "К сложности")
+            }
             Spacer(Modifier.weight(1f))
             Text("Слово", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
@@ -1060,7 +1143,7 @@ private fun PlayingWordContent(
             completion = controller.completionState,
             solvedDetail = "Уровень пройден за ${state.game.attempts.size} попыток.",
             failedDetail = "Загаданное слово: ${state.puzzle.answer.uppercase()}",
-            onNextLevel = controller::nextLevel,
+            onNextLevel = { onSolvedNextLevel { controller.nextLevel() } },
             onRetry = controller::retry,
             onRetrySave = controller::retrySave,
             onBack = controller::showDifficultySelector,
@@ -1073,13 +1156,16 @@ private fun PlayingSudokuContent(
     state: WebSudokuState.Playing,
     controller: WebSudokuController,
     onExitSudoku: () -> Unit,
+    onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = if (state.source.isDaily) onExitSudoku else controller::showDifficultySelector) { Text(if (state.source.isDaily) "К играм" else "К сложности") }
+            TextButton(onClick = if (state.source.isDaily) onExitSudoku else controller::showDifficultySelector) {
+                Text(if (state.source.isDaily) "К играм" else "К сложности")
+            }
             Spacer(Modifier.weight(1f))
             Text("Судоку", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
@@ -1130,7 +1216,7 @@ private fun PlayingSudokuContent(
             levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
             solved = state.game.status == SudokuGameStatus.SOLVED,
             completion = controller.completionState,
-            onNextLevel = controller::nextLevel,
+            onNextLevel = { onSolvedNextLevel { controller.nextLevel() } },
             onRetry = controller::retry,
             onRetrySave = controller::retrySave,
             onBack = controller::showDifficultySelector,
@@ -1143,13 +1229,16 @@ private fun PlayingGame2048Content(
     state: Web2048State.Playing,
     controller: Web2048Controller,
     onExitGame2048: () -> Unit,
+    onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = if (state.source.isDaily) onExitGame2048 else controller::showDifficultySelector) { Text(if (state.source.isDaily) "К играм" else "К сложности") }
+            TextButton(onClick = if (state.source.isDaily) onExitGame2048 else controller::showDifficultySelector) {
+                Text(if (state.source.isDaily) "К играм" else "К сложности")
+            }
             Spacer(Modifier.weight(1f))
             Text("2048", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
@@ -1194,7 +1283,7 @@ private fun PlayingGame2048Content(
             goalReached = state.game.goalReached,
             score = formatGame2048Number(state.game.score),
             completion = controller.completionState,
-            onNextLevel = controller::nextLevel,
+            onNextLevel = { onSolvedNextLevel { controller.nextLevel() } },
             onRetry = controller::retry,
             onRetrySave = controller::retrySave,
             onBack = controller::showDifficultySelector,
@@ -1224,8 +1313,7 @@ private fun FatalContent(message: String) {
 
 /** Compact Daily marker instead of a Catalog level number; Catalog keeps its normal metadata. */
 @Composable
-private fun WebGameplaySource.contextBadgeLabelOrNull(): String? =
-    if (isDaily) stringResource(Res.string.daily_marker) else null
+private fun WebGameplaySource.contextBadgeLabelOrNull(): String? = if (isDaily) stringResource(Res.string.daily_marker) else null
 
 @Composable
 internal fun CenteredColumn(content: @Composable ColumnScope.() -> Unit) {

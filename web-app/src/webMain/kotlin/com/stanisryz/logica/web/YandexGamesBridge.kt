@@ -163,9 +163,11 @@ internal class YandexGamesBridge : WebPlayerContextEvents {
         val initializedSdk = sdk ?: return false
         val adv = initializedSdk.adv ?: return false
         return try {
-            adv.showRewardedVideo(rewardedVideoCallbacksJs(onOpen, onRewarded, onClose) { reason ->
-                onError(describeJsFailure(reason))
-            })
+            adv.showRewardedVideo(
+                rewardedVideoCallbacksJs(onOpen, onRewarded, onClose) { reason ->
+                    onError(describeJsFailure(reason))
+                },
+            )
             true
         } catch (_: Throwable) {
             false
@@ -181,14 +183,48 @@ internal class YandexGamesBridge : WebPlayerContextEvents {
         val initializedSdk = sdk ?: return false
         val adv = initializedSdk.adv ?: return false
         return try {
-            adv.showFullscreenAdv(fullscreenCallbacksJs(onOpen, onClose) { reason ->
-                onError(describeJsFailure(reason))
-            })
+            adv.showFullscreenAdv(
+                fullscreenCallbacksJs(onOpen, onClose) { reason ->
+                    onError(describeJsFailure(reason))
+                },
+            )
             true
         } catch (_: Throwable) {
             false
         }
     }
+
+    /**
+     * Sticky banner support. The real advertisement is owned and rendered by Yandex Games; these
+     * methods only forward the platform calls. Missing SDK APIs are safe no-ops (return false).
+     */
+    fun showStickyBanner(): Boolean =
+        try {
+            val adv = sdk?.adv ?: return false
+            adv.showBannerAdv()
+            true
+        } catch (_: Throwable) {
+            false
+        }
+
+    fun hideStickyBanner(): Boolean =
+        try {
+            val adv = sdk?.adv ?: return false
+            adv.hideBannerAdv()
+            true
+        } catch (_: Throwable) {
+            false
+        }
+
+    /** Queries whether the platform currently shows the sticky banner; null when unsupported. */
+    suspend fun stickyBannerStatus(): Boolean? =
+        try {
+            val adv = sdk?.adv ?: return null
+            val status = adv.getBannerAdvStatus()?.await() ?: return null
+            booleanPropertyOrNull(status, STICKY_BANNER_SHOWING_KEY)
+        } catch (_: Throwable) {
+            null
+        }
 
     fun dispose() {
         if (disposed) return
@@ -329,6 +365,7 @@ internal class YandexGamesBridge : WebPlayerContextEvents {
         const val GAME_API_PAUSE = "game_api_pause"
         const val GAME_API_RESUME = "game_api_resume"
         const val PLAYER_PHOTO_SIZE = "small"
+        const val STICKY_BANNER_SHOWING_KEY = "stickyAdvIsShowing"
     }
 }
 
@@ -367,6 +404,15 @@ private external interface YandexAdv : JsAny {
     fun showRewardedVideo(callbacks: YandexRewardedVideoCallbacks)
 
     fun showFullscreenAdv(callbacks: YandexFullscreenCallbacks)
+
+    @JsName("showBannerAdv")
+    fun showBannerAdv(): Promise<JsAny>?
+
+    @JsName("hideBannerAdv")
+    fun hideBannerAdv()
+
+    @JsName("getBannerAdvStatus")
+    fun getBannerAdvStatus(): Promise<JsAny>?
 }
 
 private external interface YandexRewardedVideoCallbacks : JsAny {
@@ -485,5 +531,10 @@ private fun stringPropertyOrNull(
     data: JsAny,
     key: String,
 ): String? = js("typeof data[key] === 'string' ? data[key] : null")
+
+private fun booleanPropertyOrNull(
+    data: JsAny,
+    key: String,
+): Boolean? = js("typeof data[key] === 'boolean' ? data[key] : null")
 
 private fun describeJsFailure(reason: JsAny?): String = js("reason && reason.message ? String(reason.message) : String(reason)")

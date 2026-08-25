@@ -45,6 +45,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun WebStoreScreen(
     playerSession: WebPlayerSessionController,
     storeProcessor: WebStoreProcessor,
+    rewardedHintsController: WebStoreRewardedHintsController,
 ) {
     val economyBinding by playerSession.economyBinding.collectAsState()
     val storeBinding by playerSession.storeBinding.collectAsState()
@@ -68,7 +69,10 @@ internal fun WebStoreScreen(
         )
         when (val economy = economyBinding) {
             is WebEconomyBinding.Ready -> {
-                val state = economy.repository.state.collectAsState().value
+                val state =
+                    economy.repository.state
+                        .collectAsState()
+                        .value
                 WalletCard(stringResource(Res.string.profile_gems), state.gems.toString())
                 WalletCard(
                     stringResource(Res.string.profile_lives),
@@ -78,13 +82,19 @@ internal fun WebStoreScreen(
             else -> Text("Кошелёк недоступен", style = MaterialTheme.typography.bodyMedium)
         }
         if (storeBinding is WebStoreBinding.Ready) {
-            val snapshot = (storeBinding as WebStoreBinding.Ready).repository.snapshot.collectAsState().value
+            val snapshot =
+                (storeBinding as WebStoreBinding.Ready)
+                    .repository.snapshot
+                    .collectAsState()
+                    .value
             Text(
                 text = "Подсказки Судоку: ${snapshot.quantityOf(STORE_INVENTORY_HINTS)}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+
+        RewardedHintsCard(rewardedHintsController, storeBinding)
 
         WebStoreCatalog.ITEMS.forEach { item -> StoreCatalogRow(item, economyBinding, storeProcessor, { feedback = it }) }
 
@@ -102,6 +112,56 @@ internal fun WebStoreScreen(
             }
         }
         Spacer(Modifier.height(LogicaSpacing.section))
+    }
+}
+
+@Composable
+private fun RewardedHintsCard(
+    controller: WebStoreRewardedHintsController,
+    storeBinding: WebStoreBinding,
+) {
+    val state by controller.state.collectAsState()
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(LogicaSpacing.cardContent), verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
+            Text(text = "Бесплатные подсказки", style = MaterialTheme.typography.titleMedium)
+            // The exchange is always disclosed explicitly: watching an advertisement is required.
+            Text(
+                text = "Смотреть рекламу → +3 подсказки",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(
+                onClick = controller::requestReward,
+                enabled = controller.isRequestAllowed && storeBinding is WebStoreBinding.Ready,
+            ) {
+                Text(if (state == WebRewardedHintState.Showing) "Реклама показывается…" else "Смотреть рекламу")
+            }
+            when (state) {
+                WebRewardedHintState.RewardGranted ->
+                    Text(
+                        "Реклама просмотрена: +3 подсказки.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                WebRewardedHintState.Dismissed ->
+                    Text(
+                        "Награда не получена: реклама закрыта раньше времени.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                WebRewardedHintState.Unavailable, WebRewardedHintState.Error ->
+                    Text(
+                        "Реклама сейчас недоступна. Попробуйте позже.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                WebRewardedHintState.Cooldown ->
+                    Text(
+                        "Подождите немного перед следующей рекламой.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                else -> Unit
+            }
+        }
     }
 }
 
