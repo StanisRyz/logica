@@ -24,18 +24,25 @@ internal data class WebEconomySnapshot(
     val gems: Int,
     val lives: Int,
     val nextLifeRestoreAtEpochMs: Long?,
+    /**
+     * Monotonic mutation revision from the Player-scoped [WebPlayerStateRevisions] timeline.
+     * V1 payloads carry no revision and load as `0`; the field exists so unified cloud restore
+     * can compare whole wallet snapshots instead of naively overwriting newer local state.
+     */
+    val revision: Long = 0L,
 ) {
     init {
         require(version == CURRENT_VERSION) { "Unsupported Web economy schema $version." }
         require(gems >= 0) { "Stored Web gems must never be negative." }
         require(lives in 0..EconomyPolicy.MAXIMUM_LIVES) { "Stored Web lives are outside the supported range." }
+        require(revision >= 0L) { "Web economy revisions are monotonic and never negative." }
     }
 
     fun toState(): EconomyState =
         EconomyState(gems = gems, lives = lives, nextLifeRestoreAtEpochMs = nextLifeRestoreAtEpochMs)
 
     companion object {
-        const val CURRENT_VERSION = 1
+        const val CURRENT_VERSION = 2
 
         val DEFAULT =
             WebEconomySnapshot(
@@ -49,7 +56,8 @@ internal data class WebEconomySnapshot(
 /** Deterministic compact binary format with an explicit schema version byte. */
 internal object WebEconomyCodec {
     private val magic = byteArrayOf('L'.code.toByte(), 'G'.code.toByte(), 'E'.code.toByte(), 'C'.code.toByte())
-    private const val SIZE = 4 + 1 + 4 + 1 + 1 + 8
+    private const val V1_SIZE = 4 + 1 + 4 + 1 + 1 + 8
+    private const val SIZE = V1_SIZE + 8
 
     fun encode(snapshot: WebEconomySnapshot): ByteArray {
         val result = ByteArray(SIZE)
@@ -68,15 +76,17 @@ internal object WebEconomyCodec {
                 result[11 + index] = 0
             }
         }
+        writeLong(result, V1_SIZE, snapshot.revision)
         return result
     }
 
     fun decode(payload: ByteArray): WebEconomySnapshot? =
         runCatching {
-            require(payload.size == SIZE)
+            // V1 payloads carry no revision and normalize to revision 0.
+            require(payload.size == V1_SIZE || payload.size == SIZE)
             require(magic.indices.all { payload[it] == magic[it] })
             val version = payload[4].toInt() and 0xff
-            require(version == WebEconomySnapshot.CURRENT_VERSION)
+            require(version in 1..WebEconomySnapshot.CURRENT_VERSION)
             val gems = readInt(payload, 5)
             val lives = payload[9].toInt() and 0xff
             val hasRestore = payload[10].toInt() != 0
@@ -86,13 +96,29 @@ internal object WebEconomyCodec {
                     restore = (restore shl 8) or (payload[11 + index].toLong() and 0xff)
                 }
             }
+            var revision = 0L
+            if (payload.size == SIZE) {
+                for (index in 0 until 8) {
+                    revision = (revision shl 8) or (payload[V1_SIZE + index].toLong() and 0xff)
+                }
+            }
             WebEconomySnapshot(
-                version = version,
                 gems = gems,
                 lives = lives,
                 nextLifeRestoreAtEpochMs = if (hasRestore) restore else null,
+                revision = revision,
             )
         }.getOrNull()
+
+    private fun writeLong(
+        destination: ByteArray,
+        offset: Int,
+        value: Long,
+    ) {
+        for (index in 0 until 8) {
+            destination[offset + index] = (value ushr ((7 - index) * 8)).toByte()
+        }
+    }
 
     private fun writeInt(
         destination: ByteArray,
@@ -264,18 +290,31 @@ internal object WebEconomyProcessor {
 
 /**
  * Player-scoped wallet foundation. The repository owns persistence; all mutations go through
- * [WebEconomyProcessor] and land durably before the observable state is published.
+ * [WebEconomyProcessor] and land durably before the observable state is published. The shared
+ * [WebPlayerStateRevisions] timeline stamps every mutation so unified cloud restore can compare
+ * whole snapshots against cloud state without ever mixing wallet and inventory generations.
  */
 internal class WebPlayerEconomyRepository(
     val scope: WebCatalogProgressScope,
     private val store: WebEconomyStore,
+    private val revisions: WebPlayerStateRevisions = WebPlayerStateRevisions(),
 ) {
     private val mutableState =
         MutableStateFlow(EconomyState(EconomyPolicy.STARTING_GEMS, EconomyPolicy.STARTING_LIVES, null))
     val state: StateFlow<EconomyState> = mutableState.asStateFlow()
 
+    /** Latest durable snapshot including its restore revision; export for the unified save. */
+    var currentSnapshot: WebEconomySnapshot = WebEconomySnapshot.DEFAULT
+        private set
+
+    /** Invoked after every successful durable local mutation; never after a cloud restore. */
+    var onDurableChange: (() -> Unit)? = null
+
     fun loadLocal() {
-        mutableState.value = store.load().toState()
+        val loaded = store.load()
+        currentSnapshot = loaded
+        revisions.raiseTo(loaded.revision)
+        mutableState.value = loaded.toState()
     }
 
     /** Solved Catalog puzzle: grants the difficulty's gem reward through the processor. */
@@ -343,6 +382,8 @@ internal class WebPlayerEconomyRepository(
     /** Restores an externally supplied durable snapshot (unified cloud save); durable-first. */
     fun applyExternal(snapshot: WebEconomySnapshot) {
         runCatching { store.save(snapshot) }
+        currentSnapshot = snapshot
+        revisions.raiseTo(snapshot.revision)
         mutableState.value = snapshot.toState()
     }
 
@@ -354,16 +395,13 @@ internal class WebPlayerEconomyRepository(
         val (updated, events) = update(previous)
         if (updated == previous) return events
         // Local durability precedes publication: a failed save leaves the wallet untouched.
+        val stamped = updated.toSnapshot().copy(revision = revisions.next())
         runCatching {
-            store.save(updated.toSnapshot())
+            store.save(stamped)
         }.onFailure { return events }
+        currentSnapshot = stamped
         mutableState.value = updated
+        onDurableChange?.invoke()
         return events
     }
-
-
 }
-
-
-internal fun EconomyState.toWebEconomySnapshot(): WebEconomySnapshot =
-    WebEconomySnapshot(gems = gems, lives = lives, nextLifeRestoreAtEpochMs = nextLifeRestoreAtEpochMs)

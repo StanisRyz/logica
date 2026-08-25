@@ -116,15 +116,38 @@ internal class WebPlayerSessionController(
     private val playerContextEvents: WebPlayerContextEvents,
     /** Invoked after a Player context is fully bound (identity resolved, all domains loaded). */
     var postBindAction: suspend (WebPlayerContextToken) -> Unit = { _ -> },
-    private val economyRepositoryFactory: WebEconomyRepositoryFactory =
-        WebEconomyRepositoryFactory { scope -> WebPlayerEconomyRepository(scope, WebEconomyLocalStore(scope)) },
-    private val storeRepositoryFactory: WebStoreRepositoryFactory =
-        WebStoreRepositoryFactory { scope -> WebPlayerStoreRepository(scope, WebStoreLocalStore(scope)) },
+    private val economyRepositoryFactory: WebEconomyRepositoryFactory? = null,
+    private val storeRepositoryFactory: WebStoreRepositoryFactory? = null,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) : WebStatisticsSessionAccess,
     WebDailySessionAccess,
     WebEconomySessionAccess,
     WebStoreSessionAccess {
+    /**
+     * The operational unified save pipeline for the current Player context. Set once by the
+     * host; the controller reports durable local changes through it and gates its own legacy
+     * per-domain cloud writes once the canonical unified snapshot owns this context.
+     */
+    var unifiedSaveAccess: WebUnifiedSaveAccess? = null
+
+    /** True while [token] still identifies the active, non-suspended Player context. */
+    fun isSaveTokenCurrent(token: WebPlayerContextToken): Boolean =
+        !accountSelectionOpen && token.value == contextRevision
+
+    // One mutation timeline per bound Player keeps Economy/Store revisions comparable so the
+    // coupled unified restore can never split a purchase into an impossible state.
+    private val stateRevisions = WebPlayerStateRevisions()
+    private val effectiveEconomyRepositoryFactory =
+        economyRepositoryFactory
+            ?: WebEconomyRepositoryFactory { playerScope ->
+                WebPlayerEconomyRepository(playerScope, WebEconomyLocalStore(playerScope), stateRevisions)
+            }
+    private val effectiveStoreRepositoryFactory =
+        storeRepositoryFactory
+            ?: WebStoreRepositoryFactory { playerScope ->
+                WebPlayerStoreRepository(playerScope, WebStoreLocalStore(playerScope), stateRevisions)
+            }
+
     private var started = false
     private var contextRevision = 0L
     private var accountSelectionOpen = false
@@ -186,8 +209,12 @@ internal class WebPlayerSessionController(
     fun dispose() {
         playerContextEvents.setAccountSelectionOpenedListener(null)
         playerContextEvents.setPlayerContextChangedListener(null)
+        unifiedSaveAccess?.invalidateContext()
         scope.cancel()
     }
+
+    /** Legacy per-domain cloud writes stop once the canonical unified save owns this context. */
+    private fun unifiedSaveOwnsCloudWrites(): Boolean = unifiedSaveAccess?.unifiedSaveActive == true
 
     fun retryCurrentContext() {
         if (started && !accountSelectionOpen) bindCurrentContext()
@@ -196,6 +223,12 @@ internal class WebPlayerSessionController(
     internal fun requestCloudSynchronization(binding: WebCatalogProgressBinding.Ready) {
         if (!isCurrent(binding)) return
         val identity = binding.identity ?: return
+        // Migration boundary: once the canonical unified save owns this Player context, new
+        // durable Catalog changes converge on the single unified cloud write path.
+        if (unifiedSaveOwnsCloudWrites()) {
+            state = WebPlayerSessionState.PlayerReady(identity, WebCloudSyncStatus.SYNCED)
+            return
+        }
         scope.launch {
             cloudWriteMutex.withLock {
                 if (!isCurrent(binding)) return@withLock
@@ -218,6 +251,15 @@ internal class WebPlayerSessionController(
     override fun requestStatisticsCloudSynchronization(binding: WebStatisticsBinding.Ready) {
         if (!isCurrentStatistics(binding)) return
         val identity = binding.identity ?: return
+        if (unifiedSaveOwnsCloudWrites()) {
+            publishStatisticsReady(
+                binding.token.value,
+                identity,
+                binding.repository,
+                WebStatisticsCloudSyncStatus.SYNCED,
+            )
+            return
+        }
         scope.launch {
             cloudWriteMutex.withLock {
                 if (!isCurrentStatistics(binding)) return@withLock
@@ -251,6 +293,15 @@ internal class WebPlayerSessionController(
     override fun requestDailyCloudSynchronization(binding: WebDailyBinding.Ready) {
         if (!isCurrentDaily(binding)) return
         val identity = binding.identity ?: return
+        if (unifiedSaveOwnsCloudWrites()) {
+            publishDailyReady(
+                binding.token.value,
+                identity,
+                binding.repository,
+                WebDailyCloudSyncStatus.SYNCED,
+            )
+            return
+        }
         scope.launch {
             cloudWriteMutex.withLock {
                 if (!isCurrentDaily(binding)) return@withLock
@@ -284,6 +335,7 @@ internal class WebPlayerSessionController(
 
     private fun bindCurrentContext() {
         operation?.cancel()
+        unifiedSaveAccess?.invalidateContext()
         val revision = ++contextRevision
         progressRepository = null
         statisticsRepository = null
@@ -303,6 +355,7 @@ internal class WebPlayerSessionController(
     private fun suspendForAccountSelection() {
         accountSelectionOpen = true
         operation?.cancel()
+        unifiedSaveAccess?.invalidateContext()
         progressRepository = null
         statisticsRepository = null
         dailyRepository = null
@@ -335,6 +388,7 @@ internal class WebPlayerSessionController(
 
             val playerScope = WebCatalogProgressScope.yandexPlayer(playerId)
             val repository = progressRepositoryFactory.create(playerScope)
+            repository.onDurableChange = { unifiedSaveAccess?.markDirty() }
             repository.loadLocal()
             if (!isCurrent(revision)) return
             progressRepository = repository
@@ -363,6 +417,7 @@ internal class WebPlayerSessionController(
     private suspend fun bindStandalone(revision: Long) {
         val standaloneScope = WebCatalogProgressScope.STANDALONE
         val repository = progressRepositoryFactory.create(standaloneScope)
+        repository.onDurableChange = { unifiedSaveAccess?.markDirty() }
         repository.loadLocal()
         if (!isCurrent(revision)) return
         progressRepository = repository
@@ -429,7 +484,10 @@ internal class WebPlayerSessionController(
     ): WebStatisticsRepository? {
         val repository =
             runCatching {
-                statisticsRepositoryFactory.create(playerScope).also { it.loadLocal() }
+                statisticsRepositoryFactory.create(playerScope).also {
+                    it.onDurableChange = { unifiedSaveAccess?.markDirty() }
+                    it.loadLocal()
+                }
             }.getOrElse {
                 if (isCurrent(revision)) {
                     statisticsRepository = null
@@ -462,7 +520,10 @@ internal class WebPlayerSessionController(
     ): WebDailyRepository? {
         val repository =
             runCatching {
-                dailyRepositoryFactory.create(playerScope).also { it.loadLocal() }
+                dailyRepositoryFactory.create(playerScope).also {
+                    it.onDurableChange = { unifiedSaveAccess?.markDirty() }
+                    it.loadLocal()
+                }
             }.getOrElse {
                 if (isCurrent(revision)) {
                     dailyRepository = null
@@ -496,7 +557,10 @@ internal class WebPlayerSessionController(
     ): WebPlayerEconomyRepository? {
         val repository =
             runCatching {
-                economyRepositoryFactory.create(playerScope).also { it.loadLocal() }
+                effectiveEconomyRepositoryFactory.create(playerScope).also {
+                    it.onDurableChange = { unifiedSaveAccess?.markDirty() }
+                    it.loadLocal()
+                }
             }.getOrElse {
                 if (isCurrent(revision)) {
                     economyRepository = null
@@ -524,7 +588,10 @@ internal class WebPlayerSessionController(
     ): WebPlayerStoreRepository? {
         val repository =
             runCatching {
-                storeRepositoryFactory.create(playerScope).also { it.loadLocal() }
+                effectiveStoreRepositoryFactory.create(playerScope).also {
+                    it.onDurableChange = { unifiedSaveAccess?.markDirty() }
+                    it.loadLocal()
+                }
             }.getOrElse {
                 if (isCurrent(revision)) {
                     storeRepository = null

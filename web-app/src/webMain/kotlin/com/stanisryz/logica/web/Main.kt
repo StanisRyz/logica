@@ -84,6 +84,7 @@ fun main() {
             currentTimeMs = ::currentTimeMillis,
         )
     // Unified cloud save foundation: identity through the SDK, payload over a dedicated key.
+    // Standalone development keeps the unified orchestration fully local and isolated.
     val playerProvider =
         YandexPlayerProvider(
             if (bridge.isAvailable) {
@@ -93,13 +94,27 @@ fun main() {
             },
         )
     val unifiedSaveRepository =
-        YandexCloudSaveRepository(
-            YandexCloudSaveGateway(bridge, dataKey = UNIFIED_SAVE_STATE_KEY),
+        if (bridge.isAvailable) {
+            YandexCloudSaveRepository(
+                YandexCloudSaveGateway(bridge, dataKey = UNIFIED_SAVE_STATE_KEY),
+            )
+        } else {
+            LocalSaveRepository(
+                STANDALONE_UNIFIED_SAVE_KEY,
+                ::standaloneStorageGet,
+                ::standaloneStorageSet,
+            )
+        }
+    val saveManager = WebSaveManager(WebSaveSections(playerSession).all(), unifiedSaveRepository)
+    val saveScheduler =
+        WebUnifiedSaveScheduler(
+            saveManager = saveManager,
+            isTokenCurrent = { token -> playerSession.isSaveTokenCurrent(token) },
         )
-    val saveManager =
-        WebSaveManager(WebSaveSections(playerSession).all(), unifiedSaveRepository)
-    playerSession.postBindAction = { saveManager.restore() }
-    playerProvider.let { /* identity is consumed automatically by the session controller */ }
+    playerSession.unifiedSaveAccess = saveScheduler
+    // Migration + canonical write happen once per bound Player context, after all legacy
+    // per-domain cloud merges; afterwards durable changes coalesce into unified writes only.
+    playerSession.postBindAction = { token -> saveScheduler.restoreAndEstablish(token) }
     val balanceController =
         WebBalanceController.create(
             controller.puzzleDataLoader,
@@ -161,4 +176,16 @@ fun main() {
 
 private fun currentTimeMillis(): Long = js("Date.now()")
 
+private fun standaloneStorageGet(key: String): String? = js("globalThis.localStorage.getItem(key)")
+
+private fun standaloneStorageSet(
+    key: String,
+    value: String,
+) {
+    js("globalThis.localStorage.setItem(key, value)")
+}
+
 private const val UNIFIED_SAVE_STATE_KEY = "logica_unified_save_v1"
+
+/** Isolated browser-local key; standalone data never migrates into a real Yandex account. */
+private const val STANDALONE_UNIFIED_SAVE_KEY = "logica_unified_save_standalone_v1"

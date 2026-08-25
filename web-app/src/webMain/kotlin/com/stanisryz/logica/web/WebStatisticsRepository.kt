@@ -146,6 +146,9 @@ internal class WebStatisticsRepository(
     private val mutableSnapshot = MutableStateFlow(WebStatisticsSnapshot.EMPTY)
     val snapshot: StateFlow<WebStatisticsSnapshot> = mutableSnapshot.asStateFlow()
 
+    /** Invoked after every successful durable local mutation; never after a cloud merge. */
+    var onDurableChange: (() -> Unit)? = null
+
     fun loadLocal(): WebStatisticsSnapshot {
         val loaded = localStore.load()
         val initialized =
@@ -194,6 +197,7 @@ internal class WebStatisticsRepository(
         }.exceptionOrNull()?.let { return WebStatisticsRecordResult.PersistenceFailed(it) }
 
         mutableSnapshot.value = updated
+        onDurableChange?.invoke()
         return WebStatisticsRecordResult.Recorded(updated)
     }
 

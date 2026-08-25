@@ -125,6 +125,9 @@ internal class WebDailyRepository(
     private val mutableSnapshot = MutableStateFlow(WebDailySnapshotV1.EMPTY)
     val snapshot: StateFlow<WebDailySnapshotV1> = mutableSnapshot.asStateFlow()
 
+    /** Invoked after every successful durable local mutation; never after a cloud merge. */
+    var onDurableChange: (() -> Unit)? = null
+
     fun loadLocal(): WebDailySnapshotV1 = localStore.load().also { mutableSnapshot.value = it }
 
     fun stateFor(date: DailyDate): WebDailyRunState {
@@ -229,6 +232,7 @@ internal class WebDailyRepository(
         if (updated == mutableSnapshot.value) return WebDailyMutationResult.Idempotent
         persist(updated)?.let { return WebDailyMutationResult.PersistenceFailed(it) }
         mutableSnapshot.value = updated
+        onDurableChange?.invoke()
         return WebDailyMutationResult.Updated(updated)
     }
 

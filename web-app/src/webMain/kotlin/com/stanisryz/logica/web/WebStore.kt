@@ -27,17 +27,24 @@ internal data class WebStoreSnapshot(
     val version: Int = CURRENT_VERSION,
     val inventory: Map<String, Int> = emptyMap(),
     val history: List<PurchaseRecord> = emptyList(),
+    /**
+     * Monotonic mutation revision from the Player-scoped [WebPlayerStateRevisions] timeline.
+     * V1 payloads load as revision `0`; the field lets unified cloud restore compare whole
+     * store snapshots instead of blindly overwriting newer local inventory/history.
+     */
+    val revision: Long = 0L,
 ) {
     init {
         require(version == CURRENT_VERSION) { "Unsupported Web Store schema $version." }
         require(inventory.values.all { it > 0 }) { "Stored inventory quantities must be positive." }
         require(history.size <= STORE_HISTORY_LIMIT) { "Stored purchase history is over budget." }
+        require(revision >= 0L) { "Web Store revisions are monotonic and never negative." }
     }
 
     fun quantityOf(inventoryItemId: String): Int = inventory[inventoryItemId] ?: 0
 
     companion object {
-        const val CURRENT_VERSION = 1
+        const val CURRENT_VERSION = 2
 
         val DEFAULT = WebStoreSnapshot()
     }
@@ -54,7 +61,7 @@ internal object WebStoreCodec {
         val history = snapshot.history.take(STORE_HISTORY_LIMIT)
         require(history.all { it.itemId.length <= MAX_KEY_LENGTH })
 
-        var size = 4 + 1 + 1
+        var size = 4 + 1 + 8 + 1
         inventory.forEach { size += 1 + it.key.encodeToByteArray().size + 1 }
         size += 2
         history.forEach { size += 1 + it.itemId.encodeToByteArray().size + 13 }
@@ -62,8 +69,9 @@ internal object WebStoreCodec {
         val result = ByteArray(size)
         magic.copyInto(result)
         result[4] = snapshot.version.toByte()
-        result[5] = inventory.size.toByte()
-        var offset = 6
+        writeLong(result, 5, snapshot.revision)
+        result[13] = inventory.size.toByte()
+        var offset = 14
         inventory.forEach { (key, quantity) ->
             val bytes = key.encodeToByteArray()
             result[offset] = bytes.size.toByte()
@@ -103,9 +111,17 @@ internal object WebStoreCodec {
             require(payload.size >= 8)
             require(magic.indices.all { payload[it] == magic[it] })
             val version = payload[4].toInt() and 0xff
-            require(version == WebStoreSnapshot.CURRENT_VERSION)
+            require(version in 1..WebStoreSnapshot.CURRENT_VERSION)
 
+            // V2 prefixes the inventory count with the mutation revision; V1 loads as revision 0.
+            var revision = 0L
             var offset = 5
+            if (version >= 2) {
+                for (index in 0 until 8) {
+                    revision = (revision shl 8) or (payload[offset + index].toLong() and 0xff)
+                }
+                offset += 8
+            }
             val inventoryCount = payload[offset].toInt() and 0xff
             offset += 1
             val inventory = linkedMapOf<String, Int>()
@@ -144,7 +160,7 @@ internal object WebStoreCodec {
                 offset += 1
                 history += PurchaseRecord(itemId, price, timestamp, status)
             }
-            WebStoreSnapshot(version = version, inventory = inventory, history = history)
+            WebStoreSnapshot(inventory = inventory, history = history, revision = revision)
         }.getOrNull()
 
     private fun writeInt(
@@ -224,12 +240,18 @@ internal fun interface WebStoreRepositoryFactory {
 internal class WebPlayerStoreRepository(
     val scope: WebCatalogProgressScope,
     private val store: WebStoreStore,
+    private val revisions: WebPlayerStateRevisions = WebPlayerStateRevisions(),
 ) {
     private val mutableSnapshot = MutableStateFlow(WebStoreSnapshot.DEFAULT)
     val snapshot: StateFlow<WebStoreSnapshot> = mutableSnapshot.asStateFlow()
 
+    /** Invoked after every successful durable local mutation; never after a cloud restore. */
+    var onDurableChange: (() -> Unit)? = null
+
     fun loadLocal() {
-        mutableSnapshot.value = store.load()
+        val loaded = store.load()
+        revisions.raiseTo(loaded.revision)
+        mutableSnapshot.value = loaded
     }
 
     /** Grants a positive quantity of one inventory item. */
@@ -273,19 +295,24 @@ internal class WebPlayerStoreRepository(
     }
 
     private inline fun mutate(update: (WebStoreSnapshot) -> WebStoreSnapshot): Boolean {
-        val updated = update(mutableSnapshot.value)
+        val updated = update(mutableSnapshot.value).let { stamped ->
+            // Same revision timeline as the economy: purchases stay comparable across domains.
+            if (stamped.revision == 0L) stamped.copy(revision = revisions.next()) else stamped
+        }
         if (updated == mutableSnapshot.value) return false
         // Local durability precedes publication; a failed save leaves the store state untouched.
         runCatching {
             store.save(updated)
         }.onFailure { return false }
         mutableSnapshot.value = updated
+        onDurableChange?.invoke()
         return true
     }
 
     /** Restores an externally supplied durable snapshot (unified cloud save); durable-first. */
     fun applyExternal(snapshot: WebStoreSnapshot) {
         runCatching { store.save(snapshot) }
+        revisions.raiseTo(snapshot.revision)
         mutableSnapshot.value = snapshot
     }
 }

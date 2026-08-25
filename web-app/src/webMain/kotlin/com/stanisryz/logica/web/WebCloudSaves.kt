@@ -150,15 +150,67 @@ internal interface WebSaveSection {
 }
 
 /**
+ * One monotonic mutation timeline shared by the Economy and Store repositories of one bound
+ * Player context. Every durable mutation consumes the next revision, so purchases stay
+ * comparable across domains — the property that keeps coupled wallet/inventory restores safe.
+ */
+internal class WebPlayerStateRevisions {
+    private var current = 0L
+
+    /** Allocates the next revision on the shared Player-state timeline. */
+    fun next(): Long = ++current
+
+    /** Keeps the timeline ahead of every revision observed from local or cloud snapshots. */
+    fun raiseTo(minimum: Long) {
+        if (minimum > current) current = minimum
+    }
+}
+
+/**
+ * Deterministic coupled restore decision for the Economy/Store pair. A purchase changes both
+ * domains together, so restore never mixes one side's wallet with the other side's inventory:
+ * the whole pair is taken from whichever generation is newer, or local is kept on ties and for
+ * partial payloads. This yields only states that actually existed on some device.
+ */
+internal object WebEconomyStoreCoupledRestore {
+    data class Decision(
+        val economy: WebEconomySnapshot?,
+        val store: WebStoreSnapshot?,
+    )
+
+    fun resolve(
+        localEconomy: WebEconomySnapshot,
+        localStore: WebStoreSnapshot,
+        cloudEconomy: WebEconomySnapshot?,
+        cloudStore: WebStoreSnapshot?,
+    ): Decision {
+        // Partial unified payloads are abnormal; fail safe by keeping both local domains.
+        if ((cloudEconomy == null) != (cloudStore == null)) return Decision(null, null)
+        if (cloudEconomy == null || cloudStore == null) return Decision(null, null)
+        val cloudRecency = maxOf(cloudEconomy.revision, cloudStore.revision)
+        val localRecency = maxOf(localEconomy.revision, localStore.revision)
+        return if (cloudRecency > localRecency) Decision(cloudEconomy, cloudStore) else Decision(null, null)
+    }
+}
+
+
+/**
  * Central save coordinator. Pure orchestration over [SaveRepository] and domain sections — it
  * contains no platform-specific code and never interprets or modifies business state itself.
  *
- * Load flow: identity -> repository.load() -> apply present sections (cloud is authoritative).
- * Save flow: collect all exported sections -> repository.save().
+ * Load flow: identity -> repository.load() -> apply present sections. Each section adapter
+ * merges through its own domain semantics (monotonic Catalog levels, unioned statistics,
+ * policy-safe Daily history, revision-compared whole-pair Economy/Store); a unified cloud
+ * payload never blindly overwrites newer valid local Player state.
+ *
+ * Save flow: collect all exported sections -> validate the envelope against the Player data
+ * budget -> repository.save(). Writes are all-or-nothing; oversized payloads fail safely
+ * instead of silently dropping history or inventory.
  */
 internal class WebSaveManager(
     private val sections: List<WebSaveSection>,
     private val repository: SaveRepository,
+    private val maxPayloadBytes: Int = DEFAULT_MAX_UNIFIED_PAYLOAD_BYTES,
 ) {
     suspend fun restore(): Boolean {
         val data = repository.load() ?: return false
@@ -175,9 +227,17 @@ internal class WebSaveManager(
                 .mapNotNull { section -> section.export()?.let { section.id to it } }
                 .toMap()
         if (sectionsById.isEmpty()) return false
-        return repository.save(SaveData(sections = sectionsById))
+        val data = SaveData(sections = sectionsById)
+        // Payload safety: the Yandex Player data budget is finite and shared by all sections.
+        require(WebSaveCodec.encode(data).size <= maxPayloadBytes) {
+            "Unified save payload exceeds the supported Player data budget."
+        }
+        return runCatching { repository.save(data) }.getOrDefault(false)
     }
 }
+
+/** Conservative default envelope budget; Yandex Player data storage stays well below this. */
+private const val DEFAULT_MAX_UNIFIED_PAYLOAD_BYTES = 100_000
 
 /** Stable unified-save section ids; each maps to exactly one domain codec. */
 internal object WebSaveSectionIds {
@@ -196,6 +256,9 @@ internal object WebSaveSectionIds {
 internal class WebSaveSections(
     private val playerSession: WebPlayerSessionController,
 ) {
+    /** Economy resolves jointly with Store, so `all()` must keep this exact section order. */
+    private var pendingEconomyRestore: WebEconomySnapshot? = null
+
     fun all(): List<WebSaveSection> =
         listOf(
             catalogSection(),
@@ -261,13 +324,12 @@ internal class WebSaveSections(
             override val id = WebSaveSectionIds.ECONOMY
 
             override fun export(): ByteArray? =
-                playerSession.economyRepository?.let {
-                    WebEconomyCodec.encode(it.state.value.toWebEconomySnapshot())
-                }
+                playerSession.economyRepository?.let { WebEconomyCodec.encode(it.currentSnapshot) }
 
             override fun apply(payload: ByteArray) {
-                val snapshot = WebEconomyCodec.decode(payload) ?: return
-                playerSession.economyRepository?.applyExternal(snapshot)
+                // The wallet is resolved jointly with the Store section below: a purchase
+                // changes both domains together and restore must never split that pair.
+                pendingEconomyRestore = WebEconomyCodec.decode(payload)
             }
         }
 
@@ -279,8 +341,20 @@ internal class WebSaveSections(
                 playerSession.storeRepository?.let { WebStoreCodec.encode(it.snapshot.value) }
 
             override fun apply(payload: ByteArray) {
-                val snapshot = WebStoreCodec.decode(payload) ?: return
-                playerSession.storeRepository?.applyExternal(snapshot)
+                val economyRepository = playerSession.economyRepository ?: return
+                val storeRepository = playerSession.storeRepository ?: return
+                val cloudEconomy = pendingEconomyRestore
+                pendingEconomyRestore = null
+                val cloudStore = WebStoreCodec.decode(payload)
+                val decision =
+                    WebEconomyStoreCoupledRestore.resolve(
+                        localEconomy = economyRepository.currentSnapshot,
+                        localStore = storeRepository.snapshot.value,
+                        cloudEconomy = cloudEconomy,
+                        cloudStore = cloudStore,
+                    )
+                decision.economy?.let(economyRepository::applyExternal)
+                decision.store?.let(storeRepository::applyExternal)
             }
         }
 }

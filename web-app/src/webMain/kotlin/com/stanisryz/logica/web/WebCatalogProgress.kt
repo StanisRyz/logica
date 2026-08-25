@@ -240,6 +240,9 @@ internal class WebCatalogProgressRepository(
     private val mutableSnapshot = MutableStateFlow(WebCatalogProgressSnapshot.EMPTY)
     val snapshot: StateFlow<WebCatalogProgressSnapshot> = mutableSnapshot.asStateFlow()
 
+    /** Invoked after every successful durable local mutation; never after a cloud merge. */
+    var onDurableChange: (() -> Unit)? = null
+
     fun loadLocal(): WebCatalogProgressSnapshot =
         localStore.load().also { mutableSnapshot.value = it }
 
@@ -261,6 +264,7 @@ internal class WebCatalogProgressRepository(
                     )
                 persist(updated)?.let { return WebCatalogAdvanceResult.PersistenceFailed(it) }
                 mutableSnapshot.value = updated
+                onDurableChange?.invoke()
                 WebCatalogAdvanceResult.Advanced(next)
             }
         }
