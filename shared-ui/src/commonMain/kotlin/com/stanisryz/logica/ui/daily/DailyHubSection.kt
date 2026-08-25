@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -40,7 +39,6 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordRules
 import com.stanisryz.logica.shared.ui.generated.resources.Res
@@ -63,16 +61,11 @@ import com.stanisryz.logica.shared.ui.generated.resources.daily_streak_hint
 import com.stanisryz.logica.shared.ui.generated.resources.daily_streak_secured
 import com.stanisryz.logica.shared.ui.generated.resources.best_daily_streak
 import com.stanisryz.logica.shared.ui.generated.resources.current_daily_streak
-import com.stanisryz.logica.shared.ui.generated.resources.difficulty_easy
-import com.stanisryz.logica.shared.ui.generated.resources.difficulty_expert
-import com.stanisryz.logica.shared.ui.generated.resources.difficulty_hard
-import com.stanisryz.logica.shared.ui.generated.resources.difficulty_medium
 import com.stanisryz.logica.shared.ui.generated.resources.game_catalog_play_label
 import com.stanisryz.logica.shared.ui.generated.resources.retry
 import com.stanisryz.logica.shared.ui.generated.resources.share_daily_result
 import com.stanisryz.logica.shared.ui.generated.resources.share_daily_result_description
 import com.stanisryz.logica.shared.ui.generated.resources.total_hints_used
-import com.stanisryz.logica.ui.components.catalogArtworkResource
 import com.stanisryz.logica.ui.components.catalogTitleResource
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.StringResource
@@ -253,7 +246,7 @@ private fun DailyEntryCard(
             ),
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                 contentColor = MaterialTheme.colorScheme.onSurface,
             ),
     ) {
@@ -263,20 +256,14 @@ private fun DailyEntryCard(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Image(
-                painter = painterResource(entry.puzzleType.catalogArtworkResource()),
+                painter = painterResource(entry.puzzleType.dailyArtworkResource()),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier =
-                    Modifier.fillMaxWidth()
-                        .height(DAILY_ARTWORK_HEIGHT)
+                    Modifier.size(DAILY_ARTWORK_SIZE)
                         .clip(MaterialTheme.shapes.medium),
             )
             Text(text = title, style = MaterialTheme.typography.titleMedium)
-            Text(
-                text = stringResource(entry.difficulty.hubLabelResource()),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             DailyEntryStateChip(entry.state)
         }
     }
@@ -289,7 +276,7 @@ private fun DailyEntryStateChip(state: DailyHubEntryState) {
         modifier =
             Modifier.clip(MaterialTheme.shapes.small)
                 .background(
-                    if (completed) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                    if (completed) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
                 )
                 .padding(horizontal = LogicaSpacing.cardContent, vertical = DAILY_CHIP_VERTICAL_PADDING),
         verticalAlignment = Alignment.CenterVertically,
@@ -325,14 +312,6 @@ private fun DailyHubEntryState.chipLabel(): String =
             DailyHubEntryState.COMPLETED -> Res.string.daily_entry_solved
         },
     )
-
-private fun Difficulty.hubLabelResource(): StringResource =
-    when (this) {
-        Difficulty.EASY -> Res.string.difficulty_easy
-        Difficulty.MEDIUM -> Res.string.difficulty_medium
-        Difficulty.HARD -> Res.string.difficulty_hard
-        Difficulty.EXPERT -> Res.string.difficulty_expert
-    }
 
 /** The completed Daily card: results where provided, the streaks, and the optional host share. */
 @Composable
@@ -435,8 +414,7 @@ private val DAILY_CARD_WIDTH = 156.dp
 
 /** A minimum, never a fixed height: the card grows with a larger font scale instead of clipping. */
 private val DAILY_CARD_MIN_HEIGHT = 168.dp
-private val DAILY_ARTWORK_HEIGHT = 64.dp
+private val DAILY_ARTWORK_SIZE = 64.dp
 private val DAILY_CHIP_ICON_SIZE = 16.dp
 private val DAILY_CHIP_GAP = 4.dp
 private val DAILY_CHIP_VERTICAL_PADDING = 2.dp
-
