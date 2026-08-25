@@ -82,6 +82,8 @@ fun main() {
             economyRepository = { playerSession.economyRepository },
             storeRepository = { playerSession.storeRepository },
             currentTimeMs = ::currentTimeMillis,
+            revisionsProvider = { playerSession.activeStateRevisions },
+            transactionStoreProvider = { playerSession.purchaseTransactionStore },
         )
     // Unified cloud save foundation: identity through the SDK, payload over a dedicated key.
     // Standalone development keeps the unified orchestration fully local and isolated.

@@ -54,7 +54,12 @@ class WebStoreTest {
 
         assertTrue(economyA.addGems(100))
         val processor =
-            WebStoreProcessor({ economyA }, { storeA }, currentTimeMs = { 1_000L })
+            WebStoreProcessor(
+                { economyA },
+                { storeA },
+                currentTimeMs = { 1_000L },
+                transactionStoreProvider = { MemoryPurchaseTransactionStore() },
+            )
         val result =
             processor.purchase(
                 StoreItem("hint_pack", 10, StoreReward(StoreRewardType.HINTS, 3)),
@@ -76,7 +81,10 @@ class WebStoreTest {
                 .quantityOf(STORE_INVENTORY_HINTS),
         )
         assertEquals(0, storeB.snapshot.value.quantityOf(STORE_INVENTORY_HINTS))
-        assertNull(storeB.snapshot.value.history.firstOrNull())
+        assertNull(
+            storeB.snapshot.value.history
+                .firstOrNull(),
+        )
     }
 
     @Test
@@ -84,7 +92,13 @@ class WebStoreTest {
         val economy = economy(FakeEconomyStore())
         val store = storeRepository(FakeStoreStore())
         assertTrue(economy.addGems(100))
-        val processor = WebStoreProcessor({ economy }, { store }, currentTimeMs = { 42_000L })
+        val processor =
+            WebStoreProcessor(
+                { economy },
+                { store },
+                currentTimeMs = { 42_000L },
+                transactionStoreProvider = { MemoryPurchaseTransactionStore() },
+            )
 
         val item = StoreItem("hint_pack", 20, StoreReward(StoreRewardType.HINTS, 3))
         val result = processor.purchase(item, playerId = null)
@@ -95,7 +109,9 @@ class WebStoreTest {
         assertEquals(80, economy.state.value.gems)
         assertEquals(3, store.snapshot.value.quantityOf(STORE_INVENTORY_HINTS))
 
-        val record = store.snapshot.value.history.single()
+        val record =
+            store.snapshot.value.history
+                .single()
         assertEquals(PurchaseStatus.SUCCESS, record.status)
         assertEquals(item.id, record.itemId)
         assertEquals(20, record.priceGems)
@@ -106,7 +122,13 @@ class WebStoreTest {
     fun failedPurchaseConsumesNothingAndIsStillRecorded() {
         val economy = economy(FakeEconomyStore())
         val store = storeRepository(FakeStoreStore())
-        val processor = WebStoreProcessor({ economy }, { store }, currentTimeMs = { 7_000L })
+        val processor =
+            WebStoreProcessor(
+                { economy },
+                { store },
+                currentTimeMs = { 7_000L },
+                transactionStoreProvider = { MemoryPurchaseTransactionStore() },
+            )
 
         // Zero-gem wallet cannot afford the pack.
         val item = StoreItem("hint_pack", 10, StoreReward(StoreRewardType.HINTS, 3))
@@ -119,11 +141,28 @@ class WebStoreTest {
         assertEquals(0, store.snapshot.value.quantityOf(STORE_INVENTORY_HINTS))
 
         // The failed attempt is durably recorded for analytics and future cloud sync.
-        val record = store.snapshot.value.history.single()
+        val record =
+            store.snapshot.value.history
+                .single()
         assertEquals(PurchaseStatus.INSUFFICIENT_GEMS, record.status)
         assertFalse(record.successful)
 
         // Unknown catalog ids fail without recording any price.
         assertIs<PurchaseResult.Failure>(processor.purchaseById("missing_item"))
+    }
+
+    /** In-memory purchase journal so processor tests exercise the real transaction path. */
+    private class MemoryPurchaseTransactionStore : WebPurchaseTransactionStore {
+        private var stored: WebPurchaseTransaction? = null
+
+        override fun load(): WebPurchaseTransaction? = stored
+
+        override fun save(transaction: WebPurchaseTransaction) {
+            stored = transaction
+        }
+
+        override fun clear() {
+            stored = null
+        }
     }
 }

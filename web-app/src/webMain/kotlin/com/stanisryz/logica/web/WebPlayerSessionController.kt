@@ -118,6 +118,9 @@ internal class WebPlayerSessionController(
     var postBindAction: suspend (WebPlayerContextToken) -> Unit = { _ -> },
     private val economyRepositoryFactory: WebEconomyRepositoryFactory? = null,
     private val storeRepositoryFactory: WebStoreRepositoryFactory? = null,
+    private val purchaseTransactionStoreFactory: (
+        WebCatalogProgressScope,
+    ) -> WebPurchaseTransactionStore = ::BrowserWebPurchaseTransactionStore,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) : WebStatisticsSessionAccess,
     WebDailySessionAccess,
@@ -131,21 +134,30 @@ internal class WebPlayerSessionController(
     var unifiedSaveAccess: WebUnifiedSaveAccess? = null
 
     /** True while [token] still identifies the active, non-suspended Player context. */
-    fun isSaveTokenCurrent(token: WebPlayerContextToken): Boolean =
-        !accountSelectionOpen && token.value == contextRevision
+    fun isSaveTokenCurrent(token: WebPlayerContextToken): Boolean = !accountSelectionOpen && token.value == contextRevision
 
-    // One mutation timeline per bound Player keeps Economy/Store revisions comparable so the
-    // coupled unified restore can never split a purchase into an impossible state.
-    private val stateRevisions = WebPlayerStateRevisions()
+    // One mutation timeline PER BOUND PLAYER CONTEXT keeps Economy/Store revisions comparable
+    // within a Player while never transferring revision ordering across Players. It is reset
+    // on every bind and raised to the maximum revision observed from that Player's data.
+    private var contextRevisions = WebPlayerStateRevisions()
+
+    /** The active Player-context revision timeline, consumed by the Store purchase processor. */
+    val activeStateRevisions: WebPlayerStateRevisions
+        get() = contextRevisions
+
+    /** Durable journal of one pending coupled purchase for the currently bound Player. */
+    var purchaseTransactionStore: WebPurchaseTransactionStore? = null
+        private set
+
     private val effectiveEconomyRepositoryFactory =
         economyRepositoryFactory
             ?: WebEconomyRepositoryFactory { playerScope ->
-                WebPlayerEconomyRepository(playerScope, WebEconomyLocalStore(playerScope), stateRevisions)
+                WebPlayerEconomyRepository(playerScope, WebEconomyLocalStore(playerScope), contextRevisions)
             }
     private val effectiveStoreRepositoryFactory =
         storeRepositoryFactory
             ?: WebStoreRepositoryFactory { playerScope ->
-                WebPlayerStoreRepository(playerScope, WebStoreLocalStore(playerScope), stateRevisions)
+                WebPlayerStoreRepository(playerScope, WebStoreLocalStore(playerScope), contextRevisions)
             }
 
     private var started = false
@@ -215,6 +227,20 @@ internal class WebPlayerSessionController(
 
     /** Legacy per-domain cloud writes stop once the canonical unified save owns this context. */
     private fun unifiedSaveOwnsCloudWrites(): Boolean = unifiedSaveAccess?.unifiedSaveActive == true
+
+    /**
+     * Idempotent finish of an interrupted coupled purchase, before any cloud merge: the journal
+     * is authoritative for intent, both absolute target snapshots are re-applied durably as one
+     * pair, and the journal clears only after both sides are durably established.
+     */
+    private fun recoverPendingPurchase(revision: Long) {
+        val economyRepository = economyRepository ?: return
+        val storeRepository = storeRepository ?: return
+        val journal = purchaseTransactionStore ?: return
+        val pending = runCatching { journal.load() }.getOrNull() ?: return
+        if (!isCurrent(revision)) return
+        WebPurchaseTransactionRecovery.recover(pending, economyRepository, storeRepository, journal)
+    }
 
     fun retryCurrentContext() {
         if (started && !accountSelectionOpen) bindCurrentContext()
@@ -336,6 +362,9 @@ internal class WebPlayerSessionController(
     private fun bindCurrentContext() {
         operation?.cancel()
         unifiedSaveAccess?.invalidateContext()
+        // Fresh Player-scoped revision timeline and journal for the newly bound context.
+        contextRevisions = WebPlayerStateRevisions()
+        purchaseTransactionStore = null
         val revision = ++contextRevision
         progressRepository = null
         statisticsRepository = null
@@ -356,6 +385,8 @@ internal class WebPlayerSessionController(
         accountSelectionOpen = true
         operation?.cancel()
         unifiedSaveAccess?.invalidateContext()
+        contextRevisions = WebPlayerStateRevisions()
+        purchaseTransactionStore = null
         progressRepository = null
         statisticsRepository = null
         dailyRepository = null
@@ -396,6 +427,10 @@ internal class WebPlayerSessionController(
             val scopedDaily = bindDailyLocal(revision, playerScope, identity)
             bindEconomyLocal(revision, playerScope, identity)
             bindStoreLocal(revision, playerScope, identity)
+            // Recover an interrupted coupled purchase BEFORE any cloud merge sees this context.
+            purchaseTransactionStore = purchaseTransactionStoreFactory(playerScope)
+            recoverPendingPurchase(revision)
+            if (!isCurrent(revision)) return
             synchronize(revision, identity, repository)
             if (scopedStatistics != null && isCurrent(revision)) {
                 synchronizeStatisticsSafely(revision, identity, scopedStatistics)
@@ -425,6 +460,9 @@ internal class WebPlayerSessionController(
         bindDailyLocal(revision, standaloneScope, identity = null)
         bindEconomyLocal(revision, standaloneScope, identity = null)
         bindStoreLocal(revision, standaloneScope, identity = null)
+        // Standalone contexts get their own isolated revision timeline and journal scope.
+        purchaseTransactionStore = purchaseTransactionStoreFactory(standaloneScope)
+        recoverPendingPurchase(revision)
         state = WebPlayerSessionState.LocalOnly
         mutableProgressBinding.value =
             WebCatalogProgressBinding.Ready(

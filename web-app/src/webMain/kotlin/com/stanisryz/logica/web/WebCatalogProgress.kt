@@ -33,8 +33,7 @@ internal data class WebCatalogProgressSnapshot(
         require(levels.keys.all { it.puzzleType in CatalogLevelPacks.PUZZLE_TYPES })
     }
 
-    fun currentLevel(bucket: WebCatalogProgressBucket): CatalogLevelNumber =
-        levels[bucket] ?: CatalogLevelPacks.FIRST_LEVEL
+    fun currentLevel(bucket: WebCatalogProgressBucket): CatalogLevelNumber = levels[bucket] ?: CatalogLevelPacks.FIRST_LEVEL
 
     companion object {
         const val CURRENT_SCHEMA_VERSION = 1
@@ -243,11 +242,9 @@ internal class WebCatalogProgressRepository(
     /** Invoked after every successful durable local mutation; never after a cloud merge. */
     var onDurableChange: (() -> Unit)? = null
 
-    fun loadLocal(): WebCatalogProgressSnapshot =
-        localStore.load().also { mutableSnapshot.value = it }
+    fun loadLocal(): WebCatalogProgressSnapshot = localStore.load().also { mutableSnapshot.value = it }
 
-    fun currentLevel(bucket: WebCatalogProgressBucket): CatalogLevelNumber =
-        mutableSnapshot.value.currentLevel(bucket)
+    fun currentLevel(bucket: WebCatalogProgressBucket): CatalogLevelNumber = mutableSnapshot.value.currentLevel(bucket)
 
     fun advanceSolved(levelId: CatalogLevelId): WebCatalogAdvanceResult {
         val bucket = levelId.toProgressBucket()
@@ -290,8 +287,7 @@ internal class WebCatalogProgressRepository(
         )
     }
 
-    private fun persist(snapshot: WebCatalogProgressSnapshot): Throwable? =
-        runCatching { localStore.save(snapshot) }.exceptionOrNull()
+    private fun persist(snapshot: WebCatalogProgressSnapshot): Throwable? = runCatching { localStore.save(snapshot) }.exceptionOrNull()
 }
 
 private fun CatalogLevelId.toProgressBucket(): WebCatalogProgressBucket =

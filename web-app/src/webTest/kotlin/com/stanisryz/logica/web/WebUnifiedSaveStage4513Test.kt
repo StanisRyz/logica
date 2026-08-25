@@ -187,14 +187,25 @@ class WebUnifiedSaveStage4513Test {
                     FakePlayerItemStore(),
                     revisionsB,
                 ).also { it.loadLocal() }
-            val processor = WebStoreProcessor({ economyB }, { storeB }) { 1_000L }
+            // One pre-existing B mutation raises the context timeline before the purchase, so
+            // the purchase itself carries ONE shared higher revision on both sides.
+            assertTrue(economyB.addGems(10))
+            val processor =
+                WebStoreProcessor(
+                    economyRepository = { economyB },
+                    storeRepository = { storeB },
+                    currentTimeMs = { 1_000L },
+                    revisionsProvider = { revisionsB },
+                    transactionStoreProvider = ::memoryPurchaseJournal,
+                )
             assertIs<PurchaseResult.Success>(processor.purchaseById(WebStoreCatalog.ITEM_HINT_PACK))
-            assertEquals(20, economyB.currentSnapshot.gems)
+            assertEquals(30, economyB.currentSnapshot.gems)
             assertEquals(3, storeB.snapshot.value.quantityOf(STORE_INVENTORY_HINTS))
 
             val cloudEconomy = economyB.currentSnapshot
             val cloudStore = storeB.snapshot.value
             assertTrue(cloudEconomy.revision > 0 && cloudStore.revision > 0)
+            assertEquals(cloudEconomy.revision, cloudStore.revision)
 
             // Player A earned gems locally after B's purchase happened on another device.
             val revisionsA = WebPlayerStateRevisions()
@@ -226,7 +237,7 @@ class WebUnifiedSaveStage4513Test {
                 )
             decision.economy?.let(economyA::applyExternal)
             decision.store?.let(storeA::applyExternal)
-            assertEquals(20, economyA.currentSnapshot.gems)
+            assertEquals(30, economyA.currentSnapshot.gems)
             assertEquals(3, storeA.snapshot.value.quantityOf(STORE_INVENTORY_HINTS))
 
             // Tied local recency keeps local wholesale; partial payloads never mix sides.
@@ -242,7 +253,7 @@ class WebUnifiedSaveStage4513Test {
             )
 
             // Player scoping is structural: applying A's decision never touched B's repositories.
-            assertEquals(20, economyB.currentSnapshot.gems)
+            assertEquals(30, economyB.currentSnapshot.gems)
             assertEquals(3, storeB.snapshot.value.quantityOf(STORE_INVENTORY_HINTS))
 
             // And per-Player cloud keys remain isolated end to end.
@@ -490,6 +501,21 @@ class WebUnifiedSaveStage4513Test {
             this.snapshot = snapshot
         }
     }
+
+    private fun memoryPurchaseJournal(): WebPurchaseTransactionStore =
+        object : WebPurchaseTransactionStore {
+            private var stored: WebPurchaseTransaction? = null
+
+            override fun load(): WebPurchaseTransaction? = stored
+
+            override fun save(transaction: WebPurchaseTransaction) {
+                stored = transaction
+            }
+
+            override fun clear() {
+                stored = null
+            }
+        }
 
     private companion object {
         const val INSTALLATION_ID = "browser-installation-000001"

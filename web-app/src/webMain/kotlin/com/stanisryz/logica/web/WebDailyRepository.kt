@@ -140,7 +140,9 @@ internal class WebDailyRepository(
     }
 
     fun history(currentDate: DailyDate = dateProvider.currentDate()): WebDailyHistoryAggregate {
-        val relevant = mutableSnapshot.value.days.values.filterNot { it.date.isAfter(currentDate) }
+        val relevant =
+            mutableSnapshot.value.days.values
+                .filterNot { it.date.isAfter(currentDate) }
         val qualifiedDates = relevant.filter(WebDailyDayRecord::qualifiedForStreak).mapTo(linkedSetOf()) { it.date }
         return WebDailyHistoryAggregate(
             today = stateFor(currentDate),

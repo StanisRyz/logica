@@ -15,6 +15,22 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
+ * Explicit result of applying an external (cloud/recovered) snapshot to a local repository.
+ * External state never becomes observable unless its local durable write succeeded.
+ */
+internal sealed interface WebExternalRestoreResult {
+    data object Applied : WebExternalRestoreResult
+
+    data object NoChange : WebExternalRestoreResult
+
+    data class PersistenceFailed(
+        val cause: Throwable,
+    ) : WebExternalRestoreResult
+
+    data object Rejected : WebExternalRestoreResult
+}
+
+/**
  * Versioned Player-scoped economy save model. Intentionally simple and migration-ready: a new
  * schema version can be introduced without infrastructure because every read validates the
  * version explicitly.
@@ -38,8 +54,7 @@ internal data class WebEconomySnapshot(
         require(revision >= 0L) { "Web economy revisions are monotonic and never negative." }
     }
 
-    fun toState(): EconomyState =
-        EconomyState(gems = gems, lives = lives, nextLifeRestoreAtEpochMs = nextLifeRestoreAtEpochMs)
+    fun toState(): EconomyState = EconomyState(gems = gems, lives = lives, nextLifeRestoreAtEpochMs = nextLifeRestoreAtEpochMs)
 
     companion object {
         const val CURRENT_VERSION = 2
@@ -134,10 +149,11 @@ internal object WebEconomyCodec {
     private fun readInt(
         source: ByteArray,
         offset: Int,
-    ): Int = ((source[offset].toInt() and 0xff) shl 24) or
-        ((source[offset + 1].toInt() and 0xff) shl 16) or
-        ((source[offset + 2].toInt() and 0xff) shl 8) or
-        (source[offset + 3].toInt() and 0xff)
+    ): Int =
+        ((source[offset].toInt() and 0xff) shl 24) or
+            ((source[offset + 1].toInt() and 0xff) shl 16) or
+            ((source[offset + 2].toInt() and 0xff) shl 8) or
+            (source[offset + 3].toInt() and 0xff)
 }
 
 internal interface WebEconomyStore {
@@ -256,8 +272,6 @@ internal class WebGameplayStoreCoordinator(
     }
 }
 
-
-
 /**
  * The pure economy processing pipeline: gameplay facts in, new state plus events out. UI never
  * mutates wallet values directly; every change flows through here.
@@ -322,8 +336,7 @@ internal class WebPlayerEconomyRepository(
         puzzleType: PuzzleType,
         difficulty: Difficulty,
         solved: Boolean,
-    ): List<EconomyEvent> =
-        mutate { state -> WebEconomyProcessor.onCatalogTerminalResult(state, difficulty, solved) }
+    ): List<EconomyEvent> = mutate { state -> WebEconomyProcessor.onCatalogTerminalResult(state, difficulty, solved) }
 
     /** Wallet foundation: adds a positive amount of gems. */
     fun addGems(amount: Int): Boolean {
@@ -379,13 +392,31 @@ internal class WebPlayerEconomyRepository(
         return granted
     }
 
-    /** Restores an externally supplied durable snapshot (unified cloud save); durable-first. */
-    fun applyExternal(snapshot: WebEconomySnapshot) {
-        runCatching { store.save(snapshot) }
-        currentSnapshot = snapshot
-        revisions.raiseTo(snapshot.revision)
-        mutableState.value = snapshot.toState()
+    /**
+     * Emits the durable-change signal explicitly; used by coupled transaction paths that must
+     * produce exactly one unified-save notification for the whole Economy+Store pair.
+     */
+    fun notifyDurableChange() {
+        onDurableChange?.invoke()
     }
+
+    /**
+     * Restores an externally supplied durable snapshot (unified cloud save or transaction
+     * recovery). Durable-first: the snapshot is persisted to Player-scoped local storage and
+     * only a successful write updates the current snapshot, raises the revision timeline, and
+     * publishes the wallet state. A failed persistence keeps the previous durable state.
+     */
+    fun applyExternal(snapshot: WebEconomySnapshot): WebExternalRestoreResult =
+        runCatching {
+            if (snapshot == currentSnapshot) return@runCatching WebExternalRestoreResult.NoChange as WebExternalRestoreResult
+            runCatching { store.save(snapshot) }.getOrElse {
+                return@runCatching WebExternalRestoreResult.PersistenceFailed(it) as WebExternalRestoreResult
+            }
+            currentSnapshot = snapshot
+            revisions.raiseTo(snapshot.revision)
+            mutableState.value = snapshot.toState()
+            WebExternalRestoreResult.Applied as WebExternalRestoreResult
+        }.getOrDefault(WebExternalRestoreResult.Rejected)
 
     private fun EconomyState.toSnapshot(): WebEconomySnapshot =
         WebEconomySnapshot(gems = gems, lives = lives, nextLifeRestoreAtEpochMs = nextLifeRestoreAtEpochMs)

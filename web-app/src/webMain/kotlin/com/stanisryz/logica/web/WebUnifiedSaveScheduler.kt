@@ -54,6 +54,8 @@ internal class WebUnifiedSaveScheduler(
 ) : WebUnifiedSaveAccess {
     private var activeToken: WebPlayerContextToken? = null
     private var scheduled: Job? = null
+    private var retryJob: Job? = null
+    private var retryAttempts = 0
     private var dirty = false
     private val writeMutex = Mutex()
     private val mutableStatus = MutableStateFlow(WebUnifiedSaveStatus.IDLE)
@@ -66,26 +68,27 @@ internal class WebUnifiedSaveScheduler(
      * Migration entry point, runs once per bound Player context after the legacy per-domain
      * cloud merges: restore applies each unified section through its own domain merge
      * semantics on top of local+legacy state, then one canonical unified snapshot is written.
+     * Unified ownership becomes ACTIVE only after that canonical write actually succeeds.
      */
     suspend fun restoreAndEstablish(token: WebPlayerContextToken): Boolean {
         activeToken = token
         unifiedSaveActive = false
         dirty = false
+        retryAttempts = 0
         mutableStatus.value = WebUnifiedSaveStatus.IDLE
         val restored = runCatching { saveManager.restore() }.getOrDefault(false)
         if (!isCurrent(token)) return restored
-        // Canonical unified snapshot: the merged state becomes the future cloud representation;
-        // legacy keys remain readable afterwards but stop receiving new durable writes.
-        val established = runCatching { saveManager.persist() }.getOrDefault(false)
-        if (!isCurrent(token)) return restored
-        unifiedSaveActive = true
-        mutableStatus.value = if (established) WebUnifiedSaveStatus.SYNCED else WebUnifiedSaveStatus.ERROR
+        // Canonical unified snapshot attempt: the merged state becomes the future cloud
+        // representation; legacy keys stay on the compatibility path until this succeeds.
+        establish(token)
         return restored
     }
 
     override fun markDirty() {
         val token = activeToken ?: return
-        if (!unifiedSaveActive || !isTokenCurrent(token)) return
+        // Token currency is the only gate: even while establishment has not succeeded yet
+        // (or its retries ran out), a later durable mutation offers another save opportunity.
+        if (!isTokenCurrent(token)) return
         dirty = true
         if (mutableStatus.value != WebUnifiedSaveStatus.SAVING) {
             mutableStatus.value = WebUnifiedSaveStatus.DIRTY
@@ -105,18 +108,59 @@ internal class WebUnifiedSaveScheduler(
         writeMutex.withLock {
             while (dirty && isTokenCurrent(token)) {
                 dirty = false
-                mutableStatus.value = WebUnifiedSaveStatus.SAVING
-                val saved = runCatching { saveManager.persist() }.getOrDefault(false)
+                val saved = persistAttempt(token)
                 if (!isTokenCurrent(token)) return
-                mutableStatus.value = if (saved) WebUnifiedSaveStatus.SYNCED else WebUnifiedSaveStatus.ERROR
-                if (!saved) return // Retried on the next durable change; gameplay is never blocked.
+                if (!saved) return // A bounded retry continues; gameplay is never blocked.
             }
         }
+    }
+
+    /** One full-envelope unified write plus bounded transient-failure handling. */
+    private suspend fun persistAttempt(token: WebPlayerContextToken): Boolean {
+        mutableStatus.value = WebUnifiedSaveStatus.SAVING
+        val saved = runCatching { saveManager.persist() }.getOrDefault(false)
+        if (!isTokenCurrent(token)) return saved
+        if (saved) {
+            unifiedSaveActive = true
+            retryAttempts = 0
+            mutableStatus.value = WebUnifiedSaveStatus.SYNCED
+        } else {
+            // Never claim ownership/SYNCED without a real successful canonical write.
+            unifiedSaveActive = false
+            mutableStatus.value = WebUnifiedSaveStatus.ERROR
+            scheduleBoundedRetry(token)
+        }
+        return saved
+    }
+
+    /**
+     * Conservative bounded retry for transient failures: two short-backoff attempts, then a
+     * stop. No polling, no background churn; a later durable change offers another opportunity.
+     */
+    private fun scheduleBoundedRetry(token: WebPlayerContextToken) {
+        if (retryAttempts >= RETRY_DELAYS_MS.size) return
+        val delayMs = RETRY_DELAYS_MS[retryAttempts]
+        retryAttempts += 1
+        retryJob?.cancel()
+        retryJob =
+            scope.launch {
+                delay(delayMs)
+                if (!isTokenCurrent(token)) return@launch
+                dirty = true
+                drain(token)
+            }
+    }
+
+    private suspend fun establish(token: WebPlayerContextToken) {
+        persistAttempt(token)
     }
 
     override fun invalidateContext() {
         scheduled?.cancel()
         scheduled = null
+        retryJob?.cancel()
+        retryJob = null
+        retryAttempts = 0
         dirty = false
         activeToken = null
         unifiedSaveActive = false
@@ -128,5 +172,8 @@ internal class WebUnifiedSaveScheduler(
     private companion object {
         /** Short enough that earned progress is not left unsaved, long enough to coalesce. */
         const val DEBOUNCE_MS = 500L
+
+        /** Bounded transient retries: immediate attempt, then ~2s and ~8s, then ERROR. */
+        val RETRY_DELAYS_MS = longArrayOf(2_000L, 8_000L)
     }
 }

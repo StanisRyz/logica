@@ -91,10 +91,11 @@ internal object WebSaveCodec {
     private fun readInt(
         source: ByteArray,
         offset: Int,
-    ): Int = ((source[offset].toInt() and 0xff) shl 24) or
-        ((source[offset + 1].toInt() and 0xff) shl 16) or
-        ((source[offset + 2].toInt() and 0xff) shl 8) or
-        (source[offset + 3].toInt() and 0xff)
+    ): Int =
+        ((source[offset].toInt() and 0xff) shl 24) or
+            ((source[offset + 1].toInt() and 0xff) shl 16) or
+            ((source[offset + 2].toInt() and 0xff) shl 8) or
+            (source[offset + 3].toInt() and 0xff)
 }
 
 /** Yandex Player-scoped cloud repository over the existing [CloudSaveGateway]. */
@@ -144,9 +145,22 @@ internal class LocalSaveRepository(
 internal interface WebSaveSection {
     val id: String
 
+    /**
+     * Extra envelope section ids this section resolves together with its own during restore.
+     * The owner of an id restores every id it owns as one explicit coupled group, so restore
+     * never depends on section ordering inside [WebSaveManager]'s section list.
+     */
+    val coupledIds: List<String>
+        get() = emptyList()
+
     fun export(): ByteArray?
 
     fun apply(payload: ByteArray)
+
+    /** Restore entry point receiving every owned section payload present in the cloud envelope. */
+    fun applyRestoring(payloads: Map<String, ByteArray>) {
+        payloads[id]?.let(::apply)
+    }
 }
 
 /**
@@ -193,7 +207,6 @@ internal object WebEconomyStoreCoupledRestore {
     }
 }
 
-
 /**
  * Central save coordinator. Pure orchestration over [SaveRepository] and domain sections — it
  * contains no platform-specific code and never interprets or modifies business state itself.
@@ -215,8 +228,22 @@ internal class WebSaveManager(
     suspend fun restore(): Boolean {
         val data = repository.load() ?: return false
         if (!data.hasContent()) return false
+        // Explicit coupled-group resolution: each section id maps to its owning section, and
+        // every owner is invoked exactly once with all payloads it owns, regardless of the
+        // order in which the section adapters were registered.
+        val ownerOf = HashMap<String, WebSaveSection>()
         sections.forEach { section ->
-            data.section(section.id)?.let(section::apply)
+            ownerOf[section.id] = section
+            section.coupledIds.forEach { coupledId -> ownerOf[coupledId] = section }
+        }
+        val processed = HashSet<WebSaveSection>()
+        sections.forEach { section ->
+            val owner = ownerOf.getValue(section.id)
+            if (!processed.add(owner)) return@forEach
+            val ownedIds = ownerOf.filterValues { it === owner }.keys
+            val payloads =
+                ownedIds.mapNotNull { id -> data.section(id)?.let { id to it } }.toMap()
+            owner.applyRestoring(payloads)
         }
         return true
     }
@@ -274,7 +301,9 @@ internal class WebSaveSections(
 
             override fun export(): ByteArray? =
                 (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)
-                    ?.repository?.snapshot?.value
+                    ?.repository
+                    ?.snapshot
+                    ?.value
                     ?.let { WebCatalogProgressCodec.encode(it) }
 
             override fun apply(payload: ByteArray) {
@@ -291,7 +320,9 @@ internal class WebSaveSections(
 
             override fun export(): ByteArray? =
                 (playerSession.statisticsBinding.value as? WebStatisticsBinding.Ready)
-                    ?.repository?.snapshot?.value
+                    ?.repository
+                    ?.snapshot
+                    ?.value
                     ?.let { WebStatisticsCodec.encode(it) }
 
             override fun apply(payload: ByteArray) {
@@ -308,7 +339,9 @@ internal class WebSaveSections(
 
             override fun export(): ByteArray? =
                 (playerSession.dailyBinding.value as? WebDailyBinding.Ready)
-                    ?.repository?.snapshot?.value
+                    ?.repository
+                    ?.snapshot
+                    ?.value
                     ?.let { WebDailyCodec.encode(it) }
 
             override fun apply(payload: ByteArray) {
@@ -319,33 +352,28 @@ internal class WebSaveSections(
             }
         }
 
+    /**
+     * Economy is the owner of the coupled Economy+Store restore group: both sections are
+     * decoded explicitly here and resolved/applied as ONE consistent pair, independently of
+     * section ordering. Store remains a separate export/persist entry in the envelope.
+     */
     private fun economySection(): WebSaveSection =
         object : WebSaveSection {
             override val id = WebSaveSectionIds.ECONOMY
+            override val coupledIds = listOf(WebSaveSectionIds.STORE)
 
-            override fun export(): ByteArray? =
-                playerSession.economyRepository?.let { WebEconomyCodec.encode(it.currentSnapshot) }
+            override fun export(): ByteArray? = playerSession.economyRepository?.let { WebEconomyCodec.encode(it.currentSnapshot) }
 
             override fun apply(payload: ByteArray) {
-                // The wallet is resolved jointly with the Store section below: a purchase
-                // changes both domains together and restore must never split that pair.
-                pendingEconomyRestore = WebEconomyCodec.decode(payload)
+                // Never used: the coupled group always routes through applyRestoring.
+                error("Economy/Store sections must be restored through the coupled group.")
             }
-        }
 
-    private fun storeSection(): WebSaveSection =
-        object : WebSaveSection {
-            override val id = WebSaveSectionIds.STORE
-
-            override fun export(): ByteArray? =
-                playerSession.storeRepository?.let { WebStoreCodec.encode(it.snapshot.value) }
-
-            override fun apply(payload: ByteArray) {
+            override fun applyRestoring(payloads: Map<String, ByteArray>) {
                 val economyRepository = playerSession.economyRepository ?: return
                 val storeRepository = playerSession.storeRepository ?: return
-                val cloudEconomy = pendingEconomyRestore
-                pendingEconomyRestore = null
-                val cloudStore = WebStoreCodec.decode(payload)
+                val cloudEconomy = payloads[WebSaveSectionIds.ECONOMY]?.let(WebEconomyCodec::decode)
+                val cloudStore = payloads[WebSaveSectionIds.STORE]?.let(WebStoreCodec::decode)
                 val decision =
                     WebEconomyStoreCoupledRestore.resolve(
                         localEconomy = economyRepository.currentSnapshot,
@@ -353,11 +381,23 @@ internal class WebSaveSections(
                         cloudEconomy = cloudEconomy,
                         cloudStore = cloudStore,
                     )
-                decision.economy?.let(economyRepository::applyExternal)
-                decision.store?.let(storeRepository::applyExternal)
+                val targetEconomy = decision.economy ?: return
+                val targetStore = decision.store ?: return
+                // Pair-consistent application: if either side cannot be persisted durably,
+                // the previous local pair stays authoritative and observable.
+                WebEconomyStorePairApply.apply(economyRepository, storeRepository, targetEconomy, targetStore)
+            }
+        }
+
+    private fun storeSection(): WebSaveSection =
+        object : WebSaveSection {
+            override val id = WebSaveSectionIds.STORE
+
+            override fun export(): ByteArray? = playerSession.storeRepository?.let { WebStoreCodec.encode(it.snapshot.value) }
+
+            override fun apply(payload: ByteArray) {
+                // Never used: restoration of both domains is owned by the economy section.
+                error("Economy/Store sections must be restored through the coupled group.")
             }
         }
 }
-
-
-

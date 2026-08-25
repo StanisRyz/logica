@@ -170,9 +170,10 @@ internal class WebStatisticsRepository(
         val updated =
             runCatching {
                 val current = mutableSnapshot.value
-                val component = requireNotNull(current.components[installationId]) {
-                    "The current Web installation component has not been initialized."
-                }
+                val component =
+                    requireNotNull(current.components[installationId]) {
+                        "The current Web installation component has not been initialized."
+                    }
                 val bucket = WebStatisticsBucket(result.puzzleType, result.difficulty)
                 val counters = component.buckets[bucket] ?: WebStatisticsCounters()
                 val wordAttemptIncrement = result.wordAttemptsUsed?.let { mapOf(it to 1L) } ?: emptyMap()
