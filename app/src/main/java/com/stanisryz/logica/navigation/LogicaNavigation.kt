@@ -10,6 +10,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -657,7 +658,10 @@ private fun AppBottomBar(
     onTabSelected: (PrimaryTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    NavigationBar(modifier = modifier.fillMaxWidth()) {
+    NavigationBar(
+        modifier = modifier.fillMaxWidth(),
+        windowInsets = WindowInsets(0, 0, 0, 0),
+    ) {
         PrimaryTab.entries.forEach { tab ->
             NavigationBarItem(
                 selected = selectedTab == tab,
