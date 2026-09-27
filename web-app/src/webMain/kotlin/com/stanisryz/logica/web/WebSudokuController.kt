@@ -1,6 +1,7 @@
 package com.stanisryz.logica.web
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.stanisryz.logica.puzzle.core.catalog.BinaryCatalogLevelPack
@@ -82,7 +83,9 @@ internal class WebSudokuController(
     private var operation: Job? = null
     private var engine: SudokuGameEngine? = null
     private var statisticsAttempt: WebStatisticsAttempt? = null
-    private val undoHistory = mutableListOf<UndoFrame>()
+
+    // Snapshot-state list so [canUndo] recomposes whenever the history itself changes.
+    private val undoHistory = mutableStateListOf<UndoFrame>()
     private val completion = WebCatalogCompletionController(progression)
     private val dailyCompletion = WebDailyCompletionController(daily)
 
@@ -280,9 +283,16 @@ internal class WebSudokuController(
         val playing = state as? WebSudokuState.Playing ?: return
         if (playing.game.status.isTerminal || undoHistory.isEmpty()) return
         val activeEngine = engine ?: return
-        val frame = undoHistory.removeAt(undoHistory.lastIndex)
-        val restored = activeEngine.restoreSnapshot(playing.game, frame.game)
-        state = playing.copy(game = restored, selectedCell = frame.selectedCell)
+        // Correct entries stay locked through undo, so a frame whose only change was a correct
+        // placement restores nothing; skip such frames and undo the last reversible change instead.
+        while (undoHistory.isNotEmpty()) {
+            val frame = undoHistory.removeAt(undoHistory.lastIndex)
+            val restored = activeEngine.restoreSnapshot(playing.game, frame.game)
+            if (restored != playing.game) {
+                state = playing.copy(game = restored, selectedCell = frame.selectedCell)
+                return
+            }
+        }
     }
 
     fun togglePencilMode() {

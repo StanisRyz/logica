@@ -108,7 +108,11 @@ class SudokuGameEngine(
         return if (changed) createState(cells, state.mistakesUsed, state.hintsUsed, state.currentHint) else state
     }
 
-    /** Restores board contents from one transient undo frame while keeping attempt counters monotonic. */
+    /**
+     * Restores board contents from one transient undo frame while keeping attempt counters monotonic.
+     * Correct entries stay permanently locked: a value confirmed after the snapshot survives, and its
+     * digit is removed from the restored peers' candidates exactly as the original placement did.
+     */
     fun restoreSnapshot(
         current: SudokuGameState,
         snapshot: SudokuGameState,
@@ -116,13 +120,20 @@ class SudokuGameEngine(
         requireCompatible(current)
         requireCompatible(snapshot)
         if (current.status.isTerminal || snapshot.status.isTerminal) return current
+        val cells = snapshot.cells.toMutableList()
+        current.cells.forEachIndexed { index, cell ->
+            if (cell.status == SudokuCellStatus.CORRECT && snapshot.cells[index].status != SudokuCellStatus.CORRECT) {
+                cells[index] = cell
+                removeCandidateFromPeers(cells, SudokuPosition.fromIndex(index), cell.value)
+            }
+        }
         val values =
-            snapshot.cells.mapIndexed { index, cell ->
+            cells.mapIndexed { index, cell ->
                 if (puzzle.givens[index] == '0') cell.value else 0
             }
         return restore(
             playerValues = values,
-            candidateMasks = snapshot.cells.map { it.candidates },
+            candidateMasks = cells.map { it.candidates },
             mistakesUsed = current.mistakesUsed,
             hintsUsed = current.hintsUsed,
         )

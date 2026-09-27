@@ -70,6 +70,25 @@ class SudokuGameplayTest {
         assertEquals(1, state.mistakesUsed)
     }
 
+    @Test
+    fun `undo restores the snapshot but never unlocks a correct entry placed after it`() {
+        val correct = SudokuPosition(0, 0)
+        val peer = SudokuPosition(0, 2)
+        val wrong = SudokuPosition(1, 0)
+        val snapshot = engine.toggleCandidate(engine.toggleCandidate(engine.start(), peer, 1), peer, 8)
+        var state = engine.placeValue(snapshot, correct, 1)
+        state = engine.placeValue(state, wrong, 9)
+        assertEquals(SudokuCellStatus.INCORRECT, state.cellAt(wrong).status)
+
+        val restored = engine.restoreSnapshot(state, snapshot)
+
+        assertEquals(SudokuCellStatus.CORRECT, restored.cellAt(correct).status)
+        assertEquals(1, restored.cellAt(correct).value)
+        assertEquals(listOf(8), restored.cellAt(peer).candidates.digits)
+        assertEquals(SudokuCellStatus.EMPTY, restored.cellAt(wrong).status)
+        assertEquals(1, restored.mistakesUsed)
+    }
+
     private fun puzzle(): SudokuPuzzle =
         SudokuPuzzle(
             id = SudokuPuzzleId(SudokuDatasetVersion.V1, SudokuDifficulty.EASY, FINGERPRINT),

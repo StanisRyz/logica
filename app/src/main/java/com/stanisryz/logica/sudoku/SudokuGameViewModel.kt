@@ -150,14 +150,22 @@ internal class SudokuGameViewModel(
         val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
         if (ready.game.status.isTerminal || undoHistory.isEmpty()) return
         val gameEngine = engine ?: return
-        val frame = undoHistory.removeAt(undoHistory.lastIndex)
-        val restored = gameEngine.restoreSnapshot(ready.game, frame.game)
-        mutableUiState.value =
-            ready.copy(
-                game = restored,
-                selectedCell = frame.selectedCell,
-                canUndo = undoHistory.isNotEmpty(),
-            )
+        // Correct entries stay locked through undo, so a frame whose only change was a correct
+        // placement restores nothing; skip such frames and undo the last reversible change instead.
+        while (undoHistory.isNotEmpty()) {
+            val frame = undoHistory.removeAt(undoHistory.lastIndex)
+            val restored = gameEngine.restoreSnapshot(ready.game, frame.game)
+            if (restored != ready.game) {
+                mutableUiState.value =
+                    ready.copy(
+                        game = restored,
+                        selectedCell = frame.selectedCell,
+                        canUndo = undoHistory.isNotEmpty(),
+                    )
+                return
+            }
+        }
+        mutableUiState.value = ready.copy(canUndo = false)
     }
 
     fun togglePencilMode() {
