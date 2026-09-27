@@ -1,10 +1,13 @@
 package com.stanisryz.logica.store
 
 import com.stanisryz.logica.economy.EconomyGemPurchase
+import com.stanisryz.logica.economy.EconomyHintPurchase
+import com.stanisryz.logica.economy.EconomyHintUse
 import com.stanisryz.logica.economy.EconomyRefill
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.EconomyRewardedLife
 import com.stanisryz.logica.economy.GemPack
+import com.stanisryz.logica.economy.HintOffer
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.platform.PlatformProduct
 import com.stanisryz.logica.platform.PlatformPurchase
@@ -150,6 +153,13 @@ private object UnusedEconomyRepository : EconomyRepository {
     override suspend fun refresh(): PlayerEconomy = error("the store test never touches the wallet")
 
     override suspend fun refillLifeWithGems(actionId: String): EconomyRefill = error("the store test never touches the wallet")
+
+    override suspend fun consumeHint(actionId: String): EconomyHintUse = error("the store test never touches the wallet")
+
+    override suspend fun buyHintsWithGems(
+        actionId: String,
+        offer: HintOffer,
+    ): EconomyHintPurchase = error("the store test never touches the wallet")
 
     override suspend fun grantRewardedLife(actionId: String): EconomyRewardedLife = error("the store test never touches the wallet")
 

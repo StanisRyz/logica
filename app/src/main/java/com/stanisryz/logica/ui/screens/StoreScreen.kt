@@ -23,6 +23,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -33,7 +34,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
 import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.economy.GameplayHints
 import com.stanisryz.logica.economy.GemPack
+import com.stanisryz.logica.economy.HintOffer
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.platform.StoreGateway
 import com.stanisryz.logica.store.GemPackOffer
@@ -42,12 +45,15 @@ import com.stanisryz.logica.store.GemPurchaseOutcome
 import com.stanisryz.logica.store.GemStoreState
 import com.stanisryz.logica.store.GemStoreViewModel
 import com.stanisryz.logica.store.GemStoreViewModelFactory
+import com.stanisryz.logica.ui.components.HintOfferButtons
 import com.stanisryz.logica.ui.components.LogicaCard
 import com.stanisryz.logica.ui.components.ScreenColumn
 import com.stanisryz.logica.ui.components.ScreenTitle
+import com.stanisryz.logica.ui.components.SectionTitle
 import com.stanisryz.logica.ui.components.SupportingText
 import com.stanisryz.logica.ui.theme.LogicaMotion
 import com.stanisryz.logica.ui.theme.LogicaSpacing
+import kotlinx.coroutines.launch
 
 /**
  * The Store tab's state holder is created here rather than in the application shell, so a session
@@ -69,6 +75,9 @@ internal fun StoreRoute(
         }
     val storeViewModel: GemStoreViewModel = viewModel(factory = factory)
     val state by storeViewModel.state.collectAsStateWithLifecycle()
+    // Hints are bought with gems already in the wallet, so no store provider is involved.
+    val hints = remember(economyRepository) { GameplayHints(economyRepository) }
+    val scope = rememberCoroutineScope()
 
     StoreScreen(
         economy = economy,
@@ -76,6 +85,7 @@ internal fun StoreRoute(
         onOpen = storeViewModel::open,
         onBuy = storeViewModel::buy,
         onDismissOutcome = storeViewModel::dismissOutcome,
+        onBuyHints = { offer -> scope.launch { hints.buy(offer) } },
         modifier = modifier,
     )
 }
@@ -97,6 +107,7 @@ internal fun StoreScreen(
     onBuy: (GemPack) -> Unit,
     onDismissOutcome: () -> Unit,
     modifier: Modifier = Modifier,
+    onBuyHints: (HintOffer) -> Unit = {},
 ) {
     // Opening the store is what reconciles anything paid for but not yet credited, and what loads
     // the prices. Leaving the tab clears the last purchase message rather than keeping it forever.
@@ -131,6 +142,13 @@ internal fun StoreScreen(
                 }
             }
         }
+        // Hints are a consumable item bought with gems; this works even when paid packs cannot load.
+        SectionTitle(stringResource(R.string.hints_store_title))
+        Text(
+            text = stringResource(R.string.hints_store_balance, economy.hints),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        HintOfferButtons(economy, onBuyHints)
     }
 }
 

@@ -31,7 +31,7 @@ import kotlinx.coroutines.Dispatchers
         EconomyEventEntity::class,
         CatalogLevelProgressEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 internal abstract class LogicaDatabase : RoomDatabase() {
@@ -66,6 +66,7 @@ internal abstract class LogicaDatabase : RoomDatabase() {
                     MIGRATION_5_6,
                     MIGRATION_6_7,
                     MIGRATION_7_8,
+                    MIGRATION_8_9,
                 ).build()
         }
 
@@ -292,6 +293,21 @@ internal abstract class LogicaDatabase : RoomDatabase() {
             object : Migration(7, 8) {
                 override suspend fun migrate(connection: SQLiteConnection) {
                     connection.execute("DROP TABLE IF EXISTS `game_sessions`")
+                }
+            }
+
+        /**
+         * Makes hints a consumable wallet item: every existing player receives the starting stock,
+         * and the ledger gains a hint delta that is zero for all historical events.
+         */
+        internal val MIGRATION_8_9 =
+            object : Migration(8, 9) {
+                override suspend fun migrate(connection: SQLiteConnection) {
+                    connection.execute(
+                        "ALTER TABLE `player_economy` ADD COLUMN `hints` INTEGER NOT NULL " +
+                            "DEFAULT ${EconomyRules.STARTING_HINTS}",
+                    )
+                    connection.execute("ALTER TABLE `economy_events` ADD COLUMN `hint_delta` INTEGER NOT NULL DEFAULT 0")
                 }
             }
 

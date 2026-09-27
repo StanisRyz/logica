@@ -34,6 +34,7 @@ import com.stanisryz.logica.sudoku.SudokuGameUiState
 import com.stanisryz.logica.sudoku.SudokuGameViewModel
 import com.stanisryz.logica.sudoku.SudokuGameViewModelFactory
 import com.stanisryz.logica.ui.components.GameplayExitGuard
+import com.stanisryz.logica.ui.components.HintsExhaustedDialog
 import com.stanisryz.logica.ui.components.LeaveLevelGuard
 import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.components.PuzzleTerminalDialog
@@ -93,6 +94,13 @@ internal fun SudokuGameRoute(
         onGameHub = { onTerminalAction(onGameHub) },
         modifier = modifier,
     )
+    if ((uiState as? SudokuGameUiState.Ready)?.hintsExhausted == true) {
+        HintsExhaustedDialog(
+            economy = economy,
+            onBuy = gameViewModel::buyHints,
+            onDismiss = gameViewModel::dismissHintsExhausted,
+        )
+    }
 }
 
 @Composable
@@ -230,6 +238,7 @@ private fun SudokuReadyState(
         onUndo = onUndo,
         onHint = onHint,
         modifier = modifier,
+        hintCount = economy.hints,
         hostStatusContent = {
             ZeroLivesCard(economy, onRestoreLife)
         },

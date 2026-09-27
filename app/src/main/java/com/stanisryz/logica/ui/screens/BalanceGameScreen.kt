@@ -33,6 +33,7 @@ import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.ui.balance.BalanceGameContent
 import com.stanisryz.logica.ui.components.GameplayExitGuard
+import com.stanisryz.logica.ui.components.HintsExhaustedDialog
 import com.stanisryz.logica.ui.components.LeaveLevelGuard
 import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.components.PuzzleTerminalDialog
@@ -83,6 +84,13 @@ internal fun BalanceGameRoute(
         launch is GameAttemptLaunch.Daily,
         modifier,
     )
+    if ((uiState as? BalanceGameUiState.Ready)?.hintsExhausted == true) {
+        HintsExhaustedDialog(
+            economy = economy,
+            onBuy = gameViewModel::buyHints,
+            onDismiss = gameViewModel::dismissHintsExhausted,
+        )
+    }
 }
 
 @Composable
@@ -211,6 +219,7 @@ private fun ReadyState(
         onTogglePencil = onTogglePencil,
         onHint = onHint,
         modifier = modifier,
+        hintCount = economy.hints,
         hostStatusContent = {
             // The board stays visible at zero lives; Android economy policy only disables actions.
             ZeroLivesCard(economy, onRestoreLife)

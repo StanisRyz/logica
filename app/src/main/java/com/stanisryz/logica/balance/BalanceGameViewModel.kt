@@ -8,6 +8,8 @@ import com.stanisryz.logica.catalog.GameAttempt
 import com.stanisryz.logica.catalog.GameAttemptFactory
 import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.economy.GameplayHints
+import com.stanisryz.logica.economy.HintOffer
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.balance.BalanceCell
 import com.stanisryz.logica.puzzle.core.balance.BalanceCellStatus
@@ -43,6 +45,8 @@ internal sealed interface BalanceGameUiState {
         val selectedValue: BalanceCell = BalanceCell.ONE,
         val isPencilMode: Boolean = false,
         val isHintLoading: Boolean = false,
+        /** A hint was requested with an empty hint stock; the screen offers to restock. */
+        val hintsExhausted: Boolean = false,
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
     ) : BalanceGameUiState {
         /** Whether leaving now would throw away something the player actually did. */
@@ -78,6 +82,7 @@ internal class BalanceGameViewModel(
     economyRepository: EconomyRepository,
     private val generator: BalanceGeneratorV1 = BalanceGeneratorV1(),
     private val workDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val hints: GameplayHints = GameplayHints(economyRepository),
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow<BalanceGameUiState>(BalanceGameUiState.Loading)
     val uiState: StateFlow<BalanceGameUiState> = mutableUiState.asStateFlow()
@@ -166,6 +171,10 @@ internal class BalanceGameViewModel(
         if (hintJob?.isActive == true) return
         val engine = gameEngine ?: return
         val ready = mutableUiState.value as? BalanceGameUiState.Ready ?: return
+        if (economy.value.hints <= 0) {
+            mutableUiState.value = ready.copy(hintsExhausted = true)
+            return
+        }
         val requestedGame = ready.game
         mutableUiState.value = ready.copy(isHintLoading = true)
 
@@ -182,11 +191,30 @@ internal class BalanceGameViewModel(
                         requestedGame
                     }
 
+                // A produced hint costs one hint from the consumable stock before it is shown.
+                val paid = hintedGame == requestedGame || hints.spend()
                 val current = mutableUiState.value
                 if (current is BalanceGameUiState.Ready && current.game == requestedGame) {
-                    mutableUiState.value = current.copy(game = hintedGame, isHintLoading = false)
+                    mutableUiState.value =
+                        if (paid) {
+                            current.copy(game = hintedGame, isHintLoading = false)
+                        } else {
+                            current.copy(isHintLoading = false, hintsExhausted = true)
+                        }
                 }
             }
+    }
+
+    fun dismissHintsExhausted() {
+        val ready = mutableUiState.value as? BalanceGameUiState.Ready ?: return
+        mutableUiState.value = ready.copy(hintsExhausted = false)
+    }
+
+    /** Restocks from the exhausted-hints prompt without leaving the attempt. */
+    fun buyHints(offer: HintOffer) {
+        viewModelScope.launch {
+            if (hints.buy(offer)) dismissHintsExhausted()
+        }
     }
 
     fun retryCompletion() {

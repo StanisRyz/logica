@@ -23,4 +23,6 @@ internal data class EconomyEventEntity(
     val lifeDelta: Int,
     @ColumnInfo(name = "created_at_epoch_millis")
     val createdAtEpochMillis: Long,
+    @ColumnInfo(name = "hint_delta", defaultValue = "0")
+    val hintDelta: Int = 0,
 )

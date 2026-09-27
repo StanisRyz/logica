@@ -13,6 +13,12 @@ internal enum class EconomyEventType {
 
     /** Persisted legacy name for one confirmed store gem purchase, credited once. */
     RUSTORE_GEM_PURCHASE,
+
+    /** One hint taken from the stock by a gameplay hint request. */
+    HINT_USED,
+
+    /** Hints bought for gems through a [HintOffer]. */
+    GEM_HINT_PURCHASE,
 }
 
 /**
@@ -26,6 +32,7 @@ internal data class EconomyEvent(
     val sourceId: String?,
     val gemDelta: Int,
     val lifeDelta: Int,
+    val hintDelta: Int = 0,
 ) {
     init {
         require(eventId.isNotBlank()) { "Economy event ID must not be blank." }
@@ -49,6 +56,11 @@ internal data class EconomyEvent(
          * callbacks share a key while different providers cannot collide.
          */
         fun purchaseEventId(transactionId: String): String = transactionId
+
+        /** One tap on Hint gets one action ID, so a repeated request cannot spend twice. */
+        fun hintUseEventId(actionId: String): String = "hint:$actionId"
+
+        fun hintPurchaseEventId(actionId: String): String = "hint_purchase:$actionId"
     }
 }
 
@@ -116,6 +128,25 @@ internal fun PlayerEconomy.purchasedGems(
         sourceId = transactionId,
     )
 
+internal fun PlayerEconomy.hintUsed(actionId: String): EconomyEffect =
+    effect(
+        updated = withHintSpent(),
+        eventId = EconomyEvent.hintUseEventId(actionId),
+        type = EconomyEventType.HINT_USED,
+        sourceId = actionId,
+    )
+
+internal fun PlayerEconomy.gemHintPurchase(
+    actionId: String,
+    offer: HintOffer,
+): EconomyEffect =
+    effect(
+        updated = withGemsSpent(offer.gemCost).withHintsGranted(offer.hints),
+        eventId = EconomyEvent.hintPurchaseEventId(actionId),
+        type = EconomyEventType.GEM_HINT_PURCHASE,
+        sourceId = actionId,
+    )
+
 private fun PlayerEconomy.effect(
     updated: PlayerEconomy,
     eventId: String,
@@ -131,5 +162,6 @@ private fun PlayerEconomy.effect(
                 sourceId = sourceId,
                 gemDelta = updated.gems - gems,
                 lifeDelta = updated.lives - lives,
+                hintDelta = updated.hints - hints,
             ),
     )

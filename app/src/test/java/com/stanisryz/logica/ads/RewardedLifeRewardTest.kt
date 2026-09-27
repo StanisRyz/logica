@@ -1,11 +1,14 @@
 package com.stanisryz.logica.ads
 
 import com.stanisryz.logica.economy.EconomyGemPurchase
+import com.stanisryz.logica.economy.EconomyHintPurchase
+import com.stanisryz.logica.economy.EconomyHintUse
 import com.stanisryz.logica.economy.EconomyRefill
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.EconomyRewardedLife
 import com.stanisryz.logica.economy.EconomyRules
 import com.stanisryz.logica.economy.FakeEconomyDao
+import com.stanisryz.logica.economy.HintOffer
 import com.stanisryz.logica.economy.PlayerEconomy
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -98,6 +101,13 @@ private class FakeEconomyRepository(
     override suspend fun refresh(): PlayerEconomy = dao.refresh(NOW)
 
     override suspend fun refillLifeWithGems(actionId: String): EconomyRefill = dao.refillLifeWithGems(actionId, NOW)
+
+    override suspend fun consumeHint(actionId: String): EconomyHintUse = dao.consumeHint(actionId, NOW)
+
+    override suspend fun buyHintsWithGems(
+        actionId: String,
+        offer: HintOffer,
+    ): EconomyHintPurchase = dao.buyHintsWithGems(actionId, offer, NOW)
 
     override suspend fun grantRewardedLife(actionId: String): EconomyRewardedLife {
         if (failingGrants > 0) {

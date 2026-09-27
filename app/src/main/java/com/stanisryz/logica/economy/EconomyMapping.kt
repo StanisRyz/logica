@@ -17,6 +17,7 @@ internal fun PlayerEconomyEntity?.toPlayerEconomy(nowEpochMillis: Long): PlayerE
             } else {
                 nextLifeAtEpochMillis ?: (nowEpochMillis + EconomyRules.LIFE_REGENERATION_INTERVAL_MILLIS)
             },
+        hints = hints.coerceAtLeast(0),
     )
 }
 
@@ -26,6 +27,7 @@ internal fun PlayerEconomy.toEntity(updatedAtEpochMillis: Long): PlayerEconomyEn
         lives = lives,
         nextLifeAtEpochMillis = nextLifeAtEpochMillis,
         updatedAtEpochMillis = updatedAtEpochMillis,
+        hints = hints,
     )
 
 internal fun EconomyEvent.toEntity(createdAtEpochMillis: Long): EconomyEventEntity =
@@ -36,4 +38,5 @@ internal fun EconomyEvent.toEntity(createdAtEpochMillis: Long): EconomyEventEnti
         gemDelta = gemDelta,
         lifeDelta = lifeDelta,
         createdAtEpochMillis = createdAtEpochMillis,
+        hintDelta = hintDelta,
     )

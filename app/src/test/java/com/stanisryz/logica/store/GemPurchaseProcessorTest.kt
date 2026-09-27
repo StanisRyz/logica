@@ -1,11 +1,14 @@
 package com.stanisryz.logica.store
 
 import com.stanisryz.logica.economy.EconomyGemPurchase
+import com.stanisryz.logica.economy.EconomyHintPurchase
+import com.stanisryz.logica.economy.EconomyHintUse
 import com.stanisryz.logica.economy.EconomyRefill
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.EconomyRewardedLife
 import com.stanisryz.logica.economy.FakeEconomyDao
 import com.stanisryz.logica.economy.GemPack
+import com.stanisryz.logica.economy.HintOffer
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.platform.PlatformProduct
 import com.stanisryz.logica.platform.PlatformPurchase
@@ -142,6 +145,13 @@ private class FakeEconomyRepository(
     override suspend fun refresh(): PlayerEconomy = dao.refresh(NOW)
 
     override suspend fun refillLifeWithGems(actionId: String): EconomyRefill = dao.refillLifeWithGems(actionId, NOW)
+
+    override suspend fun consumeHint(actionId: String): EconomyHintUse = dao.consumeHint(actionId, NOW)
+
+    override suspend fun buyHintsWithGems(
+        actionId: String,
+        offer: HintOffer,
+    ): EconomyHintPurchase = dao.buyHintsWithGems(actionId, offer, NOW)
 
     override suspend fun grantRewardedLife(actionId: String): EconomyRewardedLife = dao.grantRewardedLife(actionId, NOW)
 

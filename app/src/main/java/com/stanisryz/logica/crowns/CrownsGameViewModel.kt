@@ -8,6 +8,8 @@ import com.stanisryz.logica.catalog.GameAttempt
 import com.stanisryz.logica.catalog.GameAttemptFactory
 import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.economy.GameplayHints
+import com.stanisryz.logica.economy.HintOffer
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameEngine
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameState
@@ -42,6 +44,8 @@ internal sealed interface CrownsGameUiState {
         val selectedValue: CrownsPlayerCell = CrownsPlayerCell.CROWN,
         val isPencilMode: Boolean = false,
         val isHintLoading: Boolean = false,
+        /** A hint was requested with an empty hint stock; the screen offers to restock. */
+        val hintsExhausted: Boolean = false,
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
     ) : CrownsGameUiState {
         val hasMeaningfulProgress: Boolean
@@ -75,6 +79,7 @@ internal class CrownsGameViewModel(
     economyRepository: EconomyRepository,
     private val generator: CrownsGeneratorV1 = CrownsGeneratorV1(),
     private val workDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val hints: GameplayHints = GameplayHints(economyRepository),
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow<CrownsGameUiState>(CrownsGameUiState.Loading)
     val uiState: StateFlow<CrownsGameUiState> = mutableUiState.asStateFlow()
@@ -160,6 +165,10 @@ internal class CrownsGameViewModel(
         if (hintJob?.isActive == true) return
         val engine = gameEngine ?: return
         val ready = mutableUiState.value as? CrownsGameUiState.Ready ?: return
+        if (economy.value.hints <= 0) {
+            mutableUiState.value = ready.copy(hintsExhausted = true)
+            return
+        }
         val requestedGame = ready.game
         mutableUiState.value = ready.copy(isHintLoading = true)
 
@@ -173,11 +182,30 @@ internal class CrownsGameViewModel(
                     } catch (_: Exception) {
                         requestedGame
                     }
+                // A produced hint costs one hint from the consumable stock before it is shown.
+                val paid = hintedGame == requestedGame || hints.spend()
                 val current = mutableUiState.value
                 if (current is CrownsGameUiState.Ready && current.game == requestedGame) {
-                    mutableUiState.value = current.copy(game = hintedGame, isHintLoading = false)
+                    mutableUiState.value =
+                        if (paid) {
+                            current.copy(game = hintedGame, isHintLoading = false)
+                        } else {
+                            current.copy(isHintLoading = false, hintsExhausted = true)
+                        }
                 }
             }
+    }
+
+    fun dismissHintsExhausted() {
+        val ready = mutableUiState.value as? CrownsGameUiState.Ready ?: return
+        mutableUiState.value = ready.copy(hintsExhausted = false)
+    }
+
+    /** Restocks from the exhausted-hints prompt without leaving the attempt. */
+    fun buyHints(offer: HintOffer) {
+        viewModelScope.launch {
+            if (hints.buy(offer)) dismissHintsExhausted()
+        }
     }
 
     fun retryCompletion() {

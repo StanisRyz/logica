@@ -14,9 +14,12 @@ internal data class PlayerEconomy(
     val gems: Int = EconomyRules.STARTING_GEMS,
     val lives: Int = EconomyRules.STARTING_LIVES,
     val nextLifeAtEpochMillis: Long? = null,
+    /** Consumable hint stock shared by every game with hints, in Catalog and Daily alike. */
+    val hints: Int = EconomyRules.STARTING_HINTS,
 ) {
     init {
         require(gems >= 0) { "Gems must not be negative." }
+        require(hints >= 0) { "Hints must not be negative." }
         require(lives in 0..EconomyRules.MAX_LIVES) { "Lives must be within 0..${EconomyRules.MAX_LIVES}." }
         require((lives < EconomyRules.MAX_LIVES) == (nextLifeAtEpochMillis != null)) {
             "A regeneration anchor exists exactly while a life is missing."
@@ -80,6 +83,17 @@ internal data class PlayerEconomy(
         }
     }
 
+    /** One hint taken from the stock; callers check [hints] first inside the same transaction. */
+    fun withHintSpent(): PlayerEconomy {
+        require(hints > 0) { "The wallet holds no hints." }
+        return copy(hints = hints - 1)
+    }
+
+    fun withHintsGranted(amount: Int): PlayerEconomy {
+        require(amount >= 0) { "A hint grant must not be negative." }
+        return copy(hints = hints + amount)
+    }
+
     fun withGemsGranted(amount: Int): PlayerEconomy {
         require(amount >= 0) { "A gem reward must not be negative." }
         return copy(gems = gems + amount)
@@ -95,6 +109,6 @@ internal data class PlayerEconomy(
          * Fail-closed state used only before Room emits the durable wallet. Zero lives prevents a
          * game screen from accepting input during the first frame when the saved wallet may be empty.
          */
-        val LOADING = PlayerEconomy(lives = 0, nextLifeAtEpochMillis = Long.MAX_VALUE)
+        val LOADING = PlayerEconomy(lives = 0, nextLifeAtEpochMillis = Long.MAX_VALUE, hints = 0)
     }
 }

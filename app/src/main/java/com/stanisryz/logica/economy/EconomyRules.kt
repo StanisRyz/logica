@@ -32,6 +32,14 @@ internal object EconomyRules {
 
     const val LIFE_REFILL_GEM_COST = 10
 
+    /** Hints are a consumable inventory item; a brand-new or migrated player starts with this many. */
+    const val STARTING_HINTS = 3
+
+    // Hint prices are provisional placeholders until the pricing pass; only the logic is final.
+    const val HINT_SINGLE_GEM_COST = 4
+    const val HINT_PACK_SIZE = 3
+    const val HINT_PACK_GEM_COST = 10
+
     /** One missing life comes back after this much elapsed real time. */
     val LIFE_REGENERATION_INTERVAL: Duration = Duration.ofMinutes(30)
 

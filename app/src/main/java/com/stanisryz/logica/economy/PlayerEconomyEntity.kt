@@ -16,6 +16,8 @@ internal data class PlayerEconomyEntity(
     val nextLifeAtEpochMillis: Long?,
     @ColumnInfo(name = "updated_at_epoch_millis")
     val updatedAtEpochMillis: Long,
+    @ColumnInfo(defaultValue = "${EconomyRules.STARTING_HINTS}")
+    val hints: Int = EconomyRules.STARTING_HINTS,
 ) {
     companion object {
         const val SINGLETON_ID = 1

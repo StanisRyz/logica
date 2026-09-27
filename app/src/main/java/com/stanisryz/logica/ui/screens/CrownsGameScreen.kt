@@ -32,6 +32,7 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleMistakes
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.ui.components.GameplayExitGuard
+import com.stanisryz.logica.ui.components.HintsExhaustedDialog
 import com.stanisryz.logica.ui.components.LeaveLevelGuard
 import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.components.PuzzleTerminalDialog
@@ -81,6 +82,13 @@ internal fun CrownsGameRoute(
         isDaily = launch is GameAttemptLaunch.Daily,
         modifier = modifier,
     )
+    if ((uiState as? CrownsGameUiState.Ready)?.hintsExhausted == true) {
+        HintsExhaustedDialog(
+            economy = economy,
+            onBuy = gameViewModel::buyHints,
+            onDismiss = gameViewModel::dismissHintsExhausted,
+        )
+    }
 }
 
 @Composable
@@ -214,6 +222,7 @@ private fun CrownsReadyState(
         onTogglePencil = onTogglePencil,
         onHint = onHint,
         modifier = modifier,
+        hintCount = economy.hints,
         hostStatusContent = {
             // The saved puzzle stays visible and intact at zero lives; only the actions stop working.
             ZeroLivesCard(economy, onRestoreLife)

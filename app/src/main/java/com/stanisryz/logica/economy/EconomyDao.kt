@@ -77,6 +77,45 @@ internal sealed interface EconomyGemPurchase {
     ) : EconomyGemPurchase
 }
 
+/** The outcome of one gameplay hint request against the consumable hint stock. */
+internal sealed interface EconomyHintUse {
+    val economy: PlayerEconomy
+
+    /** One hint left the stock for this [actionId]; the caller may now apply the hint. */
+    data class Used(
+        override val economy: PlayerEconomy,
+    ) : EconomyHintUse
+
+    /** The same action already spent its hint, so this repeat spent nothing more. */
+    data class AlreadyUsed(
+        override val economy: PlayerEconomy,
+    ) : EconomyHintUse
+
+    /** The stock is empty: nothing was spent and the hint must not be applied. */
+    data class NoHints(
+        override val economy: PlayerEconomy,
+    ) : EconomyHintUse
+}
+
+/** The outcome of buying hints for gems. */
+internal sealed interface EconomyHintPurchase {
+    val economy: PlayerEconomy
+
+    data class Applied(
+        override val economy: PlayerEconomy,
+        val offer: HintOffer,
+    ) : EconomyHintPurchase
+
+    data class NotEnoughGems(
+        override val economy: PlayerEconomy,
+    ) : EconomyHintPurchase
+
+    /** The same purchase action was already applied, so repeating it is a safe no-op. */
+    data class AlreadyApplied(
+        override val economy: PlayerEconomy,
+    ) : EconomyHintPurchase
+}
+
 @Dao
 internal interface EconomyDao {
     // The wallet is a singleton row; `PlayerEconomyEntity.SINGLETON_ID` is that ID.
@@ -155,6 +194,45 @@ internal interface EconomyDao {
         }
         upsert(effect.economy.toEntity(nowEpochMillis))
         return EconomyRewardedLife.Granted(effect.economy, lifeGranted = effect.event.lifeDelta > 0)
+    }
+
+    /**
+     * Spends one hint for one gameplay hint request. The stock is re-read here, and the ledger row
+     * keyed by [actionId] makes a repeated request for the same tap spend nothing more.
+     */
+    @Transaction
+    suspend fun consumeHint(
+        actionId: String,
+        nowEpochMillis: Long,
+    ): EconomyHintUse {
+        val current = find().toPlayerEconomy(nowEpochMillis).regenerated(nowEpochMillis)
+        if (hasEvent(EconomyEvent.hintUseEventId(actionId))) return EconomyHintUse.AlreadyUsed(current)
+        if (current.hints <= 0) return EconomyHintUse.NoHints(current)
+        val effect = current.hintUsed(actionId)
+        if (insertEvent(effect.event.toEntity(nowEpochMillis)) == -1L) return EconomyHintUse.AlreadyUsed(current)
+        upsert(effect.economy.toEntity(nowEpochMillis))
+        return EconomyHintUse.Used(effect.economy)
+    }
+
+    /**
+     * Buys [offer] hints for its gem price. The balance is re-read inside the transaction, and the
+     * ledger row keyed by [actionId] turns a repeated tap into a no-op instead of a second purchase.
+     */
+    @Transaction
+    suspend fun buyHintsWithGems(
+        actionId: String,
+        offer: HintOffer,
+        nowEpochMillis: Long,
+    ): EconomyHintPurchase {
+        val current = find().toPlayerEconomy(nowEpochMillis).regenerated(nowEpochMillis)
+        if (hasEvent(EconomyEvent.hintPurchaseEventId(actionId))) return EconomyHintPurchase.AlreadyApplied(current)
+        if (current.gems < offer.gemCost) return EconomyHintPurchase.NotEnoughGems(current)
+        val effect = current.gemHintPurchase(actionId, offer)
+        if (insertEvent(effect.event.toEntity(nowEpochMillis)) == -1L) {
+            return EconomyHintPurchase.AlreadyApplied(current)
+        }
+        upsert(effect.economy.toEntity(nowEpochMillis))
+        return EconomyHintPurchase.Applied(effect.economy, offer)
     }
 
     /**

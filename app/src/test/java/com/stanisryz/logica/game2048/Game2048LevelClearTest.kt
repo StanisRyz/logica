@@ -4,9 +4,12 @@ import com.stanisryz.logica.catalog.CatalogLevelRepository
 import com.stanisryz.logica.catalog.GameAttemptFactory
 import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.economy.EconomyGemPurchase
+import com.stanisryz.logica.economy.EconomyHintPurchase
+import com.stanisryz.logica.economy.EconomyHintUse
 import com.stanisryz.logica.economy.EconomyRefill
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.EconomyRewardedLife
+import com.stanisryz.logica.economy.HintOffer
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelDefinition
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
@@ -245,6 +248,13 @@ class Game2048LevelClearTest {
         override suspend fun refresh(): PlayerEconomy = PlayerEconomy()
 
         override suspend fun refillLifeWithGems(actionId: String): EconomyRefill = error("Unused")
+
+        override suspend fun consumeHint(actionId: String): EconomyHintUse = error("Unused")
+
+        override suspend fun buyHintsWithGems(
+            actionId: String,
+            offer: HintOffer,
+        ): EconomyHintPurchase = error("Unused")
 
         override suspend fun grantRewardedLife(actionId: String): EconomyRewardedLife = error("Unused")
 

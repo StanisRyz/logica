@@ -32,6 +32,14 @@ internal interface EconomyRepository {
         purchaseId: String,
         productId: String,
     ): EconomyGemPurchase
+
+    /** Spends one hint for the hint request identified by [actionId]; a repeat spends nothing. */
+    suspend fun consumeHint(actionId: String): EconomyHintUse
+
+    suspend fun buyHintsWithGems(
+        actionId: String,
+        offer: HintOffer,
+    ): EconomyHintPurchase
 }
 
 internal class RoomEconomyRepository(
@@ -54,4 +62,11 @@ internal class RoomEconomyRepository(
         purchaseId: String,
         productId: String,
     ): EconomyGemPurchase = dao.grantPurchasedGems(purchaseId, productId, clock.nowEpochMillis())
+
+    override suspend fun consumeHint(actionId: String): EconomyHintUse = dao.consumeHint(actionId, clock.nowEpochMillis())
+
+    override suspend fun buyHintsWithGems(
+        actionId: String,
+        offer: HintOffer,
+    ): EconomyHintPurchase = dao.buyHintsWithGems(actionId, offer, clock.nowEpochMillis())
 }

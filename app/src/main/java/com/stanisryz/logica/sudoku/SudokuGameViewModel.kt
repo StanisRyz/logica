@@ -9,6 +9,8 @@ import com.stanisryz.logica.catalog.GameAttempt
 import com.stanisryz.logica.catalog.GameAttemptFactory
 import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.economy.GameplayHints
+import com.stanisryz.logica.economy.HintOffer
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.sudoku.BinarySudokuDataset
@@ -47,6 +49,8 @@ internal sealed interface SudokuGameUiState {
         val isPencilMode: Boolean = false,
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
         val canUndo: Boolean = false,
+        /** A hint was requested with an empty hint stock; the screen offers to restock. */
+        val hintsExhausted: Boolean = false,
     ) : SudokuGameUiState {
         val hasMeaningfulProgress: Boolean
             get() =
@@ -85,6 +89,7 @@ internal class SudokuGameViewModel(
     economyRepository: EconomyRepository,
     private val provider: SudokuCatalogProvider,
     private val workDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val hints: GameplayHints = GameplayHints(economyRepository),
 ) : ViewModel() {
     private data class UndoFrame(
         val game: SudokuGameState,
@@ -100,6 +105,7 @@ internal class SudokuGameViewModel(
     private var attempt: GameAttempt? = null
     private var completionJob: Job? = null
     private val undoHistory = mutableListOf<UndoFrame>()
+    private var hintJob: Job? = null
 
     init {
         load()
@@ -177,15 +183,44 @@ internal class SudokuGameViewModel(
 
     fun requestHint() {
         if (!economy.value.isGameplayAllowed) return
+        if (hintJob?.isActive == true) return
         val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
         val updated = engine?.requestHint(ready.game) ?: return
-        updateGame(
-            ready,
-            updated,
-            updated.currentHint?.position ?: ready.selectedCell,
-            recordUndo = false,
-            clearUndo = true,
-        )
+        if (updated == ready.game) return
+        if (economy.value.hints <= 0) {
+            mutableUiState.value = ready.copy(hintsExhausted = true)
+            return
+        }
+        hintJob =
+            viewModelScope.launch {
+                // A hint costs one hint from the consumable stock before it is shown.
+                val paid = hints.spend()
+                val current = mutableUiState.value as? SudokuGameUiState.Ready ?: return@launch
+                if (current.game != ready.game) return@launch
+                if (!paid) {
+                    mutableUiState.value = current.copy(hintsExhausted = true)
+                    return@launch
+                }
+                updateGame(
+                    current,
+                    updated,
+                    updated.currentHint?.position ?: current.selectedCell,
+                    recordUndo = false,
+                    clearUndo = true,
+                )
+            }
+    }
+
+    fun dismissHintsExhausted() {
+        val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
+        mutableUiState.value = ready.copy(hintsExhausted = false)
+    }
+
+    /** Restocks from the exhausted-hints prompt without leaving the attempt. */
+    fun buyHints(offer: HintOffer) {
+        viewModelScope.launch {
+            if (hints.buy(offer)) dismissHintsExhausted()
+        }
     }
 
     /** A new attempt reuses the selected record and takes a new completion identity. */
