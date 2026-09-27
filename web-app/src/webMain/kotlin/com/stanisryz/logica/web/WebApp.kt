@@ -1,6 +1,7 @@
 package com.stanisryz.logica.web
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -34,7 +35,6 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -49,6 +49,7 @@ import com.stanisryz.logica.platform.PlatformLifecycleState
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
+import com.stanisryz.logica.puzzle.core.daily.DailyDate
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Direction
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Status
 import com.stanisryz.logica.puzzle.core.model.Difficulty
@@ -83,7 +84,9 @@ import com.stanisryz.logica.ui.profile.ProfileUiState
 import com.stanisryz.logica.ui.sudoku.SudokuGameContent
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.ui.theme.LogicaTheme
+import com.stanisryz.logica.ui.tutorial.FirstPlayTutorialDialog
 import com.stanisryz.logica.ui.word.WordGameContent
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import org.jetbrains.compose.resources.stringResource
 
@@ -167,7 +170,8 @@ internal fun WebApp(
 ) {
     val lifecycleState by lifecycle.state.collectAsState()
 
-    LogicaTheme(darkTheme = false) {
+    // Like Android's default, the Web follows the device's light/dark preference.
+    LogicaTheme(darkTheme = isSystemInDarkTheme()) {
         LaunchedEffect(controller) {
             withFrameNanos { }
             controller.onComposeRootRendered()
@@ -314,11 +318,16 @@ private fun ReadyContent(
         }
     }
 
-    // A passed midnight must re-render the new day's Daily definition; gameplay attempts keep
-    // their own captured challenge date, so this only affects hub presentation.
-    var dateRefreshKey by remember { mutableIntStateOf(0) }
+    // A passed midnight must re-render the new day's Daily definition, both while the page stays
+    // open (one timer to the next local midnight, no polling) and on resume after the page slept.
+    // Gameplay attempts keep their own captured challenge date, so this only affects presentation.
+    var dailyDate by remember { mutableStateOf(BrowserLocalWebDailyDateProvider.currentDate()) }
     LaunchedEffect(lifecycleState) {
-        if (lifecycleState == PlatformLifecycleState.ACTIVE) dateRefreshKey++
+        if (lifecycleState != PlatformLifecycleState.ACTIVE) return@LaunchedEffect
+        while (true) {
+            dailyDate = BrowserLocalWebDailyDateProvider.currentDate()
+            delay(millisUntilNextLocalMidnight() + MIDNIGHT_ROLLOVER_SLACK_MS)
+        }
     }
 
     LaunchedEffect(mode) {
@@ -448,7 +457,7 @@ private fun ReadyContent(
                             WebDailyHubRoute(
                                 playerSession = playerSession,
                                 coordinator = dailyCoordinator,
-                                dateRefreshKey = dateRefreshKey,
+                                currentDate = dailyDate,
                                 onStartDaily = { puzzleType ->
                                     when (val started = dailyCoordinator.start(puzzleType)) {
                                         is WebDailyStartResult.Started -> {
@@ -492,6 +501,7 @@ private fun ReadyContent(
                     WebProfileRoute(
                         playerSession = playerSession,
                         binding = playerSession.statisticsBinding.collectAsState().value,
+                        currentDate = dailyDate,
                         onRetry = playerSession::retryCurrentContext,
                     )
                 }
@@ -619,7 +629,7 @@ private fun PrimaryDestinationShell(
 private fun WebDailyHubRoute(
     playerSession: WebPlayerSessionController,
     coordinator: WebDailyGameplayCoordinator,
-    dateRefreshKey: Int,
+    currentDate: DailyDate,
     onStartDaily: (PuzzleType) -> Unit,
 ) {
     val binding by playerSession.dailyBinding.collectAsState()
@@ -640,9 +650,6 @@ private fun WebDailyHubRoute(
         is WebDailyBinding.Ready ->
             key(current.token) {
                 val snapshot by current.repository.snapshot.collectAsState()
-                // Re-read the calendar date only on resume ticks, so a passed midnight re-renders
-                // the new day's definition without polling while the hub simply stays visible.
-                val currentDate = remember(dateRefreshKey) { BrowserLocalWebDailyDateProvider.currentDate() }
                 val hubState =
                     if (coordinator.lastStartWasRejected) {
                         DailyHubUiState.Error(stringResource(Res.string.daily_start_error))
@@ -701,6 +708,7 @@ private fun WebDailyHubRoute(
 private fun WebProfileRoute(
     playerSession: WebPlayerSessionController,
     binding: WebStatisticsBinding,
+    currentDate: DailyDate,
     onRetry: () -> Unit,
 ) {
     when (binding) {
@@ -723,6 +731,7 @@ private fun WebProfileRoute(
                     webDailyProfileMetricsOrNull(
                         dailyBinding = playerSession.dailyBinding.collectAsState().value,
                         statisticsToken = binding.token,
+                        currentDate = currentDate,
                     )
                 val economyMetrics =
                     webEconomyMetricsOrNull(
@@ -747,11 +756,12 @@ private fun WebProfileRoute(
 private fun webDailyProfileMetricsOrNull(
     dailyBinding: WebDailyBinding,
     statisticsToken: WebPlayerContextToken,
+    currentDate: DailyDate,
 ): DailyProfileMetrics? =
     when {
         dailyBinding is WebDailyBinding.Ready && dailyBinding.token == statisticsToken -> {
             val snapshot by dailyBinding.repository.snapshot.collectAsState()
-            snapshot.dailyProfileMetrics(BrowserLocalWebDailyDateProvider.currentDate())
+            snapshot.dailyProfileMetrics(currentDate)
         }
         else -> null
     }
@@ -1041,7 +1051,29 @@ private fun DifficultyContent(
     onBack: () -> Unit,
     onStart: (Difficulty) -> Unit,
 ) {
-    val openTutorial = LocalOpenTutorial.current
+    val showTutorial = LocalOpenTutorial.current
+    val openTutorial = {
+        WebTutorialOffers.markOffered(puzzleType)
+        showTutorial(puzzleType)
+    }
+    val lives = LocalWebLives.current
+    // The first difficulty tap in a game offers its tutorial once; either answer settles it.
+    var offeredDifficulty by remember { mutableStateOf<Difficulty?>(null) }
+    offeredDifficulty?.let { difficulty ->
+        FirstPlayTutorialDialog(
+            puzzleType = puzzleType,
+            onOpenTutorial = {
+                offeredDifficulty = null
+                openTutorial()
+            },
+            onPlay = {
+                offeredDifficulty = null
+                WebTutorialOffers.markOffered(puzzleType)
+                lives.guard { onStart(difficulty) }
+            },
+            onDismiss = { offeredDifficulty = null },
+        )
+    }
     BoxWithConstraints(
         modifier =
             Modifier
@@ -1051,7 +1083,6 @@ private fun DifficultyContent(
                     vertical = LogicaSpacing.screenVertical,
                 ),
     ) {
-        val lives = LocalWebLives.current
         val livesState = lives.state
         val livesHeight = if (livesState != null) LIVES_STATUS_HEIGHT + LogicaSpacing.section else 0.dp
         val cardHeight =
@@ -1078,13 +1109,19 @@ private fun DifficultyContent(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                OutlinedButton(onClick = { openTutorial(puzzleType) }) { Text(stringResource(Res.string.how_to_play)) }
+                OutlinedButton(onClick = openTutorial) { Text(stringResource(Res.string.how_to_play)) }
             }
             if (livesState != null) {
                 WebLivesStatus(livesState, Modifier.height(LIVES_STATUS_HEIGHT))
             }
             DifficultySelector(
-                onStart = { difficulty -> lives.guard { onStart(difficulty) } },
+                onStart = { difficulty ->
+                    if (WebTutorialOffers.isPending(puzzleType)) {
+                        offeredDifficulty = difficulty
+                    } else {
+                        lives.guard { onStart(difficulty) }
+                    }
+                },
                 enabled = true,
                 cardHeight = cardHeight,
             )

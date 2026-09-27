@@ -371,7 +371,8 @@ private fun tileColors(
     colors: ColorScheme,
 ): Pair<Color, Color> =
     when (value) {
-        2 -> colors.surface to colors.onSurface
+        // Brighter than an empty cell in both themes, so the smallest tile never reads as a hole.
+        2 -> colors.surfaceBright to colors.onSurface
         4 -> colors.secondaryContainer to colors.onSecondaryContainer
         8 -> colors.tertiaryContainer to colors.onTertiaryContainer
         16 -> colors.primaryContainer to colors.onPrimaryContainer

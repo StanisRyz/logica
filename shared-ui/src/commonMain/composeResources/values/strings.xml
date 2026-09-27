@@ -179,6 +179,10 @@
     <string name="tutorial_back">Назад</string>
     <string name="tutorial_next">Дальше</string>
     <string name="how_to_play">Как играть?</string>
+    <string name="tutorial_offer_title">Впервые играете в «%1$s»?</string>
+    <string name="tutorial_offer_body">Короткое обучение за пару минут покажет правила на примере. Позже его всегда можно открыть кнопкой «Как играть?».</string>
+    <string name="tutorial_offer_open">Обучение</string>
+    <string name="tutorial_offer_skip">Играть</string>
     <string name="balance_tutorial_stage_one_title">Не ставьте три одинаковых</string>
     <string name="balance_tutorial_stage_one_body">Сначала выберите внизу чёрную или белую фишку, затем коснитесь клетки. Две белые уже стоят подряд: поставьте фишку, с которой не получится три одинаковых подряд.</string>
     <string name="balance_tutorial_stage_two_title">Соблюдайте баланс</string>

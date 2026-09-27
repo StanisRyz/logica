@@ -91,8 +91,7 @@ fun LogicaApp() {
             onThemeModeChanged = settingsViewModel::setThemeMode,
             onSoundEnabledChanged = settingsViewModel::setSoundEnabled,
             onHapticsEnabledChanged = settingsViewModel::setHapticsEnabled,
-            onCrownsTutorialCompleted = settingsViewModel::setCrownsTutorialCompleted,
-            onWordTutorialCompleted = settingsViewModel::setWordTutorialCompleted,
+            onTutorialSeen = settingsViewModel::markTutorialSeen,
         )
     }
 }

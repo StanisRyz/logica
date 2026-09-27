@@ -16,6 +16,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.DailyGameLaunch
@@ -31,6 +32,9 @@ import com.stanisryz.logica.ui.components.GameHubContent
 import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.daily.DailyHubSection
 import com.stanisryz.logica.ui.theme.LogicaMotion
+import kotlinx.coroutines.delay
+import java.time.Duration
+import java.time.LocalDateTime
 
 /**
  * The Game hub: the Daily challenge on top and the regular catalog below it, in one place.
@@ -79,6 +83,16 @@ internal fun GameHubRoute(
             }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    // A hub that simply stays visible across midnight rolls over to the new day on its own: one
+    // timer to the next local midnight while resumed, no polling. Resumes are covered above.
+    LaunchedEffect(lifecycleOwner, todayViewModel) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                delay(millisUntilNextLocalMidnight() + MIDNIGHT_ROLLOVER_SLACK_MS)
+                todayViewModel.refresh()
+            }
+        }
     }
 
     GameHubScreen(
@@ -134,3 +148,11 @@ private fun GameHubScreen(
         },
     )
 }
+
+private fun millisUntilNextLocalMidnight(): Long {
+    val now = LocalDateTime.now()
+    return Duration.between(now, now.toLocalDate().plusDays(1).atStartOfDay()).toMillis().coerceAtLeast(0L)
+}
+
+/** A short margin past midnight so the timer never wakes a moment before the date has changed. */
+private const val MIDNIGHT_ROLLOVER_SLACK_MS = 1_000L

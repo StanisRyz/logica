@@ -10,6 +10,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +29,41 @@ import org.jetbrains.compose.resources.stringResource
 
 /** Opens the shared onboarding for a game; provided by the host around the game routes. */
 internal val LocalOpenTutorial = staticCompositionLocalOf<(PuzzleType) -> Unit> { {} }
+
+/**
+ * Which games already offered their tutorial in this browser. A per-browser convenience only:
+ * it is never Player-scoped, never synced, and unavailable storage merely offers again next visit.
+ */
+internal object WebTutorialOffers {
+    private var offered by mutableStateOf(readOffered())
+
+    fun isPending(puzzleType: PuzzleType): Boolean = puzzleType.name !in offered
+
+    fun markOffered(puzzleType: PuzzleType) {
+        if (!isPending(puzzleType)) return
+        offered = offered + puzzleType.name
+        runCatching { tutorialOffersStorageSet(TUTORIAL_OFFERS_KEY, offered.sorted().joinToString(",")) }
+    }
+
+    private fun readOffered(): Set<String> =
+        runCatching { tutorialOffersStorageGet(TUTORIAL_OFFERS_KEY) }
+            .getOrNull()
+            ?.split(',')
+            ?.filter(String::isNotEmpty)
+            ?.toSet()
+            .orEmpty()
+}
+
+private const val TUTORIAL_OFFERS_KEY = "logica_tutorial_offers_v1"
+
+private fun tutorialOffersStorageGet(key: String): String? = js("globalThis.localStorage.getItem(key)")
+
+private fun tutorialOffersStorageSet(
+    key: String,
+    value: String,
+) {
+    js("globalThis.localStorage.setItem(key, value)")
+}
 
 /**
  * Web host for the shared onboarding. Tutorials never touch Catalog progress, Daily, statistics,

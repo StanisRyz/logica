@@ -3,6 +3,7 @@ package com.stanisryz.logica.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -36,33 +37,18 @@ class SettingsViewModel(
         }
     }
 
-    fun setBalanceTutorialCompleted(completed: Boolean) {
+    /** Remembers that a game's tutorial was offered or opened, so it is never offered again. */
+    fun markTutorialSeen(puzzleType: PuzzleType) {
+        if (settings.value.tutorialCompleted(puzzleType)) return
         viewModelScope.launch {
-            repository.setBalanceTutorialCompleted(completed)
-        }
-    }
-
-    fun setCrownsTutorialCompleted(completed: Boolean) {
-        viewModelScope.launch {
-            repository.setCrownsTutorialCompleted(completed)
-        }
-    }
-
-    fun setWordTutorialCompleted(completed: Boolean) {
-        viewModelScope.launch {
-            repository.setWordTutorialCompleted(completed)
-        }
-    }
-
-    fun setSudokuTutorialCompleted(completed: Boolean) {
-        viewModelScope.launch {
-            repository.setSudokuTutorialCompleted(completed)
-        }
-    }
-
-    fun setGame2048TutorialCompleted(completed: Boolean) {
-        viewModelScope.launch {
-            repository.setGame2048TutorialCompleted(completed)
+            when (puzzleType) {
+                PuzzleType.BALANCE -> repository.setBalanceTutorialCompleted(true)
+                PuzzleType.CROWNS -> repository.setCrownsTutorialCompleted(true)
+                PuzzleType.WORD -> repository.setWordTutorialCompleted(true)
+                PuzzleType.SUDOKU -> repository.setSudokuTutorialCompleted(true)
+                PuzzleType.GAME_2048 -> repository.setGame2048TutorialCompleted(true)
+                else -> Unit
+            }
         }
     }
 }

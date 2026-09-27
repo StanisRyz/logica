@@ -1,5 +1,7 @@
 package com.stanisryz.logica.settings
 
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
+
 data class UserSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val soundEnabled: Boolean = true,
@@ -10,3 +12,15 @@ data class UserSettings(
     val sudokuTutorialCompleted: Boolean = false,
     val game2048TutorialCompleted: Boolean = false,
 )
+
+/** Whether this game's tutorial was already completed, opened, or declined once. */
+fun UserSettings.tutorialCompleted(puzzleType: PuzzleType): Boolean =
+    when (puzzleType) {
+        PuzzleType.BALANCE -> balanceTutorialCompleted
+        PuzzleType.CROWNS -> crownsTutorialCompleted
+        PuzzleType.WORD -> wordTutorialCompleted
+        PuzzleType.SUDOKU -> sudokuTutorialCompleted
+        PuzzleType.GAME_2048 -> game2048TutorialCompleted
+        // Games without a shipped tutorial have nothing to offer.
+        else -> true
+    }

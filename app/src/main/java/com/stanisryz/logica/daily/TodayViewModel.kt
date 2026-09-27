@@ -222,6 +222,12 @@ internal class TodayViewModel(
         val entry = content.definition.entryFor(puzzleType) ?: return
         if (content.entries.stateOf(puzzleType) !in setOf(DailyEntryState.AVAILABLE, DailyEntryState.RETRY)) return
         val definition = content.definition
+        // A hub left open across midnight still shows yesterday: reload today instead of starting
+        // (and creating a run for) a day that is already over.
+        if (definition.challengeDate != dateProvider()) {
+            refresh()
+            return
+        }
         val needsRun = content.runStatus == null
         dailyLaunchInFlight = true
         viewModelScope.launch {

@@ -287,6 +287,18 @@ private fun DailyChallengeDefinition.requirePuzzleBit(puzzleType: PuzzleType): I
     return WebDailyPuzzleOrder.bit(puzzleType)
 }
 
+/** Milliseconds until the next browser-local midnight, when the current Daily date changes. */
+internal fun millisUntilNextLocalMidnight(): Long = browserMillisUntilNextLocalMidnight().toLong()
+
+/** A short margin past midnight so the timer never wakes a moment before the date has changed. */
+internal const val MIDNIGHT_ROLLOVER_SLACK_MS = 1_000L
+
+private fun browserMillisUntilNextLocalMidnight(): Double =
+    js(
+        "(() => { const now = new Date(); " +
+            "return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime(); })()",
+    )
+
 private fun browserLocalDateCode(): Int =
     js(
         "(() => { const date = new Date(); " +

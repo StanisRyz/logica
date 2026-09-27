@@ -168,10 +168,11 @@ fun GameCatalogCard(
                 Modifier
                     .fillMaxSize()
                     .background(
+                        // The label scrim follows the theme, so a dark UI never shows a bright band.
                         Brush.horizontalGradient(
-                            0f to CATALOG_LABEL_SCRIM_START,
-                            0.46f to CATALOG_LABEL_SCRIM_MIDDLE,
-                            0.78f to CATALOG_LABEL_SCRIM_END,
+                            0f to colors.surfaceContainerLow.copy(alpha = CATALOG_LABEL_SCRIM_START_ALPHA),
+                            0.46f to colors.surfaceContainerLow.copy(alpha = CATALOG_LABEL_SCRIM_MIDDLE_ALPHA),
+                            0.78f to colors.surfaceContainerLow.copy(alpha = CATALOG_LABEL_SCRIM_END_ALPHA),
                             1f to Color.Transparent,
                         ),
                     ),
@@ -184,14 +185,14 @@ fun GameCatalogCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.headlineSmall,
-                    color = GAME_CATALOG_LABEL_COLOR.copy(alpha = if (enabled) 1f else DISABLED_ALPHA),
+                    color = colors.onSurface.copy(alpha = if (enabled) 1f else DISABLED_ALPHA),
                 )
                 Surface(
                     color =
-                        CATALOG_ACTION_SURFACE.copy(
+                        colors.surfaceContainerLowest.copy(
                             alpha = if (enabled) CATALOG_ACTION_ALPHA else DISABLED_ACTION_ALPHA,
                         ),
-                    contentColor = if (enabled) CATALOG_ACTION_CONTENT else DISABLED_ACTION_CONTENT,
+                    contentColor = if (enabled) colors.primary else colors.onSurfaceVariant,
                     shape = CircleShape,
                 ) {
                     Row(
@@ -241,13 +242,9 @@ fun PuzzleType.catalogTitleResource(): StringResource =
 
 private val GAME_CATALOG_CARD_HEIGHT = 148.dp
 private val GAME_CATALOG_LABEL_PADDING = 24.dp
-private val GAME_CATALOG_LABEL_COLOR = Color(0xFF263B30)
-private val CATALOG_LABEL_SCRIM_START = Color(0xFFF7F0E2).copy(alpha = 0.98f)
-private val CATALOG_LABEL_SCRIM_MIDDLE = Color(0xFFF7F0E2).copy(alpha = 0.86f)
-private val CATALOG_LABEL_SCRIM_END = Color(0xFFF7F0E2).copy(alpha = 0.26f)
-private val CATALOG_ACTION_SURFACE = Color(0xFFFFFCF5)
-private val CATALOG_ACTION_CONTENT = Color(0xFF315B4B)
-private val DISABLED_ACTION_CONTENT = Color(0xFF716D63)
+private const val CATALOG_LABEL_SCRIM_START_ALPHA = 0.98f
+private const val CATALOG_LABEL_SCRIM_MIDDLE_ALPHA = 0.86f
+private const val CATALOG_LABEL_SCRIM_END_ALPHA = 0.26f
 private val CATALOG_ACTION_HORIZONTAL_PADDING = 12.dp
 private val CATALOG_ACTION_VERTICAL_PADDING = 6.dp
 private val CATALOG_ACTION_ICON_GAP = 2.dp

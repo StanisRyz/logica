@@ -223,14 +223,41 @@ class TodayViewModelTest {
             assertEquals(PuzzleType.BALANCE, launch.await().launch.puzzleType)
         }
 
+    @Test
+    fun startingAfterMidnightReloadsTodayInsteadOfLaunchingYesterday() =
+        runBlocking {
+            var today = date
+            var createCalls = 0
+            val todayViewModel =
+                viewModel(
+                    FakeDailyChallengeRepository(
+                        onCreateRun = {
+                            createCalls += 1
+                            savedRun(DailyChallengePolicyV5.VERSION.value, DailyRunStatus.IN_PROGRESS)
+                        },
+                    ),
+                    dateProvider = { today },
+                )
+            todayViewModel.awaitContent()
+
+            today = date.plusDays(1)
+            todayViewModel.start(PuzzleType.BALANCE)
+
+            assertEquals(0, createCalls)
+            assertEquals(today, todayViewModel.awaitContent().definition.challengeDate)
+        }
+
     // Construction loads nothing: the hub route is the one owner of the initial refresh, so the tests
     // ask for it the same way the route does.
-    private fun viewModel(dailyChallengeRepository: DailyChallengeRepository): TodayViewModel =
+    private fun viewModel(
+        dailyChallengeRepository: DailyChallengeRepository,
+        dateProvider: () -> LocalDate = { date },
+    ): TodayViewModel =
         TodayViewModel(
             dailyChallengeRepository = dailyChallengeRepository,
             statisticsRepository = EmptyStatisticsRepository,
             dailyResultRepository = EmptyDailyResultRepository,
-            dateProvider = { date },
+            dateProvider = dateProvider,
             definitionProvider = DailyChallengePolicyResolver::definitionFor,
         ).also { it.refresh() }
 

@@ -212,24 +212,28 @@ private fun BalanceCell.accessibilityResource(): StringResource =
         BalanceCell.ONE -> Res.string.cell_one
     }
 
-/** Game pieces remain literal black/white and never invert with the Material theme. */
+/**
+ * Game pieces remain literal black/white and never invert with the Material theme; only the black
+ * piece's thin rim follows the theme outline, so it stays visible on dark cells.
+ */
 @Composable
 fun BalancePiece(
     value: BalanceCell,
     modifier: Modifier = Modifier,
 ) {
     if (value == BalanceCell.EMPTY) return
+    val blackPieceRim = MaterialTheme.colorScheme.outline
     Canvas(modifier = modifier) {
         val radius = size.minDimension / 2f
         val pieceColor = if (value == BalanceCell.ONE) Color.Black else Color.White
+        val outlineColor = if (value == BalanceCell.ONE) blackPieceRim else Color.Black
+        val outlineWidth = PIECE_OUTLINE.toPx()
         drawCircle(color = pieceColor, radius = radius)
-        if (value == BalanceCell.ZERO) {
-            drawCircle(color = Color.Black, radius = radius, style = Stroke(width = WHITE_PIECE_OUTLINE.toPx()))
-        }
+        drawCircle(color = outlineColor, radius = radius - outlineWidth / 2f, style = Stroke(width = outlineWidth))
     }
 }
 
 private const val PENCIL_PIECE_RATIO = 0.24f
 private val MIN_PENCIL_PIECE_SIZE = 7.dp
 private val MAX_PENCIL_PIECE_SIZE = 12.dp
-private val WHITE_PIECE_OUTLINE = 1.dp
+private val PIECE_OUTLINE = 1.dp

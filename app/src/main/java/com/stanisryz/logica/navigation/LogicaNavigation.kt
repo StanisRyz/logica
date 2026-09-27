@@ -83,20 +83,19 @@ import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.settings.SettingsRepository
 import com.stanisryz.logica.settings.ThemeMode
 import com.stanisryz.logica.settings.UserSettings
+import com.stanisryz.logica.settings.tutorialCompleted
 import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.store.GemPackProductMapping
 import com.stanisryz.logica.ui.components.EconomyBar
 import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
 import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.LivesDialog
+import com.stanisryz.logica.ui.components.PuzzleStartScreen
 import com.stanisryz.logica.ui.screens.BalanceGameRoute
-import com.stanisryz.logica.ui.screens.BalanceStartScreen
 import com.stanisryz.logica.ui.screens.BalanceTutorialRoute
 import com.stanisryz.logica.ui.screens.CrownsGameRoute
-import com.stanisryz.logica.ui.screens.CrownsStartScreen
 import com.stanisryz.logica.ui.screens.CrownsTutorialRoute
 import com.stanisryz.logica.ui.screens.Game2048Route
-import com.stanisryz.logica.ui.screens.Game2048StartScreen
 import com.stanisryz.logica.ui.screens.Game2048TutorialRoute
 import com.stanisryz.logica.ui.screens.GameHubRoute
 import com.stanisryz.logica.ui.screens.ProfileRoute
@@ -104,10 +103,8 @@ import com.stanisryz.logica.ui.screens.SettingsScreen
 import com.stanisryz.logica.ui.screens.StoreRoute
 import com.stanisryz.logica.ui.screens.StoreSheet
 import com.stanisryz.logica.ui.screens.SudokuGameRoute
-import com.stanisryz.logica.ui.screens.SudokuStartScreen
 import com.stanisryz.logica.ui.screens.SudokuTutorialRoute
 import com.stanisryz.logica.ui.screens.WordGameRoute
-import com.stanisryz.logica.ui.screens.WordStartScreen
 import com.stanisryz.logica.ui.screens.WordTutorialRoute
 import com.stanisryz.logica.ui.theme.LogicaMotion
 import kotlinx.coroutines.launch
@@ -138,8 +135,7 @@ internal fun LogicaNavigation(
     onThemeModeChanged: (ThemeMode) -> Unit,
     onSoundEnabledChanged: (Boolean) -> Unit,
     onHapticsEnabledChanged: (Boolean) -> Unit,
-    onCrownsTutorialCompleted: (Boolean) -> Unit,
-    onWordTutorialCompleted: (Boolean) -> Unit,
+    onTutorialSeen: (PuzzleType) -> Unit,
 ) {
     val backStack = remember { mutableStateListOf<AppDestination>(AppDestination.Home) }
     /*
@@ -427,8 +423,11 @@ internal fun LogicaNavigation(
                             SettingsScreen(settings, onThemeModeChanged, onSoundEnabledChanged, onHapticsEnabledChanged)
                         }
                         entry<AppDestination.BalanceStart> {
-                            BalanceStartScreen(
+                            PuzzleStartScreen(
+                                puzzleType = PuzzleType.BALANCE,
                                 economy = economy,
+                                tutorialPending = !settings.tutorialCompleted(PuzzleType.BALANCE),
+                                onTutorialOffered = { onTutorialSeen(PuzzleType.BALANCE) },
                                 onOpenTutorial = { backStack.add(AppDestination.BalanceTutorial) },
                                 onStart = { difficulty -> openLevel(PuzzleType.BALANCE, difficulty) },
                                 onRestoreLife = onRestoreLife,
@@ -438,16 +437,13 @@ internal fun LogicaNavigation(
                             BalanceTutorialRoute(settingsRepository = settingsRepository, onDone = { backStack.removeLastOrNull() })
                         }
                         entry<AppDestination.CrownsStart> {
-                            CrownsStartScreen(
+                            PuzzleStartScreen(
+                                puzzleType = PuzzleType.CROWNS,
                                 economy = economy,
-                                onOpenTutorial = {
-                                    onCrownsTutorialCompleted(true)
-                                    backStack.add(AppDestination.CrownsTutorial)
-                                },
-                                onStart = { difficulty ->
-                                    onCrownsTutorialCompleted(true)
-                                    openLevel(PuzzleType.CROWNS, difficulty)
-                                },
+                                tutorialPending = !settings.tutorialCompleted(PuzzleType.CROWNS),
+                                onTutorialOffered = { onTutorialSeen(PuzzleType.CROWNS) },
+                                onOpenTutorial = { backStack.add(AppDestination.CrownsTutorial) },
+                                onStart = { difficulty -> openLevel(PuzzleType.CROWNS, difficulty) },
                                 onRestoreLife = onRestoreLife,
                             )
                         }
@@ -459,16 +455,13 @@ internal fun LogicaNavigation(
                             )
                         }
                         entry<AppDestination.WordStart> {
-                            WordStartScreen(
+                            PuzzleStartScreen(
+                                puzzleType = PuzzleType.WORD,
                                 economy = economy,
-                                onOpenTutorial = {
-                                    onWordTutorialCompleted(true)
-                                    backStack.add(AppDestination.WordTutorial)
-                                },
-                                onStart = { difficulty ->
-                                    onWordTutorialCompleted(true)
-                                    openLevel(PuzzleType.WORD, difficulty)
-                                },
+                                tutorialPending = !settings.tutorialCompleted(PuzzleType.WORD),
+                                onTutorialOffered = { onTutorialSeen(PuzzleType.WORD) },
+                                onOpenTutorial = { backStack.add(AppDestination.WordTutorial) },
+                                onStart = { difficulty -> openLevel(PuzzleType.WORD, difficulty) },
                                 onRestoreLife = onRestoreLife,
                             )
                         }
@@ -476,8 +469,11 @@ internal fun LogicaNavigation(
                             WordTutorialRoute(settingsRepository = settingsRepository, onDone = { backStack.removeLastOrNull() })
                         }
                         entry<AppDestination.SudokuStart> {
-                            SudokuStartScreen(
+                            PuzzleStartScreen(
+                                puzzleType = PuzzleType.SUDOKU,
                                 economy = economy,
+                                tutorialPending = !settings.tutorialCompleted(PuzzleType.SUDOKU),
+                                onTutorialOffered = { onTutorialSeen(PuzzleType.SUDOKU) },
                                 onOpenTutorial = { backStack.add(AppDestination.SudokuTutorial) },
                                 onStart = { difficulty -> openLevel(PuzzleType.SUDOKU, difficulty) },
                                 onRestoreLife = onRestoreLife,
@@ -490,8 +486,11 @@ internal fun LogicaNavigation(
                             )
                         }
                         entry<AppDestination.Game2048Start> {
-                            Game2048StartScreen(
+                            PuzzleStartScreen(
+                                puzzleType = PuzzleType.GAME_2048,
                                 economy = economy,
+                                tutorialPending = !settings.tutorialCompleted(PuzzleType.GAME_2048),
+                                onTutorialOffered = { onTutorialSeen(PuzzleType.GAME_2048) },
                                 onOpenTutorial = { backStack.add(AppDestination.Game2048Tutorial) },
                                 onStart = { difficulty -> openLevel(PuzzleType.GAME_2048, difficulty) },
                                 onRestoreLife = onRestoreLife,
