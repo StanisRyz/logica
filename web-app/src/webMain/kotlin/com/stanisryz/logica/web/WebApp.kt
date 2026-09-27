@@ -962,18 +962,12 @@ private fun PlayingBalanceContent(
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(onClick = if (state.source.isDaily) onExitBalance else controller::showDifficultySelector) {
-                Text(if (state.source.isDaily) "К играм" else "К сложности")
-            }
-            Spacer(Modifier.weight(1f))
-            Text("Баланс", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.weight(1f))
-            Spacer(Modifier.width(GAME_HEADER_TITLE_SPACER))
-        }
+        WebGameplayHeader(
+            puzzleType = PuzzleType.BALANCE,
+            isDaily = state.source.isDaily,
+            hasMeaningfulProgress = state.game.hasMeaningfulProgress,
+            onExit = if (state.source.isDaily) onExitBalance else controller::showDifficultySelector,
+        )
         BalanceGameContent(
             puzzle = state.puzzle,
             game = state.game,
@@ -1027,18 +1021,12 @@ private fun PlayingCrownsContent(
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(onClick = if (state.source.isDaily) onExitCrowns else controller::showDifficultySelector) {
-                Text(if (state.source.isDaily) "К играм" else "К сложности")
-            }
-            Spacer(Modifier.weight(1f))
-            Text("Короны", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.weight(1f))
-            Spacer(Modifier.width(GAME_HEADER_TITLE_SPACER))
-        }
+        WebGameplayHeader(
+            puzzleType = PuzzleType.CROWNS,
+            isDaily = state.source.isDaily,
+            hasMeaningfulProgress = state.game.hasMeaningfulProgress,
+            onExit = if (state.source.isDaily) onExitCrowns else controller::showDifficultySelector,
+        )
         CrownsGameContent(
             puzzle = state.puzzle,
             game = state.game,
@@ -1092,18 +1080,12 @@ private fun PlayingWordContent(
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(onClick = if (state.source.isDaily) onExitWord else controller::showDifficultySelector) {
-                Text(if (state.source.isDaily) "К играм" else "К сложности")
-            }
-            Spacer(Modifier.weight(1f))
-            Text("Слово", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.weight(1f))
-            Spacer(Modifier.width(GAME_HEADER_TITLE_SPACER))
-        }
+        WebGameplayHeader(
+            puzzleType = PuzzleType.WORD,
+            isDaily = state.source.isDaily,
+            hasMeaningfulProgress = state.game.hasMeaningfulProgress,
+            onExit = if (state.source.isDaily) onExitWord else controller::showDifficultySelector,
+        )
         WordGameContent(
             puzzle = state.puzzle,
             game = state.game,
@@ -1161,18 +1143,12 @@ private fun PlayingSudokuContent(
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(onClick = if (state.source.isDaily) onExitSudoku else controller::showDifficultySelector) {
-                Text(if (state.source.isDaily) "К играм" else "К сложности")
-            }
-            Spacer(Modifier.weight(1f))
-            Text("Судоку", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.weight(1f))
-            Spacer(Modifier.width(GAME_HEADER_TITLE_SPACER))
-        }
+        WebGameplayHeader(
+            puzzleType = PuzzleType.SUDOKU,
+            isDaily = state.source.isDaily,
+            hasMeaningfulProgress = state.game.hasMeaningfulProgress,
+            onExit = if (state.source.isDaily) onExitSudoku else controller::showDifficultySelector,
+        )
         val selectedStatus = state.selectedCell?.let(state.game::cellAt)?.status
         val gameplayEnabled = state.game.status == SudokuGameStatus.IN_PROGRESS
         val inputEnabled =
@@ -1238,18 +1214,16 @@ private fun PlayingGame2048Content(
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(onClick = if (state.source.isDaily) onExitGame2048 else controller::showDifficultySelector) {
-                Text(if (state.source.isDaily) "К играм" else "К сложности")
-            }
-            Spacer(Modifier.weight(1f))
-            Text("2048", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.weight(1f))
-            Spacer(Modifier.width(GAME_HEADER_TITLE_SPACER))
-        }
+        WebGameplayHeader(
+            puzzleType = PuzzleType.GAME_2048,
+            isDaily = state.source.isDaily,
+            hasMeaningfulProgress =
+                state.game.hasMeaningfulProgress(
+                    levelCleared = !state.source.isDaily && state.game.goalReached,
+                    completionSaved = controller.completionState is WebCatalogCompletionState.Saved,
+                ),
+            onExit = if (state.source.isDaily) onExitGame2048 else controller::showDifficultySelector,
+        )
         // Catalog-only: the save banner and cleared marker belong to Catalog progression.
         if (!state.source.isDaily) {
             WebCatalogSaveErrorBanner(
@@ -1345,5 +1319,3 @@ private val DIFFICULTY_HEADER_HEIGHT = 48.dp
 private val PRIMARY_NAVIGATION_HEIGHT = 64.dp
 private val MIN_DIFFICULTY_CARD_HEIGHT = 96.dp
 private val MAX_DIFFICULTY_CARD_HEIGHT = 152.dp
-private val GAME_HEADER_HEIGHT = 52.dp
-private val GAME_HEADER_TITLE_SPACER = 92.dp
