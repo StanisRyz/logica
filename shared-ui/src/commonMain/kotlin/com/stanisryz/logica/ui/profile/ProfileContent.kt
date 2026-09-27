@@ -49,9 +49,6 @@ import com.stanisryz.logica.shared.ui.generated.resources.best_daily_streak
 import com.stanisryz.logica.shared.ui.generated.resources.current_daily_streak
 import com.stanisryz.logica.shared.ui.generated.resources.daily_challenge
 import com.stanisryz.logica.shared.ui.generated.resources.daily_completed_count
-import com.stanisryz.logica.shared.ui.generated.resources.profile_economy
-import com.stanisryz.logica.shared.ui.generated.resources.profile_gems
-import com.stanisryz.logica.shared.ui.generated.resources.profile_lives
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_easy
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_expert
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_hard
@@ -59,8 +56,11 @@ import com.stanisryz.logica.shared.ui.generated.resources.difficulty_medium
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_failed_count
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_played
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_solved_count
+import com.stanisryz.logica.shared.ui.generated.resources.profile_economy
 import com.stanisryz.logica.shared.ui.generated.resources.profile_empty_body
 import com.stanisryz.logica.shared.ui.generated.resources.profile_empty_title
+import com.stanisryz.logica.shared.ui.generated.resources.profile_gems
+import com.stanisryz.logica.shared.ui.generated.resources.profile_lives
 import com.stanisryz.logica.shared.ui.generated.resources.profile_load_error
 import com.stanisryz.logica.shared.ui.generated.resources.profile_overall
 import com.stanisryz.logica.shared.ui.generated.resources.profile_statistics

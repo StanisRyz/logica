@@ -71,13 +71,12 @@ class WebCatalogProgressRepositoryTest {
         difficulty: Difficulty,
         pack: Int,
         level: Int,
-    ) =
-        CatalogLevelId(
-            puzzleType = puzzleType,
-            difficulty = difficulty,
-            packVersion = CatalogLevelPackVersion(pack),
-            levelNumber = CatalogLevelNumber(level),
-        )
+    ) = CatalogLevelId(
+        puzzleType = puzzleType,
+        difficulty = difficulty,
+        packVersion = CatalogLevelPackVersion(pack),
+        levelNumber = CatalogLevelNumber(level),
+    )
 
     private class FakeProgressStore(
         var snapshot: WebCatalogProgressSnapshot,

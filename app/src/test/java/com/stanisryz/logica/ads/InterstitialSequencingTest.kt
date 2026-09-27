@@ -9,9 +9,9 @@ import com.stanisryz.logica.result.GameCompletion
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.result.GameResult
+import com.stanisryz.logica.result.GameResultScope
 import com.stanisryz.logica.result.toEntity
 import com.stanisryz.logica.result.toGameResultOrNull
-import com.stanisryz.logica.result.GameResultScope
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

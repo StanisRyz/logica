@@ -1,6 +1,6 @@
 package com.stanisryz.logica.platform
 
-/**
+/*
  * Platform-neutral payment models for real-money consumables. No SDK, JS, or secret types may
  * enter this file: hosts translate their own store APIs into these snapshots/results, and
  * granted rewards always flow back through the application's Economy/domain systems.

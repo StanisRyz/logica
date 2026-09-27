@@ -37,11 +37,11 @@ import com.stanisryz.logica.economy.GemPack
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.platform.StoreGateway
 import com.stanisryz.logica.store.GemPackOffer
+import com.stanisryz.logica.store.GemPackProductMapping
 import com.stanisryz.logica.store.GemPurchaseOutcome
 import com.stanisryz.logica.store.GemStoreState
 import com.stanisryz.logica.store.GemStoreViewModel
 import com.stanisryz.logica.store.GemStoreViewModelFactory
-import com.stanisryz.logica.store.GemPackProductMapping
 import com.stanisryz.logica.ui.components.LogicaCard
 import com.stanisryz.logica.ui.components.ScreenColumn
 import com.stanisryz.logica.ui.components.ScreenTitle

@@ -91,8 +91,10 @@ private fun StartDifficultyContent(
 }
 
 private fun normalCardHeight(availableHeight: androidx.compose.ui.unit.Dp): androidx.compose.ui.unit.Dp =
-    ((availableHeight - TUTORIAL_ACTION_HEIGHT - LogicaSpacing.section - LogicaSpacing.item * CARD_GAP_COUNT) /
-        Difficulty.entries.size).coerceIn(MIN_CARD_HEIGHT, MAX_CARD_HEIGHT)
+    (
+        (availableHeight - TUTORIAL_ACTION_HEIGHT - LogicaSpacing.section - LogicaSpacing.item * CARD_GAP_COUNT) /
+            Difficulty.entries.size
+    ).coerceIn(MIN_CARD_HEIGHT, MAX_CARD_HEIGHT)
 
 private val TUTORIAL_ACTION_HEIGHT = 48.dp
 private val MIN_CARD_HEIGHT = 104.dp

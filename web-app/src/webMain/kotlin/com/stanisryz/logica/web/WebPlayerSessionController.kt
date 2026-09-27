@@ -248,7 +248,6 @@ internal class WebPlayerSessionController(
         scope.cancel()
     }
 
-
     private fun bindPaymentsLocal(
         revision: Long,
         playerScope: WebCatalogProgressScope,
@@ -267,6 +266,7 @@ internal class WebPlayerSessionController(
         paymentsJournalStore = paymentsJournalStoreFactory(playerScope)
         paymentsRepository = repository
     }
+
     /** Legacy per-domain cloud writes stop once the canonical unified save owns this context. */
     private fun unifiedSaveOwnsCloudWrites(): Boolean = unifiedSaveAccess?.unifiedSaveActive == true
 

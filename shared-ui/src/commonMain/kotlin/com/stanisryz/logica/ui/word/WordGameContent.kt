@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
@@ -365,6 +365,3 @@ private val WIDE_LAYOUT_SPACING = 12.dp
 private const val WORD_LANDSCAPE_PANEL_FRACTION = 0.52f
 private const val TERMINAL_APPEAR_MILLIS = 180
 private const val TERMINAL_INITIAL_SCALE = 0.98f
-
-
-

@@ -2,9 +2,9 @@ package com.stanisryz.logica.daily
 
 import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.ui.daily.DailyShareEntry
-import com.stanisryz.logica.ui.daily.DailyShareFormatter as SharedDailyShareFormatter
 import com.stanisryz.logica.ui.daily.DailySharePayload
 import java.time.LocalDate
+import com.stanisryz.logica.ui.daily.DailyShareFormatter as SharedDailyShareFormatter
 
 /**
  * Thin Android adapter over the shared platform-neutral Daily share formatter: the payload is
@@ -48,4 +48,3 @@ private val RUSSIAN_GENITIVE_MONTHS =
     )
 
 internal fun LocalDate.toRussianDisplay(): String = "$dayOfMonth ${RUSSIAN_GENITIVE_MONTHS[monthValue - 1]}"
-

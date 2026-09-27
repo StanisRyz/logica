@@ -95,10 +95,10 @@ private fun platformPurchase(
     purchaseId: String,
     productId: String,
 ) = PlatformPurchase(
-        transactionId = "test-store:$purchaseId",
-        purchaseId = purchaseId,
-        productId = productId,
-    )
+    transactionId = "test-store:$purchaseId",
+    purchaseId = purchaseId,
+    productId = productId,
+)
 
 private val TEST_PRODUCTS =
     GemPackProductMapping(

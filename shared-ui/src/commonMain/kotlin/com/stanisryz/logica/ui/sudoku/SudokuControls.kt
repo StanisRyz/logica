@@ -20,10 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.hint
 import com.stanisryz.logica.shared.ui.generated.resources.sudoku_auto_candidates
 import com.stanisryz.logica.shared.ui.generated.resources.sudoku_erase
 import com.stanisryz.logica.shared.ui.generated.resources.sudoku_undo
-import com.stanisryz.logica.shared.ui.generated.resources.hint
 import com.stanisryz.logica.shared.ui.generated.resources.tool_off
 import com.stanisryz.logica.shared.ui.generated.resources.tool_on
 import com.stanisryz.logica.shared.ui.generated.resources.tool_pencil

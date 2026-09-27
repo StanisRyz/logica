@@ -4,11 +4,10 @@ import com.stanisryz.logica.platform.PaymentProductSnapshot
 import com.stanisryz.logica.platform.PaymentPurchaseSnapshot
 import com.stanisryz.logica.platform.PaymentResult
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlin.js.ExperimentalWasmJsInterop
+import kotlinx.coroutines.launch
 
 /** The single application-owned paid product; the gameplay reward never depends on Yandex data. */
 internal enum class WebPaidProduct(
@@ -113,10 +112,11 @@ internal object WebPaymentsCodec {
     private fun readInt(
         source: ByteArray,
         offset: Int,
-    ): Int = ((source[offset].toInt() and 0xff) shl 24) or
-        ((source[offset + 1].toInt() and 0xff) shl 16) or
-        ((source[offset + 2].toInt() and 0xff) shl 8) or
-        (source[offset + 3].toInt() and 0xff)
+    ): Int =
+        ((source[offset].toInt() and 0xff) shl 24) or
+            ((source[offset + 1].toInt() and 0xff) shl 16) or
+            ((source[offset + 2].toInt() and 0xff) shl 8) or
+            (source[offset + 3].toInt() and 0xff)
 
     private fun writeInt(
         destination: ByteArray,
@@ -371,10 +371,11 @@ internal object WebPendingPaymentFulfillmentCodec {
     private fun readInt(
         source: ByteArray,
         offset: Int,
-    ): Int = ((source[offset].toInt() and 0xff) shl 24) or
-        ((source[offset + 1].toInt() and 0xff) shl 16) or
-        ((source[offset + 2].toInt() and 0xff) shl 8) or
-        (source[offset + 3].toInt() and 0xff)
+    ): Int =
+        ((source[offset].toInt() and 0xff) shl 24) or
+            ((source[offset + 1].toInt() and 0xff) shl 16) or
+            ((source[offset + 2].toInt() and 0xff) shl 8) or
+            (source[offset + 3].toInt() and 0xff)
 
     private fun writeShort(
         destination: ByteArray,
@@ -396,7 +397,6 @@ internal object WebPendingPaymentFulfillmentCodec {
         destination[offset + 3] = value.toByte()
     }
 }
-
 
 /**
  * Payments execution boundary over the Yandex bridge. The Store UI and fulfillment logic never
@@ -526,9 +526,10 @@ internal class WebPaymentsCoordinator(
                 if (catalog == null) {
                     WebPaidCatalogState.Unavailable
                 } else {
-                    val entries = catalog.mapNotNull { details ->
-                        paidProductFor(details.productId)?.let { WebPaidCatalogEntry(it, details) }
-                    }
+                    val entries =
+                        catalog.mapNotNull { details ->
+                            paidProductFor(details.productId)?.let { WebPaidCatalogEntry(it, details) }
+                        }
                     WebPaidCatalogState.Ready(entries)
                 }
         }
@@ -553,30 +554,32 @@ internal class WebPaymentsCoordinator(
         result: PaymentResult,
     ) {
         if (activePaymentSession != session) return // stale payment session cannot touch UI
-        val outcome = when (result) {
-            is PaymentResult.Completed -> {
-                if (currentPlayerContext() != capturedContext) {
-                    // Account changed during the frame: never grant/consume across Players;
-                    // the purchase stays recoverable through its owning Player reconcile.
-                    activePaymentSession = null
-                    mutablePurchaseState.value = WebPaidPurchaseState.Idle
-                    return
+        val outcome =
+            when (result) {
+                is PaymentResult.Completed -> {
+                    if (currentPlayerContext() != capturedContext) {
+                        // Account changed during the frame: never grant/consume across Players;
+                        // the purchase stays recoverable through its owning Player reconcile.
+                        activePaymentSession = null
+                        mutablePurchaseState.value = WebPaidPurchaseState.Idle
+                        return
+                    }
+                    mutablePurchaseState.value = WebPaidPurchaseState.Fulfilling
+                    completeFulfillment(result.purchase)
                 }
-                mutablePurchaseState.value = WebPaidPurchaseState.Fulfilling
-                completeFulfillment(result.purchase)
+                PaymentResult.Cancelled -> WebPaymentOutcome.Cancelled
+                PaymentResult.Unavailable -> WebPaymentOutcome.Unavailable
+                is PaymentResult.Failed -> WebPaymentOutcome.Error
             }
-            PaymentResult.Cancelled -> WebPaymentOutcome.Cancelled
-            PaymentResult.Unavailable -> WebPaymentOutcome.Unavailable
-            is PaymentResult.Failed -> WebPaymentOutcome.Error
-        }
         activePaymentSession = null
-        mutablePurchaseState.value = when (outcome) {
-            WebPaymentOutcome.Fulfilled, WebPaymentOutcome.AlreadyFulfilled -> WebPaidPurchaseState.Success
-            WebPaymentOutcome.PendingRetry -> WebPaidPurchaseState.CloudPending
-            WebPaymentOutcome.Cancelled -> WebPaidPurchaseState.Cancelled
-            WebPaymentOutcome.Unavailable -> WebPaidPurchaseState.Unavailable
-            else -> WebPaidPurchaseState.Error
-        }
+        mutablePurchaseState.value =
+            when (outcome) {
+                WebPaymentOutcome.Fulfilled, WebPaymentOutcome.AlreadyFulfilled -> WebPaidPurchaseState.Success
+                WebPaymentOutcome.PendingRetry -> WebPaidPurchaseState.CloudPending
+                WebPaymentOutcome.Cancelled -> WebPaidPurchaseState.Cancelled
+                WebPaymentOutcome.Unavailable -> WebPaidPurchaseState.Unavailable
+                else -> WebPaidPurchaseState.Error
+            }
     }
 
     /**

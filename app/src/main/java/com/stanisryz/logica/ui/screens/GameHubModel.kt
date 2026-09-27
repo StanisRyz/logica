@@ -2,6 +2,7 @@ package com.stanisryz.logica.ui.screens
 
 import com.stanisryz.logica.R
 import com.stanisryz.logica.daily.DailyEntryState
+
 /**
  * The one action a Daily card performs when it is tapped, or `null` for an entry that is done. The
  * card itself is the target, so a state maps to exactly one label. An unfinished Daily attempt is

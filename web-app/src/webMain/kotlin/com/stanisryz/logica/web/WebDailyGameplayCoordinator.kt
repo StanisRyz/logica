@@ -168,7 +168,8 @@ internal class WebDailyGameplayCoordinator(
 }
 
 /** Host-owned deterministic date label; the shared presentation never formats dates itself. */
-internal fun formatWebDailyDateLabel(date: DailyDate): String = "${date.getDayOfMonth()} ${russianGenitiveMonth(date.getMonthValue())} ${date.getYear()} г."
+internal fun formatWebDailyDateLabel(date: DailyDate): String =
+    "${date.getDayOfMonth()} ${russianGenitiveMonth(date.getMonthValue())} ${date.getYear()} г."
 
 /** Short display date shared with the spoiler-free Daily share payload ("24 августа"). */
 internal fun formatWebDailyShortDate(date: DailyDate): String = "${date.getDayOfMonth()} ${russianGenitiveMonth(date.getMonthValue())}"
@@ -248,7 +249,6 @@ internal fun webDailySharePayloadOrNull(
     )
 }
 
-
 /**
  * Pure reactive mapping from the durable Daily snapshot to the shared hub model. Reading today's
  * state never mutates anything; the run is created only when gameplay actually starts.
@@ -288,5 +288,3 @@ internal fun buildWebDailyHubUiState(
         completion = record?.fullyCompleted?.takeIf { it }?.let { DailyHubCompletion(streak.current, streak.best) },
     )
 }
-
-

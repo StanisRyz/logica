@@ -138,15 +138,16 @@ class WebDailyGameplayCoordinatorTest {
         val repositoryA = readyRepository(storeA)
         val storeB = FakeDailyStore()
         val repositoryB = readyRepository(storeB)
-        val session = FakeSessionAccess().also {
-            it.dailyBinding.value =
-                WebDailyBinding.Ready(
-                    token = WebPlayerContextToken(7L),
-                    repository = repositoryA,
-                    identity = null,
-                    syncStatus = WebDailyCloudSyncStatus.LOCAL_ONLY,
-                )
-        }
+        val session =
+            FakeSessionAccess().also {
+                it.dailyBinding.value =
+                    WebDailyBinding.Ready(
+                        token = WebPlayerContextToken(7L),
+                        repository = repositoryA,
+                        identity = null,
+                        syncStatus = WebDailyCloudSyncStatus.LOCAL_ONLY,
+                    )
+            }
         val coordinator = WebDailyGameplayCoordinator(session) { today }
 
         val stale = assertIs<WebDailyStartResult.Started>(coordinator.start(PuzzleType.WORD))

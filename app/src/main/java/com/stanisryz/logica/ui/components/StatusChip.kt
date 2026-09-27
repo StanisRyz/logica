@@ -46,8 +46,7 @@ internal fun StatusChip(
                 .padding(
                     horizontal = if (compact) COMPACT_CHIP_HORIZONTAL_PADDING else CHIP_HORIZONTAL_PADDING,
                     vertical = if (compact) COMPACT_CHIP_VERTICAL_PADDING else CHIP_VERTICAL_PADDING,
-                )
-                .semantics(mergeDescendants = true) {},
+                ).semantics(mergeDescendants = true) {},
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(if (compact) COMPACT_CHIP_ICON_SPACING else CHIP_ICON_SPACING),
     ) {

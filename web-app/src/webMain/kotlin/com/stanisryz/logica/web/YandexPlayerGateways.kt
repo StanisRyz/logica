@@ -135,11 +135,12 @@ internal object WebBase64 {
         runCatching {
             require(text.length % 4 == 0)
             if (text.isEmpty()) return@runCatching ByteArray(0)
-            val padding = when {
-                text.endsWith("==") -> 2
-                text.endsWith('=') -> 1
-                else -> 0
-            }
+            val padding =
+                when {
+                    text.endsWith("==") -> 2
+                    text.endsWith('=') -> 1
+                    else -> 0
+                }
             require('=' !in text.dropLast(padding))
             val result = ByteArray((text.length / 4) * 3 - padding)
             var output = 0

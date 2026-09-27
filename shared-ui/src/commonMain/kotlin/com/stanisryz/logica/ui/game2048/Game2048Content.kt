@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -291,7 +291,3 @@ private val UNDO_TARGET_SIZE = 48.dp
 private const val WIDE_PANEL_WIDTH_FRACTION = 0.38f
 private const val GROUP_SIZE = 3
 private const val GROUP_SEPARATOR = "\u00A0"
-
-
-
-

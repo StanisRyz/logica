@@ -9,13 +9,13 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -57,8 +57,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
@@ -76,9 +76,9 @@ import com.stanisryz.logica.daily.DailyGameLaunch
 import com.stanisryz.logica.daily.DailyResultRepository
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
+import com.stanisryz.logica.platform.StoreGateway
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
-import com.stanisryz.logica.platform.StoreGateway
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.settings.SettingsRepository
 import com.stanisryz.logica.settings.ThemeMode
@@ -344,228 +344,228 @@ internal fun LogicaNavigation(
                 entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
                 entryProvider =
                     entryProvider {
-                    entry<AppDestination.Home> {
-                        Box(Modifier.fillMaxSize()) {
-                            Box(
-                                Modifier
-                                    .fillMaxSize()
-                                    .padding(bottom = primaryNavigationBarHeight),
-                            ) {
-                                AnimatedContent(
-                                    targetState = selectedTab,
-                                    modifier =
-                                        Modifier
-                                            .fillMaxSize()
-                                            .clipToBounds()
-                                            .background(MaterialTheme.colorScheme.background),
-                                    transitionSpec = {
-                                        val direction = if (targetState.ordinal >= initialState.ordinal) 1 else -1
-                                        horizontalSlideTransition(
-                                            incomingDirection = direction,
-                                            outgoingDirection = -direction,
-                                        )
-                                    },
-                                    label = "primaryTab",
-                                ) { tab ->
-                                    Box(
-                                        Modifier
-                                            .fillMaxSize()
-                                            .background(MaterialTheme.colorScheme.background)
-                                            .semantics { if (tab != selectedTab) hideFromAccessibility() },
-                                    ) {
-                                        tabStateHolder.SaveableStateProvider(tab) {
-                                            when (tab) {
-                                                PrimaryTab.GAME ->
-                                                    GameHubRoute(
-                                                        dailyChallengeRepository = dailyChallengeRepository,
-                                                        statisticsRepository = statisticsRepository,
-                                                        dailyResultRepository = dailyResultRepository,
-                                                        catalog = GAME_CATALOG_PUZZLE_TYPES,
-                                                        economy = economy,
-                                                        onGameSelected = onGameSelected,
-                                                        onOpenDaily = openDaily,
-                                                        onRestoreLife = onRestoreLife,
-                                                    )
-                                                PrimaryTab.STORE ->
-                                                    StoreRoute(
-                                                        economy = economy,
-                                                        economyRepository = economyRepository,
-                                                        storeGateway = storeGateway,
-                                                        storeProducts = storeProducts,
-                                                    )
-                                                PrimaryTab.PROFILE -> ProfileRoute(statisticsRepository)
+                        entry<AppDestination.Home> {
+                            Box(Modifier.fillMaxSize()) {
+                                Box(
+                                    Modifier
+                                        .fillMaxSize()
+                                        .padding(bottom = primaryNavigationBarHeight),
+                                ) {
+                                    AnimatedContent(
+                                        targetState = selectedTab,
+                                        modifier =
+                                            Modifier
+                                                .fillMaxSize()
+                                                .clipToBounds()
+                                                .background(MaterialTheme.colorScheme.background),
+                                        transitionSpec = {
+                                            val direction = if (targetState.ordinal >= initialState.ordinal) 1 else -1
+                                            horizontalSlideTransition(
+                                                incomingDirection = direction,
+                                                outgoingDirection = -direction,
+                                            )
+                                        },
+                                        label = "primaryTab",
+                                    ) { tab ->
+                                        Box(
+                                            Modifier
+                                                .fillMaxSize()
+                                                .background(MaterialTheme.colorScheme.background)
+                                                .semantics { if (tab != selectedTab) hideFromAccessibility() },
+                                        ) {
+                                            tabStateHolder.SaveableStateProvider(tab) {
+                                                when (tab) {
+                                                    PrimaryTab.GAME ->
+                                                        GameHubRoute(
+                                                            dailyChallengeRepository = dailyChallengeRepository,
+                                                            statisticsRepository = statisticsRepository,
+                                                            dailyResultRepository = dailyResultRepository,
+                                                            catalog = GAME_CATALOG_PUZZLE_TYPES,
+                                                            economy = economy,
+                                                            onGameSelected = onGameSelected,
+                                                            onOpenDaily = openDaily,
+                                                            onRestoreLife = onRestoreLife,
+                                                        )
+                                                    PrimaryTab.STORE ->
+                                                        StoreRoute(
+                                                            economy = economy,
+                                                            economyRepository = economyRepository,
+                                                            storeGateway = storeGateway,
+                                                            storeProducts = storeProducts,
+                                                        )
+                                                    PrimaryTab.PROFILE -> ProfileRoute(statisticsRepository)
+                                                }
                                             }
                                         }
                                     }
                                 }
+                                AppBottomBar(
+                                    selectedTab = selectedTab,
+                                    onTabSelected = { selectedTab = it },
+                                    modifier =
+                                        Modifier
+                                            .align(Alignment.BottomCenter)
+                                            .onSizeChanged { primaryNavigationBarSize = it },
+                                )
                             }
-                            AppBottomBar(
-                                selectedTab = selectedTab,
-                                onTabSelected = { selectedTab = it },
-                                modifier =
-                                    Modifier
-                                        .align(Alignment.BottomCenter)
-                                        .onSizeChanged { primaryNavigationBarSize = it },
+                        }
+                        entry<AppDestination.Settings> {
+                            SettingsScreen(settings, onThemeModeChanged, onSoundEnabledChanged, onHapticsEnabledChanged)
+                        }
+                        entry<AppDestination.BalanceStart> {
+                            BalanceStartScreen(
+                                economy = economy,
+                                onOpenTutorial = { backStack.add(AppDestination.BalanceTutorial) },
+                                onStart = { difficulty -> openLevel(PuzzleType.BALANCE, difficulty) },
+                                onRestoreLife = onRestoreLife,
                             )
                         }
-                    }
-                    entry<AppDestination.Settings> {
-                        SettingsScreen(settings, onThemeModeChanged, onSoundEnabledChanged, onHapticsEnabledChanged)
-                    }
-                    entry<AppDestination.BalanceStart> {
-                        BalanceStartScreen(
-                            economy = economy,
-                            onOpenTutorial = { backStack.add(AppDestination.BalanceTutorial) },
-                            onStart = { difficulty -> openLevel(PuzzleType.BALANCE, difficulty) },
-                            onRestoreLife = onRestoreLife,
-                        )
-                    }
-                    entry<AppDestination.BalanceTutorial> {
-                        BalanceTutorialRoute(settingsRepository = settingsRepository, onDone = { backStack.removeLastOrNull() })
-                    }
-                    entry<AppDestination.CrownsStart> {
-                        CrownsStartScreen(
-                            economy = economy,
-                            onOpenTutorial = {
-                                onCrownsTutorialCompleted(true)
-                                backStack.add(AppDestination.CrownsTutorial)
-                            },
-                            onStart = { difficulty ->
-                                onCrownsTutorialCompleted(true)
-                                openLevel(PuzzleType.CROWNS, difficulty)
-                            },
-                            onRestoreLife = onRestoreLife,
-                        )
-                    }
-                    entry<AppDestination.CrownsTutorial> {
-                        CrownsTutorialRoute(
-                            settingsRepository = settingsRepository,
-                            hapticsEnabled = settings.hapticsEnabled,
-                            onDone = { backStack.removeLastOrNull() },
-                        )
-                    }
-                    entry<AppDestination.WordStart> {
-                        WordStartScreen(
-                            economy = economy,
-                            onOpenTutorial = {
-                                onWordTutorialCompleted(true)
-                                backStack.add(AppDestination.WordTutorial)
-                            },
-                            onStart = { difficulty ->
-                                onWordTutorialCompleted(true)
-                                openLevel(PuzzleType.WORD, difficulty)
-                            },
-                            onRestoreLife = onRestoreLife,
-                        )
-                    }
-                    entry<AppDestination.WordTutorial> {
-                        WordTutorialRoute(settingsRepository = settingsRepository, onDone = { backStack.removeLastOrNull() })
-                    }
-                    entry<AppDestination.SudokuStart> {
-                        SudokuStartScreen(
-                            economy = economy,
-                            onOpenTutorial = { backStack.add(AppDestination.SudokuTutorial) },
-                            onStart = { difficulty -> openLevel(PuzzleType.SUDOKU, difficulty) },
-                            onRestoreLife = onRestoreLife,
-                        )
-                    }
-                    entry<AppDestination.SudokuTutorial> {
-                        SudokuTutorialRoute(
-                            settingsRepository = settingsRepository,
-                            onDone = { backStack.removeLastOrNull() },
-                        )
-                    }
-                    entry<AppDestination.Game2048Start> {
-                        Game2048StartScreen(
-                            economy = economy,
-                            onOpenTutorial = { backStack.add(AppDestination.Game2048Tutorial) },
-                            onStart = { difficulty -> openLevel(PuzzleType.GAME_2048, difficulty) },
-                            onRestoreLife = onRestoreLife,
-                        )
-                    }
-                    entry<AppDestination.Game2048Tutorial> {
-                        Game2048TutorialRoute(
-                            settingsRepository = settingsRepository,
-                            onDone = { backStack.removeLastOrNull() },
-                        )
-                    }
-                    entry<AppDestination.BalanceGame> { destination ->
-                        BalanceGameRoute(
-                            launch = destination.launch,
-                            attemptFactory = attemptFactory,
-                            completionRepository = gameCompletionRepository,
-                            economyRepository = economyRepository,
-                            exitGuard = exitGuard,
-                            hapticsEnabled = settings.hapticsEnabled,
-                            onBack = goBack,
-                            onNextLevel = { openNextLevel(PuzzleType.BALANCE, destination.launch) },
-                            onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                            onTerminalAction = onTerminalAction,
-                            onRestoreLife = onRestoreLife,
-                        )
-                    }
-                    entry<AppDestination.CrownsGame> { destination ->
-                        CrownsGameRoute(
-                            launch = destination.launch,
-                            attemptFactory = attemptFactory,
-                            completionRepository = gameCompletionRepository,
-                            economyRepository = economyRepository,
-                            exitGuard = exitGuard,
-                            hapticsEnabled = settings.hapticsEnabled,
-                            onBack = goBack,
-                            onNextLevel = { openNextLevel(PuzzleType.CROWNS, destination.launch) },
-                            onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                            onTerminalAction = onTerminalAction,
-                            onRestoreLife = onRestoreLife,
-                        )
-                    }
-                    entry<AppDestination.WordGame> { destination ->
-                        WordGameRoute(
-                            launch = destination.launch,
-                            attemptFactory = attemptFactory,
-                            completionRepository = gameCompletionRepository,
-                            economyRepository = economyRepository,
-                            exitGuard = exitGuard,
-                            hapticsEnabled = settings.hapticsEnabled,
-                            onBack = goBack,
-                            onNextLevel = { openNextLevel(PuzzleType.WORD, destination.launch) },
-                            onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                            onTerminalAction = onTerminalAction,
-                            onRestoreLife = onRestoreLife,
-                        )
-                    }
-                    entry<AppDestination.SudokuGame> { destination ->
-                        SudokuGameRoute(
-                            launch = destination.launch,
-                            attemptFactory = attemptFactory,
-                            completionRepository = gameCompletionRepository,
-                            economyRepository = economyRepository,
-                            exitGuard = exitGuard,
-                            hapticsEnabled = settings.hapticsEnabled,
-                            onBack = goBack,
-                            onNextLevel = { openNextLevel(PuzzleType.SUDOKU, destination.launch) },
-                            onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                            onTerminalAction = onTerminalAction,
-                            onRestoreLife = onRestoreLife,
-                        )
-                    }
-                    entry<AppDestination.Game2048Game> { destination ->
-                        Game2048Route(
-                            launch = destination.launch,
-                            attemptFactory = attemptFactory,
-                            completionRepository = gameCompletionRepository,
-                            economyRepository = economyRepository,
-                            exitGuard = exitGuard,
-                            hapticsEnabled = settings.hapticsEnabled,
-                            onBack = goBack,
-                            onNextLevel = { openNextLevel(PuzzleType.GAME_2048, destination.launch) },
-                            onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                            onTerminalAction = onTerminalAction,
-                            onRestoreLife = onRestoreLife,
-                        )
-                    }
-                },
-        )
+                        entry<AppDestination.BalanceTutorial> {
+                            BalanceTutorialRoute(settingsRepository = settingsRepository, onDone = { backStack.removeLastOrNull() })
+                        }
+                        entry<AppDestination.CrownsStart> {
+                            CrownsStartScreen(
+                                economy = economy,
+                                onOpenTutorial = {
+                                    onCrownsTutorialCompleted(true)
+                                    backStack.add(AppDestination.CrownsTutorial)
+                                },
+                                onStart = { difficulty ->
+                                    onCrownsTutorialCompleted(true)
+                                    openLevel(PuzzleType.CROWNS, difficulty)
+                                },
+                                onRestoreLife = onRestoreLife,
+                            )
+                        }
+                        entry<AppDestination.CrownsTutorial> {
+                            CrownsTutorialRoute(
+                                settingsRepository = settingsRepository,
+                                hapticsEnabled = settings.hapticsEnabled,
+                                onDone = { backStack.removeLastOrNull() },
+                            )
+                        }
+                        entry<AppDestination.WordStart> {
+                            WordStartScreen(
+                                economy = economy,
+                                onOpenTutorial = {
+                                    onWordTutorialCompleted(true)
+                                    backStack.add(AppDestination.WordTutorial)
+                                },
+                                onStart = { difficulty ->
+                                    onWordTutorialCompleted(true)
+                                    openLevel(PuzzleType.WORD, difficulty)
+                                },
+                                onRestoreLife = onRestoreLife,
+                            )
+                        }
+                        entry<AppDestination.WordTutorial> {
+                            WordTutorialRoute(settingsRepository = settingsRepository, onDone = { backStack.removeLastOrNull() })
+                        }
+                        entry<AppDestination.SudokuStart> {
+                            SudokuStartScreen(
+                                economy = economy,
+                                onOpenTutorial = { backStack.add(AppDestination.SudokuTutorial) },
+                                onStart = { difficulty -> openLevel(PuzzleType.SUDOKU, difficulty) },
+                                onRestoreLife = onRestoreLife,
+                            )
+                        }
+                        entry<AppDestination.SudokuTutorial> {
+                            SudokuTutorialRoute(
+                                settingsRepository = settingsRepository,
+                                onDone = { backStack.removeLastOrNull() },
+                            )
+                        }
+                        entry<AppDestination.Game2048Start> {
+                            Game2048StartScreen(
+                                economy = economy,
+                                onOpenTutorial = { backStack.add(AppDestination.Game2048Tutorial) },
+                                onStart = { difficulty -> openLevel(PuzzleType.GAME_2048, difficulty) },
+                                onRestoreLife = onRestoreLife,
+                            )
+                        }
+                        entry<AppDestination.Game2048Tutorial> {
+                            Game2048TutorialRoute(
+                                settingsRepository = settingsRepository,
+                                onDone = { backStack.removeLastOrNull() },
+                            )
+                        }
+                        entry<AppDestination.BalanceGame> { destination ->
+                            BalanceGameRoute(
+                                launch = destination.launch,
+                                attemptFactory = attemptFactory,
+                                completionRepository = gameCompletionRepository,
+                                economyRepository = economyRepository,
+                                exitGuard = exitGuard,
+                                hapticsEnabled = settings.hapticsEnabled,
+                                onBack = goBack,
+                                onNextLevel = { openNextLevel(PuzzleType.BALANCE, destination.launch) },
+                                onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                                onTerminalAction = onTerminalAction,
+                                onRestoreLife = onRestoreLife,
+                            )
+                        }
+                        entry<AppDestination.CrownsGame> { destination ->
+                            CrownsGameRoute(
+                                launch = destination.launch,
+                                attemptFactory = attemptFactory,
+                                completionRepository = gameCompletionRepository,
+                                economyRepository = economyRepository,
+                                exitGuard = exitGuard,
+                                hapticsEnabled = settings.hapticsEnabled,
+                                onBack = goBack,
+                                onNextLevel = { openNextLevel(PuzzleType.CROWNS, destination.launch) },
+                                onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                                onTerminalAction = onTerminalAction,
+                                onRestoreLife = onRestoreLife,
+                            )
+                        }
+                        entry<AppDestination.WordGame> { destination ->
+                            WordGameRoute(
+                                launch = destination.launch,
+                                attemptFactory = attemptFactory,
+                                completionRepository = gameCompletionRepository,
+                                economyRepository = economyRepository,
+                                exitGuard = exitGuard,
+                                hapticsEnabled = settings.hapticsEnabled,
+                                onBack = goBack,
+                                onNextLevel = { openNextLevel(PuzzleType.WORD, destination.launch) },
+                                onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                                onTerminalAction = onTerminalAction,
+                                onRestoreLife = onRestoreLife,
+                            )
+                        }
+                        entry<AppDestination.SudokuGame> { destination ->
+                            SudokuGameRoute(
+                                launch = destination.launch,
+                                attemptFactory = attemptFactory,
+                                completionRepository = gameCompletionRepository,
+                                economyRepository = economyRepository,
+                                exitGuard = exitGuard,
+                                hapticsEnabled = settings.hapticsEnabled,
+                                onBack = goBack,
+                                onNextLevel = { openNextLevel(PuzzleType.SUDOKU, destination.launch) },
+                                onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                                onTerminalAction = onTerminalAction,
+                                onRestoreLife = onRestoreLife,
+                            )
+                        }
+                        entry<AppDestination.Game2048Game> { destination ->
+                            Game2048Route(
+                                launch = destination.launch,
+                                attemptFactory = attemptFactory,
+                                completionRepository = gameCompletionRepository,
+                                economyRepository = economyRepository,
+                                exitGuard = exitGuard,
+                                hapticsEnabled = settings.hapticsEnabled,
+                                onBack = goBack,
+                                onNextLevel = { openNextLevel(PuzzleType.GAME_2048, destination.launch) },
+                                onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                                onTerminalAction = onTerminalAction,
+                                onRestoreLife = onRestoreLife,
+                            )
+                        }
+                    },
+            )
         }
     }
 
@@ -664,13 +664,12 @@ private fun AppTopBar(
 private fun horizontalSlideTransition(
     incomingDirection: Int,
     outgoingDirection: Int,
-) =
-    slideInHorizontally(navigationSlideSpec()) { width ->
-        incomingDirection * width
-    } togetherWith
-        slideOutHorizontally(navigationSlideSpec()) { width ->
-            outgoingDirection * width
-        }
+) = slideInHorizontally(navigationSlideSpec()) { width ->
+    incomingDirection * width
+} togetherWith
+    slideOutHorizontally(navigationSlideSpec()) { width ->
+        outgoingDirection * width
+    }
 
 private fun navigationSlideSpec() =
     tween<IntOffset>(

@@ -60,8 +60,7 @@ internal class YandexGamesBridge :
      * Platform language reported by `ysdk.environment.i18n.lang`, read after SDK initialization;
      * raw SDK objects never leave this bridge. Null when unavailable or structurally unexpected.
      */
-    fun platformLanguage(): String? =
-        runCatching { sdk?.let(::sdkPlatformLanguage) }.getOrNull()
+    fun platformLanguage(): String? = runCatching { sdk?.let(::sdkPlatformLanguage) }.getOrNull()
 
     fun initialize(
         lifecycleListener: YandexLifecycleListener,
@@ -322,10 +321,11 @@ internal class YandexGamesBridge :
             for (index in 0 until count) {
                 val entry = jsArrayGet(rawPurchases, index)
                 val token = stringPropertyOrNull(entry, PURCHASE_TOKEN_KEY) ?: continue
-                result += PaymentPurchaseSnapshot(
-                    purchaseToken = token,
-                    productId = stringPropertyOrNull(entry, PURCHASE_PRODUCT_ID_KEY) ?: "",
-                )
+                result +=
+                    PaymentPurchaseSnapshot(
+                        purchaseToken = token,
+                        productId = stringPropertyOrNull(entry, PURCHASE_PRODUCT_ID_KEY) ?: "",
+                    )
             }
             result
         } catch (_: Throwable) {
@@ -343,7 +343,6 @@ internal class YandexGamesBridge :
         }
 
     // endregion
-
 
     fun dispose() {
         if (disposed) return
@@ -541,6 +540,7 @@ private external interface YandexPayments : JsAny {
 
     fun consumePurchase(purchaseToken: String): Promise<JsAny>
 }
+
 private external interface YandexAdv : JsAny {
     fun showRewardedVideo(callbacks: YandexRewardedVideoCallbacks)
 
@@ -678,7 +678,9 @@ private fun sdkSupportsPayments(sdk: YandexSdk): Boolean = js("typeof sdk.getPay
 private fun isJsArray(value: JsAny): Boolean = js("Array.isArray(value)")
 
 private fun sdkPlatformLanguage(sdk: YandexSdk): String? =
-    js("typeof sdk.environment === 'object' && sdk.environment != null && typeof sdk.environment.i18n === 'object' && sdk.environment.i18n != null && typeof sdk.environment.i18n.lang === 'string' ? sdk.environment.i18n.lang : null")
+    js(
+        "typeof sdk.environment === 'object' && sdk.environment != null && typeof sdk.environment.i18n === 'object' && sdk.environment.i18n != null && typeof sdk.environment.i18n.lang === 'string' ? sdk.environment.i18n.lang : null",
+    )
 
 private fun paymentsOptions(): JsAny = js("({ signed: false })")
 

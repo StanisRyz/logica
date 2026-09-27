@@ -260,7 +260,9 @@ internal class WebWordController(
                                 if (solved) WebStatisticsTerminalOutcome.SOLVED else WebStatisticsTerminalOutcome.FAILED
                             // Terminal persistence happens here immediately — it never waits for
                             // the reveal animation, and the reveal is never shortened by it.
-                            val wordAttemptsUsed = updated.game.attempts.size.takeIf { solved }
+                            val wordAttemptsUsed =
+                                updated.game.attempts.size
+                                    .takeIf { solved }
                             statisticsAttempt?.let {
                                 statistics.recordTerminalResult(
                                     attempt = it,

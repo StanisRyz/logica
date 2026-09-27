@@ -82,8 +82,7 @@ internal fun SquareGameLayout(
                         .padding(
                             horizontal = LogicaSpacing.screenHorizontal,
                             vertical = verticalPadding,
-                        )
-                        .animateContentSize(),
+                        ).animateContentSize(),
                 verticalArrangement = Arrangement.spacedBy(sectionSpacing),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {

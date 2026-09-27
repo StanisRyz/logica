@@ -104,5 +104,4 @@ internal class AppContainer(
     val economyRepository: EconomyRepository by lazy {
         RoomEconomyRepository(database.economyDao())
     }
-
 }

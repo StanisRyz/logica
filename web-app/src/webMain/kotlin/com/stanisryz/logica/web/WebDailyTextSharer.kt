@@ -35,4 +35,3 @@ private fun copyWebTextToClipboard(text: String): Unit =
     js(
         "try { globalThis.navigator.clipboard.writeText(text); } catch (ignored) {}",
     )
-

@@ -408,8 +408,7 @@ internal class WebSaveSections(
         object : WebSaveSection {
             override val id = WebSaveSectionIds.PAYMENTS
 
-            override fun export(): ByteArray? =
-                playerSession.paymentsRepository?.let { WebPaymentsCodec.encode(it.snapshot.value) }
+            override fun export(): ByteArray? = playerSession.paymentsRepository?.let { WebPaymentsCodec.encode(it.snapshot.value) }
 
             override fun apply(payload: ByteArray) {
                 val repository = playerSession.paymentsRepository ?: return

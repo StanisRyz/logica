@@ -3,8 +3,8 @@ package com.stanisryz.logica.web
 import com.stanisryz.logica.platform.PaymentPurchaseSnapshot
 import com.stanisryz.logica.platform.PaymentResult
 import kotlinx.coroutines.CoroutineScope
-import kotlin.coroutines.EmptyCoroutineContext
 import kotlinx.coroutines.test.runTest
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -89,8 +89,10 @@ class WebPaymentsTest {
         }
     }
 
-    private fun economyRepository(store: FakeEconomyStore, revisions: WebPlayerStateRevisions): WebPlayerEconomyRepository =
-        WebPlayerEconomyRepository(standaloneScope, store, revisions).also { it.loadLocal() }
+    private fun economyRepository(
+        store: FakeEconomyStore,
+        revisions: WebPlayerStateRevisions,
+    ): WebPlayerEconomyRepository = WebPlayerEconomyRepository(standaloneScope, store, revisions).also { it.loadLocal() }
 
     private fun paymentsRepository(store: FakePaymentsStore): WebPlayerPaymentsRepository =
         WebPlayerPaymentsRepository(standaloneScope, store).also { it.loadLocal() }

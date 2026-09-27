@@ -56,9 +56,9 @@ import com.stanisryz.logica.shared.ui.generated.resources.game_2048_move_right
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_move_up
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_tile_description
 import com.stanisryz.logica.ui.theme.LogicaSpacing
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import org.jetbrains.compose.resources.stringResource
 
 /** Shared 4x4 board, gestures, accessibility actions, and deterministic trace animation. */
 @Composable

@@ -6,8 +6,8 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.FakeGameCompletionDao
 import com.stanisryz.logica.result.GameCompletion
 import com.stanisryz.logica.result.GameOutcome
-import com.stanisryz.logica.result.toEntity
 import com.stanisryz.logica.result.GameResultScope
+import com.stanisryz.logica.result.toEntity
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

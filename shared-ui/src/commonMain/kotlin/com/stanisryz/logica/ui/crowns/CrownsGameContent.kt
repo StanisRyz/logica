@@ -338,5 +338,3 @@ private val CONTEXT_CARD_PADDING = 12.dp
 private const val COMPACT_HINT_LINES = 3
 private const val NORMAL_HINT_LINES = 3
 private const val HINT_LEGEND_LINES = 2
-
-

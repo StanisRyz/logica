@@ -83,7 +83,9 @@ class WebDailyGame2048ControllerTest {
             direction: Game2048Direction,
         ): Game2048MoveTransition {
             val next = script.getOrNull(index++)
-            return next?.let { updated -> Game2048MoveTransition(updated, Game2048MoveTrace(direction, emptyList(), emptyList(), null, 0L)) }
+            return next?.let { updated ->
+                Game2048MoveTransition(updated, Game2048MoveTrace(direction, emptyList(), emptyList(), null, 0L))
+            }
                 ?: Game2048MoveTransition(state, null)
         }
 
@@ -94,7 +96,11 @@ class WebDailyGame2048ControllerTest {
         }
     }
 
-    private fun gameOver(puzzleId: Game2048PuzzleId, start: Game2048State, score: Long): Game2048State =
+    private fun gameOver(
+        puzzleId: Game2048PuzzleId,
+        start: Game2048State,
+        score: Long,
+    ): Game2048State =
         Game2048State(
             puzzleId = puzzleId,
             // A full checker board has no legal move left in any direction.
@@ -111,14 +117,15 @@ class WebDailyGame2048ControllerTest {
             val store = FakeDailyStore()
             val repository =
                 WebDailyRepository(WebCatalogProgressScope.STANDALONE, store) { today }.also { it.loadLocal() }
-            val session = object : WebDailySessionAccess {
-                override val dailyBinding =
-                    MutableStateFlow<WebDailyBinding>(
-                        WebDailyBinding.Ready(WebPlayerContextToken(5L), repository, null, WebDailyCloudSyncStatus.LOCAL_ONLY),
-                    )
+            val session =
+                object : WebDailySessionAccess {
+                    override val dailyBinding =
+                        MutableStateFlow<WebDailyBinding>(
+                            WebDailyBinding.Ready(WebPlayerContextToken(5L), repository, null, WebDailyCloudSyncStatus.LOCAL_ONLY),
+                        )
 
-                override fun requestDailyCloudSynchronization(binding: WebDailyBinding.Ready) = Unit
-            }
+                    override fun requestDailyCloudSynchronization(binding: WebDailyBinding.Ready) = Unit
+                }
             val coordinator = WebDailyGameplayCoordinator(session) { today }
             val progression = FakeWebCatalogProgressAccess(initialLevel = 4)
             val statistics = RecordingStatistics()
@@ -132,12 +139,13 @@ class WebDailyGame2048ControllerTest {
                         val start = Game2048Engine(puzzleId).start()
                         ScriptedEngine(
                             puzzleId,
-                            firstScript = listOf(
-                                // Move 1 crosses the V2 target while play continues...
-                                start.copy(score = 30_000L, status = Game2048Status.IN_PROGRESS),
-                                // ...and move 2 ends the game with the goal reached.
-                                gameOver(puzzleId, start, score = 30_000L),
-                            ),
+                            firstScript =
+                                listOf(
+                                    // Move 1 crosses the V2 target while play continues...
+                                    start.copy(score = 30_000L, status = Game2048Status.IN_PROGRESS),
+                                    // ...and move 2 ends the game with the goal reached.
+                                    gameOver(puzzleId, start, score = 30_000L),
+                                ),
                             retryScript = listOf(gameOver(puzzleId, start, score = 0L)),
                         )
                     },
@@ -153,13 +161,20 @@ class WebDailyGame2048ControllerTest {
             controller.move(Game2048Direction.LEFT)
             controller.finishMotion(assertNotNull((controller.state as Web2048State.Playing).motionRevision))
             assertEquals(emptyList(), statistics.outcomes)
-            val recordBeforeGameOver = repository.snapshot.value.days.getValue(today)
+            val recordBeforeGameOver =
+                repository.snapshot.value.days
+                    .getValue(today)
             assertFalse(recordBeforeGameOver.facts(PuzzleType.GAME_2048).solved)
 
             // The later real game over with the goal reached records exactly one SOLVED, once.
             controller.move(Game2048Direction.LEFT)
             assertEquals(listOf(WebStatisticsTerminalOutcome.SOLVED), statistics.outcomes)
-            assertTrue(repository.snapshot.value.days.getValue(today).facts(PuzzleType.GAME_2048).solved)
+            assertTrue(
+                repository.snapshot.value.days
+                    .getValue(today)
+                    .facts(PuzzleType.GAME_2048)
+                    .solved,
+            )
 
             // A completed Daily 2048 entry is never replayable from the terminal screen.
             controller.finishMotion(assertNotNull((controller.state as Web2048State.Playing).motionRevision))
@@ -172,19 +187,20 @@ class WebDailyGame2048ControllerTest {
             val failedStore = FakeDailyStore()
             val failedRepository =
                 WebDailyRepository(WebCatalogProgressScope.STANDALONE, failedStore) { today }.also { it.loadLocal() }
-            val failedSession = object : WebDailySessionAccess {
-                override val dailyBinding =
-                    MutableStateFlow<WebDailyBinding>(
-                        WebDailyBinding.Ready(
-                            WebPlayerContextToken(6L),
-                            failedRepository,
-                            null,
-                            WebDailyCloudSyncStatus.LOCAL_ONLY,
-                        ),
-                    )
+            val failedSession =
+                object : WebDailySessionAccess {
+                    override val dailyBinding =
+                        MutableStateFlow<WebDailyBinding>(
+                            WebDailyBinding.Ready(
+                                WebPlayerContextToken(6L),
+                                failedRepository,
+                                null,
+                                WebDailyCloudSyncStatus.LOCAL_ONLY,
+                            ),
+                        )
 
-                override fun requestDailyCloudSynchronization(binding: WebDailyBinding.Ready) = Unit
-            }
+                    override fun requestDailyCloudSynchronization(binding: WebDailyBinding.Ready) = Unit
+                }
             val failedCoordinator = WebDailyGameplayCoordinator(failedSession) { today }
             val failedStatistics = RecordingStatistics()
             val failedAttempt =
@@ -211,7 +227,9 @@ class WebDailyGame2048ControllerTest {
             failedController.move(Game2048Direction.LEFT)
             failedController.finishMotion(assertNotNull((failedController.state as Web2048State.Playing).motionRevision))
             assertEquals(listOf(WebStatisticsTerminalOutcome.FAILED), failedStatistics.outcomes)
-            val recordAfterBoth = failedRepository.snapshot.value.days.getValue(today)
+            val recordAfterBoth =
+                failedRepository.snapshot.value.days
+                    .getValue(today)
             assertTrue(recordAfterBoth.facts(PuzzleType.GAME_2048).failedSeen)
             assertFalse(recordAfterBoth.facts(PuzzleType.GAME_2048).solved)
 
@@ -229,4 +247,3 @@ class WebDailyGame2048ControllerTest {
             assertEquals(4, current.attempt.levelId.levelNumber.value)
         }
 }
-

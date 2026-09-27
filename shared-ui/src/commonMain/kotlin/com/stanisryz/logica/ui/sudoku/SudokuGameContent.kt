@@ -30,9 +30,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameState
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameStatus
-import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuHint
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuHintTechnique
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuPosition

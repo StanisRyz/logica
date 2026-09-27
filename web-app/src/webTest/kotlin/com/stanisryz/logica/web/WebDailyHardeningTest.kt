@@ -22,9 +22,9 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -95,14 +95,15 @@ class WebDailyHardeningTest {
     private fun readyCoordinator(): Pair<WebDailyRepository, WebDailyGameplayCoordinator> {
         val repository =
             WebDailyRepository(WebCatalogProgressScope.STANDALONE, FakeDailyStore()) { today }.also { it.loadLocal() }
-        val session = object : WebDailySessionAccess {
-            override val dailyBinding =
-                MutableStateFlow<WebDailyBinding>(
-                    WebDailyBinding.Ready(WebPlayerContextToken(9L), repository, null, WebDailyCloudSyncStatus.LOCAL_ONLY),
-                )
+        val session =
+            object : WebDailySessionAccess {
+                override val dailyBinding =
+                    MutableStateFlow<WebDailyBinding>(
+                        WebDailyBinding.Ready(WebPlayerContextToken(9L), repository, null, WebDailyCloudSyncStatus.LOCAL_ONLY),
+                    )
 
-            override fun requestDailyCloudSynchronization(binding: WebDailyBinding.Ready) = Unit
-        }
+                override fun requestDailyCloudSynchronization(binding: WebDailyBinding.Ready) = Unit
+            }
         return repository to WebDailyGameplayCoordinator(session) { today }
     }
 
@@ -134,10 +135,15 @@ class WebDailyHardeningTest {
     }
 
     private fun solvedFact(repository: WebDailyRepository): Boolean =
-        repository.snapshot.value.days.getValue(today).facts(PuzzleType.WORD).solved
+        repository.snapshot.value.days
+            .getValue(today)
+            .facts(PuzzleType.WORD)
+            .solved
 
     private fun game2048Facts(repository: WebDailyRepository) =
-        repository.snapshot.value.days.getValue(today).facts(PuzzleType.GAME_2048)
+        repository.snapshot.value.days
+            .getValue(today)
+            .facts(PuzzleType.GAME_2048)
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     @Test
@@ -248,7 +254,10 @@ class WebDailyHardeningTest {
         override fun retry(state: Game2048State): Game2048State = start
     }
 
-    private fun gameOver(puzzleId: Game2048PuzzleId, score: Long): Game2048State {
+    private fun gameOver(
+        puzzleId: Game2048PuzzleId,
+        score: Long,
+    ): Game2048State {
         val start = Game2048Engine(puzzleId).start()
         return Game2048State(
             puzzleId = puzzleId,
@@ -331,4 +340,3 @@ class WebDailyHardeningTest {
             assertEquals(WebDailyCompletionState.Idle, failedController.dailyCompletionState)
         }
 }
-

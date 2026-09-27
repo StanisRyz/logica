@@ -85,7 +85,9 @@ class WebDailyProfileAndShareTest {
     fun onlyFullyCompletedDaysProduceDeterministicSpoilerFreeShareText() {
         val repository = repository()
         solveAll(repository, today, wordAttempts = 3)
-        val fullRecord = repository.snapshot.value.days.getValue(today)
+        val fullRecord =
+            repository.snapshot.value.days
+                .getValue(today)
 
         val payload =
             webDailySharePayloadOrNull(fullRecord, today, currentStreak = 4)
@@ -112,7 +114,9 @@ class WebDailyProfileAndShareTest {
         val definition = DailyChallengePolicyV5.definitionFor(today)
         partialRepository.ensureRun(definition)
         partialRepository.recordSolved(definition, PuzzleType.BALANCE)
-        val partialRecord = partialRepository.snapshot.value.days.getValue(today)
+        val partialRecord =
+            partialRepository.snapshot.value.days
+                .getValue(today)
         assertNull(webDailySharePayloadOrNull(partialRecord, today, currentStreak = 1))
     }
 }

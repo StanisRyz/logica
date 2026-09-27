@@ -97,7 +97,10 @@ class WebWordControllerTest {
 
             controller.nextLevel()
             advanceUntilIdle()
-            assertEquals(8, (assertIs<WebWordState.Playing>(controller.state).source as WebGameplaySource.CatalogLevel).definition.levelNumber.value)
+            assertEquals(
+                8,
+                (assertIs<WebWordState.Playing>(controller.state).source as WebGameplaySource.CatalogLevel).definition.levelNumber.value,
+            )
         }
 
     private val testRuntime =

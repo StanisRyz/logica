@@ -1,8 +1,8 @@
 package com.stanisryz.logica.ui.daily
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -55,6 +55,8 @@ import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordRules
 import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.best_daily_streak
+import com.stanisryz.logica.shared.ui.generated.resources.current_daily_streak
 import com.stanisryz.logica.shared.ui.generated.resources.daily_available
 import com.stanisryz.logica.shared.ui.generated.resources.daily_challenge
 import com.stanisryz.logica.shared.ui.generated.resources.daily_completed
@@ -72,8 +74,6 @@ import com.stanisryz.logica.shared.ui.generated.resources.daily_result_word_fail
 import com.stanisryz.logica.shared.ui.generated.resources.daily_result_word_solved_description
 import com.stanisryz.logica.shared.ui.generated.resources.daily_streak_hint
 import com.stanisryz.logica.shared.ui.generated.resources.daily_streak_secured
-import com.stanisryz.logica.shared.ui.generated.resources.best_daily_streak
-import com.stanisryz.logica.shared.ui.generated.resources.current_daily_streak
 import com.stanisryz.logica.shared.ui.generated.resources.game_catalog_play_label
 import com.stanisryz.logica.shared.ui.generated.resources.retry
 import com.stanisryz.logica.shared.ui.generated.resources.share_daily_result
@@ -198,8 +198,7 @@ private fun DailyContent(
                                 .padding(
                                     horizontal = DAILY_PROGRESS_HORIZONTAL_PADDING,
                                     vertical = DAILY_PROGRESS_VERTICAL_PADDING,
-                                )
-                                .clearAndSetSemantics { contentDescription = progressDescription },
+                                ).clearAndSetSemantics { contentDescription = progressDescription },
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -286,7 +285,8 @@ private fun DailyStreakChip(streak: DailyHubStreak) {
         )
     Row(
         modifier =
-            Modifier.fillMaxWidth()
+            Modifier
+                .fillMaxWidth()
                 .clip(MaterialTheme.shapes.small)
                 .background(containerColor)
                 .padding(horizontal = LogicaSpacing.cardContent, vertical = LogicaSpacing.text)
@@ -364,7 +364,9 @@ private fun DailyEntryCard(
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier =
-                    Modifier.fillMaxWidth().height(DAILY_ARTWORK_HEIGHT)
+                    Modifier
+                        .fillMaxWidth()
+                        .height(DAILY_ARTWORK_HEIGHT)
                         .clip(MaterialTheme.shapes.medium),
             )
             Text(text = title, style = MaterialTheme.typography.titleMedium)
@@ -400,7 +402,8 @@ private fun DailyEntryStateChip(state: DailyHubEntryState) {
         )
     Row(
         modifier =
-            Modifier.clip(MaterialTheme.shapes.small)
+            Modifier
+                .clip(MaterialTheme.shapes.small)
                 .background(containerColor)
                 .padding(horizontal = LogicaSpacing.cardContent, vertical = DAILY_CHIP_VERTICAL_PADDING),
         verticalAlignment = Alignment.CenterVertically,
