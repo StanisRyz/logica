@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -113,7 +114,7 @@ fun SudokuToolBar(
                 selected = null,
                 enabled = canUndo,
                 onClick = onUndo,
-                symbol = { Text("↶", style = MaterialTheme.typography.titleLarge) },
+                symbol = { Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null) },
             ),
             hintTool(hintCount = hintCount, enabled = hintEnabled, onClick = onHint),
         )

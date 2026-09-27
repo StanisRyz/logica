@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,6 +59,7 @@ import com.stanisryz.logica.puzzle.core.word.WordGameStatus
 import com.stanisryz.logica.shared.ui.generated.resources.Res
 import com.stanisryz.logica.shared.ui.generated.resources.daily_marker
 import com.stanisryz.logica.shared.ui.generated.resources.daily_start_error
+import com.stanisryz.logica.shared.ui.generated.resources.how_to_play
 import com.stanisryz.logica.shared.ui.generated.resources.primary_games
 import com.stanisryz.logica.shared.ui.generated.resources.primary_profile
 import com.stanisryz.logica.shared.ui.generated.resources.primary_store
@@ -66,6 +68,7 @@ import com.stanisryz.logica.ui.components.DifficultySelector
 import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
 import com.stanisryz.logica.ui.components.GameHubContent
 import com.stanisryz.logica.ui.components.GameKey
+import com.stanisryz.logica.ui.components.catalogTitleResource
 import com.stanisryz.logica.ui.crowns.CrownsGameContent
 import com.stanisryz.logica.ui.daily.DailyHubResultRow
 import com.stanisryz.logica.ui.daily.DailyHubSection
@@ -274,6 +277,9 @@ private fun ReadyContent(
     // Desktop keyboard input goes to the puzzle only while it is actively played and uncovered.
     val keyboard = remember { WebKeyboard().also(WebKeyboard::install) }
 
+    // «Как играть?» opens the shared onboarding over the difficulty screen it came from.
+    var tutorialFor by remember { mutableStateOf<PuzzleType?>(null) }
+
     // From a game the Store opens as a sheet over the board, so the unsaved attempt stays put.
     var storeSheetOpen by remember { mutableStateOf(false) }
     val openStore: () -> Unit = {
@@ -328,6 +334,7 @@ private fun ReadyContent(
             sudokuController.showDifficultySelector()
             game2048Controller.showDifficultySelector()
             storeSheetOpen = false
+            tutorialFor = null
             route = WebRoute.GameHub
         }
     }
@@ -380,7 +387,9 @@ private fun ReadyContent(
             }
         }
 
-    SideEffect { keyboard.enabled = hasActivePuzzle && !storeSheetOpen && !showNoLives }
+    // Read in composition (not inside the effect) so every change of these states re-applies it.
+    val keyboardEnabled = (hasActivePuzzle || tutorialFor != null) && !storeSheetOpen && !showNoLives
+    SideEffect { keyboard.enabled = keyboardEnabled }
     LaunchedEffect(keyboard, route) {
         keyboard.keys.collect { key ->
             when (route) {
@@ -391,7 +400,15 @@ private fun ReadyContent(
         }
     }
 
-    CompositionLocalProvider(LocalWebLives provides livesUi, LocalWebKeyboard provides keyboard) {
+    CompositionLocalProvider(
+        LocalWebLives provides livesUi,
+        LocalWebKeyboard provides keyboard,
+        LocalOpenTutorial provides { puzzleType -> tutorialFor = puzzleType },
+    ) {
+        tutorialFor?.let { puzzleType ->
+            WebTutorialScreen(puzzleType = puzzleType, onClose = { tutorialFor = null })
+            return@CompositionLocalProvider
+        }
         when (route) {
             WebRoute.GameHub ->
                 PrimaryDestinationShell(
@@ -771,7 +788,7 @@ private fun BalanceFlow(
     when (state) {
         WebBalanceState.DifficultySelection ->
             DifficultyContent(
-                gameTitle = "Баланс",
+                puzzleType = PuzzleType.BALANCE,
                 onBack = onExitBalance,
                 onStart = controller::selectDifficulty,
             )
@@ -824,7 +841,7 @@ private fun CrownsFlow(
     when (state) {
         WebCrownsState.DifficultySelection ->
             DifficultyContent(
-                gameTitle = "Короны",
+                puzzleType = PuzzleType.CROWNS,
                 onBack = onExitCrowns,
                 onStart = controller::selectDifficulty,
             )
@@ -876,7 +893,7 @@ private fun WordFlow(
     when (state) {
         WebWordState.DifficultySelection ->
             DifficultyContent(
-                gameTitle = "Слово",
+                puzzleType = PuzzleType.WORD,
                 onBack = onExitWord,
                 onStart = controller::selectDifficulty,
             )
@@ -928,7 +945,7 @@ private fun SudokuFlow(
     when (state) {
         WebSudokuState.DifficultySelection ->
             DifficultyContent(
-                gameTitle = "Судоку",
+                puzzleType = PuzzleType.SUDOKU,
                 onBack = onExitSudoku,
                 onStart = controller::selectDifficulty,
             )
@@ -979,7 +996,7 @@ private fun Game2048Flow(
     when (state) {
         Web2048State.DifficultySelection ->
             DifficultyContent(
-                gameTitle = "2048",
+                puzzleType = PuzzleType.GAME_2048,
                 onBack = onExitGame2048,
                 onStart = controller::selectDifficulty,
             )
@@ -1020,10 +1037,11 @@ private fun Game2048Flow(
 
 @Composable
 private fun DifficultyContent(
-    gameTitle: String,
+    puzzleType: PuzzleType,
     onBack: () -> Unit,
     onStart: (Difficulty) -> Unit,
 ) {
+    val openTutorial = LocalOpenTutorial.current
     BoxWithConstraints(
         modifier =
             Modifier
@@ -1037,8 +1055,12 @@ private fun DifficultyContent(
         val livesState = lives.state
         val livesHeight = if (livesState != null) LIVES_STATUS_HEIGHT + LogicaSpacing.section else 0.dp
         val cardHeight =
-            ((maxHeight - DIFFICULTY_HEADER_HEIGHT - livesHeight - LogicaSpacing.section - LogicaSpacing.item * 3) / 4)
-                .coerceIn(MIN_DIFFICULTY_CARD_HEIGHT, MAX_DIFFICULTY_CARD_HEIGHT)
+            (
+                (
+                    maxHeight - DIFFICULTY_HEADER_HEIGHT - TUTORIAL_ACTION_HEIGHT - livesHeight -
+                        LogicaSpacing.section * 2 - LogicaSpacing.item * 3
+                ) / 4
+            ).coerceIn(MIN_DIFFICULTY_CARD_HEIGHT, MAX_DIFFICULTY_CARD_HEIGHT)
         Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.section)) {
             Row(
                 modifier = Modifier.fillMaxWidth().height(DIFFICULTY_HEADER_HEIGHT),
@@ -1046,10 +1068,17 @@ private fun DifficultyContent(
             ) {
                 TextButton(onClick = onBack) { Text("Назад") }
                 Text(
-                    text = "$gameTitle · выберите сложность",
+                    text = "${stringResource(puzzleType.catalogTitleResource())} · выберите сложность",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().height(TUTORIAL_ACTION_HEIGHT),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedButton(onClick = { openTutorial(puzzleType) }) { Text(stringResource(Res.string.how_to_play)) }
             }
             if (livesState != null) {
                 WebLivesStatus(livesState, Modifier.height(LIVES_STATUS_HEIGHT))
@@ -1472,6 +1501,7 @@ private fun Difficulty.webLabel(): String =
 
 private val DIFFICULTY_HEADER_HEIGHT = 48.dp
 private val LIVES_STATUS_HEIGHT = 24.dp
+private val TUTORIAL_ACTION_HEIGHT = 40.dp
 private val PRIMARY_NAVIGATION_HEIGHT = 64.dp
 private val MIN_DIFFICULTY_CARD_HEIGHT = 96.dp
 private val MAX_DIFFICULTY_CARD_HEIGHT = 152.dp

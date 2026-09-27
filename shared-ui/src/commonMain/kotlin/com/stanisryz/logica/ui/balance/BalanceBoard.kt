@@ -57,6 +57,7 @@ fun BalanceBoard(
     enabledPositions: Set<BalancePosition>? = null,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    guidedPositions: Set<BalancePosition> = emptySet(),
 ) {
     val conflictPositions = remember(game.violations) { game.violations.flatMapTo(mutableSetOf()) { it.affectedPositions } }
     val hint = game.currentHint
@@ -83,6 +84,7 @@ fun BalanceBoard(
                             isConflict = position in conflictPositions,
                             isHintTarget = hint?.position == position,
                             isHintEvidence = position in (hint?.evidencePositions ?: emptySet()),
+                            isGuided = position in guidedPositions,
                             enabled =
                                 enabled &&
                                     !game.isLocked(position) &&
@@ -108,6 +110,7 @@ private fun BalanceCellView(
     isConflict: Boolean,
     isHintTarget: Boolean,
     isHintEvidence: Boolean,
+    isGuided: Boolean,
     enabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -121,6 +124,7 @@ private fun BalanceCellView(
             isIncorrect || isConflict -> colors.errorContainer
             isHintTarget -> colors.tertiaryContainer
             isHintEvidence -> colors.secondaryContainer
+            isGuided -> colors.primaryContainer
             isFixed -> colors.surfaceVariant
             isConfirmed -> colors.surfaceContainerHighest
             else -> colors.surface
@@ -130,6 +134,7 @@ private fun BalanceCellView(
             isIncorrect || isConflict -> colors.error
             isHintTarget -> colors.tertiary
             isHintEvidence -> colors.secondary
+            isGuided -> colors.primary
             else -> colors.outlineVariant
         }
     val stateLabel =
@@ -153,7 +158,7 @@ private fun BalanceCellView(
     Box(
         modifier =
             modifier
-                .border(if (isHintTarget || isConflict || isIncorrect) 2.dp else 1.dp, borderColor)
+                .border(if (isHintTarget || isConflict || isIncorrect || isGuided) 2.dp else 1.dp, borderColor)
                 .background(background)
                 .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
                 .semantics { contentDescription = description },
@@ -205,13 +210,6 @@ private fun BalanceCell.accessibilityResource(): StringResource =
         BalanceCell.EMPTY -> Res.string.cell_empty
         BalanceCell.ZERO -> Res.string.cell_zero
         BalanceCell.ONE -> Res.string.cell_one
-    }
-
-internal fun BalanceCell.symbol(): String =
-    when (this) {
-        BalanceCell.EMPTY -> ""
-        BalanceCell.ZERO -> "○"
-        BalanceCell.ONE -> "●"
     }
 
 /** Game pieces remain literal black/white and never invert with the Material theme. */

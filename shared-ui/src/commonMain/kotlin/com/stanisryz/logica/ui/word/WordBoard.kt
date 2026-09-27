@@ -77,8 +77,10 @@ fun WordBoard(
     onCellSelected: (Int) -> Unit = {},
     acceptedAttemptRevision: Int = 0,
     onAcceptedAttemptRevealed: (Int) -> Unit = {},
+    /** Worked examples show only the rows they talk about instead of all six attempts. */
+    visibleRows: Int = WordRules.MAXIMUM_ATTEMPTS,
 ) {
-    val rows = buildRows(game)
+    val rows = buildRows(game).take(visibleRows)
     val cellSpacing = if (game.wordLength == WordRules.MAXIMUM_WORD_LENGTH) COMPACT_CELL_SPACING else CELL_SPACING
     var revealedCells by
         rememberSaveable(game.puzzleId, game.attempts.size, acceptedAttemptRevision) {
@@ -102,8 +104,7 @@ fun WordBoard(
             if (constraints.hasBoundedHeight) {
                 minOf(
                     cellFromWidth,
-                    (maxHeight - cellSpacing * (WordRules.MAXIMUM_ATTEMPTS - 1)) /
-                        WordRules.MAXIMUM_ATTEMPTS,
+                    (maxHeight - cellSpacing * (rows.size - 1)) / rows.size,
                 )
             } else {
                 cellFromWidth

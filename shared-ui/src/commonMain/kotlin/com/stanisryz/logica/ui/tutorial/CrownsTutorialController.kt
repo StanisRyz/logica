@@ -1,4 +1,4 @@
-package com.stanisryz.logica.crowns
+package com.stanisryz.logica.ui.tutorial
 
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameEngine
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameState
@@ -13,7 +13,7 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleId
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 
-internal enum class CrownsTutorialStage {
+enum class CrownsTutorialStage {
     ROW_AND_COLUMN,
     REGION,
     DIAGONAL,
@@ -21,10 +21,10 @@ internal enum class CrownsTutorialStage {
     MINI_PUZZLE,
 }
 
-internal data class CrownsTutorialUiState(
+data class CrownsTutorialUiState(
     val stage: CrownsTutorialStage = CrownsTutorialStage.ROW_AND_COLUMN,
     val puzzle: CrownsPuzzle = CrownsTutorialScenarios.puzzle,
-    val game: CrownsGameState = CrownsGameEngine(puzzle).start(),
+    val game: CrownsGameState = CrownsTutorialScenarios.startStateFor(stage),
     val focusedPositions: Set<CrownsPosition> = CrownsTutorialScenarios.focusedPositions(stage),
     val selectedValue: CrownsPlayerCell = CrownsPlayerCell.CROWN,
     val isPencilMode: Boolean = false,
@@ -32,7 +32,7 @@ internal data class CrownsTutorialUiState(
     val completed: Boolean = false,
 )
 
-internal enum class CrownsTutorialFeedback {
+enum class CrownsTutorialFeedback {
     ROW_AND_COLUMN,
     REGION,
     DIAGONAL,
@@ -41,8 +41,8 @@ internal enum class CrownsTutorialFeedback {
 }
 
 /** Crowns-only onboarding state. It deliberately has no attempt, result, or Room dependency. */
-internal class CrownsTutorialController {
-    private var engine = CrownsGameEngine(CrownsTutorialScenarios.puzzle)
+class CrownsTutorialController {
+    private val engine = CrownsGameEngine(CrownsTutorialScenarios.puzzle)
 
     var state = CrownsTutorialUiState()
         private set
@@ -69,7 +69,11 @@ internal class CrownsTutorialController {
         // Onboarding teaches the three-mistake rule by living through it: a failed practice attempt
         // simply restarts the same stage instead of dead-ending the tutorial.
         if (updated.status == CrownsGameStatus.FAILED) {
-            state = state.copy(game = engine.start(), feedback = CrownsTutorialScenarios.feedbackFor(state.stage))
+            state =
+                state.copy(
+                    game = CrownsTutorialScenarios.startStateFor(state.stage),
+                    feedback = CrownsTutorialScenarios.feedbackFor(state.stage),
+                )
             return
         }
         state =
@@ -108,17 +112,17 @@ internal class CrownsTutorialController {
 
     private fun advance(): CrownsTutorialUiState {
         val nextStage = CrownsTutorialScenarios.nextStage(state.stage) ?: return state.copy(completed = true, feedback = null)
-        engine = CrownsGameEngine(CrownsTutorialScenarios.puzzle)
         return CrownsTutorialUiState(
             stage = nextStage,
-            game = engine.start(),
-            selectedValue = state.selectedValue,
+            game = CrownsTutorialScenarios.startStateFor(nextStage),
+            // The mini puzzle is about placing crowns, so it never starts on the mark tool.
+            selectedValue = if (nextStage == CrownsTutorialStage.MINI_PUZZLE) CrownsPlayerCell.CROWN else state.selectedValue,
             isPencilMode = state.isPencilMode,
         )
     }
 }
 
-internal object CrownsTutorialScenarios {
+object CrownsTutorialScenarios {
     private val rows = listOf("AAAB", "ADAB", "CDDD", "DDDD")
 
     val puzzle: CrownsPuzzle =
@@ -140,6 +144,22 @@ internal object CrownsTutorialScenarios {
                     }
                 },
         )
+
+    /**
+     * Guided steps build on each other: the crowns placed in earlier steps stay on the board, so the
+     * region and diagonal steps can actually be reasoned out from what is already there. The mini
+     * puzzle starts empty. A stage restarted after three mistakes returns to this same position.
+     */
+    fun startStateFor(stage: CrownsTutorialStage): CrownsGameState {
+        val engine = CrownsGameEngine(puzzle)
+        if (stage == CrownsTutorialStage.MINI_PUZZLE) return engine.start()
+        return guidedCrownStages
+            .filter { it.ordinal < stage.ordinal }
+            .fold(engine.start()) { game, earlier -> engine.placeValue(game, targetFor(earlier), CrownsPlayerCell.CROWN) }
+    }
+
+    private val guidedCrownStages =
+        listOf(CrownsTutorialStage.ROW_AND_COLUMN, CrownsTutorialStage.REGION, CrownsTutorialStage.DIAGONAL)
 
     fun nextStage(stage: CrownsTutorialStage): CrownsTutorialStage? = CrownsTutorialStage.entries.getOrNull(stage.ordinal + 1)
 

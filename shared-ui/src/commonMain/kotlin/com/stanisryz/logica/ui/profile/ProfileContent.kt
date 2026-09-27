@@ -195,7 +195,6 @@ private fun ReadyProfileContent(
                             append(day.solvedCount)
                             append(" / ")
                             append(day.totalCount)
-                            if (day.fullyCompleted) append(" ✓")
                         }
                     Text(
                         text = dayLabel,

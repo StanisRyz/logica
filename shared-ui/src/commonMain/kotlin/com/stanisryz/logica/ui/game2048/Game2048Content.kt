@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -181,7 +182,8 @@ private fun Game2048Metrics(
                     .size(UNDO_TARGET_SIZE)
                     .semantics { contentDescription = undoDescription },
         ) {
-            Text("↶", style = MaterialTheme.typography.titleLarge)
+            // An icon, not the "↶" glyph: the Web font has no glyph for it.
+            Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null)
         }
     }
 }

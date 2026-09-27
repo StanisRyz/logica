@@ -5,6 +5,10 @@ import com.stanisryz.logica.puzzle.core.balance.BalanceGameEngine
 import com.stanisryz.logica.puzzle.core.balance.BalancePosition
 import com.stanisryz.logica.puzzle.core.balance.BalanceValidator
 import com.stanisryz.logica.puzzle.core.contract.ValidationResult
+import com.stanisryz.logica.ui.tutorial.BalanceTutorialController
+import com.stanisryz.logica.ui.tutorial.BalanceTutorialFeedback
+import com.stanisryz.logica.ui.tutorial.BalanceTutorialScenarios
+import com.stanisryz.logica.ui.tutorial.BalanceTutorialStage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

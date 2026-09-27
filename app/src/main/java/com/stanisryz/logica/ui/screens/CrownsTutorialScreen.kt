@@ -1,36 +1,20 @@
 package com.stanisryz.logica.ui.screens
 
 import android.view.HapticFeedbackConstants
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.stanisryz.logica.R
-import com.stanisryz.logica.crowns.CrownsTutorialFeedback
-import com.stanisryz.logica.crowns.CrownsTutorialStage
-import com.stanisryz.logica.crowns.CrownsTutorialUiState
 import com.stanisryz.logica.crowns.CrownsTutorialViewModel
 import com.stanisryz.logica.crowns.CrownsTutorialViewModelFactory
-import com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell
-import com.stanisryz.logica.puzzle.core.crowns.CrownsPosition
 import com.stanisryz.logica.settings.SettingsRepository
-import com.stanisryz.logica.ui.components.LogicaCard
-import com.stanisryz.logica.ui.components.ScreenColumn
-import com.stanisryz.logica.ui.crowns.CrownsBoard
-import com.stanisryz.logica.ui.crowns.CrownsToolBar
-import com.stanisryz.logica.ui.theme.LogicaSpacing
+import com.stanisryz.logica.ui.tutorial.CrownsTutorialContent
 
+/** Android host for the shared Crowns onboarding; haptics stay a platform concern. */
 @Composable
 internal fun CrownsTutorialRoute(
     settingsRepository: SettingsRepository,
@@ -41,27 +25,6 @@ internal fun CrownsTutorialRoute(
     val factory = remember(settingsRepository) { CrownsTutorialViewModelFactory(settingsRepository) }
     val viewModel: CrownsTutorialViewModel = viewModel(factory = factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    CrownsTutorialScreen(
-        state,
-        viewModel::onCellTapped,
-        viewModel::selectValue,
-        viewModel::togglePencilMode,
-        hapticsEnabled,
-        onDone,
-        modifier,
-    )
-}
-
-@Composable
-private fun CrownsTutorialScreen(
-    state: CrownsTutorialUiState,
-    onCellTapped: (CrownsPosition) -> Unit,
-    onSelectValue: (CrownsPlayerCell) -> Unit,
-    onTogglePencil: () -> Unit,
-    hapticsEnabled: Boolean,
-    onDone: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
     val view = LocalView.current
     LaunchedEffect(state.feedback) {
         if (hapticsEnabled && state.feedback != null) view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
@@ -69,82 +32,19 @@ private fun CrownsTutorialScreen(
     LaunchedEffect(state.completed) {
         if (hapticsEnabled && state.completed) view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
     }
-
-    ScreenColumn(
-        modifier = modifier,
-        verticalSpacing = LogicaSpacing.item,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = stringResource(R.string.crowns_tutorial_progress, state.stage.ordinal + 1),
-            style = MaterialTheme.typography.labelLarge,
-        )
-        Text(crownsTutorialStageTitle(state.stage), style = MaterialTheme.typography.headlineSmall)
-        Text(crownsTutorialStageInstruction(state), style = MaterialTheme.typography.bodyLarge)
-        CrownsBoard(
-            puzzle = state.puzzle,
-            game = state.game,
-            onCellTapped = { position ->
-                if (hapticsEnabled) {
-                    view.performHapticFeedback(
-                        if (state.isPencilMode) HapticFeedbackConstants.CLOCK_TICK else HapticFeedbackConstants.KEYBOARD_TAP,
-                    )
-                }
-                onCellTapped(position)
-            },
-            guidedPositions = state.focusedPositions,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        CrownsToolBar(state.selectedValue, state.isPencilMode, onSelectValue, onTogglePencil)
-        state.feedback?.let { feedback ->
-            LogicaCard(containerColor = MaterialTheme.colorScheme.errorContainer) {
-                Text(crownsTutorialFeedbackText(feedback))
+    CrownsTutorialContent(
+        state = state,
+        onCellTapped = { position ->
+            if (hapticsEnabled) {
+                view.performHapticFeedback(
+                    if (state.isPencilMode) HapticFeedbackConstants.CLOCK_TICK else HapticFeedbackConstants.KEYBOARD_TAP,
+                )
             }
-        }
-    }
-
-    if (state.completed) {
-        AlertDialog(
-            onDismissRequest = onDone,
-            title = { Text(stringResource(R.string.crowns_tutorial_complete_title)) },
-            text = { Text(stringResource(R.string.crowns_tutorial_complete_body)) },
-            confirmButton = { Button(onClick = onDone) { Text(stringResource(R.string.done)) } },
-        )
-    }
+            viewModel.onCellTapped(position)
+        },
+        onSelectValue = viewModel::selectValue,
+        onTogglePencil = viewModel::togglePencilMode,
+        onDone = onDone,
+        modifier = modifier,
+    )
 }
-
-@Composable
-private fun crownsTutorialStageTitle(stage: CrownsTutorialStage): String =
-    stringResource(
-        when (stage) {
-            CrownsTutorialStage.ROW_AND_COLUMN -> R.string.crowns_tutorial_stage_one_title
-            CrownsTutorialStage.REGION -> R.string.crowns_tutorial_stage_two_title
-            CrownsTutorialStage.DIAGONAL -> R.string.crowns_tutorial_stage_three_title
-            CrownsTutorialStage.MARKS_AND_CONTROLS -> R.string.crowns_tutorial_stage_four_title
-            CrownsTutorialStage.MINI_PUZZLE -> R.string.crowns_tutorial_stage_five_title
-        },
-    )
-
-@Composable
-private fun crownsTutorialStageInstruction(state: CrownsTutorialUiState): String =
-    stringResource(
-        when (state.stage) {
-            CrownsTutorialStage.ROW_AND_COLUMN -> R.string.crowns_tutorial_stage_one_body
-            CrownsTutorialStage.REGION -> R.string.crowns_tutorial_stage_two_body
-            CrownsTutorialStage.DIAGONAL -> R.string.crowns_tutorial_stage_three_body
-            CrownsTutorialStage.MARKS_AND_CONTROLS -> R.string.crowns_tutorial_stage_four_body
-            CrownsTutorialStage.MINI_PUZZLE -> R.string.crowns_tutorial_stage_five_body
-        },
-    )
-
-@Composable
-private fun crownsTutorialFeedbackText(feedback: CrownsTutorialFeedback): String =
-    stringResource(
-        when (feedback) {
-            CrownsTutorialFeedback.ROW_AND_COLUMN -> R.string.crowns_tutorial_feedback_row_column
-            CrownsTutorialFeedback.REGION -> R.string.crowns_tutorial_feedback_region
-            CrownsTutorialFeedback.DIAGONAL -> R.string.crowns_tutorial_feedback_diagonal
-            CrownsTutorialFeedback.MARKS_AND_CONTROLS -> R.string.crowns_tutorial_feedback_marks
-            CrownsTutorialFeedback.MINI_PUZZLE -> R.string.crowns_tutorial_feedback_mini_puzzle
-        },
-    )

@@ -234,11 +234,19 @@ private fun CrownsCellView(
                             StrokeCap.Square,
                         )
                     }
+                    // Status rings sit inside the cell: drawn on the edge, the neighbours' region
+                    // lines painted afterwards would cover three of their four sides.
+                    val ringWidth = strong * RING_WIDTH_FACTOR
+                    val ringInset = ringWidth / 2f + strong
+                    val ringTopLeft = Offset(ringInset, ringInset)
+                    val ringSize = Size(size.width - 2f * ringInset, size.height - 2f * ringInset)
                     when {
                         isConflict || isHintConflict || isIncorrect ->
-                            drawRect(color = colors.error, style = Stroke(width = strong))
-                        isHintTarget || isGuided ->
-                            drawRect(color = colors.primary, style = Stroke(width = strong))
+                            drawRect(colors.error, ringTopLeft, ringSize, style = Stroke(width = ringWidth))
+                        isHintTarget || isGuided -> {
+                            drawRect(colors.primary.copy(alpha = GUIDED_FILL_ALPHA))
+                            drawRect(colors.primary, ringTopLeft, ringSize, style = Stroke(width = ringWidth))
+                        }
                         isHintEvidence ->
                             drawRect(
                                 color = colors.secondary,
@@ -337,3 +345,6 @@ private val MAX_PENCIL_SIZE = 16.dp
 private const val PENCIL_RATIO = 0.3f
 private const val PENCIL_ALPHA = 0.7f
 private const val CONFIRMED_RING_ALPHA = 0.4f
+
+private const val RING_WIDTH_FACTOR = 1.5f
+private const val GUIDED_FILL_ALPHA = 0.16f

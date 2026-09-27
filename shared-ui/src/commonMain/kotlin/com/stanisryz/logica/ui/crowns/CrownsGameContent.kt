@@ -180,7 +180,7 @@ fun CrownsToolBar(
                     label = stringResource(Res.string.crowns_tool_mark),
                     selectedValue = selectedValue,
                     onSelectValue = onSelectValue,
-                    symbol = { Text("×", style = MaterialTheme.typography.titleMedium) },
+                    symbol = { Text("×", style = MaterialTheme.typography.headlineSmall) },
                 ),
                 PuzzleTool(
                     label = stringResource(Res.string.tool_pencil),

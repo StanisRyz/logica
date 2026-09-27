@@ -33,6 +33,8 @@ import com.stanisryz.logica.puzzle.core.balance.BalanceViolationType
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleMistakes
 import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.balance_piece_black
+import com.stanisryz.logica.shared.ui.generated.resources.balance_piece_white
 import com.stanisryz.logica.shared.ui.generated.resources.balance_tool_black
 import com.stanisryz.logica.shared.ui.generated.resources.balance_tool_white
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_easy
@@ -283,14 +285,14 @@ private fun BalanceHint.presentationText(): String =
                 Res.string.hint_incorrect_value,
                 position.row + 1,
                 position.column + 1,
-                suggestedValue.symbol(),
+                stringResource(suggestedValue.pieceNameResource()),
             )
         BalanceHintKind.LOGICAL_DEDUCTION ->
             stringResource(
                 Res.string.hint_logical_deduction,
                 position.row + 1,
                 position.column + 1,
-                suggestedValue.symbol(),
+                stringResource(suggestedValue.pieceNameResource()),
                 technique.presentationText(),
             )
     }
@@ -332,3 +334,7 @@ private val CONTEXT_CARD_PADDING = 12.dp
 private const val COMPACT_HINT_LINES = 3
 private const val NORMAL_HINT_LINES = 3
 private const val HINT_LEGEND_LINES = 2
+
+/** Pieces are named in words: the Web font has no reliable glyphs for filled and hollow circles. */
+private fun BalanceCell.pieceNameResource(): StringResource =
+    if (this == BalanceCell.ONE) Res.string.balance_piece_black else Res.string.balance_piece_white

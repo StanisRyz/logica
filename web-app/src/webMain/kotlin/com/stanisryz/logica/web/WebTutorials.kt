@@ -1,0 +1,64 @@
+package com.stanisryz.logica.web
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.ui.components.catalogTitleResource
+import com.stanisryz.logica.ui.tutorial.BalanceTutorial
+import com.stanisryz.logica.ui.tutorial.CrownsTutorial
+import com.stanisryz.logica.ui.tutorial.Game2048Tutorial
+import com.stanisryz.logica.ui.tutorial.SudokuTutorial
+import com.stanisryz.logica.ui.tutorial.WordTutorial
+import org.jetbrains.compose.resources.stringResource
+
+/** Opens the shared onboarding for a game; provided by the host around the game routes. */
+internal val LocalOpenTutorial = staticCompositionLocalOf<(PuzzleType) -> Unit> { {} }
+
+/**
+ * Web host for the shared onboarding. Tutorials never touch Catalog progress, Daily, statistics,
+ * the economy, or hint stock, so leaving one at any step simply returns to difficulty selection.
+ */
+@Composable
+internal fun WebTutorialScreen(
+    puzzleType: PuzzleType,
+    onClose: () -> Unit,
+) {
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().height(TUTORIAL_HEADER_HEIGHT).padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = onClose) { Text("Назад") }
+            Text(
+                text = "Как играть: ${stringResource(puzzleType.catalogTitleResource())}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        val modifier = Modifier.weight(1f)
+        when (puzzleType) {
+            PuzzleType.BALANCE -> BalanceTutorial(onDone = onClose, modifier = modifier)
+            PuzzleType.CROWNS -> CrownsTutorial(onDone = onClose, modifier = modifier)
+            PuzzleType.WORD -> WordTutorial(onDone = onClose, modifier = modifier)
+            PuzzleType.SUDOKU -> SudokuTutorial(onDone = onClose, modifier = modifier)
+            PuzzleType.GAME_2048 ->
+                Game2048Tutorial(onDone = onClose, modifier = modifier, hardwareKeys = LocalWebKeyboard.current?.keys)
+            else -> Unit
+        }
+    }
+}
+
+private val TUTORIAL_HEADER_HEIGHT = 52.dp

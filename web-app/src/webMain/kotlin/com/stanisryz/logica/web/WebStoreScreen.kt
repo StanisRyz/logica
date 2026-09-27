@@ -247,7 +247,7 @@ private fun RewardedHintsCard(
             Text(text = "Бесплатные подсказки", style = MaterialTheme.typography.titleMedium)
             // The exchange is always disclosed explicitly: watching an advertisement is required.
             Text(
-                text = "Смотреть рекламу → +3 подсказки",
+                text = "Посмотрите короткую рекламу и получите +3 подсказки.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

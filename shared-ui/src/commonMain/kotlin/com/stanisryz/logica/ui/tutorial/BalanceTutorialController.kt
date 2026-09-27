@@ -1,4 +1,4 @@
-package com.stanisryz.logica.balance
+package com.stanisryz.logica.ui.tutorial
 
 import com.stanisryz.logica.puzzle.core.balance.BalanceCell
 import com.stanisryz.logica.puzzle.core.balance.BalanceClue
@@ -13,14 +13,14 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleId
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 
-internal enum class BalanceTutorialStage {
+enum class BalanceTutorialStage {
     PREVENT_THREE,
     COMPLETE_QUOTA,
     PRESERVE_UNIQUENESS,
     INDEPENDENT_PUZZLE,
 }
 
-internal data class BalanceTutorialUiState(
+data class BalanceTutorialUiState(
     val stage: BalanceTutorialStage = BalanceTutorialStage.PREVENT_THREE,
     val puzzle: BalancePuzzle = BalanceTutorialScenarios.puzzleFor(BalanceTutorialStage.PREVENT_THREE),
     val game: BalanceGameState = BalanceGameEngine(puzzle).start(),
@@ -32,12 +32,12 @@ internal data class BalanceTutorialUiState(
     val completed: Boolean = false,
 )
 
-internal enum class BalanceTutorialFeedback {
+enum class BalanceTutorialFeedback {
     TRY_AGAIN,
 }
 
 /** A small Balance-only state controller; it deliberately has no gameplay persistence dependency. */
-internal class BalanceTutorialController {
+class BalanceTutorialController {
     private var engine = BalanceGameEngine(BalanceTutorialScenarios.puzzleFor(BalanceTutorialStage.PREVENT_THREE))
 
     var state = BalanceTutorialUiState()
@@ -108,12 +108,12 @@ internal class BalanceTutorialController {
     }
 }
 
-internal data class ExpectedTutorialMove(
+data class ExpectedTutorialMove(
     val position: BalancePosition,
     val value: BalanceCell,
 )
 
-internal object BalanceTutorialScenarios {
+object BalanceTutorialScenarios {
     private val firstTarget = BalancePosition(0, 2)
     private val secondTarget = BalancePosition(0, 3)
     private val thirdTarget = BalancePosition(1, 0)

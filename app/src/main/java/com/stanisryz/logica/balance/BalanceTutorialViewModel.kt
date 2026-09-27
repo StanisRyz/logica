@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.stanisryz.logica.puzzle.core.balance.BalanceCell
 import com.stanisryz.logica.puzzle.core.balance.BalancePosition
 import com.stanisryz.logica.settings.SettingsRepository
+import com.stanisryz.logica.ui.tutorial.BalanceTutorialController
+import com.stanisryz.logica.ui.tutorial.BalanceTutorialUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
