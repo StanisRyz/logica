@@ -41,7 +41,6 @@ import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import kotlinx.coroutines.delay
-import java.util.Locale
 
 /**
  * The compact wallet shown on every gameplay-relevant screen: lives out of the maximum and the gem
@@ -310,12 +309,8 @@ private fun rememberLifeCountdown(economy: PlayerEconomy): String? {
     }
     val remaining = economy.millisUntilNextLife(nowEpochMillis) ?: return null
     val totalSeconds = (remaining + MILLIS_PER_SECOND - 1) / MILLIS_PER_SECOND
-    return String.format(
-        Locale.getDefault(),
-        "%d:%02d",
-        totalSeconds / SECONDS_PER_MINUTE,
-        totalSeconds % SECONDS_PER_MINUTE,
-    )
+    val seconds = (totalSeconds % SECONDS_PER_MINUTE).toString().padStart(2, '0')
+    return "${totalSeconds / SECONDS_PER_MINUTE}:$seconds"
 }
 
 private val ICON_SIZE = 20.dp

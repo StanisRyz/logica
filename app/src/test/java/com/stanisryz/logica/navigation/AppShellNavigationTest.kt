@@ -42,13 +42,14 @@ class AppShellNavigationTest {
         val titles = PrimaryTab.entries.map { it.titleResource }
         assertEquals(PrimaryTab.entries.size, titles.toSet().size)
 
-        // The three tabs share one primary destination, so the gear, the bottom bar, and the wallet
-        // are on all of them and on none of the secondary destinations.
+        // The three tabs share one primary destination, so the bottom bar and the wallet are on all
+        // of them and the bottom bar is on none of the secondary destinations. The Settings gear is
+        // everywhere except Settings itself, which is already open.
         assertTrue(AppDestination.Home.showsSettingsAction())
         assertTrue(AppDestination.Home.showsBottomBar())
         assertTrue(AppDestination.Home.showsWallet())
         secondaryDestinations.forEach { destination ->
-            assertFalse("$destination", destination.showsSettingsAction())
+            assertEquals("$destination", destination != AppDestination.Settings, destination.showsSettingsAction())
             assertFalse("$destination", destination.showsBottomBar())
         }
     }
