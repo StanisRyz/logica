@@ -20,7 +20,6 @@ import com.stanisryz.logica.puzzle.core.crowns.CrownsPuzzle
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.web.WebPuzzleData
-import com.stanisryz.logica.ui.crowns.suggestedTool
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -245,7 +244,7 @@ internal class WebCrownsController(
             scope.launch {
                 val hinted =
                     try {
-                        activeEngine.requestHint(requestedGame)
+                        activeEngine.revealHint(requestedGame)
                     } catch (exception: CancellationException) {
                         throw exception
                     } catch (_: Exception) {
@@ -259,10 +258,7 @@ internal class WebCrownsController(
                         hintsExhaustedNotice = true
                         state = current.copy(isHintLoading = false)
                     } else {
-                        // The hint also selects its tool, so tapping the highlighted cell follows it.
-                        val tool = hinted.currentHint?.suggestedTool()
-                        val withTool = if (tool != null) current.copy(selectedValue = tool, isPencilMode = false) else current
-                        updateGame(withTool, hinted, isHintLoading = false)
+                        updateGame(current, hinted, isHintLoading = false)
                     }
                 }
             }

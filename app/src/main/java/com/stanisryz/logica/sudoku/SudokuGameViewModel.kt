@@ -144,13 +144,6 @@ internal class SudokuGameViewModel(
         updateGame(ready, updated)
     }
 
-    fun autoFillCandidates() {
-        if (!economy.value.isGameplayAllowed) return
-        val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
-        val updated = engine?.fillCandidates(ready.game) ?: return
-        updateGame(ready, updated)
-    }
-
     fun undo() {
         if (!economy.value.isGameplayAllowed) return
         val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
@@ -185,7 +178,7 @@ internal class SudokuGameViewModel(
         if (!economy.value.isGameplayAllowed) return
         if (hintJob?.isActive == true) return
         val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
-        val updated = engine?.requestHint(ready.game) ?: return
+        val updated = engine?.revealHint(ready.game, ready.selectedCell) ?: return
         if (updated == ready.game) return
         if (economy.value.hints <= 0) {
             mutableUiState.value = ready.copy(hintsExhausted = true)

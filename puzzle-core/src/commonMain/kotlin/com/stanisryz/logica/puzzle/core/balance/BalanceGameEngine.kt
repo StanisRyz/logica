@@ -130,6 +130,26 @@ class BalanceGameEngine(
         )
     }
 
+    /**
+     * Carries a hint out instead of explaining it: the cell the deterministic hint points at (a wrong
+     * value first, otherwise the next logical deduction) receives its correct value and locks. The
+     * reveal counts as one used hint, never as a mistake, and changes nothing when no hint exists.
+     */
+    fun revealHint(state: BalanceGameState): BalanceGameState {
+        requireCompatible(state)
+        if (state.status.isTerminal) return state
+        val hint = hintProvider.hint(puzzle, state.board) ?: return state
+        if (state.isLocked(hint.position)) return state
+        val value = solution?.cellAt(hint.position) ?: hint.suggestedValue
+        return createState(
+            board = state.board.withCell(hint.position, value),
+            pencilMarks = state.pencilMarks - hint.position,
+            mistakesUsed = state.mistakesUsed,
+            hintsUsed = state.hintsUsed + 1,
+            currentHint = null,
+        )
+    }
+
     private fun createState(
         board: BalanceState,
         pencilMarks: Map<BalancePosition, Set<BalanceCell>>,

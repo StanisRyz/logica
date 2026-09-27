@@ -22,7 +22,6 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.result.GameOutcome
-import com.stanisryz.logica.ui.crowns.suggestedTool
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -177,7 +176,7 @@ internal class CrownsGameViewModel(
             viewModelScope.launch {
                 val hintedGame =
                     try {
-                        withContext(workDispatcher) { engine.requestHint(requestedGame) }
+                        withContext(workDispatcher) { engine.revealHint(requestedGame) }
                     } catch (exception: CancellationException) {
                         throw exception
                     } catch (_: Exception) {
@@ -189,14 +188,7 @@ internal class CrownsGameViewModel(
                 if (current is CrownsGameUiState.Ready && current.game == requestedGame) {
                     mutableUiState.value =
                         if (paid) {
-                            // The hint also selects its tool, so tapping the highlighted cell follows it.
-                            val tool = hintedGame.currentHint?.suggestedTool()
-                            current.copy(
-                                game = hintedGame,
-                                isHintLoading = false,
-                                selectedValue = tool ?: current.selectedValue,
-                                isPencilMode = if (tool != null) false else current.isPencilMode,
-                            )
+                            current.copy(game = hintedGame, isHintLoading = false)
                         } else {
                             current.copy(isHintLoading = false, hintsExhausted = true)
                         }

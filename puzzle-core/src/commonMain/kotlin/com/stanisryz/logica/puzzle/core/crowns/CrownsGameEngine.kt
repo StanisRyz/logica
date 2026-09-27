@@ -140,6 +140,49 @@ class CrownsGameEngine(
         )
     }
 
+    /**
+     * Carries a hint out instead of explaining it by opening one cell correctly: a wrong crown is
+     * taken away, a mark that hides a crown becomes that crown, and otherwise the next crown of the
+     * single answer is placed, preferring the one the logical hint points at. The reveal counts as
+     * one used hint, never as a mistake. A puzzle without a unique answer, or a finished board,
+     * changes nothing.
+     */
+    fun revealHint(state: CrownsGameState): CrownsGameState {
+        requireCompatible(state)
+        if (state.status.isTerminal) return state
+        val answer = solution ?: return state
+        val wrongCrown =
+            state.board.crowns
+                .filter { it !in answer.crowns }
+                .minWithOrNull(POSITION_ORDER)
+        val hiddenCrown = state.userMarks.filter { it in answer.crowns }.minWithOrNull(POSITION_ORDER)
+        val (position, cell) =
+            when {
+                wrongCrown != null -> wrongCrown to CrownsPlayerCell.EMPTY
+                hiddenCrown != null -> hiddenCrown to CrownsPlayerCell.CROWN
+                else -> {
+                    val missing = answer.crowns - state.board.crowns
+                    val logical =
+                        hintProvider
+                            .hint(puzzle, state.board, state.userMarks)
+                            ?.takeIf { it.action == CrownsHintAction.PLACE_CROWN }
+                            ?.targetPositions
+                            ?.firstOrNull { it in missing }
+                    (logical ?: missing.minWithOrNull(POSITION_ORDER) ?: return state) to CrownsPlayerCell.CROWN
+                }
+            }
+        val updated = applyCell(state.board, state.userMarks, position, cell)
+        return createState(
+            board = updated.board,
+            userMarks = updated.userMarks,
+            pencilCrowns = state.pencilCrowns - position,
+            pencilMarks = state.pencilMarks - position,
+            mistakesUsed = state.mistakesUsed,
+            hintsUsed = state.hintsUsed + 1,
+            currentHint = null,
+        )
+    }
+
     private fun createState(
         board: CrownsState,
         userMarks: Set<CrownsPosition>,
@@ -236,3 +279,5 @@ class CrownsGameEngine(
         val userMarks: Set<CrownsPosition>,
     )
 }
+
+private val POSITION_ORDER: Comparator<CrownsPosition> = compareBy({ it.row }, { it.column })

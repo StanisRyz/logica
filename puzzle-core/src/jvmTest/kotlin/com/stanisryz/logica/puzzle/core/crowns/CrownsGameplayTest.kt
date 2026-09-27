@@ -149,6 +149,24 @@ class CrownsGameplayTest {
         assertEquals(CrownsLogicTechnique.SINGLE_CANDIDATE_REGION, logicalHint?.technique)
     }
 
+    @Test
+    fun revealedHintsFixWrongCellsThenOpenCrownsUntilTheBoardIsSolved() {
+        val engine = CrownsGameEngine(puzzle())
+        val solutionCell = CrownsPosition(2, 0)
+        // A mark hiding a real crown is opened as that crown first.
+        var game = engine.placeValue(engine.start(), solutionCell, CrownsPlayerCell.MARKED)
+
+        game = engine.revealHint(game)
+        assertEquals(CrownsPlayerCell.CROWN, game.cellAt(solutionCell))
+        assertEquals(CrownsCellStatus.CORRECT, game.statusAt(solutionCell))
+        assertEquals(1, game.hintsUsed)
+        while (game.status == CrownsGameStatus.IN_PROGRESS) game = engine.revealHint(game)
+
+        assertEquals(CrownsGameStatus.SOLVED, game.status)
+        assertEquals(1, game.mistakesUsed)
+        assertSame(game, engine.revealHint(game))
+    }
+
     private fun puzzle(): CrownsPuzzle {
         val rows = listOf("AAAB", "ADAB", "CDDD", "DDDD")
         val assignments =

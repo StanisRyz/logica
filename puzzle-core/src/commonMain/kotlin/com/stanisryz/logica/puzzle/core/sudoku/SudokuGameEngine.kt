@@ -85,30 +85,6 @@ class SudokuGameEngine(
         return createState(cells, state.mistakesUsed, state.hintsUsed, currentHint = null)
     }
 
-    /** Replaces pencil marks with every value still possible under confirmed peer values. */
-    fun fillCandidates(state: SudokuGameState): SudokuGameState {
-        requireCompatible(state)
-        if (state.status.isTerminal) return state
-        val cells = state.cells.toMutableList()
-        var changed = false
-        cells.indices.forEach { index ->
-            val cell = cells[index]
-            if (cell.status != SudokuCellStatus.EMPTY) return@forEach
-            val position = SudokuPosition.fromIndex(index)
-            var candidates = SudokuCandidateMask.EMPTY
-            (1..9).forEach { digit ->
-                if (!hasConfirmedPeerValue(state.cells, position, digit)) {
-                    candidates = candidates.toggle(digit)
-                }
-            }
-            if (candidates != cell.candidates) {
-                cells[index] = cell.copy(candidates = candidates)
-                changed = true
-            }
-        }
-        return if (changed) createState(cells, state.mistakesUsed, state.hintsUsed, state.currentHint) else state
-    }
-
     /**
      * Restores board contents from one transient undo frame while keeping attempt counters monotonic.
      * Correct entries stay permanently locked: a value confirmed after the snapshot survives, and its
@@ -138,6 +114,28 @@ class SudokuGameEngine(
             mistakesUsed = current.mistakesUsed,
             hintsUsed = current.hintsUsed,
         )
+    }
+
+    /**
+     * Opens one cell with its answer: the player's selected cell while it is still open (empty or
+     * wrong), otherwise the deterministic hint's cell. It counts as one used hint, never a mistake.
+     */
+    fun revealHint(
+        state: SudokuGameState,
+        preferred: SudokuPosition?,
+    ): SudokuGameState {
+        requireCompatible(state)
+        if (state.status.isTerminal) return state
+        val target =
+            preferred?.takeIf {
+                val status = state.cellAt(it).status
+                status == SudokuCellStatus.EMPTY || status == SudokuCellStatus.INCORRECT
+            } ?: return requestHint(state)
+        val value = puzzle.solution[target.index].digitToInt()
+        val cells = state.cells.toMutableList()
+        cells[target.index] = SudokuCellState(value, SudokuCellStatus.CORRECT)
+        removeCandidateFromPeers(cells, target, value)
+        return createState(cells, state.mistakesUsed, state.hintsUsed + 1, currentHint = null)
     }
 
     fun requestHint(state: SudokuGameState): SudokuGameState {
@@ -207,6 +205,10 @@ class SudokuGameEngine(
         return SudokuGameState(puzzle.id, cells, status, mistakesUsed, hintsUsed, currentHint)
     }
 
+    private fun requireCompatible(state: SudokuGameState) {
+        require(state.puzzleId == puzzle.id) { "Sudoku game state belongs to another puzzle." }
+    }
+
     private fun removeCandidateFromPeers(
         cells: MutableList<SudokuCellState>,
         position: SudokuPosition,
@@ -218,19 +220,5 @@ class SudokuGameEngine(
                 cells[index] = cell.copy(candidates = cell.candidates.remove(digit))
             }
         }
-    }
-
-    private fun hasConfirmedPeerValue(
-        cells: List<SudokuCellState>,
-        position: SudokuPosition,
-        digit: Int,
-    ): Boolean =
-        cells.indices.any { index ->
-            val cell = cells[index]
-            cell.status.isConfirmed && cell.value == digit && position.isPeerOf(SudokuPosition.fromIndex(index))
-        }
-
-    private fun requireCompatible(state: SudokuGameState) {
-        require(state.puzzleId == puzzle.id) { "Sudoku game state belongs to another puzzle." }
     }
 }

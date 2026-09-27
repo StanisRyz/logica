@@ -310,13 +310,6 @@ internal class WebSudokuController(
         updateGame(playing, updated)
     }
 
-    fun autoFillCandidates() {
-        val playing = state as? WebSudokuState.Playing ?: return
-        if (playing.game.status.isTerminal) return
-        val updated = engine?.fillCandidates(playing.game) ?: return
-        updateGame(playing, updated)
-    }
-
     fun undo() {
         val playing = state as? WebSudokuState.Playing ?: return
         if (playing.game.status.isTerminal || undoHistory.isEmpty()) return
@@ -350,7 +343,7 @@ internal class WebSudokuController(
     fun requestHint() {
         val playing = state as? WebSudokuState.Playing ?: return
         if (playing.game.status.isTerminal) return
-        val updated = engine?.requestHint(playing.game) ?: return
+        val updated = engine?.revealHint(playing.game, playing.selectedCell) ?: return
         // A hint consumes one hint item from the Player's own inventory (Catalog and Daily alike);
         // without one the host explains where hints come from instead of silently ignoring the tap.
         if (updated == playing.game) return

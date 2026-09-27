@@ -1381,7 +1381,6 @@ private fun PlayingSudokuContent(
             onDigit = controller::inputDigit,
             onTogglePencil = controller::togglePencilMode,
             onErase = controller::eraseSelectedCell,
-            onAutoCandidates = controller::autoFillCandidates,
             canUndo = controller.canUndo,
             onUndo = controller::undo,
             onHint = controller::requestHint,

@@ -1,10 +1,6 @@
 package com.stanisryz.logica.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -16,12 +12,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.ui.theme.LogicaSpacing
@@ -34,15 +31,12 @@ internal fun SquareGameLayout(
     hostStatusContent: @Composable ColumnScope.() -> Unit = {},
     boardContent: @Composable BoxScope.() -> Unit,
     toolContent: @Composable ColumnScope.() -> Unit,
-    showContextStatus: Boolean = false,
-    contextStatusContent: @Composable BoxScope.(compact: Boolean) -> Unit,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val compact = maxHeight < COMPACT_HEIGHT_THRESHOLD
         val wideLayout = isWideGameplayLayout(maxWidth, maxHeight)
         val verticalPadding = if (compact) COMPACT_VERTICAL_PADDING else NORMAL_VERTICAL_PADDING
         val sectionSpacing = if (compact) COMPACT_SECTION_SPACING else LogicaSpacing.item
-        val contextMaxHeight = if (compact) COMPACT_CONTEXT_MAX_HEIGHT else NORMAL_CONTEXT_MAX_HEIGHT
         val panelWidth = minOf(WIDE_PANEL_MAX_WIDTH, maxWidth * WIDE_PANEL_WIDTH_FRACTION)
 
         if (wideLayout) {
@@ -69,57 +63,27 @@ internal fun SquareGameLayout(
                     hostStatusContent()
                     Spacer(Modifier.weight(1f))
                     toolContent()
-                    ContextStatusRegion(showContextStatus, compact, contextMaxHeight, contextStatusContent)
                 }
             }
         } else {
-            Column(
+            CenteredBoardLayout(
+                spacing = sectionSpacing,
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(
-                            horizontal = LogicaSpacing.screenHorizontal,
-                            vertical = verticalPadding,
-                        ).animateContentSize(),
-                verticalArrangement = Arrangement.spacedBy(sectionSpacing),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                metadataContent(false)
-                hostStatusContent()
-                Box(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    contentAlignment = Alignment.Center,
-                    content = boardContent,
-                )
-                toolContent()
-                ContextStatusRegion(showContextStatus, compact, contextMaxHeight, contextStatusContent)
-            }
-        }
-    }
-}
-
-@Composable
-private fun ContextStatusRegion(
-    visible: Boolean,
-    compact: Boolean,
-    maxHeight: Dp,
-    content: @Composable BoxScope.(compact: Boolean) -> Unit,
-) {
-    // The region always keeps its height, so a hint or an error appearing never moves the board
-    // under the player's finger; only its content fades in and out.
-    Box(
-        modifier = Modifier.fillMaxWidth().height(maxHeight),
-        contentAlignment = Alignment.TopCenter,
-    ) {
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(tween(CONTEXT_REVEAL_MILLIS)),
-            exit = fadeOut(tween(CONTEXT_REVEAL_MILLIS)),
-        ) {
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.TopCenter,
-                content = { content(compact) },
+                        .padding(horizontal = LogicaSpacing.screenHorizontal, vertical = verticalPadding),
+                header = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(sectionSpacing),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        metadataContent(false)
+                        hostStatusContent()
+                    }
+                },
+                board = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center, content = boardContent) },
+                controls = { Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) { toolContent() } },
             )
         }
     }
@@ -129,8 +93,49 @@ private val COMPACT_HEIGHT_THRESHOLD = 700.dp
 private val COMPACT_VERTICAL_PADDING = 6.dp
 private val NORMAL_VERTICAL_PADDING = 10.dp
 private val COMPACT_SECTION_SPACING = 6.dp
-private val COMPACT_CONTEXT_MAX_HEIGHT = 76.dp
-private val NORMAL_CONTEXT_MAX_HEIGHT = 96.dp
 private val WIDE_PANEL_MAX_WIDTH = 232.dp
 private const val WIDE_PANEL_WIDTH_FRACTION = 0.42f
-private const val CONTEXT_REVEAL_MILLIS = 180
+
+/**
+ * Portrait board scene: the header on top, the square board centred in the whole area, and the
+ * controls directly under the board. The board only moves off centre, and only shrinks, when the
+ * header or the controls would otherwise not fit.
+ */
+@Composable
+internal fun CenteredBoardLayout(
+    spacing: Dp,
+    modifier: Modifier = Modifier,
+    header: @Composable () -> Unit,
+    board: @Composable () -> Unit,
+    controls: @Composable () -> Unit,
+) {
+    Layout(contents = listOf(header, board, controls), modifier = modifier) { measurables, constraints ->
+        val (headerParts, boardParts, controlParts) = measurables
+        val width = constraints.maxWidth
+        val height = constraints.maxHeight
+        val gap = spacing.roundToPx()
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val headers = headerParts.map { it.measure(loose) }
+        val controlsPlaced = controlParts.map { it.measure(loose) }
+        val headerHeight = headers.sumOf { it.height } + gap * (headers.size - 1).coerceAtLeast(0)
+        val controlsHeight = controlsPlaced.sumOf { it.height } + gap * (controlsPlaced.size - 1).coerceAtLeast(0)
+        val side = minOf(width, height - headerHeight - controlsHeight - gap * 2).coerceAtLeast(0)
+        val boards = boardParts.map { it.measure(Constraints.fixed(side, side)) }
+        val minTop = headerHeight + gap
+        val maxTop = height - controlsHeight - gap - side
+        val boardTop = ((height - side) / 2).coerceAtMost(maxTop).coerceAtLeast(minTop)
+        layout(width, height) {
+            var y = 0
+            headers.forEach { placeable ->
+                placeable.placeRelative((width - placeable.width) / 2, y)
+                y += placeable.height + gap
+            }
+            boards.forEach { it.placeRelative((width - side) / 2, boardTop) }
+            y = boardTop + side + gap
+            controlsPlaced.forEach { placeable ->
+                placeable.placeRelative((width - placeable.width) / 2, y)
+                y += placeable.height + gap
+            }
+        }
+    }
+}

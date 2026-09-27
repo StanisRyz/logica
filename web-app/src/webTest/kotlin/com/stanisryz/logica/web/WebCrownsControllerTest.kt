@@ -6,21 +6,20 @@ import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPack
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackResult
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPacks
+import com.stanisryz.logica.puzzle.core.crowns.CrownsCellStatus
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPosition
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
-import com.stanisryz.logica.ui.crowns.suggestedTool
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertIs
-import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class WebCrownsControllerTest {
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -57,12 +56,16 @@ class WebCrownsControllerTest {
             val updated = assertIs<WebCrownsState.Playing>(controller.state)
             assertEquals(setOf(CrownsPlayerCell.MARKED), updated.game.pencilAt(position))
 
-            // A hint selects its own tool and leaves Pencil, so tapping the highlighted cell follows it.
+            // A hint opens one cell correctly: it costs one hint and never a mistake.
             controller.requestHint()
             advanceUntilIdle()
             val hinted = assertIs<WebCrownsState.Playing>(controller.state)
-            assertEquals(assertNotNull(hinted.game.currentHint).suggestedTool(), hinted.selectedValue)
-            assertFalse(hinted.isPencilMode)
+            assertEquals(1, hinted.game.hintsUsed)
+            assertEquals(0, hinted.game.mistakesUsed)
+            assertTrue(
+                hinted.game.cellStatuses.values
+                    .any { it == CrownsCellStatus.CORRECT },
+            )
         }
 
     private val fixedMediumLevelOne =

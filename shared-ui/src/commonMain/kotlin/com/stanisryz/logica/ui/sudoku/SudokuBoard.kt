@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
@@ -53,7 +52,6 @@ import com.stanisryz.logica.shared.ui.generated.resources.incorrect_cell
 import com.stanisryz.logica.shared.ui.generated.resources.pencil_marks_suffix
 import com.stanisryz.logica.shared.ui.generated.resources.sudoku_cell_description
 import com.stanisryz.logica.shared.ui.generated.resources.sudoku_selected_suffix
-import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -164,7 +162,6 @@ private fun SudokuCell(
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
-    val palette = LocalLogicaPalette.current
     val background =
         when {
             isSelected -> colors.primaryContainer
@@ -172,8 +169,6 @@ private fun SudokuCell(
             isHintTarget -> colors.tertiaryContainer
             isPeer -> colors.surfaceContainerHigh
             cell.status == SudokuCellStatus.INCORRECT -> colors.errorContainer
-            cell.status == SudokuCellStatus.GIVEN -> colors.surfaceVariant
-            cell.status == SudokuCellStatus.CORRECT -> palette.successContainer.copy(alpha = CONFIRMED_FILL_ALPHA)
             else -> colors.surface
         }
     val animatedBackground by
@@ -226,16 +221,21 @@ private fun SudokuCell(
                 text = cell.value.toString(),
                 fontSize = valueTextSize,
                 lineHeight = valueTextSize,
-                fontWeight = if (cell.status.isConfirmedValue) FontWeight.Bold else FontWeight.Medium,
-                color = if (cell.status == SudokuCellStatus.INCORRECT) colors.onErrorContainer else colors.onSurface,
+                fontWeight = FontWeight.Normal,
+                // Clues are the puzzle's own ink; the player's confirmed digits are written in the accent
+                // colour, and a wrong digit in the error colour with its mark.
+                color =
+                    when (cell.status) {
+                        SudokuCellStatus.CORRECT -> colors.primary
+                        SudokuCellStatus.INCORRECT -> colors.error
+                        else -> colors.onSurface
+                    },
                 maxLines = 1,
                 style = LocalTextStyle.current.merge(COMPACT_CELL_TEXT_STYLE),
             )
         }
         when (cell.status) {
-            // Clues are told apart by tone and weight; a check marks what the player closed correctly.
-            SudokuCellStatus.GIVEN -> Unit
-            SudokuCellStatus.CORRECT -> CellStatusIcon(Icons.Filled.Check, palette.success, Alignment.TopEnd)
+            SudokuCellStatus.GIVEN, SudokuCellStatus.CORRECT -> Unit
             SudokuCellStatus.INCORRECT -> CellStatusIcon(Icons.Filled.PriorityHigh, colors.error, Alignment.TopStart)
             SudokuCellStatus.EMPTY -> Unit
         }
@@ -318,9 +318,6 @@ private fun SudokuPosition.isPeerOrSameUnit(selected: SudokuPosition): Boolean =
 private val SudokuPosition.blockIndex: Int
     get() = (row / BLOCK_SIZE) * BLOCK_SIZE + column / BLOCK_SIZE
 
-private val SudokuCellStatus.isConfirmedValue: Boolean
-    get() = this == SudokuCellStatus.GIVEN || this == SudokuCellStatus.CORRECT
-
 private val COMPACT_CELL_TEXT_STYLE =
     TextStyle(
         lineHeightStyle =
@@ -346,4 +343,3 @@ private val SELECTED_WIDTH = 2.dp
 private val HINT_WIDTH = 1.5.dp
 private val STATUS_ICON_SIZE = 10.dp
 private const val CELL_HIGHLIGHT_MILLIS = 120
-private const val CONFIRMED_FILL_ALPHA = 0.55f

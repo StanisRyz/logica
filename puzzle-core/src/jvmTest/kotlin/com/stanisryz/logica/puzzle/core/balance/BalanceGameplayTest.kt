@@ -88,6 +88,26 @@ class BalanceGameplayTest {
     }
 
     @Test
+    fun revealedHintsOpenCorrectCellsWithoutMistakesUntilTheBoardIsSolved() {
+        val puzzle = puzzle("001.", "110.", "010.", "101.")
+        val engine = BalanceGameEngine(puzzle)
+        // A wrong value is the first thing a reveal repairs.
+        var game = engine.placeValue(engine.start(), BalancePosition(0, 3), BalanceCell.ZERO)
+        assertEquals(1, game.mistakesUsed)
+
+        game = engine.revealHint(game)
+        assertEquals(BalanceCellStatus.CORRECT, game.statusAt(BalancePosition(0, 3)))
+        assertEquals(1, game.hintsUsed)
+        assertNull(game.currentHint)
+        while (game.status == BalanceGameStatus.IN_PROGRESS) game = engine.revealHint(game)
+
+        assertEquals(BalanceGameStatus.SOLVED, game.status)
+        assertEquals(1, game.mistakesUsed)
+        assertEquals(4, game.hintsUsed)
+        assertSame(game, engine.revealHint(game))
+    }
+
+    @Test
     fun diagnosticsTrackInvalidMovesAndStatusChangesOnlyForAValidSolution() {
         val puzzle = puzzle("....", "....", "....", "....")
         val engine = BalanceGameEngine(puzzle)

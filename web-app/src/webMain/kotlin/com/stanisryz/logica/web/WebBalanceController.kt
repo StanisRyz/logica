@@ -247,7 +247,7 @@ internal class WebBalanceController(
             scope.launch {
                 val hinted =
                     try {
-                        activeEngine.requestHint(requestedGame)
+                        activeEngine.revealHint(requestedGame)
                     } catch (exception: CancellationException) {
                         throw exception
                     } catch (_: Exception) {
@@ -261,10 +261,7 @@ internal class WebBalanceController(
                         hintsExhaustedNotice = true
                         state = current.copy(isHintLoading = false)
                     } else {
-                        // The hint also selects its value, so tapping the highlighted cell follows it.
-                        val tool = hinted.currentHint?.suggestedValue
-                        val withTool = if (tool != null) current.copy(selectedValue = tool, isPencilMode = false) else current
-                        updateGame(withTool, hinted, isHintLoading = false)
+                        updateGame(current, hinted, isHintLoading = false)
                     }
                 }
             }

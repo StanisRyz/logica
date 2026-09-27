@@ -91,6 +91,24 @@ class SudokuGameplayTest {
         assertEquals(1, restored.mistakesUsed)
     }
 
+    @Test
+    fun `a hint opens the selected open cell and otherwise falls back to the deterministic hint`() {
+        val selected = SudokuPosition(0, 0)
+        var state = engine.placeValue(engine.start(), selected, 2)
+        assertEquals(SudokuCellStatus.INCORRECT, state.cellAt(selected).status)
+
+        state = engine.revealHint(state, selected)
+        assertEquals(SudokuCellStatus.CORRECT, state.cellAt(selected).status)
+        assertEquals(1, state.cellAt(selected).value)
+        assertEquals(1, state.hintsUsed)
+        assertEquals(1, state.mistakesUsed)
+
+        // A clue or an already confirmed cell is not open, so the regular hint picks the cell.
+        val fallback = engine.revealHint(state, SudokuPosition(0, 1))
+        assertEquals(2, fallback.hintsUsed)
+        assertEquals(engine.requestHint(state), fallback)
+    }
+
     private fun puzzle(): SudokuPuzzle =
         SudokuPuzzle(
             id = SudokuPuzzleId(SudokuDatasetVersion.V1, SudokuDifficulty.EASY, FINGERPRINT),
