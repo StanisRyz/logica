@@ -69,13 +69,16 @@ tasks.register<JavaExec>("balanceQualityCheck") {
     classpath(qualityCompilation.output.allOutputs, qualityCompilation.runtimeDependencyFiles)
     mainClass.set("com.stanisryz.logica.puzzle.core.balance.quality.BalanceQualityRunner")
 
-    doFirst {
-        val requestedSeedCount = balanceSeedCount.get()
-        require(requestedSeedCount.toIntOrNull()?.let { it > 0 } == true) {
-            "-PbalanceSeeds must be a positive integer."
-        }
-        args(requestedSeedCount)
-    }
+    val requestedSeedCount = balanceSeedCount
+    argumentProviders.add(
+        CommandLineArgumentProvider {
+            val seedCount = requestedSeedCount.get()
+            require(seedCount.toIntOrNull()?.let { it > 0 } == true) {
+                "-PbalanceSeeds must be a positive integer."
+            }
+            listOf(seedCount)
+        },
+    )
 }
 
 tasks.register<JavaExec>("crownsQualityCheck") {
@@ -85,13 +88,16 @@ tasks.register<JavaExec>("crownsQualityCheck") {
     classpath(qualityCompilation.output.allOutputs, qualityCompilation.runtimeDependencyFiles)
     mainClass.set("com.stanisryz.logica.puzzle.core.crowns.quality.CrownsQualityRunner")
 
-    doFirst {
-        val requestedSeedCount = crownsSeedCount.get()
-        require(requestedSeedCount.toIntOrNull()?.let { it > 0 } == true) {
-            "-PcrownsSeeds must be a positive integer."
-        }
-        args(requestedSeedCount)
-    }
+    val requestedSeedCount = crownsSeedCount
+    argumentProviders.add(
+        CommandLineArgumentProvider {
+            val seedCount = requestedSeedCount.get()
+            require(seedCount.toIntOrNull()?.let { it > 0 } == true) {
+                "-PcrownsSeeds must be a positive integer."
+            }
+            listOf(seedCount)
+        },
+    )
 }
 
 tasks.register<JavaExec>("wordQualityCheck") {
@@ -101,13 +107,16 @@ tasks.register<JavaExec>("wordQualityCheck") {
     classpath(qualityCompilation.output.allOutputs, qualityCompilation.runtimeDependencyFiles)
     mainClass.set("com.stanisryz.logica.puzzle.core.word.quality.WordQualityRunner")
 
-    doFirst {
-        val requestedSeedCount = wordSeedCount.get()
-        require(requestedSeedCount.toIntOrNull()?.let { it > 0 } == true) {
-            "-PwordSeeds must be a positive integer."
-        }
-        args(requestedSeedCount)
-    }
+    val requestedSeedCount = wordSeedCount
+    argumentProviders.add(
+        CommandLineArgumentProvider {
+            val seedCount = requestedSeedCount.get()
+            require(seedCount.toIntOrNull()?.let { it > 0 } == true) {
+                "-PwordSeeds must be a positive integer."
+            }
+            listOf(seedCount)
+        },
+    )
 }
 
 /**
@@ -122,15 +131,15 @@ tasks.register<JavaExec>("buildCatalogLevelPacks") {
     mainClass.set("com.stanisryz.logica.puzzle.core.catalog.quality.CatalogLevelPackBuilder")
     maxHeapSize = "2g"
 
-    doFirst {
-        args(
-            rootProject.layout.projectDirectory
-                .dir("puzzle-data")
-                .asFile.path,
-            providers.gradleProperty("levelPackGames").orElse("all").get(),
-            providers.gradleProperty("levelPackSlots").orElse("10000").get(),
-        )
-    }
+    val puzzleDataPath =
+        rootProject.layout.projectDirectory
+            .dir("puzzle-data")
+            .asFile.path
+    val levelPackGames = providers.gradleProperty("levelPackGames").orElse("all")
+    val levelPackSlots = providers.gradleProperty("levelPackSlots").orElse("10000")
+    argumentProviders.add(
+        CommandLineArgumentProvider { listOf(puzzleDataPath, levelPackGames.get(), levelPackSlots.get()) },
+    )
 }
 
 tasks.register<JavaExec>("verifyCatalogLevelPacks") {

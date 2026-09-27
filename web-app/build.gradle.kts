@@ -69,8 +69,10 @@ tasks.register<Zip>("packageYandexDistribution") {
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
 
+    // A task-local reference keeps the actions free of script objects for the configuration cache.
+    val distribution = compatibilityDistribution
     doFirst {
-        val distributionRoot = compatibilityDistribution.get().asFile
+        val distributionRoot = distribution.get().asFile
         val rootIndex = distributionRoot.resolve("index.html")
         val applicationIndexes =
             distributionRoot
@@ -94,7 +96,7 @@ tasks.register<Zip>("packageYandexDistribution") {
     }
 
     doLast {
-        val distributionRoot = compatibilityDistribution.get().asFile
+        val distributionRoot = distribution.get().asFile
         val uncompressedBytes = distributionRoot.walkTopDown().filter { it.isFile }.sumOf { it.length() }
         val archive = archiveFile.get().asFile
         logger.lifecycle(
