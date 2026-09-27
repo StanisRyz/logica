@@ -10,6 +10,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -116,6 +117,32 @@ class WebStoreTest {
         assertEquals(item.id, record.itemId)
         assertEquals(20, record.priceGems)
         assertEquals(42_000L, record.timestampEpochMs)
+    }
+
+    @Test
+    fun hintsAreSoldSinglyAndInPacksAndANewPlayerStartsWithAFewHints() {
+        assertEquals(EconomyPolicy.STARTING_HINTS, WebStoreSnapshot.NEW_PLAYER.quantityOf(STORE_INVENTORY_HINTS))
+
+        val economy = economy(FakeEconomyStore())
+        val store = storeRepository(FakeStoreStore())
+        assertTrue(economy.addGems(100))
+        val processor =
+            WebStoreProcessor(
+                { economy },
+                { store },
+                currentTimeMs = { 1_000L },
+                transactionStoreProvider = { MemoryPurchaseTransactionStore() },
+            )
+
+        val single = assertNotNull(WebStoreCatalog.itemById(WebStoreCatalog.ITEM_HINT_SINGLE))
+        val pack = assertNotNull(WebStoreCatalog.itemById(WebStoreCatalog.ITEM_HINT_PACK))
+        assertIs<PurchaseResult.Success>(processor.purchase(single, playerId = "player"))
+        assertIs<PurchaseResult.Success>(processor.purchase(pack, playerId = "player"))
+
+        assertEquals(single.reward.amount + pack.reward.amount, store.snapshot.value.quantityOf(STORE_INVENTORY_HINTS))
+        assertEquals(100 - single.priceGems - pack.priceGems, economy.state.value.gems)
+        assertTrue(store.consumeInventory(STORE_INVENTORY_HINTS))
+        assertEquals(single.reward.amount + pack.reward.amount - 1, store.snapshot.value.quantityOf(STORE_INVENTORY_HINTS))
     }
 
     @Test

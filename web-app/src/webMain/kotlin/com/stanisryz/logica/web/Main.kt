@@ -172,6 +172,7 @@ fun main() {
             statisticsCoordinator,
             dailyCoordinator,
             economyCoordinator,
+            storeCoordinator,
         )
     val crownsController =
         WebCrownsController.create(
@@ -180,6 +181,7 @@ fun main() {
             statisticsCoordinator,
             dailyCoordinator,
             economyCoordinator,
+            storeCoordinator,
         )
     val wordController =
         WebWordController.create(

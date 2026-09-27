@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -67,6 +66,7 @@ import com.stanisryz.logica.ui.components.MistakeIndicator
 import com.stanisryz.logica.ui.components.PuzzleTool
 import com.stanisryz.logica.ui.components.PuzzleToolBar
 import com.stanisryz.logica.ui.components.SquareGameLayout
+import com.stanisryz.logica.ui.components.hintTool
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -91,6 +91,7 @@ fun BalanceGameContent(
     onHint: () -> Unit,
     contextBadgeLabel: String? = null,
     modifier: Modifier = Modifier,
+    hintCount: Int? = null,
     hostStatusContent: @Composable ColumnScope.() -> Unit = {},
 ) {
     SquareGameLayout(
@@ -137,6 +138,7 @@ fun BalanceGameContent(
                         game.status == BalanceGameStatus.IN_PROGRESS &&
                         gameplayEnabled,
                 enabled = gameplayEnabled,
+                hintCount = hintCount,
             )
         },
         showContextStatus = game.currentHint != null || game.violations.isNotEmpty() || isHintLoading,
@@ -221,6 +223,7 @@ fun BalanceToolBar(
     hintEnabled: Boolean = false,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    hintCount: Int? = null,
 ) {
     PuzzleToolBar(
         tools =
@@ -247,16 +250,7 @@ fun BalanceToolBar(
                 ),
             ) +
                 listOfNotNull(
-                    onHint?.let { hint ->
-                        PuzzleTool(
-                            label = stringResource(Res.string.hint),
-                            stateDescription = null,
-                            selected = null,
-                            enabled = hintEnabled,
-                            onClick = hint,
-                            symbol = { Icon(Icons.Filled.Lightbulb, contentDescription = null) },
-                        )
-                    },
+                    onHint?.let { hint -> hintTool(hintCount = hintCount, enabled = hintEnabled, onClick = hint) },
                 ),
         modifier = modifier,
         enabled = enabled,

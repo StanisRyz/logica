@@ -75,6 +75,7 @@ fun SudokuGameContent(
     onHint: () -> Unit,
     contextBadgeLabel: String? = null,
     modifier: Modifier = Modifier,
+    hintCount: Int? = null,
     hostStatusContent: @Composable ColumnScope.() -> Unit = {},
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
@@ -143,6 +144,7 @@ fun SudokuGameContent(
                         hintEnabled = game.status == SudokuGameStatus.IN_PROGRESS && gameplayEnabled,
                         enabled = gameplayEnabled,
                         wrapTools = wideLayout && !compact,
+                        hintCount = hintCount,
                     )
                     SudokuNumberPad(
                         enabled = inputEnabled,
@@ -200,6 +202,7 @@ fun SudokuGameContent(
                     onHint = onHint,
                     hintEnabled = game.status == SudokuGameStatus.IN_PROGRESS && gameplayEnabled,
                     enabled = gameplayEnabled,
+                    hintCount = hintCount,
                 )
                 SudokuNumberPad(
                     enabled = inputEnabled,

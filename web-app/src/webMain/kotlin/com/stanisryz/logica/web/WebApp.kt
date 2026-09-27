@@ -264,6 +264,9 @@ private fun ReadyContent(
     onRendered: () -> Unit,
 ) {
     var route by remember { mutableStateOf<WebRoute>(WebRoute.GameHub) }
+
+    // Opening the Store from a running game keeps that game; the Store offers the way back to it.
+    var storeReturnRoute by remember { mutableStateOf<WebRoute?>(null) }
     val balanceState = balanceController.state
     val crownsState = crownsController.state
     val wordState = wordController.state
@@ -310,6 +313,7 @@ private fun ReadyContent(
             wordController.showDifficultySelector()
             sudokuController.showDifficultySelector()
             game2048Controller.showDifficultySelector()
+            storeReturnRoute = null
             route = WebRoute.GameHub
         }
     }
@@ -345,10 +349,26 @@ private fun ReadyContent(
             state = economyState,
             onOpenStore = {
                 showNoLives = false
+                storeReturnRoute = null
                 route = WebRoute.Store
             },
             onDismiss = { showNoLives = false },
         )
+    }
+
+    val storeBinding by playerSession.storeBinding.collectAsState()
+    val hintCount =
+        (storeBinding as? WebStoreBinding.Ready)?.repository?.let { repository ->
+            key(repository) {
+                repository.snapshot
+                    .collectAsState()
+                    .value
+                    .quantityOf(STORE_INVENTORY_HINTS)
+            }
+        }
+    val selectPrimary: (WebRoute) -> Unit = { selected ->
+        storeReturnRoute = null
+        route = selected
     }
 
     CompositionLocalProvider(LocalWebLives provides livesUi) {
@@ -356,7 +376,7 @@ private fun ReadyContent(
             WebRoute.GameHub ->
                 PrimaryDestinationShell(
                     selected = WebRoute.GameHub,
-                    onSelect = { route = it },
+                    onSelect = selectPrimary,
                 ) {
                     GameHubContent(
                         puzzleTypes = GAME_CATALOG_PUZZLE_TYPES,
@@ -430,7 +450,7 @@ private fun ReadyContent(
             WebRoute.Profile ->
                 PrimaryDestinationShell(
                     selected = WebRoute.Profile,
-                    onSelect = { route = it },
+                    onSelect = selectPrimary,
                 ) {
                     WebProfileRoute(
                         playerSession = playerSession,
@@ -441,19 +461,31 @@ private fun ReadyContent(
             WebRoute.Store ->
                 PrimaryDestinationShell(
                     selected = WebRoute.Store,
-                    onSelect = { route = it },
+                    onSelect = selectPrimary,
                 ) {
                     WebStoreScreen(
                         playerSession = playerSession,
                         storeProcessor = storeProcessor,
                         paymentsCoordinator = paymentsCoordinator,
                         rewardedHintsController = rewardedHintsController,
+                        onReturnToGame =
+                            storeReturnRoute?.let { gameRoute ->
+                                {
+                                    storeReturnRoute = null
+                                    route = gameRoute
+                                }
+                            },
                     )
                 }
             WebRoute.Balance ->
                 BalanceFlow(
                     state = balanceState,
                     controller = balanceController,
+                    hintCount = hintCount,
+                    onOpenStore = {
+                        storeReturnRoute = WebRoute.Balance
+                        route = WebRoute.Store
+                    },
                     onSolvedNextLevel = runSolvedNextLevel,
                     onExitBalance = {
                         balanceController.showDifficultySelector()
@@ -464,6 +496,11 @@ private fun ReadyContent(
                 CrownsFlow(
                     state = crownsState,
                     controller = crownsController,
+                    hintCount = hintCount,
+                    onOpenStore = {
+                        storeReturnRoute = WebRoute.Crowns
+                        route = WebRoute.Store
+                    },
                     onSolvedNextLevel = runSolvedNextLevel,
                     onExitCrowns = {
                         crownsController.showDifficultySelector()
@@ -484,6 +521,11 @@ private fun ReadyContent(
                 SudokuFlow(
                     state = sudokuState,
                     controller = sudokuController,
+                    hintCount = hintCount,
+                    onOpenStore = {
+                        storeReturnRoute = WebRoute.Sudoku
+                        route = WebRoute.Store
+                    },
                     onSolvedNextLevel = runSolvedNextLevel,
                     onExitSudoku = {
                         sudokuController.showDifficultySelector()
@@ -704,6 +746,8 @@ private fun webEconomyMetricsOrNull(
 private fun BalanceFlow(
     state: WebBalanceState,
     controller: WebBalanceController,
+    hintCount: Int?,
+    onOpenStore: () -> Unit,
     onExitBalance: () -> Unit,
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
@@ -743,6 +787,8 @@ private fun BalanceFlow(
             PlayingBalanceContent(
                 state = state,
                 controller = controller,
+                hintCount = hintCount,
+                onOpenStore = onOpenStore,
                 onExitBalance = onExitBalance,
                 onSolvedNextLevel = onSolvedNextLevel,
             )
@@ -753,6 +799,8 @@ private fun BalanceFlow(
 private fun CrownsFlow(
     state: WebCrownsState,
     controller: WebCrownsController,
+    hintCount: Int?,
+    onOpenStore: () -> Unit,
     onExitCrowns: () -> Unit,
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
@@ -792,6 +840,8 @@ private fun CrownsFlow(
             PlayingCrownsContent(
                 state = state,
                 controller = controller,
+                hintCount = hintCount,
+                onOpenStore = onOpenStore,
                 onExitCrowns = onExitCrowns,
                 onSolvedNextLevel = onSolvedNextLevel,
             )
@@ -851,6 +901,8 @@ private fun WordFlow(
 private fun SudokuFlow(
     state: WebSudokuState,
     controller: WebSudokuController,
+    hintCount: Int?,
+    onOpenStore: () -> Unit,
     onExitSudoku: () -> Unit,
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
@@ -890,6 +942,8 @@ private fun SudokuFlow(
             PlayingSudokuContent(
                 state = state,
                 controller = controller,
+                hintCount = hintCount,
+                onOpenStore = onOpenStore,
                 onExitSudoku = onExitSudoku,
                 onSolvedNextLevel = onSolvedNextLevel,
             )
@@ -994,6 +1048,8 @@ private fun DifficultyContent(
 private fun PlayingBalanceContent(
     state: WebBalanceState.Playing,
     controller: WebBalanceController,
+    hintCount: Int?,
+    onOpenStore: () -> Unit,
     onExitBalance: () -> Unit,
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
@@ -1020,6 +1076,17 @@ private fun PlayingBalanceContent(
             onTogglePencil = controller::togglePencilMode,
             onHint = controller::requestHint,
             modifier = Modifier.weight(1f),
+            hintCount = hintCount,
+        )
+    }
+
+    if (controller.hintsExhaustedNotice) {
+        WebHintsExhaustedDialog(
+            onOpenStore = {
+                controller.dismissHintsExhaustedNotice()
+                onOpenStore()
+            },
+            onDismiss = controller::dismissHintsExhaustedNotice,
         )
     }
 
@@ -1054,6 +1121,8 @@ private fun PlayingBalanceContent(
 private fun PlayingCrownsContent(
     state: WebCrownsState.Playing,
     controller: WebCrownsController,
+    hintCount: Int?,
+    onOpenStore: () -> Unit,
     onExitCrowns: () -> Unit,
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
@@ -1080,6 +1149,17 @@ private fun PlayingCrownsContent(
             onTogglePencil = controller::togglePencilMode,
             onHint = controller::requestHint,
             modifier = Modifier.weight(1f),
+            hintCount = hintCount,
+        )
+    }
+
+    if (controller.hintsExhaustedNotice) {
+        WebHintsExhaustedDialog(
+            onOpenStore = {
+                controller.dismissHintsExhaustedNotice()
+                onOpenStore()
+            },
+            onDismiss = controller::dismissHintsExhaustedNotice,
         )
     }
 
@@ -1178,6 +1258,8 @@ private fun PlayingWordContent(
 private fun PlayingSudokuContent(
     state: WebSudokuState.Playing,
     controller: WebSudokuController,
+    hintCount: Int?,
+    onOpenStore: () -> Unit,
     onExitSudoku: () -> Unit,
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
@@ -1216,6 +1298,17 @@ private fun PlayingSudokuContent(
             onUndo = controller::undo,
             onHint = controller::requestHint,
             modifier = Modifier.weight(1f),
+            hintCount = hintCount,
+        )
+    }
+
+    if (controller.hintsExhaustedNotice) {
+        WebHintsExhaustedDialog(
+            onOpenStore = {
+                controller.dismissHintsExhaustedNotice()
+                onOpenStore()
+            },
+            onDismiss = controller::dismissHintsExhaustedNotice,
         )
     }
 

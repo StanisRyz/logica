@@ -5,9 +5,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilledTonalIconToggleButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,6 +22,10 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
+import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.hint
+import com.stanisryz.logica.shared.ui.generated.resources.hints_left
+import org.jetbrains.compose.resources.stringResource
 
 data class PuzzleTool(
     val label: String,
@@ -71,3 +81,30 @@ fun PuzzleToolBar(
 }
 
 private val SELECTED_RING_WIDTH = 2.dp
+
+/**
+ * The shared Hint action. Hints are a consumable inventory item, so a non-null [hintCount] shows
+ * the remaining stock as a badge; onboarding surfaces without an inventory pass `null`.
+ */
+@Composable
+fun hintTool(
+    hintCount: Int?,
+    enabled: Boolean,
+    onClick: () -> Unit,
+): PuzzleTool =
+    PuzzleTool(
+        label = stringResource(Res.string.hint),
+        stateDescription = hintCount?.let { stringResource(Res.string.hints_left, it) },
+        selected = null,
+        enabled = enabled,
+        onClick = onClick,
+        symbol = {
+            if (hintCount == null) {
+                Icon(Icons.Filled.Lightbulb, contentDescription = null)
+            } else {
+                BadgedBox(badge = { Badge { Text(hintCount.toString()) } }) {
+                    Icon(Icons.Filled.Lightbulb, contentDescription = null)
+                }
+            }
+        },
+    )

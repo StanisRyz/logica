@@ -106,6 +106,7 @@
     <string name="balance_tool_black">Чёрный ●</string>
     <string name="balance_tool_white">Белый ○</string>
     <string name="hint">Подсказка</string>
+    <string name="hints_left">Осталось подсказок: %1$d</string>
     <string name="searching_hint">Ищем подсказку…</string>
     <string name="hint_legend">Рамка показывает цель подсказки; светлые клетки — её основание.</string>
     <string name="hint_incorrect_value">Проверьте клетку %1$d:%2$d: здесь должно быть %3$s.</string>

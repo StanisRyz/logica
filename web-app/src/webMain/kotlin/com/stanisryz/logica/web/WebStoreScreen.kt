@@ -10,12 +10,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,6 +51,7 @@ internal fun WebStoreScreen(
     storeProcessor: WebStoreProcessor,
     paymentsCoordinator: WebPaymentsCoordinator,
     rewardedHintsController: WebStoreRewardedHintsController,
+    onReturnToGame: (() -> Unit)? = null,
 ) {
     val economyBinding by playerSession.economyBinding.collectAsState()
     val storeBinding by playerSession.storeBinding.collectAsState()
@@ -75,6 +78,10 @@ internal fun WebStoreScreen(
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
         )
+        onReturnToGame?.let { returnToGame ->
+            // Opened from a running game: that attempt is still waiting unchanged.
+            Button(onClick = returnToGame, modifier = Modifier.fillMaxWidth()) { Text("Вернуться к игре") }
+        }
         when (val economy = economyBinding) {
             is WebEconomyBinding.Ready -> {
                 val state =
@@ -104,7 +111,7 @@ internal fun WebStoreScreen(
                     .collectAsState()
                     .value
             Text(
-                text = "Подсказки Судоку: ${snapshot.quantityOf(STORE_INVENTORY_HINTS)}",
+                text = "Подсказки: ${snapshot.quantityOf(STORE_INVENTORY_HINTS)}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -147,7 +154,7 @@ private fun PaidGemTopUpCard(
         Column(Modifier.padding(LogicaSpacing.cardContent), verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
             Text(text = "Пополнение кристаллов", style = MaterialTheme.typography.titleMedium)
             Text(
-                text = "+${entry.product.gemReward} кристаллов",
+                text = "+${entry.product.gemReward} ${gemsWord(entry.product.gemReward)}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -300,7 +307,7 @@ private fun StoreCatalogRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = "${item.priceGems} кристаллов",
+                    text = "${item.priceGems} ${gemsWord(item.priceGems)}",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -350,7 +357,7 @@ private fun purchaseFeedback(
 ): String =
     when (val result = storeProcessor.purchase(item, (economyBinding as? WebEconomyBinding.Ready)?.identity?.playerId)) {
         is PurchaseResult.Success ->
-            "Покупка выполнена: +${result.grantedAmount} ${item.reward.type.webGrantWord()}"
+            "Покупка выполнена: +${result.grantedAmount} ${item.reward.type.webGrantWord(result.grantedAmount)}"
         is PurchaseResult.Failure ->
             when (result.status) {
                 PurchaseStatus.INSUFFICIENT_GEMS ->
@@ -361,6 +368,7 @@ private fun purchaseFeedback(
 
 private fun StoreItem.webTitle(): String =
     when (id) {
+        WebStoreCatalog.ITEM_HINT_SINGLE -> "Подсказка"
         WebStoreCatalog.ITEM_HINT_PACK -> "Набор подсказок"
         WebStoreCatalog.ITEM_LIFE_RESTORE -> "Восстановление жизни"
         else -> id
@@ -368,13 +376,53 @@ private fun StoreItem.webTitle(): String =
 
 private fun StoreItem.webDescription(): String =
     when (id) {
-        WebStoreCatalog.ITEM_HINT_PACK -> "+${reward.amount} подсказки для Судоку"
-        WebStoreCatalog.ITEM_LIFE_RESTORE -> "+${reward.amount} жизнь"
+        WebStoreCatalog.ITEM_HINT_SINGLE, WebStoreCatalog.ITEM_HINT_PACK ->
+            "+${reward.amount} ${russianPlural(reward.amount, "подсказка", "подсказки", "подсказок")} для Судоку, Баланса и Корон"
+        WebStoreCatalog.ITEM_LIFE_RESTORE -> "+${reward.amount} ${russianPlural(reward.amount, "жизнь", "жизни", "жизней")}"
         else -> ""
     }
 
-private fun StoreRewardType.webGrantWord(): String =
-    when (this) {
-        StoreRewardType.HINTS -> "подсказки"
-        StoreRewardType.LIFE_RESTORE -> "жизнь"
+/** Russian noun form for [count]: one / few / many ("1 подсказка", "3 подсказки", "5 подсказок"). */
+private fun gemsWord(count: Int): String = russianPlural(count, "кристалл", "кристалла", "кристаллов")
+
+internal fun russianPlural(
+    count: Int,
+    one: String,
+    few: String,
+    many: String,
+): String {
+    val lastTwo = count % 100
+    val last = count % 10
+    return when {
+        lastTwo in 11..14 -> many
+        last == 1 -> one
+        last in 2..4 -> few
+        else -> many
     }
+}
+
+private fun StoreRewardType.webGrantWord(amount: Int): String =
+    when (this) {
+        StoreRewardType.HINTS -> russianPlural(amount, "подсказка", "подсказки", "подсказок")
+        StoreRewardType.LIFE_RESTORE -> russianPlural(amount, "жизнь", "жизни", "жизней")
+    }
+
+/** Shown when a hint is requested with an empty hint inventory. */
+@Composable
+internal fun WebHintsExhaustedDialog(
+    onOpenStore: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Подсказки закончились") },
+        text = {
+            Text(
+                "Подсказки можно купить в магазине за кристаллы или получить бесплатно за просмотр рекламы. " +
+                    "Текущая игра сохранится, пока вы в магазине.",
+            )
+        },
+        confirmButton = { TextButton(onClick = onOpenStore) { Text("В магазин") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Не сейчас") } },
+    )
+}

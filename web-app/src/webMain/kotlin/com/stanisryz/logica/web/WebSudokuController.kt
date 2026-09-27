@@ -301,13 +301,25 @@ internal class WebSudokuController(
         state = playing.copy(isPencilMode = !playing.isPencilMode)
     }
 
+    /** Set when a hint was requested with an empty hint inventory; the host shows where to get more. */
+    var hintsExhaustedNotice by mutableStateOf(false)
+        private set
+
+    fun dismissHintsExhaustedNotice() {
+        hintsExhaustedNotice = false
+    }
+
     fun requestHint() {
         val playing = state as? WebSudokuState.Playing ?: return
         if (playing.game.status.isTerminal) return
         val updated = engine?.requestHint(playing.game) ?: return
-        // A hint consumes one hint item from the Player's own inventory; without one, no hint.
+        // A hint consumes one hint item from the Player's own inventory (Catalog and Daily alike);
+        // without one the host explains where hints come from instead of silently ignoring the tap.
         if (updated == playing.game) return
-        if (!store.tryConsumeHint()) return
+        if (!store.tryConsumeHint()) {
+            hintsExhaustedNotice = true
+            return
+        }
         updateGame(
             playing,
             updated,
@@ -350,6 +362,7 @@ internal class WebSudokuController(
         engine = null
         statisticsAttempt = null
         undoHistory.clear()
+        hintsExhaustedNotice = false
         completion.reset()
         dailyCompletion.reset()
         state = WebSudokuState.DifficultySelection

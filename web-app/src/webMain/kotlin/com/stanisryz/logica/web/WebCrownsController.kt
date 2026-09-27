@@ -64,6 +64,7 @@ internal class WebCrownsController(
     private val statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
     private val daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
     private val economy: WebGameplayEconomy = DisabledWebGameplayEconomy,
+    private val store: WebGameplayStore = DisabledWebGameplayStore,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private var operation: Job? = null
@@ -251,9 +252,24 @@ internal class WebCrownsController(
                     }
                 val current = state
                 if (current is WebCrownsState.Playing && current.game == requestedGame) {
-                    updateGame(current, hinted, isHintLoading = false)
+                    // A produced hint consumes one hint from the Player's inventory; without one
+                    // the board stays unchanged and the host explains where hints come from.
+                    if (hinted != requestedGame && !store.tryConsumeHint()) {
+                        hintsExhaustedNotice = true
+                        state = current.copy(isHintLoading = false)
+                    } else {
+                        updateGame(current, hinted, isHintLoading = false)
+                    }
                 }
             }
+    }
+
+    /** Set when a hint was requested with an empty hint inventory; the host shows where to get more. */
+    var hintsExhaustedNotice by mutableStateOf(false)
+        private set
+
+    fun dismissHintsExhaustedNotice() {
+        hintsExhaustedNotice = false
     }
 
     fun retry() {
@@ -290,6 +306,7 @@ internal class WebCrownsController(
 
     fun showDifficultySelector() {
         operation?.cancel()
+        hintsExhaustedNotice = false
         engine = null
         statisticsAttempt = null
         completion.reset()
@@ -362,6 +379,7 @@ internal class WebCrownsController(
             statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
             daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
             economy: WebGameplayEconomy = DisabledWebGameplayEconomy,
+            store: WebGameplayStore = DisabledWebGameplayStore,
         ): WebCrownsController =
             WebCrownsController(
                 loadPack = { difficulty ->
@@ -375,6 +393,7 @@ internal class WebCrownsController(
                 statistics = statistics,
                 daily = daily,
                 economy = economy,
+                store = store,
             )
     }
 }

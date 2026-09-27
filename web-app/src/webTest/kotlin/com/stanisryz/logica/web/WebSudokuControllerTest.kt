@@ -22,6 +22,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -62,6 +63,48 @@ class WebSudokuControllerTest {
                     .candidates
                     .contains(1),
             )
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun catalogHintWithEmptyInventoryExplainsItselfAndLeavesTheBoardUnchanged() =
+        runTest {
+            val store =
+                object : WebGameplayStore {
+                    var hints = 0
+
+                    override fun tryConsumeHint(): Boolean {
+                        if (hints <= 0) return false
+                        hints--
+                        return true
+                    }
+                }
+            val controller =
+                WebSudokuController(
+                    loadPack = {},
+                    loadDataset = { _, _ -> },
+                    progression = FakeWebCatalogProgressAccess(),
+                    store = store,
+                    levelPack = fixedMediumLevelOne,
+                    dataset = fixedDataset,
+                    scope = this,
+                )
+            controller.selectDifficulty(Difficulty.MEDIUM)
+            advanceUntilIdle()
+            val before = assertIs<WebSudokuState.Playing>(controller.state).game
+
+            controller.requestHint()
+
+            assertTrue(controller.hintsExhaustedNotice)
+            assertEquals(before, assertIs<WebSudokuState.Playing>(controller.state).game)
+
+            controller.dismissHintsExhaustedNotice()
+            store.hints = 1
+            controller.requestHint()
+
+            assertFalse(controller.hintsExhaustedNotice)
+            assertEquals(0, store.hints)
+            assertEquals(1, assertIs<WebSudokuState.Playing>(controller.state).game.hintsUsed)
         }
 
     private val fixedMediumLevelOne =

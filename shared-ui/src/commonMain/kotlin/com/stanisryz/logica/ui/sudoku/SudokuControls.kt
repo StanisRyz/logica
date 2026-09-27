@@ -9,7 +9,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -20,7 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.shared.ui.generated.resources.Res
-import com.stanisryz.logica.shared.ui.generated.resources.hint
 import com.stanisryz.logica.shared.ui.generated.resources.sudoku_auto_candidates
 import com.stanisryz.logica.shared.ui.generated.resources.sudoku_erase
 import com.stanisryz.logica.shared.ui.generated.resources.sudoku_undo
@@ -29,6 +27,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.tool_on
 import com.stanisryz.logica.shared.ui.generated.resources.tool_pencil
 import com.stanisryz.logica.ui.components.PuzzleTool
 import com.stanisryz.logica.ui.components.PuzzleToolBar
+import com.stanisryz.logica.ui.components.hintTool
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -87,6 +86,7 @@ fun SudokuToolBar(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     wrapTools: Boolean = false,
+    hintCount: Int? = null,
 ) {
     val tools =
         listOf(
@@ -115,14 +115,7 @@ fun SudokuToolBar(
                 onClick = onUndo,
                 symbol = { Text("↶", style = MaterialTheme.typography.titleLarge) },
             ),
-            PuzzleTool(
-                label = stringResource(Res.string.hint),
-                stateDescription = null,
-                selected = null,
-                enabled = hintEnabled,
-                onClick = onHint,
-                symbol = { Icon(Icons.Filled.Lightbulb, contentDescription = null) },
-            ),
+            hintTool(hintCount = hintCount, enabled = hintEnabled, onClick = onHint),
         )
 
     if (wrapTools) {

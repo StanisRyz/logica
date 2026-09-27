@@ -22,6 +22,9 @@ object EconomyPolicy {
     const val MAXIMUM_LIVES = 5
     const val FAILED_ATTEMPT_LIFE_COST = 1
 
+    /** Hints are a consumable inventory item; a brand-new player starts with this many. */
+    const val STARTING_HINTS = 3
+
     /** One missing life comes back after this much elapsed real time. */
     const val LIFE_RESTORE_INTERVAL_MS = 30L * 60L * 1000L
 }

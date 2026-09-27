@@ -48,6 +48,9 @@ internal data class WebStoreSnapshot(
         const val CURRENT_VERSION = 2
 
         val DEFAULT = WebStoreSnapshot()
+
+        /** A Player with no saved Store state yet receives the starting hint stock once. */
+        val NEW_PLAYER = WebStoreSnapshot(inventory = mapOf(STORE_INVENTORY_HINTS to EconomyPolicy.STARTING_HINTS))
     }
 }
 
@@ -208,7 +211,7 @@ internal class WebStoreLocalStore(
     internal val storageKey = "$LOCAL_STORAGE_KEY_PREFIX:${scope.keySuffix}"
 
     override fun load(): WebStoreSnapshot {
-        val encoded = storeLocalStorageGet(storageKey) ?: return WebStoreSnapshot.DEFAULT
+        val encoded = storeLocalStorageGet(storageKey) ?: return WebStoreSnapshot.NEW_PLAYER
         val payload = WebBase64.decode(encoded) ?: return WebStoreSnapshot.DEFAULT
         return WebStoreCodec.decode(payload) ?: WebStoreSnapshot.DEFAULT
     }
@@ -358,11 +361,18 @@ internal sealed interface WebStoreBinding {
  * future items are added here without touching purchase processing or presentation.
  */
 internal object WebStoreCatalog {
+    const val ITEM_HINT_SINGLE = "hint_single"
     const val ITEM_HINT_PACK = "hint_pack"
     const val ITEM_LIFE_RESTORE = "life_restore"
 
+    // Hint prices are provisional placeholders until the pricing pass; only the logic is final.
     val ITEMS: List<StoreItem> =
         listOf(
+            StoreItem(
+                id = ITEM_HINT_SINGLE,
+                priceGems = 4,
+                reward = StoreReward(StoreRewardType.HINTS, amount = 1),
+            ),
             StoreItem(
                 id = ITEM_HINT_PACK,
                 priceGems = 10,
