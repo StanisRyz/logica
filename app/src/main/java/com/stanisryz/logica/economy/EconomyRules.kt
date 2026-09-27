@@ -33,7 +33,7 @@ internal object EconomyRules {
     const val LIFE_REFILL_GEM_COST = 10
 
     /** One missing life comes back after this much elapsed real time. */
-    val LIFE_REGENERATION_INTERVAL: Duration = Duration.ofMinutes(15)
+    val LIFE_REGENERATION_INTERVAL: Duration = Duration.ofMinutes(30)
 
     val LIFE_REGENERATION_INTERVAL_MILLIS: Long = LIFE_REGENERATION_INTERVAL.toMillis()
 }

@@ -290,6 +290,7 @@ internal object WebEconomyProcessor {
         state: EconomyState,
         difficulty: Difficulty,
         solved: Boolean,
+        nowEpochMs: Long,
     ): Pair<EconomyState, List<EconomyEvent>> =
         if (solved) {
             val reward = gemRewardFor(difficulty)
@@ -297,9 +298,59 @@ internal object WebEconomyProcessor {
                 listOf(EconomyEvent.GameCompleted, EconomyEvent.RewardGranted(EconomyRewardType.GEMS, reward))
         } else {
             val consumed = minOf(EconomyPolicy.FAILED_ATTEMPT_LIFE_COST, state.lives)
-            EconomyState(state.gems, state.lives - consumed, null) to
+            withLivesSpent(state, consumed, nowEpochMs) to
                 listOf(EconomyEvent.GameFailed, EconomyEvent.ResourceConsumed(EconomyConsumptionType.LIFE, consumed))
         }
+
+    /** Spends lives; an already running countdown keeps its remaining time instead of restarting. */
+    fun withLivesSpent(
+        state: EconomyState,
+        amount: Int,
+        nowEpochMs: Long,
+    ): EconomyState {
+        val lives = (state.lives - amount).coerceAtLeast(0)
+        if (lives == state.lives) return state
+        return EconomyState(
+            state.gems,
+            lives,
+            state.nextLifeRestoreAtEpochMs ?: (nowEpochMs + EconomyPolicy.LIFE_RESTORE_INTERVAL_MS),
+        )
+    }
+
+    /** Lives from any non-regeneration source; a full wallet clears the countdown. */
+    fun restoreAnchorFor(
+        lives: Int,
+        currentAnchor: Long?,
+    ): Long? = if (lives >= EconomyPolicy.MAXIMUM_LIVES) null else currentAnchor
+
+    /**
+     * Restores every life whose whole interval has elapsed and keeps the remaining partial interval
+     * running toward the next one, exactly like the Android wallet. Elapsed time is never negative:
+     * a backwards clock restores nothing, and a wait longer than one interval is repaired so a wrong
+     * clock cannot freeze regeneration. A missing life without a countdown (older saves) starts one.
+     */
+    fun regenerated(
+        state: EconomyState,
+        nowEpochMs: Long,
+    ): EconomyState {
+        val interval = EconomyPolicy.LIFE_RESTORE_INTERVAL_MS
+        if (state.lives >= EconomyPolicy.MAXIMUM_LIVES) {
+            return if (state.nextLifeRestoreAtEpochMs == null) state else state.copy(nextLifeRestoreAtEpochMs = null)
+        }
+        val dueAt = state.nextLifeRestoreAtEpochMs ?: return state.copy(nextLifeRestoreAtEpochMs = nowEpochMs + interval)
+        if (nowEpochMs < dueAt) {
+            val latestSaneDueAt = nowEpochMs + interval
+            return if (dueAt > latestSaneDueAt) state.copy(nextLifeRestoreAtEpochMs = latestSaneDueAt) else state
+        }
+        val completedIntervals = 1 + (nowEpochMs - dueAt) / interval
+        val restored = minOf(completedIntervals, (EconomyPolicy.MAXIMUM_LIVES - state.lives).toLong()).toInt()
+        val lives = state.lives + restored
+        return if (lives >= EconomyPolicy.MAXIMUM_LIVES) {
+            state.copy(lives = EconomyPolicy.MAXIMUM_LIVES, nextLifeRestoreAtEpochMs = null)
+        } else {
+            state.copy(lives = lives, nextLifeRestoreAtEpochMs = dueAt + restored * interval)
+        }
+    }
 }
 
 /**
@@ -312,6 +363,7 @@ internal class WebPlayerEconomyRepository(
     val scope: WebCatalogProgressScope,
     private val store: WebEconomyStore,
     private val revisions: WebPlayerStateRevisions = WebPlayerStateRevisions(),
+    private val currentTimeMs: () -> Long = ::currentTimeMillis,
 ) {
     private val mutableState =
         MutableStateFlow(EconomyState(EconomyPolicy.STARTING_GEMS, EconomyPolicy.STARTING_LIVES, null))
@@ -336,12 +388,20 @@ internal class WebPlayerEconomyRepository(
         puzzleType: PuzzleType,
         difficulty: Difficulty,
         solved: Boolean,
-    ): List<EconomyEvent> = mutate { state -> WebEconomyProcessor.onCatalogTerminalResult(state, difficulty, solved) }
+    ): List<EconomyEvent> = mutate { state, now -> WebEconomyProcessor.onCatalogTerminalResult(state, difficulty, solved, now) }
+
+    /**
+     * Persists whatever life regeneration is already due. Every mutation regenerates first as well,
+     * so this only needs calling when the wallet is shown or before the zero-life gate is checked.
+     */
+    fun refresh() {
+        mutate { state, _ -> state to emptyList() }
+    }
 
     /** Wallet foundation: adds a positive amount of gems. */
     fun addGems(amount: Int): Boolean {
         if (amount <= 0) return false
-        mutate { state ->
+        mutate { state, _ ->
             EconomyState(state.gems + amount, state.lives, state.nextLifeRestoreAtEpochMs) to emptyList()
         }
         return true
@@ -351,7 +411,7 @@ internal class WebPlayerEconomyRepository(
     fun spendGems(amount: Int): Boolean {
         if (amount <= 0) return false
         var spent = false
-        mutate { state ->
+        mutate { state, _ ->
             if (state.gems >= amount) {
                 spent = true
                 EconomyState(state.gems - amount, state.lives, state.nextLifeRestoreAtEpochMs) to emptyList()
@@ -365,10 +425,10 @@ internal class WebPlayerEconomyRepository(
     /** Wallet foundation: consumes one life when available; never negative. */
     fun consumeLife(): Boolean {
         var consumed = false
-        mutate { state ->
+        mutate { state, now ->
             if (state.lives > 0) {
                 consumed = true
-                EconomyState(state.gems, state.lives - 1, null) to emptyList()
+                WebEconomyProcessor.withLivesSpent(state, 1, now) to emptyList()
             } else {
                 state to emptyList()
             }
@@ -380,11 +440,16 @@ internal class WebPlayerEconomyRepository(
     fun restoreLives(amount: Int): Boolean {
         if (amount <= 0) return false
         var granted = false
-        mutate { state ->
+        mutate { state, _ ->
             val restored = minOf(amount, EconomyPolicy.MAXIMUM_LIVES - state.lives)
             if (restored > 0) {
                 granted = true
-                EconomyState(state.gems, state.lives + restored, state.nextLifeRestoreAtEpochMs) to emptyList()
+                val lives = state.lives + restored
+                EconomyState(
+                    state.gems,
+                    lives,
+                    WebEconomyProcessor.restoreAnchorFor(lives, state.nextLifeRestoreAtEpochMs),
+                ) to emptyList()
             } else {
                 state to emptyList()
             }
@@ -421,9 +486,11 @@ internal class WebPlayerEconomyRepository(
     private fun EconomyState.toSnapshot(): WebEconomySnapshot =
         WebEconomySnapshot(gems = gems, lives = lives, nextLifeRestoreAtEpochMs = nextLifeRestoreAtEpochMs)
 
-    private inline fun mutate(update: (EconomyState) -> Pair<EconomyState, List<EconomyEvent>>): List<EconomyEvent> {
+    private inline fun mutate(update: (EconomyState, Long) -> Pair<EconomyState, List<EconomyEvent>>): List<EconomyEvent> {
         val previous = mutableState.value
-        val (updated, events) = update(previous)
+        // Due regeneration lands first, so every change starts from the wallet the player should see.
+        val now = currentTimeMs()
+        val (updated, events) = update(WebEconomyProcessor.regenerated(previous, now), now)
         if (updated == previous) return events
         // Local durability precedes publication: a failed save leaves the wallet untouched.
         val stamped = updated.toSnapshot().copy(revision = revisions.next())

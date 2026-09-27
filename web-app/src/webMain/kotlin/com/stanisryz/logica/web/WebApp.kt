@@ -26,6 +26,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -323,154 +324,183 @@ private fun ReadyContent(
         )
     }
 
-    when (route) {
-        WebRoute.GameHub ->
-            PrimaryDestinationShell(
-                selected = WebRoute.GameHub,
-                onSelect = { route = it },
-            ) {
-                GameHubContent(
-                    puzzleTypes = GAME_CATALOG_PUZZLE_TYPES,
-                    catalogEnabled = true,
-                    onGameSelected = { puzzleType ->
-                        route =
-                            when (puzzleType) {
-                                PuzzleType.BALANCE -> {
-                                    balanceController.showDifficultySelector()
-                                    WebRoute.Balance
-                                }
-                                PuzzleType.CROWNS -> {
-                                    crownsController.showDifficultySelector()
-                                    WebRoute.Crowns
-                                }
-                                PuzzleType.WORD -> {
-                                    wordController.showDifficultySelector()
-                                    WebRoute.Word
-                                }
-                                PuzzleType.SUDOKU -> {
-                                    sudokuController.showDifficultySelector()
-                                    WebRoute.Sudoku
-                                }
-                                PuzzleType.GAME_2048 -> {
-                                    game2048Controller.showDifficultySelector()
-                                    WebRoute.Game2048
-                                }
-                                else -> error("$puzzleType has no Web game flow.")
-                            }
-                    },
-                    headerContent = {
-                        WebDailyHubRoute(
-                            playerSession = playerSession,
-                            coordinator = dailyCoordinator,
-                            dateRefreshKey = dateRefreshKey,
-                            onStartDaily = { puzzleType ->
-                                when (val started = dailyCoordinator.start(puzzleType)) {
-                                    is WebDailyStartResult.Started -> {
-                                        route =
-                                            when (puzzleType) {
-                                                PuzzleType.BALANCE -> {
-                                                    balanceController.startDaily(started.attempt)
-                                                    WebRoute.Balance
-                                                }
-                                                PuzzleType.CROWNS -> {
-                                                    crownsController.startDaily(started.attempt)
-                                                    WebRoute.Crowns
-                                                }
-                                                PuzzleType.WORD -> {
-                                                    wordController.startDaily(started.attempt)
-                                                    WebRoute.Word
-                                                }
-                                                PuzzleType.SUDOKU -> {
-                                                    sudokuController.startDaily(started.attempt)
-                                                    WebRoute.Sudoku
-                                                }
-                                                PuzzleType.GAME_2048 -> {
-                                                    game2048Controller.startDaily(started.attempt)
-                                                    WebRoute.Game2048
-                                                }
-                                                else -> error("$puzzleType has no Daily gameplay.")
-                                            }
+    // Lives regenerate while the app is active; a Catalog attempt needs at least one life to start.
+    val economyBinding by playerSession.economyBinding.collectAsState()
+    val economyRepository = (economyBinding as? WebEconomyBinding.Ready)?.repository
+    val economyState =
+        economyRepository?.let { repository -> key(repository) { repository.state.collectAsState().value } }
+    WebLivesRegenerationEffect(
+        repository = economyRepository,
+        nextLifeRestoreAtEpochMs = economyState?.nextLifeRestoreAtEpochMs,
+        active = lifecycleState == PlatformLifecycleState.ACTIVE,
+    )
+    var showNoLives by remember { mutableStateOf(false) }
+    val livesUi =
+        WebLivesUi(economyState) { start ->
+            economyRepository?.refresh()
+            if (economyRepository != null && economyRepository.state.value.lives <= 0) showNoLives = true else start()
+        }
+    if (showNoLives) {
+        WebNoLivesDialog(
+            state = economyState,
+            onOpenStore = {
+                showNoLives = false
+                route = WebRoute.Store
+            },
+            onDismiss = { showNoLives = false },
+        )
+    }
+
+    CompositionLocalProvider(LocalWebLives provides livesUi) {
+        when (route) {
+            WebRoute.GameHub ->
+                PrimaryDestinationShell(
+                    selected = WebRoute.GameHub,
+                    onSelect = { route = it },
+                ) {
+                    GameHubContent(
+                        puzzleTypes = GAME_CATALOG_PUZZLE_TYPES,
+                        catalogEnabled = true,
+                        onGameSelected = { puzzleType ->
+                            route =
+                                when (puzzleType) {
+                                    PuzzleType.BALANCE -> {
+                                        balanceController.showDifficultySelector()
+                                        WebRoute.Balance
                                     }
-                                    else -> Unit // surfaced as a start error by the shared hub section
+                                    PuzzleType.CROWNS -> {
+                                        crownsController.showDifficultySelector()
+                                        WebRoute.Crowns
+                                    }
+                                    PuzzleType.WORD -> {
+                                        wordController.showDifficultySelector()
+                                        WebRoute.Word
+                                    }
+                                    PuzzleType.SUDOKU -> {
+                                        sudokuController.showDifficultySelector()
+                                        WebRoute.Sudoku
+                                    }
+                                    PuzzleType.GAME_2048 -> {
+                                        game2048Controller.showDifficultySelector()
+                                        WebRoute.Game2048
+                                    }
+                                    else -> error("$puzzleType has no Web game flow.")
                                 }
-                            },
-                        )
+                        },
+                        headerContent = {
+                            WebDailyHubRoute(
+                                playerSession = playerSession,
+                                coordinator = dailyCoordinator,
+                                dateRefreshKey = dateRefreshKey,
+                                onStartDaily = { puzzleType ->
+                                    when (val started = dailyCoordinator.start(puzzleType)) {
+                                        is WebDailyStartResult.Started -> {
+                                            route =
+                                                when (puzzleType) {
+                                                    PuzzleType.BALANCE -> {
+                                                        balanceController.startDaily(started.attempt)
+                                                        WebRoute.Balance
+                                                    }
+                                                    PuzzleType.CROWNS -> {
+                                                        crownsController.startDaily(started.attempt)
+                                                        WebRoute.Crowns
+                                                    }
+                                                    PuzzleType.WORD -> {
+                                                        wordController.startDaily(started.attempt)
+                                                        WebRoute.Word
+                                                    }
+                                                    PuzzleType.SUDOKU -> {
+                                                        sudokuController.startDaily(started.attempt)
+                                                        WebRoute.Sudoku
+                                                    }
+                                                    PuzzleType.GAME_2048 -> {
+                                                        game2048Controller.startDaily(started.attempt)
+                                                        WebRoute.Game2048
+                                                    }
+                                                    else -> error("$puzzleType has no Daily gameplay.")
+                                                }
+                                        }
+                                        else -> Unit // surfaced as a start error by the shared hub section
+                                    }
+                                },
+                            )
+                        },
+                    )
+                }
+            WebRoute.Profile ->
+                PrimaryDestinationShell(
+                    selected = WebRoute.Profile,
+                    onSelect = { route = it },
+                ) {
+                    WebProfileRoute(
+                        playerSession = playerSession,
+                        binding = playerSession.statisticsBinding.collectAsState().value,
+                        onRetry = playerSession::retryCurrentContext,
+                    )
+                }
+            WebRoute.Store ->
+                PrimaryDestinationShell(
+                    selected = WebRoute.Store,
+                    onSelect = { route = it },
+                ) {
+                    WebStoreScreen(
+                        playerSession = playerSession,
+                        storeProcessor = storeProcessor,
+                        paymentsCoordinator = paymentsCoordinator,
+                        rewardedHintsController = rewardedHintsController,
+                    )
+                }
+            WebRoute.Balance ->
+                BalanceFlow(
+                    state = balanceState,
+                    controller = balanceController,
+                    onSolvedNextLevel = runSolvedNextLevel,
+                    onExitBalance = {
+                        balanceController.showDifficultySelector()
+                        route = WebRoute.GameHub
                     },
                 )
-            }
-        WebRoute.Profile ->
-            PrimaryDestinationShell(
-                selected = WebRoute.Profile,
-                onSelect = { route = it },
-            ) {
-                WebProfileRoute(
-                    playerSession = playerSession,
-                    binding = playerSession.statisticsBinding.collectAsState().value,
-                    onRetry = playerSession::retryCurrentContext,
+            WebRoute.Crowns ->
+                CrownsFlow(
+                    state = crownsState,
+                    controller = crownsController,
+                    onSolvedNextLevel = runSolvedNextLevel,
+                    onExitCrowns = {
+                        crownsController.showDifficultySelector()
+                        route = WebRoute.GameHub
+                    },
                 )
-            }
-        WebRoute.Store ->
-            PrimaryDestinationShell(
-                selected = WebRoute.Store,
-                onSelect = { route = it },
-            ) {
-                WebStoreScreen(
-                    playerSession = playerSession,
-                    storeProcessor = storeProcessor,
-                    paymentsCoordinator = paymentsCoordinator,
-                    rewardedHintsController = rewardedHintsController,
+            WebRoute.Word ->
+                WordFlow(
+                    state = wordState,
+                    controller = wordController,
+                    onSolvedNextLevel = runSolvedNextLevel,
+                    onExitWord = {
+                        wordController.showDifficultySelector()
+                        route = WebRoute.GameHub
+                    },
                 )
-            }
-        WebRoute.Balance ->
-            BalanceFlow(
-                state = balanceState,
-                controller = balanceController,
-                onSolvedNextLevel = runSolvedNextLevel,
-                onExitBalance = {
-                    balanceController.showDifficultySelector()
-                    route = WebRoute.GameHub
-                },
-            )
-        WebRoute.Crowns ->
-            CrownsFlow(
-                state = crownsState,
-                controller = crownsController,
-                onSolvedNextLevel = runSolvedNextLevel,
-                onExitCrowns = {
-                    crownsController.showDifficultySelector()
-                    route = WebRoute.GameHub
-                },
-            )
-        WebRoute.Word ->
-            WordFlow(
-                state = wordState,
-                controller = wordController,
-                onSolvedNextLevel = runSolvedNextLevel,
-                onExitWord = {
-                    wordController.showDifficultySelector()
-                    route = WebRoute.GameHub
-                },
-            )
-        WebRoute.Sudoku ->
-            SudokuFlow(
-                state = sudokuState,
-                controller = sudokuController,
-                onSolvedNextLevel = runSolvedNextLevel,
-                onExitSudoku = {
-                    sudokuController.showDifficultySelector()
-                    route = WebRoute.GameHub
-                },
-            )
-        WebRoute.Game2048 ->
-            Game2048Flow(
-                state = game2048State,
-                controller = game2048Controller,
-                onSolvedNextLevel = runSolvedNextLevel,
-                onExitGame2048 = {
-                    game2048Controller.showDifficultySelector()
-                    route = WebRoute.GameHub
-                },
-            )
+            WebRoute.Sudoku ->
+                SudokuFlow(
+                    state = sudokuState,
+                    controller = sudokuController,
+                    onSolvedNextLevel = runSolvedNextLevel,
+                    onExitSudoku = {
+                        sudokuController.showDifficultySelector()
+                        route = WebRoute.GameHub
+                    },
+                )
+            WebRoute.Game2048 ->
+                Game2048Flow(
+                    state = game2048State,
+                    controller = game2048Controller,
+                    onSolvedNextLevel = runSolvedNextLevel,
+                    onExitGame2048 = {
+                        game2048Controller.showDifficultySelector()
+                        route = WebRoute.GameHub
+                    },
+                )
+        }
     }
 }
 
@@ -930,8 +960,11 @@ private fun DifficultyContent(
                     vertical = LogicaSpacing.screenVertical,
                 ),
     ) {
+        val lives = LocalWebLives.current
+        val livesState = lives.state
+        val livesHeight = if (livesState != null) LIVES_STATUS_HEIGHT + LogicaSpacing.section else 0.dp
         val cardHeight =
-            ((maxHeight - DIFFICULTY_HEADER_HEIGHT - LogicaSpacing.section - LogicaSpacing.item * 3) / 4)
+            ((maxHeight - DIFFICULTY_HEADER_HEIGHT - livesHeight - LogicaSpacing.section - LogicaSpacing.item * 3) / 4)
                 .coerceIn(MIN_DIFFICULTY_CARD_HEIGHT, MAX_DIFFICULTY_CARD_HEIGHT)
         Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.section)) {
             Row(
@@ -945,8 +978,11 @@ private fun DifficultyContent(
                     fontWeight = FontWeight.SemiBold,
                 )
             }
+            if (livesState != null) {
+                WebLivesStatus(livesState, Modifier.height(LIVES_STATUS_HEIGHT))
+            }
             DifficultySelector(
-                onStart = onStart,
+                onStart = { difficulty -> lives.guard { onStart(difficulty) } },
                 enabled = true,
                 cardHeight = cardHeight,
             )
@@ -961,6 +997,7 @@ private fun PlayingBalanceContent(
     onExitBalance: () -> Unit,
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
+    val livesGuard = LocalWebLives.current.guard
     Column(Modifier.fillMaxSize()) {
         WebGameplayHeader(
             puzzleType = PuzzleType.BALANCE,
@@ -1005,8 +1042,8 @@ private fun PlayingBalanceContent(
             levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
             solved = state.game.status == BalanceGameStatus.SOLVED,
             completion = controller.completionState,
-            onNextLevel = { onSolvedNextLevel { controller.nextLevel() } },
-            onRetry = controller::retry,
+            onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },
+            onRetry = { livesGuard(controller::retry) },
             onRetrySave = controller::retrySave,
             onBack = controller::showDifficultySelector,
         )
@@ -1020,6 +1057,7 @@ private fun PlayingCrownsContent(
     onExitCrowns: () -> Unit,
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
+    val livesGuard = LocalWebLives.current.guard
     Column(Modifier.fillMaxSize()) {
         WebGameplayHeader(
             puzzleType = PuzzleType.CROWNS,
@@ -1064,8 +1102,8 @@ private fun PlayingCrownsContent(
             levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
             solved = state.game.status == CrownsGameStatus.SOLVED,
             completion = controller.completionState,
-            onNextLevel = { onSolvedNextLevel { controller.nextLevel() } },
-            onRetry = controller::retry,
+            onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },
+            onRetry = { livesGuard(controller::retry) },
             onRetrySave = controller::retrySave,
             onBack = controller::showDifficultySelector,
         )
@@ -1079,6 +1117,7 @@ private fun PlayingWordContent(
     onExitWord: () -> Unit,
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
+    val livesGuard = LocalWebLives.current.guard
     Column(Modifier.fillMaxSize()) {
         WebGameplayHeader(
             puzzleType = PuzzleType.WORD,
@@ -1127,8 +1166,8 @@ private fun PlayingWordContent(
             completion = controller.completionState,
             solvedDetail = "Уровень пройден за ${state.game.attempts.size} попыток.",
             failedDetail = "Загаданное слово: ${state.puzzle.answer.uppercase()}",
-            onNextLevel = { onSolvedNextLevel { controller.nextLevel() } },
-            onRetry = controller::retry,
+            onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },
+            onRetry = { livesGuard(controller::retry) },
             onRetrySave = controller::retrySave,
             onBack = controller::showDifficultySelector,
         )
@@ -1142,6 +1181,7 @@ private fun PlayingSudokuContent(
     onExitSudoku: () -> Unit,
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
+    val livesGuard = LocalWebLives.current.guard
     Column(Modifier.fillMaxSize()) {
         WebGameplayHeader(
             puzzleType = PuzzleType.SUDOKU,
@@ -1198,8 +1238,8 @@ private fun PlayingSudokuContent(
             levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
             solved = state.game.status == SudokuGameStatus.SOLVED,
             completion = controller.completionState,
-            onNextLevel = { onSolvedNextLevel { controller.nextLevel() } },
-            onRetry = controller::retry,
+            onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },
+            onRetry = { livesGuard(controller::retry) },
             onRetrySave = controller::retrySave,
             onBack = controller::showDifficultySelector,
         )
@@ -1213,6 +1253,7 @@ private fun PlayingGame2048Content(
     onExitGame2048: () -> Unit,
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
+    val livesGuard = LocalWebLives.current.guard
     Column(Modifier.fillMaxSize()) {
         WebGameplayHeader(
             puzzleType = PuzzleType.GAME_2048,
@@ -1265,8 +1306,8 @@ private fun PlayingGame2048Content(
             goalReached = state.game.goalReached,
             score = formatGame2048Number(state.game.score),
             completion = controller.completionState,
-            onNextLevel = { onSolvedNextLevel { controller.nextLevel() } },
-            onRetry = controller::retry,
+            onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },
+            onRetry = { livesGuard(controller::retry) },
             onRetrySave = controller::retrySave,
             onBack = controller::showDifficultySelector,
         )
@@ -1316,6 +1357,7 @@ private fun Difficulty.webLabel(): String =
     }
 
 private val DIFFICULTY_HEADER_HEIGHT = 48.dp
+private val LIVES_STATUS_HEIGHT = 24.dp
 private val PRIMARY_NAVIGATION_HEIGHT = 64.dp
 private val MIN_DIFFICULTY_CARD_HEIGHT = 96.dp
 private val MAX_DIFFICULTY_CARD_HEIGHT = 152.dp

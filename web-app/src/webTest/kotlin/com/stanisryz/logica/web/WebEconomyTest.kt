@@ -4,6 +4,7 @@ import com.stanisryz.logica.platform.EconomyConsumptionType
 import com.stanisryz.logica.platform.EconomyEvent
 import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.platform.EconomyRewardType
+import com.stanisryz.logica.platform.EconomyState
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,6 +12,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -98,5 +100,57 @@ class WebEconomyTest {
         assertTrue(repository.spendGems(2))
         assertEquals(0, repository.state.value.gems)
         assertFalse(repository.spendGems(1))
+    }
+
+    @Test
+    fun livesRegenerateEveryIntervalWithoutRestartingARunningCountdown() {
+        var now = START
+        val repository =
+            WebPlayerEconomyRepository(WebCatalogProgressScope.STANDALONE, FakeEconomyStore(), currentTimeMs = { now })
+                .also { it.loadLocal() }
+
+        // The first loss starts the countdown; a second loss later keeps it running.
+        repository.applyCatalogTerminalResult(PuzzleType.SUDOKU, Difficulty.EASY, solved = false)
+        assertEquals(START + INTERVAL, repository.state.value.nextLifeRestoreAtEpochMs)
+        now = START + 5 * MINUTE
+        repository.applyCatalogTerminalResult(PuzzleType.SUDOKU, Difficulty.EASY, solved = false)
+        assertEquals(3, repository.state.value.lives)
+        assertEquals(START + INTERVAL, repository.state.value.nextLifeRestoreAtEpochMs)
+
+        // One second short of the interval nothing has come back yet.
+        now = START + INTERVAL - 1_000
+        repository.refresh()
+        assertEquals(3, repository.state.value.lives)
+
+        // Reaching the interval restores one life and keeps counting toward the next one.
+        now = START + INTERVAL
+        repository.refresh()
+        assertEquals(4, repository.state.value.lives)
+        assertEquals(START + 2 * INTERVAL, repository.state.value.nextLifeRestoreAtEpochMs)
+
+        // A long gap stops at the cap and clears the countdown.
+        now = START + 10 * INTERVAL
+        repository.refresh()
+        assertEquals(EconomyPolicy.MAXIMUM_LIVES, repository.state.value.lives)
+        assertNull(repository.state.value.nextLifeRestoreAtEpochMs)
+    }
+
+    @Test
+    fun regenerationRepairsOldSavesAndIgnoresABackwardsClock() {
+        // Saves written before regeneration existed hold a missing life without a countdown.
+        val legacy = WebEconomyProcessor.regenerated(EconomyState(gems = 0, lives = 2, nextLifeRestoreAtEpochMs = null), START)
+        assertEquals(START + INTERVAL, legacy.nextLifeRestoreAtEpochMs)
+        assertEquals(2, legacy.lives)
+
+        val running = EconomyState(gems = 0, lives = 4, nextLifeRestoreAtEpochMs = START + INTERVAL)
+        assertEquals(running, WebEconomyProcessor.regenerated(running, START + MINUTE))
+        val movedBackADay = START - 24 * 60 * MINUTE
+        assertEquals(movedBackADay + INTERVAL, WebEconomyProcessor.regenerated(running, movedBackADay).nextLifeRestoreAtEpochMs)
+    }
+
+    private companion object {
+        const val START = 1_700_000_000_000L
+        const val MINUTE = 60_000L
+        const val INTERVAL = EconomyPolicy.LIFE_RESTORE_INTERVAL_MS
     }
 }

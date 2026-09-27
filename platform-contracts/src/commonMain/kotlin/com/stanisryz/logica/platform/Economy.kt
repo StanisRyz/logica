@@ -21,6 +21,9 @@ object EconomyPolicy {
     const val STARTING_LIVES = 5
     const val MAXIMUM_LIVES = 5
     const val FAILED_ATTEMPT_LIFE_COST = 1
+
+    /** One missing life comes back after this much elapsed real time. */
+    const val LIFE_RESTORE_INTERVAL_MS = 30L * 60L * 1000L
 }
 
 enum class EconomyRewardType {

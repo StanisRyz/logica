@@ -404,6 +404,8 @@ internal class WebStoreProcessor(
         val store = storeRepository() ?: return PurchaseResult.Failure(PurchaseStatus.FAILED, item, item.priceGems, 0)
 
         // Validation happens on the current durable state; failures never touch either domain.
+        // Due life regeneration lands first so a life purchase never pays for an already due life.
+        economy.refresh()
         val currentEconomy = economy.currentSnapshot
         if (currentEconomy.gems < item.priceGems) {
             recordAttempt(store, item, PurchaseStatus.INSUFFICIENT_GEMS, playerId)
@@ -449,6 +451,8 @@ internal class WebStoreProcessor(
                     currentEconomy.copy(
                         gems = currentEconomy.gems - item.priceGems,
                         lives = targetLives,
+                        nextLifeRestoreAtEpochMs =
+                            WebEconomyProcessor.restoreAnchorFor(targetLives, currentEconomy.nextLifeRestoreAtEpochMs),
                         revision = revision,
                     ),
                 targetStore =

@@ -6,7 +6,7 @@ import org.junit.Test
 
 /**
  * Regeneration is pure arithmetic over an anchor and a fake clock, never a repeating worker: the
- * whole 15-minute model has to hold across app restarts and long offline gaps.
+ * whole 30-minute model has to hold across app restarts and long offline gaps.
  */
 class LifeRegenerationTest {
     @Test
@@ -35,11 +35,11 @@ class LifeRegenerationTest {
     fun aLongOfflineGapRestoresSeveralLivesAndKeepsThePartialInterval() {
         val twoLives = PlayerEconomy(gems = 3, lives = 2, nextLifeAtEpochMillis = START + INTERVAL)
 
-        // 31 minutes after the countdown started: two whole intervals elapsed, one minute remains.
-        val refreshed = twoLives.regenerated(START + 31 * MINUTE)
+        // 61 minutes after the countdown started: two whole intervals elapsed, one minute remains.
+        val refreshed = twoLives.regenerated(START + 61 * MINUTE)
         assertEquals(4, refreshed.lives)
         assertEquals(START + 3 * INTERVAL, refreshed.nextLifeAtEpochMillis)
-        assertEquals(14 * MINUTE, refreshed.millisUntilNextLife(START + 31 * MINUTE))
+        assertEquals(29 * MINUTE, refreshed.millisUntilNextLife(START + 61 * MINUTE))
 
         // A gap far longer than the missing lives stops at the cap and clears the anchor.
         val capped = twoLives.regenerated(START + 10 * 60 * MINUTE)
@@ -54,7 +54,7 @@ class LifeRegenerationTest {
 
         // Seen at START + 10 minutes and then moved back to START + 1: elapsed time counts as zero.
         assertEquals(fourLives, fourLives.regenerated(START + MINUTE))
-        assertEquals(14 * MINUTE, fourLives.millisUntilNextLife(START + MINUTE))
+        assertEquals(29 * MINUTE, fourLives.millisUntilNextLife(START + MINUTE))
 
         // A clock far in the past would leave an impossible wait, so it is repaired to one interval.
         val movedBackADay = START - 24 * 60 * MINUTE

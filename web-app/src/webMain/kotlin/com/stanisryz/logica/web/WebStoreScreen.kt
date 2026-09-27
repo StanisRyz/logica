@@ -86,6 +86,14 @@ internal fun WebStoreScreen(
                     stringResource(Res.string.profile_lives),
                     "${state.lives} / ${EconomyPolicy.MAXIMUM_LIVES}",
                 )
+                state.nextLifeRestoreAtEpochMs?.let { dueAt ->
+                    val now = rememberNowMs(ticking = true)
+                    Text(
+                        text = "Новая жизнь через ${formatLifeCountdown(dueAt - now)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             else -> Text("Кошелёк недоступен", style = MaterialTheme.typography.bodyMedium)
         }
@@ -185,9 +193,10 @@ private fun PaidGemTopUpCard(
 }
 
 private val WebPaidPurchaseState.isBusy: Boolean
-    get() = this == WebPaidPurchaseState.Purchasing ||
-        this == WebPaidPurchaseState.Fulfilling ||
-        this == WebPaidPurchaseState.Saving
+    get() =
+        this == WebPaidPurchaseState.Purchasing ||
+            this == WebPaidPurchaseState.Fulfilling ||
+            this == WebPaidPurchaseState.Saving
 
 /** Price exactly as the Yandex catalog supplies it; currency icon rendering stays host-side. */
 private fun paidPriceLabel(details: PaymentProductSnapshot): String =
@@ -270,6 +279,14 @@ private fun StoreCatalogRow(
     storeProcessor: WebStoreProcessor,
     onFeedback: (String) -> Unit,
 ) {
+    val livesFull =
+        item.reward.type == StoreRewardType.LIFE_RESTORE &&
+            (economyBinding as? WebEconomyBinding.Ready)
+                ?.repository
+                ?.state
+                ?.collectAsState()
+                ?.value
+                ?.let { it.lives >= EconomyPolicy.MAXIMUM_LIVES } == true
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(LogicaSpacing.cardContent).fillMaxWidth(),
@@ -278,7 +295,7 @@ private fun StoreCatalogRow(
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
                 Text(text = item.webTitle(), style = MaterialTheme.typography.titleMedium)
                 Text(
-                    text = item.webDescription(),
+                    text = if (livesFull) "Жизни уже полные" else item.webDescription(),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -288,7 +305,10 @@ private fun StoreCatalogRow(
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
-            Button(onClick = { onFeedback(purchaseFeedback(storeProcessor, item, economyBinding)) }) {
+            Button(
+                onClick = { onFeedback(purchaseFeedback(storeProcessor, item, economyBinding)) },
+                enabled = !livesFull,
+            ) {
                 Text("Купить")
             }
         }
