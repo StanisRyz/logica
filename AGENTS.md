@@ -46,6 +46,7 @@
 - V5 first-solve streak qualification stays visibly separate from full 5/5 completion everywhere, including the shared hub presentation.
 - Daily 2048 differs explicitly from Catalog 2048: a target crossing records nothing and play continues; only the real final game state resolves exactly one Daily result and one Statistics result.
 - Android keeps its richer Daily completion card and spoiler-free Share; Web offers the same spoiler-free share text through its browser share adapter.
+- The shared Daily entry row also scrolls by mouse drag (touch keeps the row's own scrolling), so desktop Web players reach every entry.
 - Daily metrics are an optional shared Profile capability: Android supplies completed-Daily and streak values from its existing Room statistics aggregation, while Web derives the same values from its durable Player-scoped Daily history.
 - Web follows the device light/dark preference through `isSystemInDarkTheme()`, and `index.html` paints the theme background for both schemes so the page never flashes another color before the first frame.
 - Web primary navigation is Games, Profile, and Store; game sub-routes and tutorials hide primary navigation.
@@ -131,7 +132,7 @@
 - UI renders gameplay state and dispatches actions; diagnostics and hints reuse core rules/logic, and reset preserves hint usage.
 - Balance is the first playable Android slice; generation and solver-backed hints run off the main thread.
 - Hint and rule text lives with the presentation that shows it (shared gameplay and tutorial text in `:shared-ui`, host-only text in its host); unfinished gameplay state is transient and discarded when an attempt is left.
-- Balance and Crowns input is explicit: the player selects a value (`ZERO`/`ONE`, crown/blocked mark) and taps a cell; there is no tap cycle, no Undo, and no Eraser, and tapping the selected value again removes it.
+- Balance and Crowns input is explicit: the player selects a value (`ZERO`/`ONE`, crown/blocked mark) and taps a cell; there is no tap cycle, no Undo, and no Eraser, and tapping the selected value again removes it. A shown hint also selects the tool it is carried out with (`suggestedValue`, `CrownsHint.suggestedTool()`) and leaves Pencil, so following the highlighted cell never costs a mistake.
 - A committed placement is validated at once against the puzzle's single answer: correct becomes `CORRECT` and is permanently locked, wrong becomes `INCORRECT` and stays visible and editable; the correct value is never revealed by the wrong-state presentation. A puzzle without a unique answer stays `UNVERIFIED` and locks nothing.
 - Pencil marks are a separate unvalidated layer on empty cells only: they never lock, any committed placement clears them, and they render small in the cell's upper-right corner.
 - Tool selection and Pencil mode are transient presentation state and are never persisted.
@@ -218,6 +219,7 @@
 - Difficulty cards hide Catalog level numbers while gameplay shows `Уровень N`; terminal actions are Retry level, Next level, and To Games, and there is no Continue, no active-save indicator, and no new-game branch.
 - `GameplayExitGuard` is the one seam between the shell's Back handling and gameplay: leaving a non-terminal level with real progress confirms first, and nothing else — no autosave — protects it.
 - Boards stay puzzle-specific: only the surrounding chrome (header, difficulty, actions, errors, completion) is shared. Primary gameplay surfaces fit host constraints without internal scrolling; square boards adapt to both width and height while platform hosts retain application policy.
+- Contextual hint and error messages live in a fixed-height region (`SquareGameLayout`, Sudoku's hint region) whose content only fades, so a message never moves the board under the player's finger. Word rejections show a short note over the half of the board away from the typed row, on both platforms.
 - Board cells size their text and their inner grids from the cell the layout actually gave them, never from fixed `sp` that only looks right in a Preview; shared Word board, keyboard, rejection shake, and sequential reveal stay on one active screen by budgeting both width and height without gameplay scrolling.
 - Every state must be readable without color: pair status color with an icon plus a label, and keep the existing non-color Word feedback.
 - Shared gameplay for all five games, Game Catalog titles/artwork, and difficulty resources live in `:shared-ui`; host-only strings stay with their host. All Catalog games present the same four direct-launch difficulty cards.

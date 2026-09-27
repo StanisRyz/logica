@@ -293,14 +293,15 @@ private fun StoreCatalogRow(
     storeProcessor: WebStoreProcessor,
     onFeedback: (String) -> Unit,
 ) {
-    val livesFull =
-        item.reward.type == StoreRewardType.LIFE_RESTORE &&
-            (economyBinding as? WebEconomyBinding.Ready)
-                ?.repository
-                ?.state
-                ?.collectAsState()
-                ?.value
-                ?.let { it.lives >= EconomyPolicy.MAXIMUM_LIVES } == true
+    val wallet =
+        (economyBinding as? WebEconomyBinding.Ready)
+            ?.repository
+            ?.state
+            ?.collectAsState()
+            ?.value
+    val livesFull = item.reward.type == StoreRewardType.LIFE_RESTORE && wallet?.let { it.lives >= EconomyPolicy.MAXIMUM_LIVES } == true
+    // A purchase the balance cannot cover is shown as such instead of failing after the tap.
+    val missingGems = wallet?.let { (item.priceGems - it.gems).coerceAtLeast(0) } ?: 0
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(LogicaSpacing.cardContent).fillMaxWidth(),
@@ -309,9 +310,26 @@ private fun StoreCatalogRow(
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
                 Text(text = item.webTitle(), style = MaterialTheme.typography.titleMedium)
                 Text(
-                    text = if (livesFull) "Жизни уже полные" else item.webDescription(),
+                    text =
+                        when {
+                            livesFull -> "Жизни уже полные"
+                            missingGems > 0 -> "Не хватает $missingGems ${russianPlural(
+                                missingGems,
+                                "кристалла",
+                                "кристаллов",
+                                "кристаллов",
+                            )}"
+                            else -> item.webDescription()
+                        },
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color =
+                        if (missingGems > 0 &&
+                            !livesFull
+                        ) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                 )
                 Text(
                     text = "${item.priceGems} ${gemsWord(item.priceGems)}",
@@ -321,7 +339,7 @@ private fun StoreCatalogRow(
             }
             Button(
                 onClick = { onFeedback(purchaseFeedback(storeProcessor, item, economyBinding)) },
-                enabled = !livesFull,
+                enabled = !livesFull && missingGems == 0,
             ) {
                 Text("Купить")
             }

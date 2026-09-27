@@ -5,6 +5,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,12 +20,17 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -33,9 +39,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.puzzle.core.model.Difficulty
@@ -45,6 +53,7 @@ import com.stanisryz.logica.puzzle.core.word.WordGameState
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
 import com.stanisryz.logica.puzzle.core.word.WordGuessRejection
 import com.stanisryz.logica.puzzle.core.word.WordPuzzle
+import com.stanisryz.logica.puzzle.core.word.WordRules
 import com.stanisryz.logica.shared.ui.generated.resources.Res
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_easy
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_expert
@@ -58,6 +67,7 @@ import com.stanisryz.logica.ui.components.GameHeaderBadges
 import com.stanisryz.logica.ui.components.GameKey
 import com.stanisryz.logica.ui.components.isWideGameplayLayout
 import com.stanisryz.logica.ui.theme.LogicaSpacing
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -95,6 +105,9 @@ fun WordGameContent(
             mutableIntStateOf(initialWordSelection(game))
         }
     val rejectionShake = remember { Animatable(0f) }
+    // The visible rejection note: shown on every rejection, hidden again after a moment or on input.
+    var shownRejection by remember { mutableStateOf<WordGuessRejection?>(null) }
+    var rejectionNoteVisible by remember { mutableStateOf(false) }
     var revealedAttemptRevision by
         rememberSaveable(puzzle.id) {
             mutableIntStateOf(0)
@@ -108,10 +121,19 @@ fun WordGameContent(
             game.currentDraft.firstEmptyIndex()?.let { selectedCellIndex = it }
         }
         currentOnRejectionPresented(rejection)
+        shownRejection = rejection
+        rejectionNoteVisible = true
         rejectionShake.snapTo(0f)
         listOf(-shakeDistance, shakeDistance, -shakeDistance * 0.6f, shakeDistance * 0.6f, 0f)
             .forEach { target -> rejectionShake.animateTo(target, tween(SHAKE_STEP_MILLIS)) }
+        delay(REJECTION_NOTE_MILLIS)
+        rejectionNoteVisible = false
     }
+    val rejectionNoteText = shownRejection?.let { stringResource(it.messageResource()) }
+    val rejectionNoteShown = rejectionNoteVisible && rejection != null
+    // Keep the note away from the row being typed: over the lower rows while the upper ones are in use.
+    val rejectionNoteAlignment =
+        if (game.attempts.size < WordRules.MAXIMUM_ATTEMPTS / 2) Alignment.BottomCenter else Alignment.TopCenter
     LaunchedEffect(game.attempts.size, game.status) {
         if (game.status == WordGameStatus.IN_PROGRESS) {
             selectedCellIndex = initialWordSelection(game)
@@ -217,6 +239,7 @@ fun WordGameContent(
                                     .fillMaxSize()
                                     .offset { IntOffset(rejectionShake.value.roundToInt(), 0) },
                         )
+                        WordRejectionNote(rejectionNoteText, rejectionNoteShown, Modifier.align(rejectionNoteAlignment))
                     }
                 }
                 WordKeyboard(
@@ -266,21 +289,22 @@ fun WordGameContent(
                     verticalArrangement = Arrangement.spacedBy(gap, Alignment.CenterVertically),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    WordBoard(
-                        game = game,
-                        selectedCellIndex = selectedCellIndex,
-                        editableEnabled = gameplayEnabled && isPlaying,
-                        onCellSelected = { selectedCellIndex = it },
-                        acceptedAttemptRevision = acceptedAttemptRevision,
-                        onAcceptedAttemptRevealed = { revision ->
-                            revealedAttemptRevision = revision
-                            currentOnAcceptedAttemptRevealed(revision)
-                        },
-                        modifier =
-                            Modifier
-                                .heightIn(max = boardHeight)
-                                .offset { IntOffset(rejectionShake.value.roundToInt(), 0) },
-                    )
+                    // The note floats over the top of the board, so showing it never moves the layout.
+                    Box(Modifier.heightIn(max = boardHeight)) {
+                        WordBoard(
+                            game = game,
+                            selectedCellIndex = selectedCellIndex,
+                            editableEnabled = gameplayEnabled && isPlaying,
+                            onCellSelected = { selectedCellIndex = it },
+                            acceptedAttemptRevision = acceptedAttemptRevision,
+                            onAcceptedAttemptRevealed = { revision ->
+                                revealedAttemptRevision = revision
+                                currentOnAcceptedAttemptRevealed(revision)
+                            },
+                            modifier = Modifier.offset { IntOffset(rejectionShake.value.roundToInt(), 0) },
+                        )
+                        WordRejectionNote(rejectionNoteText, rejectionNoteShown, Modifier.align(rejectionNoteAlignment))
+                    }
                     AnimatedVisibility(
                         visible =
                             !isPlaying &&
@@ -354,6 +378,36 @@ private fun WordGameHeader(
     }
 }
 
+/** A short dark note over the board; the header's live region already announces the same text. */
+@Composable
+private fun WordRejectionNote(
+    text: String?,
+    visible: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = visible && text != null,
+        modifier = modifier.padding(vertical = LogicaSpacing.item).widthIn(max = REJECTION_NOTE_MAX_WIDTH),
+        enter = fadeIn(tween(REJECTION_NOTE_FADE_MILLIS)),
+        exit = fadeOut(tween(REJECTION_NOTE_FADE_MILLIS)),
+    ) {
+        Surface(
+            modifier = Modifier.clearAndSetSemantics {},
+            shape = MaterialTheme.shapes.small,
+            color = MaterialTheme.colorScheme.inverseSurface,
+            contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+            shadowElevation = REJECTION_NOTE_ELEVATION,
+        ) {
+            Text(
+                text = text.orEmpty(),
+                modifier = Modifier.padding(horizontal = LogicaSpacing.cardPadding, vertical = LogicaSpacing.boardPadding),
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
 private fun initialWordSelection(game: WordGameState): Int = game.currentDraft.firstEmptyIndex() ?: game.wordLength - 1
 
 private fun nextWordSelection(
@@ -392,6 +446,10 @@ private fun Difficulty.labelResource(): StringResource =
     }
 
 private val SHAKE_DISTANCE = 8.dp
+private const val REJECTION_NOTE_MILLIS = 2_500L
+private const val REJECTION_NOTE_FADE_MILLIS = 150
+private val REJECTION_NOTE_ELEVATION = 4.dp
+private val REJECTION_NOTE_MAX_WIDTH = 300.dp
 private const val SHAKE_STEP_MILLIS = 35
 private val COMPACT_SCREEN_HEIGHT = 620.dp
 private const val KEY_HEIGHT_RATIO = 0.068f

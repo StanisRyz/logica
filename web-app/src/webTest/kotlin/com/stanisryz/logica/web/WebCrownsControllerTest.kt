@@ -12,12 +12,15 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.ui.crowns.suggestedTool
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 
 class WebCrownsControllerTest {
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -29,6 +32,10 @@ class WebCrownsControllerTest {
                 WebCrownsController(
                     loadPack = { loadedDifficulty = it },
                     progression = FakeWebCatalogProgressAccess(),
+                    store =
+                        object : WebGameplayStore {
+                            override fun tryConsumeHint(): Boolean = true
+                        },
                     levelPack = fixedMediumLevelOne,
                     scope = this,
                 )
@@ -49,6 +56,13 @@ class WebCrownsControllerTest {
 
             val updated = assertIs<WebCrownsState.Playing>(controller.state)
             assertEquals(setOf(CrownsPlayerCell.MARKED), updated.game.pencilAt(position))
+
+            // A hint selects its own tool and leaves Pencil, so tapping the highlighted cell follows it.
+            controller.requestHint()
+            advanceUntilIdle()
+            val hinted = assertIs<WebCrownsState.Playing>(controller.state)
+            assertEquals(assertNotNull(hinted.game.currentHint).suggestedTool(), hinted.selectedValue)
+            assertFalse(hinted.isPencilMode)
         }
 
     private val fixedMediumLevelOne =

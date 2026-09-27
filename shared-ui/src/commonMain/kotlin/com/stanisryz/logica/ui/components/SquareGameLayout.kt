@@ -3,10 +3,8 @@ package com.stanisryz.logica.ui.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -18,7 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
@@ -107,16 +105,23 @@ private fun ContextStatusRegion(
     maxHeight: Dp,
     content: @Composable BoxScope.(compact: Boolean) -> Unit,
 ) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn(tween(CONTEXT_REVEAL_MILLIS)) + expandVertically(tween(CONTEXT_REVEAL_MILLIS)),
-        exit = fadeOut(tween(CONTEXT_REVEAL_MILLIS)) + shrinkVertically(tween(CONTEXT_REVEAL_MILLIS)),
+    // The region always keeps its height, so a hint or an error appearing never moves the board
+    // under the player's finger; only its content fades in and out.
+    Box(
+        modifier = Modifier.fillMaxWidth().height(maxHeight),
+        contentAlignment = Alignment.TopCenter,
     ) {
-        Box(
-            modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight),
-            contentAlignment = Alignment.TopCenter,
-            content = { content(compact) },
-        )
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(tween(CONTEXT_REVEAL_MILLIS)),
+            exit = fadeOut(tween(CONTEXT_REVEAL_MILLIS)),
+        ) {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.TopCenter,
+                content = { content(compact) },
+            )
+        }
     }
 }
 

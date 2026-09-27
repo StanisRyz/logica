@@ -261,7 +261,10 @@ internal class WebBalanceController(
                         hintsExhaustedNotice = true
                         state = current.copy(isHintLoading = false)
                     } else {
-                        updateGame(current, hinted, isHintLoading = false)
+                        // The hint also selects its value, so tapping the highlighted cell follows it.
+                        val tool = hinted.currentHint?.suggestedValue
+                        val withTool = if (tool != null) current.copy(selectedValue = tool, isPencilMode = false) else current
+                        updateGame(withTool, hinted, isHintLoading = false)
                     }
                 }
             }

@@ -332,3 +332,13 @@ private val CONTEXT_CARD_PADDING = 12.dp
 private const val COMPACT_HINT_LINES = 3
 private const val NORMAL_HINT_LINES = 3
 private const val HINT_LEGEND_LINES = 2
+
+/**
+ * The tool a hint is carried out with, so a host can select it together with the hint: following
+ * the highlighted cell with the previously selected tool would otherwise cost a mistake.
+ */
+fun CrownsHint.suggestedTool(): CrownsPlayerCell =
+    when (action) {
+        CrownsHintAction.PLACE_CROWN, CrownsHintAction.CLEAR_CROWN -> CrownsPlayerCell.CROWN
+        CrownsHintAction.MARK_POSITIONS, CrownsHintAction.CLEAR_MARK -> CrownsPlayerCell.MARKED
+    }

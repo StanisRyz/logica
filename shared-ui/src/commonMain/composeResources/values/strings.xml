@@ -114,10 +114,10 @@
     <string name="rule_prevent_three">Нельзя ставить три одинаковых значения подряд.</string>
     <string name="rule_complete_quota">В линии уже набрана половина одинаковых значений.</string>
     <string name="rule_preserve_uniqueness">Завершённые линии не должны совпадать.</string>
-    <string name="violation_unbalanced_row">В строке слишком много одинаковых символов.</string>
-    <string name="violation_unbalanced_column">В столбце слишком много одинаковых символов.</string>
-    <string name="violation_three_horizontal">В строке три одинаковых символа подряд.</string>
-    <string name="violation_three_vertical">В столбце три одинаковых символа подряд.</string>
+    <string name="violation_unbalanced_row">В строке слишком много одинаковых фишек.</string>
+    <string name="violation_unbalanced_column">В столбце слишком много одинаковых фишек.</string>
+    <string name="violation_three_horizontal">В строке три одинаковые фишки подряд.</string>
+    <string name="violation_three_vertical">В столбце три одинаковые фишки подряд.</string>
     <string name="violation_duplicate_rows">Две завершённые строки совпадают.</string>
     <string name="violation_duplicate_columns">Два завершённых столбца совпадают.</string>
     <string name="violation_fixed_clue">Фиксированная клетка не может быть изменена.</string>

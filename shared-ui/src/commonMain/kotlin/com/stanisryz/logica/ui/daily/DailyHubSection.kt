@@ -13,6 +13,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,8 +25,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
@@ -47,6 +51,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -84,6 +91,7 @@ import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.abs
 
 /**
  * The Daily block at the top of the Game Hub, shared by Android and Web. It stays compact so the
@@ -209,7 +217,10 @@ private fun DailyContent(
                     trackColor = MaterialTheme.colorScheme.primary.copy(alpha = DAILY_PROGRESS_TRACK_ALPHA),
                 )
                 DailyStreakChip(content.streak)
+                val rowState = rememberLazyListState()
                 LazyRow(
+                    state = rowState,
+                    modifier = Modifier.mouseDragScroll(rowState),
                     horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
                     contentPadding = PaddingValues(horizontal = DAILY_ROW_EDGE_PADDING, vertical = LogicaSpacing.text),
                 ) {
@@ -228,6 +239,34 @@ private fun DailyContent(
         }
     }
 }
+
+/**
+ * Lets a mouse drag the row sideways like a finger does. The row's own scrolling answers touch
+ * only, so without this a desktop player could not reach the entries past the visible edge.
+ * Only mouse gestures are intercepted, and a real drag swallows the release so it opens nothing.
+ */
+private fun Modifier.mouseDragScroll(state: LazyListState): Modifier =
+    pointerInput(state) {
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            if (down.type != PointerType.Mouse) return@awaitEachGesture
+            var dragging = false
+            var lastX = down.position.x
+            while (true) {
+                val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: break
+                if (!change.pressed) {
+                    if (dragging) change.consume()
+                    break
+                }
+                if (!dragging && abs(change.position.x - down.position.x) > viewConfiguration.touchSlop) dragging = true
+                if (dragging) {
+                    state.dispatchRawDelta(lastX - change.position.x)
+                    change.consume()
+                }
+                lastX = change.position.x
+            }
+        }
+    }
 
 private fun completedFraction(
     completed: Int,
@@ -331,16 +370,22 @@ private fun DailyEntryCard(
         )
     Card(
         modifier =
-            Modifier.width(DAILY_CARD_WIDTH).heightIn(min = DAILY_CARD_MIN_HEIGHT).animateContentSize().then(
-                if (actionable) {
-                    Modifier.clickable(
-                        onClickLabel = stringResource(Res.string.game_catalog_play_label, title),
-                        onClick = { onStart(entry.puzzleType) },
-                    )
-                } else {
-                    Modifier
-                },
-            ),
+            Modifier
+                .width(DAILY_CARD_WIDTH)
+                .heightIn(min = DAILY_CARD_MIN_HEIGHT)
+                .animateContentSize()
+                // The press and hover highlight follows the card's rounded shape.
+                .clip(CardDefaults.shape)
+                .then(
+                    if (actionable) {
+                        Modifier.clickable(
+                            onClickLabel = stringResource(Res.string.game_catalog_play_label, title),
+                            onClick = { onStart(entry.puzzleType) },
+                        )
+                    } else {
+                        Modifier
+                    },
+                ),
         colors =
             CardDefaults.cardColors(
                 containerColor = cardColor,
@@ -553,7 +598,7 @@ private val DAILY_PROGRESS_TRACK_ALPHA = 0.18f
 private val DAILY_PROGRESS_HORIZONTAL_PADDING = 14.dp
 private val DAILY_PROGRESS_VERTICAL_PADDING = 7.dp
 private val DAILY_ROW_EDGE_PADDING = 2.dp
-private val DAILY_ENTRY_ELEVATION = 1.dp
+private val DAILY_ENTRY_ELEVATION = 0.dp
 private const val DAILY_PROGRESS_ANIMATION_MILLIS = 420
 private const val DAILY_STATE_ANIMATION_MILLIS = 220
 private const val DAILY_REVEAL_MILLIS = 240

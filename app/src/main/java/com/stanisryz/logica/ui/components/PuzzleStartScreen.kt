@@ -84,7 +84,9 @@ internal fun PuzzleStartScreen(
             )
         }
     } else {
+        // Why the cards are unavailable comes first, with the way back to playing, instead of below them.
         ScreenColumn(modifier) {
+            ZeroLivesCard(economy, onRestoreLife)
             StartDifficultyContent(
                 cardHeight = ZERO_LIVES_CARD_HEIGHT,
                 onOpenTutorial = openTutorial,
@@ -92,7 +94,6 @@ internal fun PuzzleStartScreen(
                 enabled = false,
                 modifier = Modifier,
             )
-            ZeroLivesCard(economy, onRestoreLife)
         }
     }
 }

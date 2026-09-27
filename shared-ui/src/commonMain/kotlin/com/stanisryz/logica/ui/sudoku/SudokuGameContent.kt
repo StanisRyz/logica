@@ -3,10 +3,8 @@ package com.stanisryz.logica.ui.sudoku
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -17,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -221,10 +220,22 @@ private fun SudokuHintRegion(
     compact: Boolean,
     maxHeight: androidx.compose.ui.unit.Dp,
 ) {
+    // The region always keeps its height, so a hint appearing never moves the board or the keypad.
+    Box(Modifier.fillMaxWidth().height(maxHeight), contentAlignment = Alignment.TopCenter) {
+        SudokuHintCard(hint, compact, maxHeight)
+    }
+}
+
+@Composable
+private fun SudokuHintCard(
+    hint: SudokuHint?,
+    compact: Boolean,
+    maxHeight: androidx.compose.ui.unit.Dp,
+) {
     AnimatedVisibility(
         visible = hint != null,
-        enter = fadeIn(tween(CONTEXT_REVEAL_MILLIS)) + expandVertically(tween(CONTEXT_REVEAL_MILLIS)),
-        exit = fadeOut(tween(CONTEXT_REVEAL_MILLIS)) + shrinkVertically(tween(CONTEXT_REVEAL_MILLIS)),
+        enter = fadeIn(tween(CONTEXT_REVEAL_MILLIS)),
+        exit = fadeOut(tween(CONTEXT_REVEAL_MILLIS)),
     ) {
         hint?.let {
             Card(
@@ -287,12 +298,12 @@ private val COMPACT_VERTICAL_PADDING = 6.dp
 private val NORMAL_VERTICAL_PADDING = 10.dp
 private val COMPACT_SECTION_SPACING = 4.dp
 private val NORMAL_SECTION_SPACING = 6.dp
-private val COMPACT_CONTEXT_HEIGHT = 64.dp
-private val NORMAL_CONTEXT_HEIGHT = 76.dp
+private val COMPACT_CONTEXT_HEIGHT = 48.dp
+private val NORMAL_CONTEXT_HEIGHT = 56.dp
 private val COMPACT_KEYPAD_SPACING = 4.dp
 private val WIDE_SECTION_SPACING = 8.dp
 private val WIDE_PANEL_WIDTH = 224.dp
 private val COMPACT_WIDE_PANEL_WIDTH = 256.dp
-private val CONTEXT_CARD_PADDING = 10.dp
-private const val MAX_HINT_LINES = 3
+private val CONTEXT_CARD_PADDING = 8.dp
+private const val MAX_HINT_LINES = 2
 private const val CONTEXT_REVEAL_MILLIS = 180

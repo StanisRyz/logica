@@ -34,6 +34,8 @@ data class PuzzleTool(
     val enabled: Boolean = true,
     val onClick: () -> Unit,
     val symbol: @Composable () -> Unit,
+    /** A short count drawn on the button's corner, outside its clipped circle. */
+    val badge: String? = null,
 )
 
 /** Compact explicit puzzle input shared by the migrated Balance surface and Android peers. */
@@ -62,25 +64,28 @@ fun PuzzleToolBar(
                         tool.stateDescription?.let { stateDescription = it }
                         tool.selected?.let { selected = it }
                     }
-            if (tool.selected == null) {
-                FilledTonalIconButton(
-                    onClick = tool.onClick,
-                    enabled = enabled && tool.enabled,
-                    modifier = toolModifier,
-                ) { tool.symbol() }
-            } else {
-                FilledTonalIconToggleButton(
-                    checked = tool.selected,
-                    onCheckedChange = { tool.onClick() },
-                    enabled = enabled && tool.enabled,
-                    modifier = toolModifier,
-                ) { tool.symbol() }
+            BadgedBox(badge = { tool.badge?.let { Badge { Text(it) } } }) {
+                if (tool.selected == null) {
+                    FilledTonalIconButton(
+                        onClick = tool.onClick,
+                        enabled = enabled && tool.enabled,
+                        modifier = toolModifier,
+                    ) { tool.symbol() }
+                } else {
+                    FilledTonalIconToggleButton(
+                        checked = tool.selected,
+                        onCheckedChange = { tool.onClick() },
+                        enabled = enabled && tool.enabled,
+                        modifier = toolModifier,
+                    ) { tool.symbol() }
+                }
             }
         }
     }
 }
 
 private val SELECTED_RING_WIDTH = 2.dp
+private const val MAX_BADGE_COUNT = 99
 
 /**
  * The shared Hint action. Hints are a consumable inventory item, so a non-null [hintCount] shows
@@ -98,13 +103,6 @@ fun hintTool(
         selected = null,
         enabled = enabled,
         onClick = onClick,
-        symbol = {
-            if (hintCount == null) {
-                Icon(Icons.Filled.Lightbulb, contentDescription = null)
-            } else {
-                BadgedBox(badge = { Badge { Text(hintCount.toString()) } }) {
-                    Icon(Icons.Filled.Lightbulb, contentDescription = null)
-                }
-            }
-        },
+        symbol = { Icon(Icons.Filled.Lightbulb, contentDescription = null) },
+        badge = hintCount?.let { if (it > MAX_BADGE_COUNT) "$MAX_BADGE_COUNT+" else it.toString() },
     )

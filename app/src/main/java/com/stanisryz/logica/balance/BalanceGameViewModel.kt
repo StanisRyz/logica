@@ -197,7 +197,14 @@ internal class BalanceGameViewModel(
                 if (current is BalanceGameUiState.Ready && current.game == requestedGame) {
                     mutableUiState.value =
                         if (paid) {
-                            current.copy(game = hintedGame, isHintLoading = false)
+                            // The hint also selects its value, so tapping the highlighted cell follows it.
+                            val tool = hintedGame.currentHint?.suggestedValue
+                            current.copy(
+                                game = hintedGame,
+                                isHintLoading = false,
+                                selectedValue = tool ?: current.selectedValue,
+                                isPencilMode = if (tool != null) false else current.isPencilMode,
+                            )
                         } else {
                             current.copy(isHintLoading = false, hintsExhausted = true)
                         }
