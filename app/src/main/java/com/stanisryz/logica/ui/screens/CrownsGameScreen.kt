@@ -54,6 +54,7 @@ internal fun CrownsGameRoute(
     onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
     onTerminalAction: (() -> Unit) -> Unit = { it() },
+    onOpenStore: () -> Unit = {},
 ) {
     val factory =
         remember(launch, attemptFactory, completionRepository, economyRepository) {
@@ -87,6 +88,7 @@ internal fun CrownsGameRoute(
             economy = economy,
             onBuy = gameViewModel::buyHints,
             onDismiss = gameViewModel::dismissHintsExhausted,
+            onOpenStore = onOpenStore,
         )
     }
 }

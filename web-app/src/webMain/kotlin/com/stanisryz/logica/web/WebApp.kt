@@ -80,6 +80,8 @@ import com.stanisryz.logica.ui.theme.LogicaTheme
 import com.stanisryz.logica.ui.word.WordGameContent
 import org.jetbrains.compose.resources.stringResource
 
+private val PRIMARY_ROUTES = setOf<WebRoute>(WebRoute.GameHub, WebRoute.Profile, WebRoute.Store)
+
 private sealed interface WebRoute {
     data object GameHub : WebRoute
 
@@ -265,8 +267,11 @@ private fun ReadyContent(
 ) {
     var route by remember { mutableStateOf<WebRoute>(WebRoute.GameHub) }
 
-    // Opening the Store from a running game keeps that game; the Store offers the way back to it.
-    var storeReturnRoute by remember { mutableStateOf<WebRoute?>(null) }
+    // From a game the Store opens as a sheet over the board, so the unsaved attempt stays put.
+    var storeSheetOpen by remember { mutableStateOf(false) }
+    val openStore: () -> Unit = {
+        if (route in PRIMARY_ROUTES) route = WebRoute.Store else storeSheetOpen = true
+    }
     val balanceState = balanceController.state
     val crownsState = crownsController.state
     val wordState = wordController.state
@@ -279,8 +284,10 @@ private fun ReadyContent(
     // consumers; closing an ad recomputes from real browser visibility/focus/Yandex state.
     val hasActivePuzzle =
         routeHasActivePuzzle(route, balanceState, crownsState, wordState, sudokuState, game2048State)
-    LaunchedEffect(route, hasActivePuzzle, lifecycleState) {
-        controller.setGameplayActive(hasActivePuzzle && lifecycleState == PlatformLifecycleState.ACTIVE)
+    LaunchedEffect(route, hasActivePuzzle, storeSheetOpen, lifecycleState) {
+        controller.setGameplayActive(
+            hasActivePuzzle && !storeSheetOpen && lifecycleState == PlatformLifecycleState.ACTIVE,
+        )
     }
 
     // Sticky-banner visibility is platform-side (rendered by Yandex, never drawn in Compose).
@@ -313,7 +320,7 @@ private fun ReadyContent(
             wordController.showDifficultySelector()
             sudokuController.showDifficultySelector()
             game2048Controller.showDifficultySelector()
-            storeReturnRoute = null
+            storeSheetOpen = false
             route = WebRoute.GameHub
         }
     }
@@ -349,8 +356,7 @@ private fun ReadyContent(
             state = economyState,
             onOpenStore = {
                 showNoLives = false
-                storeReturnRoute = null
-                route = WebRoute.Store
+                openStore()
             },
             onDismiss = { showNoLives = false },
         )
@@ -366,17 +372,13 @@ private fun ReadyContent(
                     .quantityOf(STORE_INVENTORY_HINTS)
             }
         }
-    val selectPrimary: (WebRoute) -> Unit = { selected ->
-        storeReturnRoute = null
-        route = selected
-    }
 
     CompositionLocalProvider(LocalWebLives provides livesUi) {
         when (route) {
             WebRoute.GameHub ->
                 PrimaryDestinationShell(
                     selected = WebRoute.GameHub,
-                    onSelect = selectPrimary,
+                    onSelect = { route = it },
                 ) {
                     GameHubContent(
                         puzzleTypes = GAME_CATALOG_PUZZLE_TYPES,
@@ -450,7 +452,7 @@ private fun ReadyContent(
             WebRoute.Profile ->
                 PrimaryDestinationShell(
                     selected = WebRoute.Profile,
-                    onSelect = selectPrimary,
+                    onSelect = { route = it },
                 ) {
                     WebProfileRoute(
                         playerSession = playerSession,
@@ -461,20 +463,13 @@ private fun ReadyContent(
             WebRoute.Store ->
                 PrimaryDestinationShell(
                     selected = WebRoute.Store,
-                    onSelect = selectPrimary,
+                    onSelect = { route = it },
                 ) {
                     WebStoreScreen(
                         playerSession = playerSession,
                         storeProcessor = storeProcessor,
                         paymentsCoordinator = paymentsCoordinator,
                         rewardedHintsController = rewardedHintsController,
-                        onReturnToGame =
-                            storeReturnRoute?.let { gameRoute ->
-                                {
-                                    storeReturnRoute = null
-                                    route = gameRoute
-                                }
-                            },
                     )
                 }
             WebRoute.Balance ->
@@ -482,10 +477,7 @@ private fun ReadyContent(
                     state = balanceState,
                     controller = balanceController,
                     hintCount = hintCount,
-                    onOpenStore = {
-                        storeReturnRoute = WebRoute.Balance
-                        route = WebRoute.Store
-                    },
+                    onOpenStore = openStore,
                     onSolvedNextLevel = runSolvedNextLevel,
                     onExitBalance = {
                         balanceController.showDifficultySelector()
@@ -497,10 +489,7 @@ private fun ReadyContent(
                     state = crownsState,
                     controller = crownsController,
                     hintCount = hintCount,
-                    onOpenStore = {
-                        storeReturnRoute = WebRoute.Crowns
-                        route = WebRoute.Store
-                    },
+                    onOpenStore = openStore,
                     onSolvedNextLevel = runSolvedNextLevel,
                     onExitCrowns = {
                         crownsController.showDifficultySelector()
@@ -522,10 +511,7 @@ private fun ReadyContent(
                     state = sudokuState,
                     controller = sudokuController,
                     hintCount = hintCount,
-                    onOpenStore = {
-                        storeReturnRoute = WebRoute.Sudoku
-                        route = WebRoute.Store
-                    },
+                    onOpenStore = openStore,
                     onSolvedNextLevel = runSolvedNextLevel,
                     onExitSudoku = {
                         sudokuController.showDifficultySelector()
@@ -543,6 +529,18 @@ private fun ReadyContent(
                     },
                 )
         }
+    }
+
+    WebStoreSheet(
+        visible = storeSheetOpen,
+        onDismiss = { storeSheetOpen = false },
+    ) {
+        WebStoreScreen(
+            playerSession = playerSession,
+            storeProcessor = storeProcessor,
+            paymentsCoordinator = paymentsCoordinator,
+            rewardedHintsController = rewardedHintsController,
+        )
     }
 }
 

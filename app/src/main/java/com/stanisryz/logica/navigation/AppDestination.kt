@@ -127,3 +127,9 @@ internal fun AppDestination.isGameplay(): Boolean =
         -> true
         else -> false
     }
+
+/**
+ * Unfinished attempts are never saved, so opening the Store from a running game must not leave it:
+ * there the Store opens as a sheet over the board, and everywhere else it is the Store tab.
+ */
+internal fun AppDestination.opensStoreAsSheet(): Boolean = isGameplay()

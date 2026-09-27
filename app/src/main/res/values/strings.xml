@@ -258,10 +258,11 @@
     <string name="game_2048_cleared_title">Уровень пройден</string>
     <string name="game_2048_cleared_body">Цель достигнута, уровень зачтён. Ходов больше нет.</string>
     <string name="hints_exhausted_title">Подсказки закончились</string>
-    <string name="hints_exhausted_body">Подсказки общие для Судоку, Баланса и Корон. Докупите их за кристаллы, не выходя из игры. Кристаллов: %1$d.</string>
+    <string name="hints_exhausted_body">Подсказки общие для Судоку, Баланса и Корон. Докупите их за кристаллы — партия останется на месте. Кристаллов: %1$d.</string>
     <string name="hints_offer_single">1 подсказка за %1$d 💎</string>
     <string name="hints_offer_pack">%1$d подсказки за %2$d 💎</string>
     <string name="hints_not_now">Не сейчас</string>
+    <string name="hints_open_store">В магазин</string>
     <string name="hints_store_title">Подсказки</string>
     <string name="hints_store_balance">Подсказок сейчас: %1$d</string>
 </resources>

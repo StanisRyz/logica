@@ -56,6 +56,7 @@ internal fun SudokuGameRoute(
     onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
     onTerminalAction: (() -> Unit) -> Unit = { it() },
+    onOpenStore: () -> Unit = {},
 ) {
     val assets = LocalContext.current.assets
     val factory =
@@ -99,6 +100,7 @@ internal fun SudokuGameRoute(
             economy = economy,
             onBuy = gameViewModel::buyHints,
             onDismiss = gameViewModel::dismissHintsExhausted,
+            onOpenStore = onOpenStore,
         )
     }
 }

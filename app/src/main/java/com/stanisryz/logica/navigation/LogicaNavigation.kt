@@ -102,6 +102,7 @@ import com.stanisryz.logica.ui.screens.GameHubRoute
 import com.stanisryz.logica.ui.screens.ProfileRoute
 import com.stanisryz.logica.ui.screens.SettingsScreen
 import com.stanisryz.logica.ui.screens.StoreRoute
+import com.stanisryz.logica.ui.screens.StoreSheet
 import com.stanisryz.logica.ui.screens.SudokuGameRoute
 import com.stanisryz.logica.ui.screens.SudokuStartScreen
 import com.stanisryz.logica.ui.screens.SudokuTutorialRoute
@@ -175,11 +176,24 @@ internal fun LogicaNavigation(
     val levelUnavailableMessage = stringResource(R.string.level_content_error)
     var resolvingCatalogLevel by remember { mutableStateOf(false) }
 
-    /** There is one store: everything that offers gems selects the Store tab instead of a dialog. */
+    var showStoreSheet by rememberSaveable { mutableStateOf(false) }
+
+    /**
+     * There is one store. From a running game it opens as a sheet over the board, so the attempt and
+     * its progress stay exactly where they were; everywhere else it selects the Store tab.
+     */
     val openStore = {
         showLivesDialog = false
-        selectedTab = PrimaryTab.STORE
-        collapseToHome(backStack)
+        if (currentDestination.opensStoreAsSheet()) {
+            showStoreSheet = true
+        } else {
+            selectedTab = PrimaryTab.STORE
+            collapseToHome(backStack)
+        }
+    }
+    // The sheet belongs to the game it was opened from and never outlives it.
+    LaunchedEffect(currentDestination) {
+        if (!currentDestination.opensStoreAsSheet()) showStoreSheet = false
     }
 
     /*
@@ -502,6 +516,7 @@ internal fun LogicaNavigation(
                                 onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
                                 onTerminalAction = onTerminalAction,
                                 onRestoreLife = onRestoreLife,
+                                onOpenStore = openStore,
                             )
                         }
                         entry<AppDestination.CrownsGame> { destination ->
@@ -517,6 +532,7 @@ internal fun LogicaNavigation(
                                 onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
                                 onTerminalAction = onTerminalAction,
                                 onRestoreLife = onRestoreLife,
+                                onOpenStore = openStore,
                             )
                         }
                         entry<AppDestination.WordGame> { destination ->
@@ -547,6 +563,7 @@ internal fun LogicaNavigation(
                                 onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
                                 onTerminalAction = onTerminalAction,
                                 onRestoreLife = onRestoreLife,
+                                onOpenStore = openStore,
                             )
                         }
                         entry<AppDestination.Game2048Game> { destination ->
@@ -567,6 +584,16 @@ internal fun LogicaNavigation(
                     },
             )
         }
+    }
+
+    if (showStoreSheet) {
+        StoreSheet(
+            economy = economy,
+            economyRepository = economyRepository,
+            storeGateway = storeGateway,
+            storeProducts = storeProducts,
+            onDismiss = { showStoreSheet = false },
+        )
     }
 
     if (showLivesDialog) {

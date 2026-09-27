@@ -1,14 +1,25 @@
 package com.stanisryz.logica.web
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -28,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.platform.PaymentProductSnapshot
 import com.stanisryz.logica.platform.PurchaseResult
@@ -51,7 +63,6 @@ internal fun WebStoreScreen(
     storeProcessor: WebStoreProcessor,
     paymentsCoordinator: WebPaymentsCoordinator,
     rewardedHintsController: WebStoreRewardedHintsController,
-    onReturnToGame: (() -> Unit)? = null,
 ) {
     val economyBinding by playerSession.economyBinding.collectAsState()
     val storeBinding by playerSession.storeBinding.collectAsState()
@@ -78,10 +89,6 @@ internal fun WebStoreScreen(
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
         )
-        onReturnToGame?.let { returnToGame ->
-            // Opened from a running game: that attempt is still waiting unchanged.
-            Button(onClick = returnToGame, modifier = Modifier.fillMaxWidth()) { Text("Вернуться к игре") }
-        }
         when (val economy = economyBinding) {
             is WebEconomyBinding.Ready -> {
                 val state =
@@ -419,10 +426,60 @@ internal fun WebHintsExhaustedDialog(
         text = {
             Text(
                 "Подсказки можно купить в магазине за кристаллы или получить бесплатно за просмотр рекламы. " +
-                    "Текущая игра сохранится, пока вы в магазине.",
+                    "Магазин откроется поверх игры — партия останется на месте.",
             )
         },
         confirmButton = { TextButton(onClick = onOpenStore) { Text("В магазин") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Не сейчас") } },
     )
 }
+
+/**
+ * The Store opened from a running game: a sheet over the board inside the portrait host, so the
+ * attempt underneath is kept exactly as it was. Tapping the dimmed board or «Вернуться к игре»
+ * closes it.
+ */
+@Composable
+internal fun WebStoreSheet(
+    visible: Boolean,
+    onDismiss: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Box(Modifier.fillMaxSize()) {
+        AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = STORE_SHEET_SCRIM_ALPHA))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onDismiss,
+                    ),
+            )
+        }
+        AnimatedVisibility(
+            visible = visible,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = slideInVertically { it },
+            exit = slideOutVertically { it },
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().fillMaxHeight(STORE_SHEET_HEIGHT_FRACTION),
+                shape = MaterialTheme.shapes.extraLarge.copy(bottomStart = CornerSize(0), bottomEnd = CornerSize(0)),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                shadowElevation = 8.dp,
+            ) {
+                Column {
+                    TextButton(onClick = onDismiss, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                        Text("Вернуться к игре")
+                    }
+                    Box(Modifier.weight(1f)) { content() }
+                }
+            }
+        }
+    }
+}
+
+private const val STORE_SHEET_SCRIM_ALPHA = 0.32f
+private const val STORE_SHEET_HEIGHT_FRACTION = 0.92f

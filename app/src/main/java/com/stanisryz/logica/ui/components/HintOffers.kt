@@ -25,6 +25,7 @@ internal fun HintsExhaustedDialog(
     economy: PlayerEconomy,
     onBuy: (HintOffer) -> Unit,
     onDismiss: () -> Unit,
+    onOpenStore: (() -> Unit)? = null,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -39,7 +40,17 @@ internal fun HintsExhaustedDialog(
                 HintOfferButtons(economy, onBuy)
             }
         },
-        confirmButton = {},
+        // The Store opens over the running game, so topping up gems here never ends the attempt.
+        confirmButton = {
+            onOpenStore?.let { open ->
+                TextButton(
+                    onClick = {
+                        onDismiss()
+                        open()
+                    },
+                ) { Text(stringResource(R.string.hints_open_store)) }
+            }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.hints_not_now)) } },
     )
 }

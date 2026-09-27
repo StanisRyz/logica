@@ -55,6 +55,17 @@ class AppShellNavigationTest {
     }
 
     @Test
+    fun `the store opens over a running game and as the store tab everywhere else`() {
+        assertFalse(AppDestination.Home.opensStoreAsSheet())
+        secondaryDestinations.forEach { destination ->
+            // Leaving a running game for the Store would discard its unsaved attempt.
+            assertEquals("$destination", destination.isGameplay(), destination.opensStoreAsSheet())
+        }
+        assertTrue(AppDestination.SudokuGame(levelLaunch(PuzzleType.SUDOKU)).opensStoreAsSheet())
+        assertFalse(AppDestination.SudokuStart.opensStoreAsSheet())
+    }
+
+    @Test
     fun `only game and gameplay surfaces may preload a rewarded ad`() {
         assertTrue(AppDestination.Home.allowsRewardedOffer(PrimaryTab.GAME))
         assertFalse(AppDestination.Home.allowsRewardedOffer(PrimaryTab.STORE))
