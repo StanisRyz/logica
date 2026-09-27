@@ -1,14 +1,25 @@
 package com.stanisryz.logica.ui.sudoku
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -21,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameState
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameStatus
+import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuHint
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuHintTechnique
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuPosition
@@ -38,6 +50,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.sudoku_hint_hidden_row
 import com.stanisryz.logica.shared.ui.generated.resources.sudoku_hint_naked_single
 import com.stanisryz.logica.ui.components.GameHeaderBadges
 import com.stanisryz.logica.ui.components.MistakeIndicator
+import com.stanisryz.logica.ui.components.isWideGameplayLayout
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -52,9 +65,13 @@ fun SudokuGameContent(
     levelNumber: Int?,
     gameplayEnabled: Boolean,
     inputEnabled: Boolean,
+    canUndo: Boolean,
     onCellSelected: (SudokuPosition) -> Unit,
     onDigit: (Int) -> Unit,
     onTogglePencil: () -> Unit,
+    onErase: () -> Unit,
+    onAutoCandidates: () -> Unit,
+    onUndo: () -> Unit,
     onHint: () -> Unit,
     contextBadgeLabel: String? = null,
     modifier: Modifier = Modifier,
@@ -62,81 +79,164 @@ fun SudokuGameContent(
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val compact = maxHeight < COMPACT_HEIGHT_THRESHOLD
+        val wideLayout = isWideGameplayLayout(maxWidth, maxHeight)
         val verticalPadding = if (compact) COMPACT_VERTICAL_PADDING else NORMAL_VERTICAL_PADDING
         val sectionSpacing = if (compact) COMPACT_SECTION_SPACING else NORMAL_SECTION_SPACING
         val contextHeight = if (compact) COMPACT_CONTEXT_HEIGHT else NORMAL_CONTEXT_HEIGHT
         val keypadSpacing = if (compact) COMPACT_KEYPAD_SPACING else SUDOKU_DIGIT_ROW_SPACING
+        val panelWidth = if (compact) COMPACT_WIDE_PANEL_WIDTH else WIDE_PANEL_WIDTH
+        val selectedState = selectedCell?.let(game::cellAt)
+        val eraseEnabled =
+            gameplayEnabled &&
+                selectedState != null &&
+                (selectedState.status == SudokuCellStatus.INCORRECT || !selectedState.candidates.isEmpty)
+        val autoCandidatesEnabled = gameplayEnabled && game.status == SudokuGameStatus.IN_PROGRESS
+        val undoEnabled = canUndo && gameplayEnabled
+        val difficultyLabel =
+            stringResource(
+                puzzle.id.difficulty
+                    .toPlatformDifficulty()
+                    .labelResource(),
+            )
 
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = LogicaSpacing.gameplayHorizontal, vertical = verticalPadding),
-            verticalArrangement = Arrangement.spacedBy(sectionSpacing),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            GameHeaderBadges(
-                difficultyLabel =
-                    stringResource(
-                        puzzle.id.difficulty
-                            .toPlatformDifficulty()
-                            .labelResource(),
-                    ),
-                levelNumber = levelNumber,
-                contextLabel = contextBadgeLabel,
-            )
-            MistakeIndicator(game.mistakesUsed, SudokuGameState.MAX_MISTAKES)
-            hostStatusContent()
-            Box(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                contentAlignment = Alignment.Center,
+        if (wideLayout) {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = LogicaSpacing.gameplayHorizontal, vertical = verticalPadding)
+                        .animateContentSize(),
+                horizontalArrangement = Arrangement.spacedBy(WIDE_SECTION_SPACING),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                SudokuBoard(
-                    game = game,
-                    selectedCell = selectedCell,
-                    enabled = gameplayEnabled,
-                    onCellSelected = onCellSelected,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    SudokuBoard(
+                        game = game,
+                        selectedCell = selectedCell,
+                        enabled = gameplayEnabled,
+                        onCellSelected = onCellSelected,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                Column(
+                    modifier = Modifier.width(panelWidth).fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(sectionSpacing),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    GameHeaderBadges(difficultyLabel, levelNumber, contextLabel = contextBadgeLabel)
+                    MistakeIndicator(game.mistakesUsed, SudokuGameState.MAX_MISTAKES)
+                    hostStatusContent()
+                    Spacer(Modifier.weight(1f))
+                    SudokuToolBar(
+                        isPencilMode = isPencilMode,
+                        onToggle = onTogglePencil,
+                        onErase = onErase,
+                        eraseEnabled = eraseEnabled,
+                        onAutoCandidates = onAutoCandidates,
+                        autoCandidatesEnabled = autoCandidatesEnabled,
+                        canUndo = undoEnabled,
+                        onUndo = onUndo,
+                        onHint = onHint,
+                        hintEnabled = game.status == SudokuGameStatus.IN_PROGRESS && gameplayEnabled,
+                        enabled = gameplayEnabled,
+                        wrapTools = wideLayout && !compact,
+                    )
+                    SudokuNumberPad(
+                        enabled = inputEnabled,
+                        onDigit = onDigit,
+                        spacing = keypadSpacing,
+                    )
+                    SudokuHintRegion(game.currentHint, compact, contextHeight)
+                }
             }
-            SudokuToolBar(
-                isPencilMode = isPencilMode,
-                onToggle = onTogglePencil,
-                onHint = onHint,
-                hintEnabled = game.status == SudokuGameStatus.IN_PROGRESS && gameplayEnabled,
-                enabled = gameplayEnabled,
-            )
-            SudokuNumberPad(
-                enabled = inputEnabled,
-                onDigit = onDigit,
-                spacing = keypadSpacing,
-            )
-            Box(
-                modifier = Modifier.fillMaxWidth().height(contextHeight),
-                contentAlignment = Alignment.TopCenter,
+        } else {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = LogicaSpacing.gameplayHorizontal, vertical = verticalPadding)
+                        .animateContentSize(),
+                verticalArrangement = Arrangement.spacedBy(sectionSpacing),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                game.currentHint?.let { SudokuHintCard(it, compact) }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    GameHeaderBadges(
+                        difficultyLabel,
+                        levelNumber,
+                        modifier = Modifier.weight(1f),
+                        contextLabel = contextBadgeLabel,
+                    )
+                    MistakeIndicator(game.mistakesUsed, SudokuGameState.MAX_MISTAKES)
+                }
+                hostStatusContent()
+                Box(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    SudokuBoard(
+                        game = game,
+                        selectedCell = selectedCell,
+                        enabled = gameplayEnabled,
+                        onCellSelected = onCellSelected,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                SudokuToolBar(
+                    isPencilMode = isPencilMode,
+                    onToggle = onTogglePencil,
+                    onErase = onErase,
+                    eraseEnabled = eraseEnabled,
+                    onAutoCandidates = onAutoCandidates,
+                    autoCandidatesEnabled = autoCandidatesEnabled,
+                    canUndo = undoEnabled,
+                    onUndo = onUndo,
+                    onHint = onHint,
+                    hintEnabled = game.status == SudokuGameStatus.IN_PROGRESS && gameplayEnabled,
+                    enabled = gameplayEnabled,
+                )
+                SudokuNumberPad(
+                    enabled = inputEnabled,
+                    onDigit = onDigit,
+                    spacing = keypadSpacing,
+                )
+                SudokuHintRegion(game.currentHint, compact, contextHeight)
             }
         }
     }
 }
 
 @Composable
-private fun SudokuHintCard(
-    hint: SudokuHint,
+private fun SudokuHintRegion(
+    hint: SudokuHint?,
     compact: Boolean,
+    maxHeight: androidx.compose.ui.unit.Dp,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    AnimatedVisibility(
+        visible = hint != null,
+        enter = fadeIn(tween(CONTEXT_REVEAL_MILLIS)) + expandVertically(tween(CONTEXT_REVEAL_MILLIS)),
+        exit = fadeOut(tween(CONTEXT_REVEAL_MILLIS)) + shrinkVertically(tween(CONTEXT_REVEAL_MILLIS)),
     ) {
-        Text(
-            text = hint.presentationText(),
-            modifier = Modifier.padding(CONTEXT_CARD_PADDING),
-            style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
-            maxLines = MAX_HINT_LINES,
-            overflow = TextOverflow.Ellipsis,
-        )
+        hint?.let {
+            Card(
+                modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+            ) {
+                Text(
+                    text = it.presentationText(),
+                    modifier = Modifier.padding(CONTEXT_CARD_PADDING),
+                    style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
+                    maxLines = MAX_HINT_LINES,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 }
 
@@ -181,14 +281,15 @@ private fun Difficulty.labelResource(): StringResource =
 
 private val COMPACT_HEIGHT_THRESHOLD = 700.dp
 private val COMPACT_VERTICAL_PADDING = 6.dp
-private val NORMAL_VERTICAL_PADDING = 12.dp
+private val NORMAL_VERTICAL_PADDING = 10.dp
 private val COMPACT_SECTION_SPACING = 4.dp
-private val NORMAL_SECTION_SPACING = 8.dp
+private val NORMAL_SECTION_SPACING = 6.dp
 private val COMPACT_CONTEXT_HEIGHT = 64.dp
 private val NORMAL_CONTEXT_HEIGHT = 76.dp
 private val COMPACT_KEYPAD_SPACING = 4.dp
+private val WIDE_SECTION_SPACING = 8.dp
+private val WIDE_PANEL_WIDTH = 224.dp
+private val COMPACT_WIDE_PANEL_WIDTH = 256.dp
 private val CONTEXT_CARD_PADDING = 10.dp
 private const val MAX_HINT_LINES = 3
-
-
-
+private const val CONTEXT_REVEAL_MILLIS = 180

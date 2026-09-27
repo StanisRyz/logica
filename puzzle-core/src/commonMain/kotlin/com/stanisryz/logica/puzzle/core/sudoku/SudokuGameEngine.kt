@@ -69,6 +69,65 @@ class SudokuGameEngine(
         return createState(cells, state.mistakesUsed, state.hintsUsed, state.currentHint)
     }
 
+    /** Clears an editable answer or its pencil marks without refunding mistake events. */
+    fun eraseCell(
+        state: SudokuGameState,
+        position: SudokuPosition,
+    ): SudokuGameState {
+        requireCompatible(state)
+        if (state.status.isTerminal || state.isLocked(position)) return state
+        val current = state.cellAt(position)
+        if (current.status == SudokuCellStatus.EMPTY && current.candidates.isEmpty) return state
+
+        val cells = state.cells.toMutableList()
+        cells[position.index] = SudokuCellState(0, SudokuCellStatus.EMPTY)
+        return createState(cells, state.mistakesUsed, state.hintsUsed, currentHint = null)
+    }
+
+    /** Replaces pencil marks with every value still possible under confirmed peer values. */
+    fun fillCandidates(state: SudokuGameState): SudokuGameState {
+        requireCompatible(state)
+        if (state.status.isTerminal) return state
+        val cells = state.cells.toMutableList()
+        var changed = false
+        cells.indices.forEach { index ->
+            val cell = cells[index]
+            if (cell.status != SudokuCellStatus.EMPTY) return@forEach
+            val position = SudokuPosition.fromIndex(index)
+            var candidates = SudokuCandidateMask.EMPTY
+            (1..9).forEach { digit ->
+                if (!hasConfirmedPeerValue(state.cells, position, digit)) {
+                    candidates = candidates.toggle(digit)
+                }
+            }
+            if (candidates != cell.candidates) {
+                cells[index] = cell.copy(candidates = candidates)
+                changed = true
+            }
+        }
+        return if (changed) createState(cells, state.mistakesUsed, state.hintsUsed, state.currentHint) else state
+    }
+
+    /** Restores board contents from one transient undo frame while keeping attempt counters monotonic. */
+    fun restoreSnapshot(
+        current: SudokuGameState,
+        snapshot: SudokuGameState,
+    ): SudokuGameState {
+        requireCompatible(current)
+        requireCompatible(snapshot)
+        if (current.status.isTerminal || snapshot.status.isTerminal) return current
+        val values =
+            snapshot.cells.mapIndexed { index, cell ->
+                if (puzzle.givens[index] == '0') cell.value else 0
+            }
+        return restore(
+            playerValues = values,
+            candidateMasks = snapshot.cells.map { it.candidates },
+            mistakesUsed = current.mistakesUsed,
+            hintsUsed = current.hintsUsed,
+        )
+    }
+
     fun requestHint(state: SudokuGameState): SudokuGameState {
         requireCompatible(state)
         if (state.status.isTerminal) return state

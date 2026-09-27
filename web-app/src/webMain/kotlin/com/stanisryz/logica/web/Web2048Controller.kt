@@ -95,6 +95,7 @@ internal class Web2048Controller(
     private var engine: Web2048GameEngine? = null
     private var statisticsAttempt: WebStatisticsAttempt? = null
     private var nextMotionRevision = 0L
+    private val undoHistory = mutableListOf<Game2048State>()
     private val completion = WebCatalogCompletionController(progression)
     private val dailyCompletion = WebDailyCompletionController(daily)
 
@@ -107,9 +108,17 @@ internal class Web2048Controller(
     val dailyCompletionState: WebDailyCompletionState
         get() = dailyCompletion.state
 
+    val canUndo: Boolean
+        get() =
+            undoHistory.isNotEmpty() &&
+                (state as? Web2048State.Playing)?.let {
+                    it.game.status == Game2048Status.IN_PROGRESS && it.motionTrace == null
+                } == true
+
     fun selectDifficulty(difficulty: Difficulty) {
         operation?.cancel()
         statisticsAttempt = null
+        undoHistory.clear()
         completion.reset()
         dailyCompletion.reset()
         state =
@@ -200,6 +209,7 @@ internal class Web2048Controller(
     fun startDaily(dailyAttempt: WebDailyAttempt) {
         operation?.cancel()
         statisticsAttempt = null
+        undoHistory.clear()
         completion.reset()
         val launch = WebGameLaunch.Daily(dailyAttempt)
         dailyCompletion.startAttempt(dailyAttempt)
@@ -245,6 +255,16 @@ internal class Web2048Controller(
         if (playing.game.status.isTerminal || playing.motionTrace != null) return
         val transition = engine?.moveWithTrace(playing.game, direction) ?: return
         val trace = transition.trace ?: return
+        val catalogGoalCrossing =
+            playing.source is WebGameplaySource.CatalogLevel &&
+                !playing.game.goalReached &&
+                transition.state.goalReached
+        if (transition.state.status.isTerminal || catalogGoalCrossing) {
+            undoHistory.clear()
+        } else {
+            undoHistory += playing.game
+            if (undoHistory.size > MAX_UNDO_HISTORY) undoHistory.removeAt(0)
+        }
         nextMotionRevision += 1L
         state =
             playing.copy(
@@ -295,6 +315,13 @@ internal class Web2048Controller(
         }
     }
 
+    fun undo() {
+        val playing = state as? Web2048State.Playing ?: return
+        if (playing.game.status.isTerminal || playing.motionTrace != null || undoHistory.isEmpty()) return
+        val previous = undoHistory.removeAt(undoHistory.lastIndex)
+        state = playing.copy(game = previous, motionRevision = null, motionTrace = null)
+    }
+
     fun finishMotion(revision: Long) {
         val playing = state as? Web2048State.Playing ?: return
         if (playing.motionRevision == revision) {
@@ -318,6 +345,7 @@ internal class Web2048Controller(
         }
         val activeEngine = engine ?: return
         operation?.cancel()
+        undoHistory.clear()
         if (catalog != null) completion.startAttempt(catalog.attempt)
         (source as? WebGameplaySource.DailyChallenge)?.let { dailyCompletion.startAttempt(it.attempt) }
         statisticsAttempt = statistics.startAttempt(PuzzleType.GAME_2048, source.difficulty)
@@ -348,6 +376,7 @@ internal class Web2048Controller(
         operation?.cancel()
         engine = null
         statisticsAttempt = null
+        undoHistory.clear()
         completion.reset()
         dailyCompletion.reset()
         state = Web2048State.DifficultySelection
@@ -397,3 +426,5 @@ internal class Web2048Controller(
             )
     }
 }
+
+private const val MAX_UNDO_HISTORY = 100

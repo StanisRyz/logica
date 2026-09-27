@@ -36,7 +36,8 @@ internal interface GameCompletionDao {
         "UPDATE daily_challenges SET status = 'COMPLETED', updated_at_epoch_millis = :completedAt " +
             "WHERE challenge_date = :challengeDate AND puzzle_type = :puzzleType " +
             "AND daily_policy_version = :policyVersion AND difficulty = :difficulty " +
-            "AND puzzle_seed = :puzzleSeed AND generator_version = :generatorVersion",
+            "AND puzzle_seed = :puzzleSeed AND generator_version = :generatorVersion " +
+            "AND status = 'IN_PROGRESS'",
     )
     suspend fun completeDailyChallenge(
         challengeDate: String,

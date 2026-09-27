@@ -73,10 +73,16 @@ internal class WebSudokuController(
     private val store: WebGameplayStore = DisabledWebGameplayStore,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
+    private data class UndoFrame(
+        val game: SudokuGameState,
+        val selectedCell: SudokuPosition?,
+    )
+
     private val provider = SudokuCatalogProvider(dataset)
     private var operation: Job? = null
     private var engine: SudokuGameEngine? = null
     private var statisticsAttempt: WebStatisticsAttempt? = null
+    private val undoHistory = mutableListOf<UndoFrame>()
     private val completion = WebCatalogCompletionController(progression)
     private val dailyCompletion = WebDailyCompletionController(daily)
 
@@ -89,9 +95,15 @@ internal class WebSudokuController(
     val dailyCompletionState: WebDailyCompletionState
         get() = dailyCompletion.state
 
+    val canUndo: Boolean
+        get() =
+            undoHistory.isNotEmpty() &&
+                (state as? WebSudokuState.Playing)?.game?.status == SudokuGameStatus.IN_PROGRESS
+
     fun selectDifficulty(difficulty: Difficulty) {
         operation?.cancel()
         statisticsAttempt = null
+        undoHistory.clear()
         completion.reset()
         dailyCompletion.reset()
         state =
@@ -183,6 +195,7 @@ internal class WebSudokuController(
     fun startDaily(dailyAttempt: WebDailyAttempt) {
         operation?.cancel()
         statisticsAttempt = null
+        undoHistory.clear()
         completion.reset()
         val launch = WebGameLaunch.Daily(dailyAttempt)
         dailyCompletion.startAttempt(dailyAttempt)
@@ -248,6 +261,30 @@ internal class WebSudokuController(
         if (updated != playing.game) updateGame(playing, updated)
     }
 
+    fun eraseSelectedCell() {
+        val playing = state as? WebSudokuState.Playing ?: return
+        if (playing.game.status.isTerminal) return
+        val position = playing.selectedCell ?: return
+        val updated = engine?.eraseCell(playing.game, position) ?: return
+        updateGame(playing, updated)
+    }
+
+    fun autoFillCandidates() {
+        val playing = state as? WebSudokuState.Playing ?: return
+        if (playing.game.status.isTerminal) return
+        val updated = engine?.fillCandidates(playing.game) ?: return
+        updateGame(playing, updated)
+    }
+
+    fun undo() {
+        val playing = state as? WebSudokuState.Playing ?: return
+        if (playing.game.status.isTerminal || undoHistory.isEmpty()) return
+        val activeEngine = engine ?: return
+        val frame = undoHistory.removeAt(undoHistory.lastIndex)
+        val restored = activeEngine.restoreSnapshot(playing.game, frame.game)
+        state = playing.copy(game = restored, selectedCell = frame.selectedCell)
+    }
+
     fun togglePencilMode() {
         val playing = state as? WebSudokuState.Playing ?: return
         if (playing.game.status.isTerminal) return
@@ -261,7 +298,13 @@ internal class WebSudokuController(
         // A hint consumes one hint item from the Player's own inventory; without one, no hint.
         if (updated == playing.game) return
         if (!store.tryConsumeHint()) return
-        updateGame(playing, updated, updated.currentHint?.position ?: playing.selectedCell)
+        updateGame(
+            playing,
+            updated,
+            updated.currentHint?.position ?: playing.selectedCell,
+            recordUndo = false,
+            clearUndo = true,
+        )
     }
 
     fun retry() {
@@ -270,6 +313,7 @@ internal class WebSudokuController(
         if (dailyReplayBlocked(playing.source)) return
         val activeEngine = engine ?: return
         operation?.cancel()
+        undoHistory.clear()
         val source = playing.source
         if (source is WebGameplaySource.CatalogLevel) completion.startAttempt(source.attempt)
         (source as? WebGameplaySource.DailyChallenge)?.let { dailyCompletion.startAttempt(it.attempt) }
@@ -295,6 +339,7 @@ internal class WebSudokuController(
         operation?.cancel()
         engine = null
         statisticsAttempt = null
+        undoHistory.clear()
         completion.reset()
         dailyCompletion.reset()
         state = WebSudokuState.DifficultySelection
@@ -319,7 +364,16 @@ internal class WebSudokuController(
         playing: WebSudokuState.Playing,
         updated: SudokuGameState,
         selectedCell: SudokuPosition? = playing.selectedCell,
+        recordUndo: Boolean = true,
+        clearUndo: Boolean = false,
     ) {
+        if (updated == playing.game) return
+        if (clearUndo) {
+            undoHistory.clear()
+        } else if (recordUndo && updated.status == SudokuGameStatus.IN_PROGRESS) {
+            undoHistory += UndoFrame(playing.game, playing.selectedCell)
+            if (undoHistory.size > MAX_UNDO_HISTORY) undoHistory.removeAt(0)
+        }
         state = playing.copy(game = updated, selectedCell = selectedCell)
         if (!playing.game.status.isTerminal && updated.status.isTerminal) {
             val outcome =
@@ -390,3 +444,5 @@ internal class WebSudokuController(
             )
     }
 }
+
+private const val MAX_UNDO_HISTORY = 100

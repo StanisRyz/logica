@@ -10,10 +10,16 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
@@ -259,11 +265,20 @@ internal fun LogicaNavigation(
         if (level == null) {
             returnToGameHub(backStack) { selectedTab = it }
         } else {
-            navigationScope.launch {
-                runCatching { catalogLevelRepository.currentLevelId(puzzleType, level.levelId.difficulty) }
-                    .onSuccess { levelId ->
-                        backStack[backStack.lastIndex] = puzzleType.gameDestination(GameAttemptLaunch.Level(levelId))
-                    }.onFailure { snackbarHostState.showSnackbar(levelUnavailableMessage) }
+            val sourceDestination = backStack.lastOrNull()
+            if (sourceDestination == puzzleType.gameDestination(launch)) {
+                navigationScope.launch {
+                    val levelResult =
+                        runCatching { catalogLevelRepository.currentLevelId(puzzleType, level.levelId.difficulty) }
+                    // The database lookup suspends. Only replace the exact route entry that launched it;
+                    // otherwise a late response could overwrite a screen opened in the meantime.
+                    if (backStack.lastOrNull() !== sourceDestination) return@launch
+                    levelResult
+                        .onSuccess { levelId ->
+                            backStack[backStack.lastIndex] =
+                                puzzleType.gameDestination(GameAttemptLaunch.Level(levelId))
+                        }.onFailure { snackbarHostState.showSnackbar(levelUnavailableMessage) }
+                }
             }
         }
     }
@@ -279,17 +294,28 @@ internal fun LogicaNavigation(
             )
         },
         topBar = {
-            AppTopBar(
-                title = destinationTitle(currentDestination, selectedTab),
-                showBack = currentDestination != AppDestination.Home,
-                showWallet = currentDestination.showsWallet(),
-                showSettings = currentDestination.showsSettingsAction(),
-                economy = economy,
-                onBack = goBack,
-                onOpenSettings = { backStack.add(AppDestination.Settings) },
-                onOpenLives = { showLivesDialog = true },
-                onOpenStore = openStore,
-            )
+            if (currentDestination.isGameplay()) {
+                GameTopBar(
+                    title = destinationTitle(currentDestination, selectedTab),
+                    economy = economy,
+                    onBack = goBack,
+                    onOpenSettings = { backStack.add(AppDestination.Settings) },
+                    onOpenLives = { showLivesDialog = true },
+                    onOpenStore = openStore,
+                )
+            } else {
+                AppTopBar(
+                    title = destinationTitle(currentDestination, selectedTab),
+                    showBack = currentDestination != AppDestination.Home,
+                    showWallet = currentDestination.showsWallet(),
+                    showSettings = currentDestination.showsSettingsAction(),
+                    economy = economy,
+                    onBack = goBack,
+                    onOpenSettings = { backStack.add(AppDestination.Settings) },
+                    onOpenLives = { showLivesDialog = true },
+                    onOpenStore = openStore,
+                )
+            }
         },
     ) { contentPadding ->
         Box(
@@ -678,6 +704,53 @@ private fun AppBottomBar(
         }
     }
 }
+
+/** A lower-profile game HUD keeps navigation and the wallet reachable without a full app bar. */
+@Composable
+private fun GameTopBar(
+    title: String,
+    economy: PlayerEconomy,
+    onBack: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenLives: () -> Unit,
+    onOpenStore: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .height(GAME_TOP_BAR_HEIGHT)
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = GAME_TOP_BAR_HORIZONTAL_PADDING),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(GAME_TOP_BAR_CONTENT_GAP),
+    ) {
+        IconButton(onClick = onBack, modifier = Modifier.size(GAME_TOP_BAR_HEIGHT)) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+        }
+        Text(
+            text = title,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        EconomyBar(
+            economy = economy,
+            onOpenLives = onOpenLives,
+            onOpenGemStore = onOpenStore,
+            compact = true,
+        )
+        IconButton(onClick = onOpenSettings, modifier = Modifier.size(GAME_TOP_BAR_HEIGHT)) {
+            Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings))
+        }
+    }
+}
+
+private val GAME_TOP_BAR_HEIGHT = 48.dp
+private val GAME_TOP_BAR_HORIZONTAL_PADDING = 4.dp
+private val GAME_TOP_BAR_CONTENT_GAP = 4.dp
 
 /** Used for the first measure only; [AppBottomBar] immediately supplies its actual inset. */
 private val PRIMARY_NAVIGATION_BAR_FALLBACK_HEIGHT = 80.dp

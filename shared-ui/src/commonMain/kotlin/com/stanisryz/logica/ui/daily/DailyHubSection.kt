@@ -1,19 +1,31 @@
 package com.stanisryz.logica.ui.daily
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
@@ -30,11 +42,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -132,41 +145,88 @@ private fun DailyContent(
     onStart: (PuzzleType) -> Unit,
     modifier: Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
-        Text(
-            text = stringResource(Res.string.daily_challenge),
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
-            text = content.dateLabel,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
         val progressDescription =
             stringResource(Res.string.daily_progress_description, content.completedCount, content.totalCount)
-        Text(
-            text = stringResource(Res.string.daily_progress_short, content.completedCount, content.totalCount),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        LinearProgressIndicator(
-            progress = { completedFraction(content.completedCount, content.totalCount) },
-            modifier =
-                Modifier.fillMaxWidth().clearAndSetSemantics {
-                    contentDescription = progressDescription
-                },
-        )
-        DailyStreakChip(content.streak)
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
-            contentPadding = PaddingValues(vertical = LogicaSpacing.text),
+        val progress by
+            animateFloatAsState(
+                targetValue = completedFraction(content.completedCount, content.totalCount),
+                animationSpec = tween(DAILY_PROGRESS_ANIMATION_MILLIS),
+                label = "daily-progress",
+            )
+        Card(
+            modifier = Modifier.fillMaxWidth().animateContentSize(),
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = DAILY_CARD_BORDER_ALPHA)),
         ) {
-            items(content.entries, key = { it.puzzleType }) { entry ->
-                DailyEntryCard(entry, gameplayAllowed, onStart)
+            Column(
+                modifier = Modifier.padding(LogicaSpacing.cardPadding).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text),
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.daily_challenge),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = content.dateLabel,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Text(
+                        text =
+                            stringResource(
+                                Res.string.daily_progress_short,
+                                content.completedCount,
+                                content.totalCount,
+                            ),
+                        modifier =
+                            Modifier
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                                .padding(
+                                    horizontal = DAILY_PROGRESS_HORIZONTAL_PADDING,
+                                    vertical = DAILY_PROGRESS_VERTICAL_PADDING,
+                                )
+                                .clearAndSetSemantics { contentDescription = progressDescription },
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth().clearAndSetSemantics { },
+                    trackColor = MaterialTheme.colorScheme.primary.copy(alpha = DAILY_PROGRESS_TRACK_ALPHA),
+                )
+                DailyStreakChip(content.streak)
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
+                    contentPadding = PaddingValues(horizontal = DAILY_ROW_EDGE_PADDING, vertical = LogicaSpacing.text),
+                ) {
+                    items(content.entries, key = { it.puzzleType }) { entry ->
+                        DailyEntryCard(entry, gameplayAllowed, onStart)
+                    }
+                }
             }
         }
-        content.completion?.let { completion -> DailyCompletionCard(completion) }
+        AnimatedVisibility(
+            visible = content.completion != null,
+            enter = fadeIn(tween(DAILY_REVEAL_MILLIS)) + expandVertically(tween(DAILY_REVEAL_MILLIS)),
+            exit = fadeOut(tween(DAILY_REVEAL_MILLIS)) + shrinkVertically(tween(DAILY_REVEAL_MILLIS)),
+        ) {
+            content.completion?.let { completion -> DailyCompletionCard(completion) }
+        }
     }
 }
 
@@ -197,12 +257,38 @@ private fun DailyCard(
 @Composable
 private fun DailyStreakChip(streak: DailyHubStreak) {
     val label =
-        if (streak.qualifiedToday) stringResource(Res.string.daily_streak_secured) else stringResource(Res.string.daily_streak_hint)
+        if (streak.qualifiedToday) {
+            stringResource(Res.string.daily_streak_secured)
+        } else {
+            stringResource(Res.string.daily_streak_hint)
+        }
+    val containerColor by
+        animateColorAsState(
+            targetValue =
+                if (streak.qualifiedToday) {
+                    MaterialTheme.colorScheme.secondaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerLow
+                },
+            animationSpec = tween(DAILY_STATE_ANIMATION_MILLIS),
+            label = "daily-streak-background",
+        )
+    val contentColor by
+        animateColorAsState(
+            targetValue =
+                if (streak.qualifiedToday) {
+                    MaterialTheme.colorScheme.onSecondaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            animationSpec = tween(DAILY_STATE_ANIMATION_MILLIS),
+            label = "daily-streak-content",
+        )
     Row(
         modifier =
             Modifier.fillMaxWidth()
                 .clip(MaterialTheme.shapes.small)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                .background(containerColor)
                 .padding(horizontal = LogicaSpacing.cardContent, vertical = LogicaSpacing.text)
                 .clearAndSetSemantics { contentDescription = label },
         verticalAlignment = Alignment.CenterVertically,
@@ -211,14 +297,13 @@ private fun DailyStreakChip(streak: DailyHubStreak) {
         Icon(
             imageVector = if (streak.qualifiedToday) Icons.Filled.LocalFireDepartment else Icons.Filled.Bolt,
             contentDescription = null,
-            tint =
-                if (streak.qualifiedToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = contentColor,
             modifier = Modifier.size(DAILY_CHIP_ICON_SIZE),
         )
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = contentColor,
             modifier = Modifier.weight(1f),
         )
     }
@@ -232,9 +317,21 @@ private fun DailyEntryCard(
 ) {
     val title = stringResource(entry.puzzleType.catalogTitleResource())
     val actionable = gameplayAllowed && entry.state != DailyHubEntryState.COMPLETED
+    val completed = entry.state == DailyHubEntryState.COMPLETED
+    val cardColor by
+        animateColorAsState(
+            targetValue =
+                when {
+                    completed -> MaterialTheme.colorScheme.tertiaryContainer
+                    !gameplayAllowed -> MaterialTheme.colorScheme.surfaceContainerLow
+                    else -> MaterialTheme.colorScheme.surfaceContainerLowest
+                },
+            animationSpec = tween(DAILY_STATE_ANIMATION_MILLIS),
+            label = "daily-entry-card-color",
+        )
     Card(
         modifier =
-            Modifier.width(DAILY_CARD_WIDTH).heightIn(min = DAILY_CARD_MIN_HEIGHT).then(
+            Modifier.width(DAILY_CARD_WIDTH).heightIn(min = DAILY_CARD_MIN_HEIGHT).animateContentSize().then(
                 if (actionable) {
                     Modifier.clickable(
                         onClickLabel = stringResource(Res.string.game_catalog_play_label, title),
@@ -246,9 +343,16 @@ private fun DailyEntryCard(
             ),
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                containerColor = cardColor,
+                contentColor =
+                    if (!gameplayAllowed && !completed) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
             ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = DAILY_CARD_BORDER_ALPHA)),
+        elevation = CardDefaults.cardElevation(defaultElevation = DAILY_ENTRY_ELEVATION),
     ) {
         Column(
             modifier = Modifier.padding(LogicaSpacing.cardContent).fillMaxWidth(),
@@ -260,7 +364,7 @@ private fun DailyEntryCard(
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier =
-                    Modifier.size(DAILY_ARTWORK_SIZE)
+                    Modifier.fillMaxWidth().height(DAILY_ARTWORK_HEIGHT)
                         .clip(MaterialTheme.shapes.medium),
             )
             Text(text = title, style = MaterialTheme.typography.titleMedium)
@@ -272,12 +376,32 @@ private fun DailyEntryCard(
 @Composable
 private fun DailyEntryStateChip(state: DailyHubEntryState) {
     val completed = state == DailyHubEntryState.COMPLETED
+    val containerColor by
+        animateColorAsState(
+            targetValue =
+                if (completed) {
+                    MaterialTheme.colorScheme.secondaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerLow
+                },
+            animationSpec = tween(DAILY_STATE_ANIMATION_MILLIS),
+            label = "daily-entry-chip-background",
+        )
+    val contentColor by
+        animateColorAsState(
+            targetValue =
+                if (completed) {
+                    MaterialTheme.colorScheme.onSecondaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            animationSpec = tween(DAILY_STATE_ANIMATION_MILLIS),
+            label = "daily-entry-chip-content",
+        )
     Row(
         modifier =
             Modifier.clip(MaterialTheme.shapes.small)
-                .background(
-                    if (completed) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
-                )
+                .background(containerColor)
                 .padding(horizontal = LogicaSpacing.cardContent, vertical = DAILY_CHIP_VERTICAL_PADDING),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(DAILY_CHIP_GAP),
@@ -285,13 +409,13 @@ private fun DailyEntryStateChip(state: DailyHubEntryState) {
         Icon(
             imageVector = state.chipIcon(),
             contentDescription = null,
-            tint = if (completed) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = contentColor,
             modifier = Modifier.size(DAILY_CHIP_ICON_SIZE),
         )
         Text(
             text = state.chipLabel(),
             style = MaterialTheme.typography.labelMedium,
-            color = if (completed) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = contentColor,
         )
     }
 }
@@ -328,7 +452,10 @@ private fun DailyCompletionCard(completion: DailyHubCompletion) {
             modifier = Modifier.padding(LogicaSpacing.cardPadding).fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(DAILY_CHIP_GAP)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(DAILY_CHIP_GAP),
+            ) {
                 Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(20.dp))
                 Text(text = stringResource(Res.string.daily_completed), style = MaterialTheme.typography.titleMedium)
             }
@@ -410,11 +537,20 @@ private fun DailyLabeledValue(
     }
 }
 
-private val DAILY_CARD_WIDTH = 156.dp
+private val DAILY_CARD_WIDTH = 160.dp
 
 /** A minimum, never a fixed height: the card grows with a larger font scale instead of clipping. */
-private val DAILY_CARD_MIN_HEIGHT = 168.dp
-private val DAILY_ARTWORK_SIZE = 64.dp
+private val DAILY_CARD_MIN_HEIGHT = 184.dp
+private val DAILY_ARTWORK_HEIGHT = 78.dp
 private val DAILY_CHIP_ICON_SIZE = 16.dp
 private val DAILY_CHIP_GAP = 4.dp
 private val DAILY_CHIP_VERTICAL_PADDING = 2.dp
+private val DAILY_CARD_BORDER_ALPHA = 0.52f
+private val DAILY_PROGRESS_TRACK_ALPHA = 0.18f
+private val DAILY_PROGRESS_HORIZONTAL_PADDING = 14.dp
+private val DAILY_PROGRESS_VERTICAL_PADDING = 7.dp
+private val DAILY_ROW_EDGE_PADDING = 2.dp
+private val DAILY_ENTRY_ELEVATION = 1.dp
+private const val DAILY_PROGRESS_ANIMATION_MILLIS = 420
+private const val DAILY_STATE_ANIMATION_MILLIS = 220
+private const val DAILY_REVEAL_MILLIS = 240

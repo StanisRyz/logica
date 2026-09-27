@@ -7,13 +7,18 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,6 +26,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Direction
@@ -38,7 +45,9 @@ import com.stanisryz.logica.shared.ui.generated.resources.game_2048_level_cleare
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_score
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_target
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_target_reached
+import com.stanisryz.logica.shared.ui.generated.resources.game_2048_undo
 import com.stanisryz.logica.ui.components.GameHeaderBadges
+import com.stanisryz.logica.ui.components.isWideGameplayLayout
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.StringResource
@@ -54,7 +63,9 @@ fun Game2048Content(
     motionRevision: Long?,
     motionTrace: Game2048MoveTrace?,
     gameplayEnabled: Boolean,
+    canUndo: Boolean,
     onMove: (Game2048Direction) -> Unit,
+    onUndo: () -> Unit,
     onMotionFinished: (Long) -> Unit,
     contextBadgeLabel: String? = null,
     modifier: Modifier = Modifier,
@@ -63,57 +74,115 @@ fun Game2048Content(
     require(game.puzzleId.difficulty == difficulty) { "2048 difficulty must match the game identity." }
     BoxWithConstraints(modifier.fillMaxSize()) {
         val compact = maxHeight < COMPACT_HEIGHT_THRESHOLD
+        val wideLayout = isWideGameplayLayout(maxWidth, maxHeight)
         val verticalPadding = if (compact) COMPACT_VERTICAL_PADDING else LogicaSpacing.screenVertical
         val sectionSpacing = if (compact) COMPACT_SECTION_SPACING else LogicaSpacing.item
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(
-                        horizontal = LogicaSpacing.screenHorizontal,
-                        vertical = verticalPadding,
-                    ),
-            verticalArrangement = Arrangement.spacedBy(sectionSpacing),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            GameHeaderBadges(stringResource(difficulty.labelResource()), levelNumber, contextLabel = contextBadgeLabel)
-            Game2048Metrics(game)
-            if (levelCleared) Game2048ClearedStatus(levelNumber, compact)
-            hostStatusContent()
-            Box(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                contentAlignment = Alignment.Center,
+        val gameplayHorizontal = LogicaSpacing.screenHorizontal
+        val panelWidth = minOf(WIDE_PANEL_MAX_WIDTH, maxWidth * WIDE_PANEL_WIDTH_FRACTION)
+
+        if (wideLayout) {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = gameplayHorizontal, vertical = verticalPadding),
+                horizontalArrangement = Arrangement.spacedBy(WIDE_SECTION_SPACING),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Game2048Board(
-                    game = game,
-                    motionRevision = motionRevision,
-                    motionTrace = motionTrace,
-                    onMove = onMove,
-                    onMotionFinished = onMotionFinished,
-                    inputEnabled = gameplayEnabled,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Game2048Board(
+                        game = game,
+                        motionRevision = motionRevision,
+                        motionTrace = motionTrace,
+                        onMove = onMove,
+                        onMotionFinished = onMotionFinished,
+                        inputEnabled = gameplayEnabled,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+                Column(
+                    modifier = Modifier.width(panelWidth).fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(sectionSpacing),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    GameHeaderBadges(stringResource(difficulty.labelResource()), levelNumber, contextLabel = contextBadgeLabel)
+                    Game2048Metrics(game, compact, canUndo, gameplayEnabled, onUndo)
+                    if (levelCleared) Game2048ClearedStatus(levelNumber, compact)
+                    hostStatusContent()
+                    Spacer(Modifier.weight(1f))
+                }
+            }
+        } else {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = gameplayHorizontal, vertical = verticalPadding),
+                verticalArrangement = Arrangement.spacedBy(sectionSpacing),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                GameHeaderBadges(stringResource(difficulty.labelResource()), levelNumber, contextLabel = contextBadgeLabel)
+                Game2048Metrics(game, compact, canUndo, gameplayEnabled, onUndo)
+                if (levelCleared) Game2048ClearedStatus(levelNumber, compact)
+                hostStatusContent()
+                Box(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Game2048Board(
+                        game = game,
+                        motionRevision = motionRevision,
+                        motionTrace = motionTrace,
+                        onMove = onMove,
+                        onMotionFinished = onMotionFinished,
+                        inputEnabled = gameplayEnabled,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun Game2048Metrics(game: Game2048State) {
+private fun Game2048Metrics(
+    game: Game2048State,
+    compact: Boolean,
+    canUndo: Boolean,
+    gameplayEnabled: Boolean,
+    onUndo: () -> Unit,
+) {
+    val undoDescription = stringResource(Res.string.game_2048_undo)
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
+        horizontalArrangement = Arrangement.spacedBy(if (compact) METRIC_COMPACT_SPACING else LogicaSpacing.item),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Game2048Metric(
             label = stringResource(Res.string.game_2048_target),
             value = game.targetMetricValue(),
+            compact = compact,
             modifier = Modifier.weight(1f),
         )
         Game2048Metric(
             label = stringResource(Res.string.game_2048_score),
             value = formatGame2048Number(game.score),
+            compact = compact,
             modifier = Modifier.weight(1f),
         )
+        FilledTonalIconButton(
+            onClick = onUndo,
+            enabled = canUndo && gameplayEnabled,
+            modifier =
+                Modifier
+                    .size(UNDO_TARGET_SIZE)
+                    .semantics { contentDescription = undoDescription },
+        ) {
+            Text("↶", style = MaterialTheme.typography.titleLarge)
+        }
     }
 }
 
@@ -121,6 +190,7 @@ private fun Game2048Metrics(game: Game2048State) {
 private fun Game2048Metric(
     label: String,
     value: String,
+    compact: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -128,12 +198,12 @@ private fun Game2048Metric(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(METRIC_PADDING),
-            verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text),
+            modifier = Modifier.fillMaxWidth().padding(if (compact) COMPACT_METRIC_PADDING else METRIC_PADDING),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else LogicaSpacing.text),
         ) {
             Text(
                 text = value,
-                style = MaterialTheme.typography.headlineSmall,
+                style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
@@ -213,6 +283,12 @@ private val COMPACT_HEIGHT_THRESHOLD = 650.dp
 private val COMPACT_VERTICAL_PADDING = 8.dp
 private val COMPACT_SECTION_SPACING = 6.dp
 private val METRIC_PADDING = 12.dp
+private val COMPACT_METRIC_PADDING = 8.dp
+private val METRIC_COMPACT_SPACING = 6.dp
+private val WIDE_SECTION_SPACING = 8.dp
+private val WIDE_PANEL_MAX_WIDTH = 232.dp
+private val UNDO_TARGET_SIZE = 48.dp
+private const val WIDE_PANEL_WIDTH_FRACTION = 0.38f
 private const val GROUP_SIZE = 3
 private const val GROUP_SEPARATOR = "\u00A0"
 

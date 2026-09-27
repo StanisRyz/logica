@@ -81,7 +81,7 @@ internal class CrownsGameViewModel(
 
     /** The live wallet: gameplay actions need a life, and the finished attempt reports its effect. */
     val economy: StateFlow<PlayerEconomy> =
-        economyRepository.observe().stateIn(viewModelScope, SharingStarted.Eagerly, PlayerEconomy())
+        economyRepository.observe().stateIn(viewModelScope, SharingStarted.Eagerly, PlayerEconomy.LOADING)
 
     private var gameEngine: CrownsGameEngine? = null
     private var attempt: GameAttempt? = null

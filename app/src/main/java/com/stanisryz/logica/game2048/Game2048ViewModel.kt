@@ -41,6 +41,7 @@ internal sealed interface Game2048UiState {
          * keeps running afterwards, so this is a persistent presentation state rather than an ending.
          */
         val levelCleared: Boolean = false,
+        val canUndo: Boolean = false,
     ) : Game2048UiState {
         /** A reached target stays guarded until its completion transaction is actually durable. */
         val hasMeaningfulProgress: Boolean
@@ -83,6 +84,7 @@ internal class Game2048ViewModel(
     private val completionRepository: GameCompletionRepository,
     private val economyRepository: EconomyRepository,
 ) : ViewModel() {
+    private val undoHistory = mutableListOf<Game2048State>()
     private val mutableUiState = MutableStateFlow<Game2048UiState>(Game2048UiState.Loading)
     val uiState: StateFlow<Game2048UiState> = mutableUiState.asStateFlow()
     val economy: StateFlow<PlayerEconomy> =
@@ -91,7 +93,7 @@ internal class Game2048ViewModel(
             .stateIn(
                 viewModelScope,
                 SharingStarted.Eagerly,
-                PlayerEconomy(lives = 0, nextLifeAtEpochMillis = Long.MAX_VALUE),
+                PlayerEconomy.LOADING,
             )
 
     private var engine: Game2048Engine? = null
@@ -132,13 +134,34 @@ internal class Game2048ViewModel(
         if (current.motionEvent != null) return
         val transition = engine?.moveWithTrace(current.game, direction) ?: return
         val trace = transition.trace ?: return
+        val catalogGoalCrossing = attempt?.isCatalog == true && !current.game.goalReached && transition.state.goalReached
+        if (transition.state.status.isTerminal || catalogGoalCrossing) {
+            undoHistory.clear()
+        } else {
+            undoHistory += current.game
+            if (undoHistory.size > MAX_UNDO_HISTORY) undoHistory.removeAt(0)
+        }
         nextMotionRevision += 1L
         mutableUiState.value =
             current.copy(
                 game = transition.state,
                 motionEvent = Game2048MotionEvent(nextMotionRevision, trace),
+                canUndo = undoHistory.isNotEmpty(),
             )
         onStateAdvanced(transition.state)
+    }
+
+    fun undo() {
+        if (!economy.value.isGameplayAllowed) return
+        val current = mutableUiState.value as? Game2048UiState.Ready ?: return
+        if (current.game.status.isTerminal || current.motionEvent != null || undoHistory.isEmpty()) return
+        val previous = undoHistory.removeAt(undoHistory.lastIndex)
+        mutableUiState.value =
+            current.copy(
+                game = previous,
+                motionEvent = null,
+                canUndo = undoHistory.isNotEmpty(),
+            )
     }
 
     fun finishMotion(revision: Long) {
@@ -156,6 +179,7 @@ internal class Game2048ViewModel(
         if (current.completionPersistence != CompletionPersistence.Saved) return
         val gameEngine = engine ?: return
         val previous = attempt ?: return
+        undoHistory.clear()
         attempt = previous.restarted(attemptFactory.nextAttemptId())
         mutableUiState.value = Game2048UiState.Ready(gameEngine.retry(current.game))
     }
@@ -227,6 +251,7 @@ internal class Game2048ViewModel(
 }
 
 private const val INITIAL_SPAWN_COUNT = 2L
+private const val MAX_UNDO_HISTORY = 100
 
 internal class Game2048ViewModelFactory(
     private val launch: GameAttemptLaunch,

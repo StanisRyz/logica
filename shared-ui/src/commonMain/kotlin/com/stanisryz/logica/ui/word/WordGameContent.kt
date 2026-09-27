@@ -1,6 +1,7 @@
 package com.stanisryz.logica.ui.word
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -12,10 +13,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -51,6 +54,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.word_rejection_incompl
 import com.stanisryz.logica.shared.ui.generated.resources.word_rejection_invalid_letters
 import com.stanisryz.logica.shared.ui.generated.resources.word_rejection_unknown_word
 import com.stanisryz.logica.ui.components.GameHeaderBadges
+import com.stanisryz.logica.ui.components.isWideGameplayLayout
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -124,74 +128,55 @@ fun WordGameContent(
     ) {
         val compact = maxHeight < COMPACT_SCREEN_HEIGHT
         val gap = if (compact) LogicaSpacing.text else LogicaSpacing.item
+        val wideLayout = isPlaying && isWideGameplayLayout(maxWidth, maxHeight)
         val keyHeight = (maxHeight * KEY_HEIGHT_RATIO).coerceIn(MIN_KEY_HEIGHT, MAX_KEY_HEIGHT)
         val keyboardHeight = keyHeight * WORD_KEYBOARD_ROWS + WORD_KEY_SPACING * (WORD_KEYBOARD_ROWS - 1)
         val boardHeight = (maxHeight - keyboardHeight - HEADER_HEIGHT_BUDGET).coerceAtLeast(MIN_BOARD_HEIGHT)
+        val landscapeKeySpacing = if (maxHeight < COMPACT_LANDSCAPE_HEIGHT) COMPACT_LANDSCAPE_KEY_SPACING else WORD_KEY_SPACING
+        val landscapeKeyHeight =
+            ((maxHeight - landscapeKeySpacing * (WORD_LANDSCAPE_KEYBOARD_ROWS - 1)) / WORD_LANDSCAPE_KEYBOARD_ROWS)
+                .coerceIn(MIN_LANDSCAPE_KEY_HEIGHT, MAX_KEY_HEIGHT)
+        val landscapePanelWidth = minOf(WORD_LANDSCAPE_PANEL_MAX_WIDTH, maxWidth * WORD_LANDSCAPE_PANEL_FRACTION)
 
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(gap),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
+        if (wideLayout) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.action, Alignment.CenterHorizontally),
+                modifier = Modifier.fillMaxSize().animateContentSize(),
+                horizontalArrangement = Arrangement.spacedBy(WIDE_LAYOUT_SPACING),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                GameHeaderBadges(stringResource(puzzle.id.difficulty.labelResource()), levelNumber, contextLabel = contextBadgeLabel)
-                if (rejectionMessage != null) {
-                    Box(
-                        modifier =
-                            Modifier.semantics {
-                                liveRegion = LiveRegionMode.Assertive
-                                contentDescription = rejectionMessage
-                            },
-                    )
-                }
-            }
-            hostStatusContent()
-            Column(
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .then(if (isPlaying) Modifier else Modifier.verticalScroll(rememberScrollState())),
-                verticalArrangement = Arrangement.spacedBy(gap, Alignment.CenterVertically),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                WordBoard(
-                    game = game,
-                    selectedCellIndex = selectedCellIndex,
-                    editableEnabled = gameplayEnabled && isPlaying,
-                    onCellSelected = { selectedCellIndex = it },
-                    acceptedAttemptRevision = acceptedAttemptRevision,
-                    onAcceptedAttemptRevealed = { revision ->
-                        revealedAttemptRevision = revision
-                        currentOnAcceptedAttemptRevealed(revision)
-                    },
-                    modifier =
-                        Modifier
-                            .heightIn(max = boardHeight)
-                            .offset {
-                                IntOffset(rejectionShake.value.roundToInt(), 0)
-                            },
-                )
-                AnimatedVisibility(
-                    visible =
-                        !isPlaying &&
-                            (acceptedAttemptRevision == 0 || revealedAttemptRevision >= acceptedAttemptRevision),
-                    enter =
-                        fadeIn(tween(TERMINAL_APPEAR_MILLIS)) +
-                            scaleIn(
-                                animationSpec = tween(TERMINAL_APPEAR_MILLIS),
-                                initialScale = TERMINAL_INITIAL_SCALE,
-                            ),
+                Column(
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(gap),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Column(content = terminalContent)
+                    WordGameHeader(
+                        puzzle = puzzle,
+                        levelNumber = levelNumber,
+                        contextBadgeLabel = contextBadgeLabel,
+                        rejectionMessage = rejectionMessage,
+                    )
+                    hostStatusContent()
+                    Box(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        WordBoard(
+                            game = game,
+                            selectedCellIndex = selectedCellIndex,
+                            editableEnabled = gameplayEnabled,
+                            onCellSelected = { selectedCellIndex = it },
+                            acceptedAttemptRevision = acceptedAttemptRevision,
+                            onAcceptedAttemptRevealed = { revision ->
+                                revealedAttemptRevision = revision
+                                currentOnAcceptedAttemptRevealed(revision)
+                            },
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .offset { IntOffset(rejectionShake.value.roundToInt(), 0) },
+                        )
+                    }
                 }
-            }
-
-            if (isPlaying) {
                 WordKeyboard(
                     knowledge = game.letterKnowledge,
                     enabled = gameplayEnabled,
@@ -211,9 +196,118 @@ fun WordGameContent(
                         }
                     },
                     onSubmit = onSubmit,
-                    keyHeight = keyHeight,
+                    modifier = Modifier.width(landscapePanelWidth),
+                    keyHeight = landscapeKeyHeight,
+                    landscapeCompact = true,
+                    keySpacing = landscapeKeySpacing,
                 )
             }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxSize().animateContentSize(),
+                verticalArrangement = Arrangement.spacedBy(gap),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                WordGameHeader(
+                    puzzle = puzzle,
+                    levelNumber = levelNumber,
+                    contextBadgeLabel = contextBadgeLabel,
+                    rejectionMessage = rejectionMessage,
+                )
+                hostStatusContent()
+                Column(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .then(if (isPlaying) Modifier else Modifier.verticalScroll(rememberScrollState())),
+                    verticalArrangement = Arrangement.spacedBy(gap, Alignment.CenterVertically),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    WordBoard(
+                        game = game,
+                        selectedCellIndex = selectedCellIndex,
+                        editableEnabled = gameplayEnabled && isPlaying,
+                        onCellSelected = { selectedCellIndex = it },
+                        acceptedAttemptRevision = acceptedAttemptRevision,
+                        onAcceptedAttemptRevealed = { revision ->
+                            revealedAttemptRevision = revision
+                            currentOnAcceptedAttemptRevealed(revision)
+                        },
+                        modifier =
+                            Modifier
+                                .heightIn(max = boardHeight)
+                                .offset { IntOffset(rejectionShake.value.roundToInt(), 0) },
+                    )
+                    AnimatedVisibility(
+                        visible =
+                            !isPlaying &&
+                                (acceptedAttemptRevision == 0 || revealedAttemptRevision >= acceptedAttemptRevision),
+                        enter =
+                            fadeIn(tween(TERMINAL_APPEAR_MILLIS)) +
+                                scaleIn(
+                                    animationSpec = tween(TERMINAL_APPEAR_MILLIS),
+                                    initialScale = TERMINAL_INITIAL_SCALE,
+                                ),
+                    ) {
+                        Column(content = terminalContent)
+                    }
+                }
+
+                if (isPlaying) {
+                    WordKeyboard(
+                        knowledge = game.letterKnowledge,
+                        enabled = gameplayEnabled,
+                        onLetter = { letter ->
+                            onInputInteraction()
+                            onDismissRejection()
+                            val editedPosition = selectedCellIndex
+                            onLetter(editedPosition, letter)
+                            selectedCellIndex = nextWordSelection(game.currentDraft, editedPosition)
+                        },
+                        onBackspace = {
+                            onInputInteraction()
+                            onDismissRejection()
+                            positionToClear(game.currentDraft, selectedCellIndex)?.let { position ->
+                                onClearLetter(position)
+                                selectedCellIndex = position
+                            }
+                        },
+                        onSubmit = onSubmit,
+                        keyHeight = keyHeight,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WordGameHeader(
+    puzzle: WordPuzzle,
+    levelNumber: Int?,
+    contextBadgeLabel: String?,
+    rejectionMessage: String?,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.action, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        GameHeaderBadges(
+            stringResource(puzzle.id.difficulty.labelResource()),
+            levelNumber,
+            modifier = Modifier.weight(1f),
+            contextLabel = contextBadgeLabel,
+        )
+        if (rejectionMessage != null) {
+            Box(
+                modifier =
+                    Modifier.semantics {
+                        liveRegion = LiveRegionMode.Assertive
+                        contentDescription = rejectionMessage
+                    },
+            )
         }
     }
 }
@@ -260,9 +354,15 @@ private const val SHAKE_STEP_MILLIS = 35
 private val COMPACT_SCREEN_HEIGHT = 620.dp
 private const val KEY_HEIGHT_RATIO = 0.068f
 private val MIN_KEY_HEIGHT = 36.dp
+private val MIN_LANDSCAPE_KEY_HEIGHT = 32.dp
 private val MAX_KEY_HEIGHT = 48.dp
 private val HEADER_HEIGHT_BUDGET = 56.dp
 private val MIN_BOARD_HEIGHT = 180.dp
+private val WORD_LANDSCAPE_PANEL_MAX_WIDTH = 280.dp
+private val COMPACT_LANDSCAPE_HEIGHT = 360.dp
+private val COMPACT_LANDSCAPE_KEY_SPACING = 2.dp
+private val WIDE_LAYOUT_SPACING = 12.dp
+private const val WORD_LANDSCAPE_PANEL_FRACTION = 0.52f
 private const val TERMINAL_APPEAR_MILLIS = 180
 private const val TERMINAL_INITIAL_SCALE = 0.98f
 

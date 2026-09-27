@@ -46,6 +46,7 @@ internal sealed interface SudokuGameUiState {
         val selectedCell: SudokuPosition? = null,
         val isPencilMode: Boolean = false,
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
+        val canUndo: Boolean = false,
     ) : SudokuGameUiState {
         val hasMeaningfulProgress: Boolean
             get() =
@@ -85,14 +86,20 @@ internal class SudokuGameViewModel(
     private val provider: SudokuCatalogProvider,
     private val workDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
+    private data class UndoFrame(
+        val game: SudokuGameState,
+        val selectedCell: SudokuPosition?,
+    )
+
     private val mutableUiState = MutableStateFlow<SudokuGameUiState>(SudokuGameUiState.Loading)
     val uiState: StateFlow<SudokuGameUiState> = mutableUiState.asStateFlow()
     val economy: StateFlow<PlayerEconomy> =
-        economyRepository.observe().stateIn(viewModelScope, SharingStarted.Eagerly, PlayerEconomy())
+        economyRepository.observe().stateIn(viewModelScope, SharingStarted.Eagerly, PlayerEconomy.LOADING)
 
     private var engine: SudokuGameEngine? = null
     private var attempt: GameAttempt? = null
     private var completionJob: Job? = null
+    private val undoHistory = mutableListOf<UndoFrame>()
 
     init {
         load()
@@ -123,6 +130,36 @@ internal class SudokuGameViewModel(
         updateGame(ready, updated)
     }
 
+    fun eraseSelectedCell() {
+        if (!economy.value.isGameplayAllowed) return
+        val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
+        val position = ready.selectedCell ?: return
+        val updated = engine?.eraseCell(ready.game, position) ?: return
+        updateGame(ready, updated)
+    }
+
+    fun autoFillCandidates() {
+        if (!economy.value.isGameplayAllowed) return
+        val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
+        val updated = engine?.fillCandidates(ready.game) ?: return
+        updateGame(ready, updated)
+    }
+
+    fun undo() {
+        if (!economy.value.isGameplayAllowed) return
+        val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
+        if (ready.game.status.isTerminal || undoHistory.isEmpty()) return
+        val gameEngine = engine ?: return
+        val frame = undoHistory.removeAt(undoHistory.lastIndex)
+        val restored = gameEngine.restoreSnapshot(ready.game, frame.game)
+        mutableUiState.value =
+            ready.copy(
+                game = restored,
+                selectedCell = frame.selectedCell,
+                canUndo = undoHistory.isNotEmpty(),
+            )
+    }
+
     fun togglePencilMode() {
         if (!economy.value.isGameplayAllowed) return
         val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
@@ -134,7 +171,13 @@ internal class SudokuGameViewModel(
         if (!economy.value.isGameplayAllowed) return
         val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
         val updated = engine?.requestHint(ready.game) ?: return
-        updateGame(ready, updated, updated.currentHint?.position ?: ready.selectedCell)
+        updateGame(
+            ready,
+            updated,
+            updated.currentHint?.position ?: ready.selectedCell,
+            recordUndo = false,
+            clearUndo = true,
+        )
     }
 
     /** A new attempt reuses the selected record and takes a new completion identity. */
@@ -144,6 +187,7 @@ internal class SudokuGameViewModel(
         if (!ready.game.status.isTerminal || ready.completionPersistence != CompletionPersistence.Saved) return
         val gameEngine = engine ?: return
         val previous = attempt ?: return
+        undoHistory.clear()
         attempt = previous.restarted(attemptFactory.nextAttemptId())
         mutableUiState.value = SudokuGameUiState.Ready(ready.puzzle, gameEngine.start())
     }
@@ -154,6 +198,7 @@ internal class SudokuGameViewModel(
     }
 
     private fun load() {
+        undoHistory.clear()
         mutableUiState.value = SudokuGameUiState.Loading
         viewModelScope.launch {
             try {
@@ -187,9 +232,22 @@ internal class SudokuGameViewModel(
         ready: SudokuGameUiState.Ready,
         updated: SudokuGameState,
         selectedCell: SudokuPosition? = ready.selectedCell,
+        recordUndo: Boolean = true,
+        clearUndo: Boolean = false,
     ) {
         if (updated == ready.game) return
-        mutableUiState.value = ready.copy(game = updated, selectedCell = selectedCell)
+        if (clearUndo) {
+            undoHistory.clear()
+        } else if (recordUndo && updated.status == SudokuGameStatus.IN_PROGRESS) {
+            undoHistory += UndoFrame(ready.game, ready.selectedCell)
+            if (undoHistory.size > MAX_UNDO_HISTORY) undoHistory.removeAt(0)
+        }
+        mutableUiState.value =
+            ready.copy(
+                game = updated,
+                selectedCell = selectedCell,
+                canUndo = undoHistory.isNotEmpty(),
+            )
         if (updated.status.isTerminal) persistCompletion(updated)
     }
 
@@ -237,6 +295,8 @@ internal class SudokuGameViewModel(
         val reason: SudokuGameError,
     ) : Exception()
 }
+
+private const val MAX_UNDO_HISTORY = 100
 
 private fun SudokuDatasetError.toGameError(): SudokuGameError =
     when (this) {

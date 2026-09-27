@@ -1,26 +1,42 @@
 package com.stanisryz.logica.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -30,6 +46,7 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.shared.ui.generated.resources.Res
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048
 import com.stanisryz.logica.shared.ui.generated.resources.game_balance
+import com.stanisryz.logica.shared.ui.generated.resources.game_catalog_action
 import com.stanisryz.logica.shared.ui.generated.resources.game_catalog_play_label
 import com.stanisryz.logica.shared.ui.generated.resources.game_catalog_section_title
 import com.stanisryz.logica.shared.ui.generated.resources.game_crowns
@@ -106,8 +123,20 @@ fun GameCatalogCard(
 ) {
     val colors = MaterialTheme.colorScheme
     val title = stringResource(puzzleType.catalogTitleResource())
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val cardScale by
+        animateFloatAsState(
+            targetValue = if (pressed && enabled) CATALOG_CARD_PRESSED_SCALE else 1f,
+            animationSpec =
+                spring(
+                    dampingRatio = CATALOG_CARD_SPRING_DAMPING,
+                    stiffness = CATALOG_CARD_SPRING_STIFFNESS,
+                ),
+            label = "catalog-card-scale",
+        )
     Card(
-        modifier = modifier.fillMaxWidth().height(GAME_CATALOG_CARD_HEIGHT),
+        modifier = modifier.fillMaxWidth().height(GAME_CATALOG_CARD_HEIGHT).scale(cardScale),
         colors =
             CardDefaults.cardColors(
                 containerColor = if (enabled) colors.surfaceContainerLow else colors.surfaceContainerHighest,
@@ -120,6 +149,8 @@ fun GameCatalogCard(
                     .fillMaxSize()
                     .clip(MaterialTheme.shapes.medium)
                     .clickable(
+                        interactionSource = interactionSource,
+                        indication = LocalIndication.current,
                         enabled = enabled,
                         role = Role.Button,
                         onClickLabel = stringResource(Res.string.game_catalog_play_label, title),
@@ -138,20 +169,52 @@ fun GameCatalogCard(
                     .fillMaxSize()
                     .background(
                         Brush.horizontalGradient(
-                            0f to CATALOG_LABEL_SCRIM,
+                            0f to CATALOG_LABEL_SCRIM_START,
+                            0.46f to CATALOG_LABEL_SCRIM_MIDDLE,
+                            0.78f to CATALOG_LABEL_SCRIM_END,
                             1f to Color.Transparent,
                         ),
                     ),
             )
-            Text(
-                text = title,
-                modifier = Modifier.fillMaxWidth(0.5f).padding(start = GAME_CATALOG_LABEL_PADDING),
-                style =
-                    MaterialTheme.typography.headlineSmall.copy(
-                        fontSize = MaterialTheme.typography.headlineSmall.fontSize * CATALOG_CARD_TITLE_SCALE,
-                    ),
-                color = GAME_CATALOG_LABEL_COLOR.copy(alpha = if (enabled) 1f else DISABLED_ALPHA),
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth(0.68f).padding(start = GAME_CATALOG_LABEL_PADDING),
+                verticalArrangement = Arrangement.spacedBy(CATALOG_ACTION_GAP),
+                horizontalAlignment = Alignment.Start,
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = GAME_CATALOG_LABEL_COLOR.copy(alpha = if (enabled) 1f else DISABLED_ALPHA),
+                )
+                Surface(
+                    color =
+                        CATALOG_ACTION_SURFACE.copy(
+                            alpha = if (enabled) CATALOG_ACTION_ALPHA else DISABLED_ACTION_ALPHA,
+                        ),
+                    contentColor = if (enabled) CATALOG_ACTION_CONTENT else DISABLED_ACTION_CONTENT,
+                    shape = CircleShape,
+                ) {
+                    Row(
+                        modifier =
+                            Modifier.padding(
+                                horizontal = CATALOG_ACTION_HORIZONTAL_PADDING,
+                                vertical = CATALOG_ACTION_VERTICAL_PADDING,
+                            ),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(CATALOG_ACTION_ICON_GAP),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.PlayArrow,
+                            contentDescription = null,
+                            modifier = Modifier.size(CATALOG_ACTION_ICON_SIZE),
+                        )
+                        Text(
+                            text = stringResource(Res.string.game_catalog_action),
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -176,9 +239,23 @@ fun PuzzleType.catalogTitleResource(): StringResource =
         else -> error("$this has no Catalog title.")
     }
 
-private val GAME_CATALOG_CARD_HEIGHT = 124.dp
+private val GAME_CATALOG_CARD_HEIGHT = 148.dp
 private val GAME_CATALOG_LABEL_PADDING = 24.dp
-private val GAME_CATALOG_LABEL_COLOR = Color(0xFF1B2A35)
-private val CATALOG_LABEL_SCRIM = Color(0xFFF4F8FB).copy(alpha = 0.15f)
-private const val CATALOG_CARD_TITLE_SCALE = 1.40625f
+private val GAME_CATALOG_LABEL_COLOR = Color(0xFF263B30)
+private val CATALOG_LABEL_SCRIM_START = Color(0xFFF7F0E2).copy(alpha = 0.98f)
+private val CATALOG_LABEL_SCRIM_MIDDLE = Color(0xFFF7F0E2).copy(alpha = 0.86f)
+private val CATALOG_LABEL_SCRIM_END = Color(0xFFF7F0E2).copy(alpha = 0.26f)
+private val CATALOG_ACTION_SURFACE = Color(0xFFFFFCF5)
+private val CATALOG_ACTION_CONTENT = Color(0xFF315B4B)
+private val DISABLED_ACTION_CONTENT = Color(0xFF716D63)
+private val CATALOG_ACTION_HORIZONTAL_PADDING = 12.dp
+private val CATALOG_ACTION_VERTICAL_PADDING = 6.dp
+private val CATALOG_ACTION_ICON_GAP = 2.dp
+private val CATALOG_ACTION_ICON_SIZE = 18.dp
+private val CATALOG_ACTION_GAP = 8.dp
+private const val CATALOG_CARD_PRESSED_SCALE = 0.985f
+private const val CATALOG_CARD_SPRING_DAMPING = 0.72f
+private const val CATALOG_CARD_SPRING_STIFFNESS = 700f
+private const val CATALOG_ACTION_ALPHA = 0.86f
+private const val DISABLED_ACTION_ALPHA = 0.58f
 private const val DISABLED_ALPHA = 0.38f

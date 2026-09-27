@@ -2,6 +2,7 @@
 <resources>
     <string name="game_catalog_section_title">Игры</string>
     <string name="game_catalog_play_label">Играть в %1$s</string>
+    <string name="game_catalog_action">Играть</string>
 
     <string name="daily_marker">Задача дня</string>
     <string name="daily_challenge">Задача дня</string>
@@ -163,6 +164,10 @@
 
     <string name="sudoku_cell_description">Строка %1$d, столбец %2$d. Значение: %3$s. %4$s%5$s</string>
     <string name="sudoku_selected_suffix"> Клетка выбрана.</string>
+    <string name="sudoku_erase">Очистить клетку</string>
+    <string name="sudoku_auto_candidates">Автозаметки</string>
+    <string name="sudoku_undo">Отменить ход</string>
+    <string name="game_2048_undo">Отменить ход</string>
     <string name="sudoku_hint_naked_single">В клетке %1$d:%2$d подходит только число %3$d.</string>
     <string name="sudoku_hint_hidden_row">Число %1$d может стоять только в столбце %3$d строки %2$d.</string>
     <string name="sudoku_hint_hidden_column">Число %1$d может стоять только в строке %3$d столбца %2$d.</string>

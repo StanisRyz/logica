@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material3.FilledTonalIconButton
@@ -19,6 +20,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.sudoku_auto_candidates
+import com.stanisryz.logica.shared.ui.generated.resources.sudoku_erase
+import com.stanisryz.logica.shared.ui.generated.resources.sudoku_undo
 import com.stanisryz.logica.shared.ui.generated.resources.hint
 import com.stanisryz.logica.shared.ui.generated.resources.tool_off
 import com.stanisryz.logica.shared.ui.generated.resources.tool_on
@@ -72,27 +76,63 @@ private fun SudokuDigitButton(
 fun SudokuToolBar(
     isPencilMode: Boolean,
     onToggle: () -> Unit,
+    onErase: () -> Unit,
+    eraseEnabled: Boolean,
+    onAutoCandidates: () -> Unit,
+    autoCandidatesEnabled: Boolean,
+    canUndo: Boolean,
+    onUndo: () -> Unit,
     onHint: () -> Unit,
     hintEnabled: Boolean,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    wrapTools: Boolean = false,
 ) {
-    PuzzleToolBar(
-        tools =
-            listOf(
-                pencilTool(isPencilMode, onToggle),
-                PuzzleTool(
-                    label = stringResource(Res.string.hint),
-                    stateDescription = null,
-                    selected = null,
-                    enabled = hintEnabled,
-                    onClick = onHint,
-                    symbol = { Icon(Icons.Filled.Lightbulb, contentDescription = null) },
-                ),
+    val tools =
+        listOf(
+            pencilTool(isPencilMode, onToggle),
+            PuzzleTool(
+                label = stringResource(Res.string.sudoku_erase),
+                stateDescription = null,
+                selected = null,
+                enabled = eraseEnabled,
+                onClick = onErase,
+                symbol = { Icon(Icons.AutoMirrored.Filled.Backspace, contentDescription = null) },
             ),
-        modifier = modifier,
-        enabled = enabled,
-    )
+            PuzzleTool(
+                label = stringResource(Res.string.sudoku_auto_candidates),
+                stateDescription = null,
+                selected = null,
+                enabled = autoCandidatesEnabled,
+                onClick = onAutoCandidates,
+                symbol = { Text("1–9", style = MaterialTheme.typography.labelSmall) },
+            ),
+            PuzzleTool(
+                label = stringResource(Res.string.sudoku_undo),
+                stateDescription = null,
+                selected = null,
+                enabled = canUndo,
+                onClick = onUndo,
+                symbol = { Text("↶", style = MaterialTheme.typography.titleLarge) },
+            ),
+            PuzzleTool(
+                label = stringResource(Res.string.hint),
+                stateDescription = null,
+                selected = null,
+                enabled = hintEnabled,
+                onClick = onHint,
+                symbol = { Icon(Icons.Filled.Lightbulb, contentDescription = null) },
+            ),
+        )
+
+    if (wrapTools) {
+        Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(COMPACT_TOOL_ROW_SPACING)) {
+            PuzzleToolBar(tools.take(3), enabled = enabled)
+            PuzzleToolBar(tools.drop(3), enabled = enabled)
+        }
+    } else {
+        PuzzleToolBar(tools = tools, modifier = modifier, enabled = enabled)
+    }
 }
 
 /** Tutorial mode exposes the same production Pencil control and semantics. */
@@ -126,5 +166,6 @@ private fun pencilTool(
 private const val DIGIT_COUNT = 9
 private const val DIGITS_PER_ROW = 3
 
-internal val SUDOKU_DIGIT_CONTROL_SIZE = 44.dp
+internal val SUDOKU_DIGIT_CONTROL_SIZE = 48.dp
 internal val SUDOKU_DIGIT_ROW_SPACING = 8.dp
+private val COMPACT_TOOL_ROW_SPACING = 2.dp

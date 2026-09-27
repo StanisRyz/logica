@@ -1194,6 +1194,10 @@ private fun PlayingSudokuContent(
             onCellSelected = controller::selectCell,
             onDigit = controller::inputDigit,
             onTogglePencil = controller::togglePencilMode,
+            onErase = controller::eraseSelectedCell,
+            onAutoCandidates = controller::autoFillCandidates,
+            canUndo = controller.canUndo,
+            onUndo = controller::undo,
             onHint = controller::requestHint,
             modifier = Modifier.weight(1f),
         )
@@ -1262,7 +1266,9 @@ private fun PlayingGame2048Content(
             motionRevision = state.motionRevision,
             motionTrace = state.motionTrace,
             gameplayEnabled = state.game.status == Game2048Status.IN_PROGRESS,
+            canUndo = controller.canUndo,
             onMove = controller::move,
+            onUndo = controller::undo,
             onMotionFinished = controller::finishMotion,
             modifier = Modifier.weight(1f),
         )

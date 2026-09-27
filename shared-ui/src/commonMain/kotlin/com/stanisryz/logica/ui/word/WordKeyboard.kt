@@ -48,15 +48,18 @@ fun WordKeyboard(
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier,
     keyHeight: Dp = DEFAULT_KEY_HEIGHT,
+    landscapeCompact: Boolean = false,
+    keySpacing: Dp = WORD_KEY_SPACING,
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(KEY_SPACING),
+        verticalArrangement = Arrangement.spacedBy(keySpacing),
     ) {
-        LETTER_ROWS.forEach { rowLetters ->
+        val rows = if (landscapeCompact) LETTER_ROWS.flatten().chunked(LANDSCAPE_LETTER_COLUMNS) else LETTER_ROWS
+        rows.forEach { rowLetters ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(KEY_SPACING),
+                horizontalArrangement = Arrangement.spacedBy(keySpacing),
             ) {
                 rowLetters.forEach { letter ->
                     LetterKey(
@@ -72,7 +75,7 @@ fun WordKeyboard(
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(KEY_SPACING),
+            horizontalArrangement = Arrangement.spacedBy(keySpacing),
         ) {
             ActionKey(
                 label = { Text(stringResource(Res.string.word_enter), fontWeight = FontWeight.Bold) },
@@ -201,8 +204,9 @@ private val LETTER_ROWS =
 
 internal val WORD_KEY_SPACING = 4.dp
 internal const val WORD_KEYBOARD_ROWS = 4
+internal const val WORD_LANDSCAPE_KEYBOARD_ROWS = 8
 
-private val KEY_SPACING = WORD_KEY_SPACING
+private const val LANDSCAPE_LETTER_COLUMNS = 5
 private val DEFAULT_KEY_HEIGHT = 48.dp
 private val KEY_CORNER = 6.dp
 private val PRESENT_BORDER_WIDTH = 2.dp

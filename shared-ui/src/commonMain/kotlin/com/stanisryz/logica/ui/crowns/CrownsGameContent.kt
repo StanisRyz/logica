@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -92,9 +93,25 @@ fun CrownsGameContent(
 ) {
     SquareGameLayout(
         modifier = modifier,
-        metadataContent = {
-            GameHeaderBadges(stringResource(difficulty.labelResource()), levelNumber, contextLabel = contextBadgeLabel)
-            MistakeIndicator(game.mistakesUsed, PuzzleMistakes.MAX_MISTAKES)
+        metadataContent = { wideLayout ->
+            if (wideLayout) {
+                GameHeaderBadges(stringResource(difficulty.labelResource()), levelNumber, contextLabel = contextBadgeLabel)
+                MistakeIndicator(game.mistakesUsed, PuzzleMistakes.MAX_MISTAKES)
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    GameHeaderBadges(
+                        stringResource(difficulty.labelResource()),
+                        levelNumber,
+                        modifier = Modifier.weight(1f),
+                        contextLabel = contextBadgeLabel,
+                    )
+                    MistakeIndicator(game.mistakesUsed, PuzzleMistakes.MAX_MISTAKES)
+                }
+            }
         },
         hostStatusContent = hostStatusContent,
         boardContent = {
@@ -120,6 +137,7 @@ fun CrownsGameContent(
                 enabled = gameplayEnabled,
             )
         },
+        showContextStatus = game.currentHint != null || game.violations.isNotEmpty() || isHintLoading,
         contextStatusContent = { compact ->
             CrownsContextStatus(
                 hint = game.currentHint,

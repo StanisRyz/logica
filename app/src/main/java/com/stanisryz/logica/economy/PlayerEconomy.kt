@@ -89,4 +89,12 @@ internal data class PlayerEconomy(
         require(amount in 0..gems) { "The wallet does not hold enough gems." }
         return copy(gems = gems - amount)
     }
+
+    companion object {
+        /**
+         * Fail-closed state used only before Room emits the durable wallet. Zero lives prevents a
+         * game screen from accepting input during the first frame when the saved wallet may be empty.
+         */
+        val LOADING = PlayerEconomy(lives = 0, nextLifeAtEpochMillis = Long.MAX_VALUE)
+    }
 }

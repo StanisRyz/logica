@@ -1,5 +1,7 @@
 package com.stanisryz.logica.ui.sudoku
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -21,6 +23,7 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -130,7 +133,7 @@ private fun SudokuGrid(
                             isSameNumber =
                                 selectedValue != null &&
                                     position != selectedCell &&
-                                    cell.status.isConfirmedValue &&
+                                    cell.value != 0 &&
                                     cell.value == selectedValue,
                             isHintTarget = game.currentHint?.position == position,
                             enabled = enabled && !game.status.isTerminal,
@@ -163,14 +166,20 @@ private fun SudokuCell(
     val colors = MaterialTheme.colorScheme
     val background =
         when {
-            cell.status == SudokuCellStatus.INCORRECT -> colors.errorContainer
             isSelected -> colors.primaryContainer
-            isHintTarget -> colors.tertiaryContainer
             isSameNumber -> colors.secondaryContainer
+            isHintTarget -> colors.tertiaryContainer
+            isPeer -> colors.surfaceContainerHigh
+            cell.status == SudokuCellStatus.INCORRECT -> colors.errorContainer
             cell.status == SudokuCellStatus.GIVEN -> colors.surfaceVariant
-            isPeer -> colors.surfaceContainerLow
             else -> colors.surface
         }
+    val animatedBackground by
+        animateColorAsState(
+            targetValue = background,
+            animationSpec = tween(CELL_HIGHLIGHT_MILLIS),
+            label = "sudokuCellHighlight",
+        )
     val stateLabel =
         stringResource(
             when (cell.status) {
@@ -200,7 +209,7 @@ private fun SudokuCell(
     Box(
         modifier =
             modifier
-                .background(background)
+                .background(animatedBackground)
                 .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
                 .semantics {
                     contentDescription = description
@@ -333,3 +342,4 @@ private val STRONG_GRID_WIDTH = 2.dp
 private val SELECTED_WIDTH = 2.dp
 private val HINT_WIDTH = 1.5.dp
 private val STATUS_ICON_SIZE = 10.dp
+private const val CELL_HIGHLIGHT_MILLIS = 120
