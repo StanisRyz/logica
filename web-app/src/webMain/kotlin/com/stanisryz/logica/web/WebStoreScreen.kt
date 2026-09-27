@@ -420,6 +420,7 @@ internal fun WebHintsExhaustedDialog(
     onOpenStore: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    PauseGameKeysWhileShown()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Подсказки закончились") },

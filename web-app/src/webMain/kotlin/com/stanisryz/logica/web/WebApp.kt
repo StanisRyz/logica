@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -47,6 +48,7 @@ import com.stanisryz.logica.platform.PlatformLifecycleState
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
+import com.stanisryz.logica.puzzle.core.game2048.Game2048Direction
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Status
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
@@ -63,6 +65,7 @@ import com.stanisryz.logica.ui.balance.BalanceGameContent
 import com.stanisryz.logica.ui.components.DifficultySelector
 import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
 import com.stanisryz.logica.ui.components.GameHubContent
+import com.stanisryz.logica.ui.components.GameKey
 import com.stanisryz.logica.ui.crowns.CrownsGameContent
 import com.stanisryz.logica.ui.daily.DailyHubResultRow
 import com.stanisryz.logica.ui.daily.DailyHubSection
@@ -78,6 +81,7 @@ import com.stanisryz.logica.ui.sudoku.SudokuGameContent
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.ui.theme.LogicaTheme
 import com.stanisryz.logica.ui.word.WordGameContent
+import kotlinx.coroutines.flow.Flow
 import org.jetbrains.compose.resources.stringResource
 
 private val PRIMARY_ROUTES = setOf<WebRoute>(WebRoute.GameHub, WebRoute.Profile, WebRoute.Store)
@@ -267,6 +271,9 @@ private fun ReadyContent(
 ) {
     var route by remember { mutableStateOf<WebRoute>(WebRoute.GameHub) }
 
+    // Desktop keyboard input goes to the puzzle only while it is actively played and uncovered.
+    val keyboard = remember { WebKeyboard().also(WebKeyboard::install) }
+
     // From a game the Store opens as a sheet over the board, so the unsaved attempt stays put.
     var storeSheetOpen by remember { mutableStateOf(false) }
     val openStore: () -> Unit = {
@@ -373,7 +380,18 @@ private fun ReadyContent(
             }
         }
 
-    CompositionLocalProvider(LocalWebLives provides livesUi) {
+    SideEffect { keyboard.enabled = hasActivePuzzle && !storeSheetOpen && !showNoLives }
+    LaunchedEffect(keyboard, route) {
+        keyboard.keys.collect { key ->
+            when (route) {
+                WebRoute.Game2048 -> key.game2048Direction()?.let(game2048Controller::move)
+                WebRoute.Sudoku -> sudokuController.onHardwareKey(key)
+                else -> Unit // Word edits its draft inside the shared presentation.
+            }
+        }
+    }
+
+    CompositionLocalProvider(LocalWebLives provides livesUi, LocalWebKeyboard provides keyboard) {
         when (route) {
             WebRoute.GameHub ->
                 PrimaryDestinationShell(
@@ -500,6 +518,7 @@ private fun ReadyContent(
                 WordFlow(
                     state = wordState,
                     controller = wordController,
+                    hardwareKeys = keyboard.keys,
                     onSolvedNextLevel = runSolvedNextLevel,
                     onExitWord = {
                         wordController.showDifficultySelector()
@@ -850,6 +869,7 @@ private fun CrownsFlow(
 private fun WordFlow(
     state: WebWordState,
     controller: WebWordController,
+    hardwareKeys: Flow<GameKey>,
     onExitWord: () -> Unit,
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
@@ -889,6 +909,7 @@ private fun WordFlow(
             PlayingWordContent(
                 state = state,
                 controller = controller,
+                hardwareKeys = hardwareKeys,
                 onExitWord = onExitWord,
                 onSolvedNextLevel = onSolvedNextLevel,
             )
@@ -1192,6 +1213,7 @@ private fun PlayingCrownsContent(
 private fun PlayingWordContent(
     state: WebWordState.Playing,
     controller: WebWordController,
+    hardwareKeys: Flow<GameKey>,
     onExitWord: () -> Unit,
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
@@ -1218,6 +1240,7 @@ private fun PlayingWordContent(
             onDismissRejection = controller::dismissRejection,
             onAcceptedAttemptRevealed = controller::onAcceptedAttemptRevealed,
             modifier = Modifier.weight(1f),
+            hardwareKeys = hardwareKeys,
         )
     }
 
@@ -1452,3 +1475,12 @@ private val LIVES_STATUS_HEIGHT = 24.dp
 private val PRIMARY_NAVIGATION_HEIGHT = 64.dp
 private val MIN_DIFFICULTY_CARD_HEIGHT = 96.dp
 private val MAX_DIFFICULTY_CARD_HEIGHT = 152.dp
+
+private fun GameKey.game2048Direction(): Game2048Direction? =
+    when (this) {
+        GameKey.Up -> Game2048Direction.UP
+        GameKey.Down -> Game2048Direction.DOWN
+        GameKey.Left -> Game2048Direction.LEFT
+        GameKey.Right -> Game2048Direction.RIGHT
+        else -> null
+    }

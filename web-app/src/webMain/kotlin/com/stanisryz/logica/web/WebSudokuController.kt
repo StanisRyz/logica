@@ -27,6 +27,7 @@ import com.stanisryz.logica.puzzle.core.sudoku.SudokuPosition
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuPuzzle
 import com.stanisryz.logica.puzzle.core.sudoku.toSudokuDifficulty
 import com.stanisryz.logica.puzzle.core.web.WebPuzzleData
+import com.stanisryz.logica.ui.components.GameKey
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -264,6 +265,43 @@ internal class WebSudokuController(
         if (updated != playing.game) updateGame(playing, updated)
     }
 
+    /**
+     * Desktop keyboard: arrows move the selection (starting top-left), 1–9 enter a digit exactly
+     * like the keypad, 0/Backspace/Delete erase, and the P key position toggles Pencil.
+     */
+    fun onHardwareKey(key: GameKey) {
+        val playing = state as? WebSudokuState.Playing ?: return
+        if (playing.game.status.isTerminal) return
+        when (key) {
+            is GameKey.Digit -> if (key.value == 0) eraseSelectedCell() else inputDigit(key.value)
+            GameKey.Backspace, GameKey.Delete -> eraseSelectedCell()
+            GameKey.Up -> moveSelection(playing, rowStep = -1, columnStep = 0)
+            GameKey.Down -> moveSelection(playing, rowStep = 1, columnStep = 0)
+            GameKey.Left -> moveSelection(playing, rowStep = 0, columnStep = -1)
+            GameKey.Right -> moveSelection(playing, rowStep = 0, columnStep = 1)
+            is GameKey.Letter -> if (key.char == PENCIL_KEY_LETTER) togglePencilMode()
+            GameKey.Enter -> Unit
+        }
+    }
+
+    private fun moveSelection(
+        playing: WebSudokuState.Playing,
+        rowStep: Int,
+        columnStep: Int,
+    ) {
+        val current = playing.selectedCell
+        val next =
+            if (current == null) {
+                SudokuPosition(0, 0)
+            } else {
+                SudokuPosition(
+                    (current.row + rowStep).coerceIn(0, SUDOKU_LAST_INDEX),
+                    (current.column + columnStep).coerceIn(0, SUDOKU_LAST_INDEX),
+                )
+            }
+        selectCell(next)
+    }
+
     fun eraseSelectedCell() {
         val playing = state as? WebSudokuState.Playing ?: return
         if (playing.game.status.isTerminal) return
@@ -469,3 +507,7 @@ internal class WebSudokuController(
 }
 
 private const val MAX_UNDO_HISTORY = 100
+private const val SUDOKU_LAST_INDEX = 8
+
+/** The letter on the physical P key in the Russian layout (see `webGameKeyOf`). */
+private const val PENCIL_KEY_LETTER = 'з'

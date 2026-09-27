@@ -60,6 +60,7 @@ internal fun WebGameplayHeader(
         Spacer(Modifier.width(GAME_HEADER_TITLE_SPACER))
     }
     if (confirmingExit && hasMeaningfulProgress) {
+        PauseGameKeysWhileShown()
         AlertDialog(
             onDismissRequest = { confirmingExit = false },
             title = { Text("Выйти из уровня?") },

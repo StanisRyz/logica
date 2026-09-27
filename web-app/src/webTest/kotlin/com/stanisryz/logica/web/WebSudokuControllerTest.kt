@@ -17,6 +17,7 @@ import com.stanisryz.logica.puzzle.core.sudoku.SudokuDifficulty
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuPosition
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuPuzzle
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuPuzzleId
+import com.stanisryz.logica.ui.components.GameKey
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -105,6 +106,38 @@ class WebSudokuControllerTest {
             assertFalse(controller.hintsExhaustedNotice)
             assertEquals(0, store.hints)
             assertEquals(1, assertIs<WebSudokuState.Playing>(controller.state).game.hintsUsed)
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun hardwareKeysMoveTheSelectionAndEnterDigitsLikeTheKeypad() =
+        runTest {
+            val controller =
+                WebSudokuController(
+                    loadPack = {},
+                    loadDataset = { _, _ -> },
+                    progression = FakeWebCatalogProgressAccess(),
+                    levelPack = fixedMediumLevelOne,
+                    dataset = fixedDataset,
+                    scope = this,
+                )
+            controller.selectDifficulty(Difficulty.MEDIUM)
+            advanceUntilIdle()
+
+            // The first arrow selects the top-left cell; later arrows move and stop at the edge.
+            controller.onHardwareKey(GameKey.Right)
+            assertEquals(SudokuPosition(0, 0), assertIs<WebSudokuState.Playing>(controller.state).selectedCell)
+            controller.onHardwareKey(GameKey.Up)
+            assertEquals(SudokuPosition(0, 0), assertIs<WebSudokuState.Playing>(controller.state).selectedCell)
+
+            // (0, 0) is empty and its answer is 1.
+            controller.onHardwareKey(GameKey.Digit(1))
+            assertEquals(1, assertIs<WebSudokuState.Playing>(controller.state).game.cellAt(SudokuPosition(0, 0)).value)
+
+            controller.onHardwareKey(GameKey.Down)
+            controller.onHardwareKey(GameKey.Letter('з'))
+            assertTrue(assertIs<WebSudokuState.Playing>(controller.state).isPencilMode)
+            assertEquals(SudokuPosition(1, 0), assertIs<WebSudokuState.Playing>(controller.state).selectedCell)
         }
 
     private val fixedMediumLevelOne =

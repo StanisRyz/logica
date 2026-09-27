@@ -39,6 +39,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.word.RussianWordNormalizer
 import com.stanisryz.logica.puzzle.core.word.WordDraft
 import com.stanisryz.logica.puzzle.core.word.WordGameState
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
@@ -54,8 +55,10 @@ import com.stanisryz.logica.shared.ui.generated.resources.word_rejection_incompl
 import com.stanisryz.logica.shared.ui.generated.resources.word_rejection_invalid_letters
 import com.stanisryz.logica.shared.ui.generated.resources.word_rejection_unknown_word
 import com.stanisryz.logica.ui.components.GameHeaderBadges
+import com.stanisryz.logica.ui.components.GameKey
 import com.stanisryz.logica.ui.components.isWideGameplayLayout
 import com.stanisryz.logica.ui.theme.LogicaSpacing
+import kotlinx.coroutines.flow.Flow
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
@@ -82,6 +85,7 @@ fun WordGameContent(
     onInputInteraction: () -> Unit = {},
     onRejectionPresented: (WordGuessRejection) -> Unit = {},
     onAcceptedAttemptRevealed: (Int) -> Unit = {},
+    hardwareKeys: Flow<GameKey>? = null,
     hostStatusContent: @Composable ColumnScope.() -> Unit = {},
     terminalContent: @Composable ColumnScope.() -> Unit = {},
 ) {
@@ -111,6 +115,44 @@ fun WordGameContent(
     LaunchedEffect(game.attempts.size, game.status) {
         if (game.status == WordGameStatus.IN_PROGRESS) {
             selectedCellIndex = initialWordSelection(game)
+        }
+    }
+
+    // A hardware keyboard edits the same draft and selection as the on-screen keys.
+    val currentGame by rememberUpdatedState(game)
+    val currentGameplayEnabled by rememberUpdatedState(gameplayEnabled)
+    val currentOnLetter by rememberUpdatedState(onLetter)
+    val currentOnClearLetter by rememberUpdatedState(onClearLetter)
+    val currentOnSubmit by rememberUpdatedState(onSubmit)
+    val currentOnDismissRejection by rememberUpdatedState(onDismissRejection)
+    val currentOnInputInteraction by rememberUpdatedState(onInputInteraction)
+    LaunchedEffect(hardwareKeys) {
+        hardwareKeys?.collect { key ->
+            val draft = currentGame.currentDraft
+            if (!currentGameplayEnabled || currentGame.status != WordGameStatus.IN_PROGRESS) return@collect
+            when (key) {
+                is GameKey.Letter -> {
+                    val letter = key.char.lowercaseChar()
+                    if (!RussianWordNormalizer.isSupportedLetter(letter)) return@collect
+                    currentOnInputInteraction()
+                    currentOnDismissRejection()
+                    val editedPosition = selectedCellIndex
+                    currentOnLetter(editedPosition, letter)
+                    selectedCellIndex = nextWordSelection(draft, editedPosition)
+                }
+                GameKey.Backspace, GameKey.Delete -> {
+                    currentOnInputInteraction()
+                    currentOnDismissRejection()
+                    positionToClear(draft, selectedCellIndex)?.let { position ->
+                        currentOnClearLetter(position)
+                        selectedCellIndex = position
+                    }
+                }
+                GameKey.Enter -> currentOnSubmit()
+                GameKey.Left -> selectedCellIndex = (selectedCellIndex - 1).coerceAtLeast(0)
+                GameKey.Right -> selectedCellIndex = (selectedCellIndex + 1).coerceAtMost(draft.wordLength - 1)
+                else -> Unit
+            }
         }
     }
 
