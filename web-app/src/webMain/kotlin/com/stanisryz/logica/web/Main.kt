@@ -3,10 +3,10 @@
 package com.stanisryz.logica.web
 
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.window.ComposeViewport
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import androidx.compose.ui.window.ComposeViewport
 import kotlin.js.ExperimentalWasmJsInterop
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -228,7 +228,10 @@ fun main() {
     controller.start()
 }
 
-private fun currentTimeMillis(): Long = js("Date.now()")
+/** Kotlin/JS represents Long as an object, so the JS number is read as Double and converted. */
+internal fun currentTimeMillis(): Long = dateNow().toLong()
+
+private fun dateNow(): Double = js("Date.now()")
 
 private fun standaloneStorageGet(key: String): String? = js("globalThis.localStorage.getItem(key)")
 
