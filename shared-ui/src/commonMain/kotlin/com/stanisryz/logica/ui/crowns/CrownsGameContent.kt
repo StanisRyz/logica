@@ -56,6 +56,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.difficulty_hard
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_medium
 import com.stanisryz.logica.shared.ui.generated.resources.hint
 import com.stanisryz.logica.shared.ui.generated.resources.searching_hint
+import com.stanisryz.logica.shared.ui.generated.resources.tool_caption_mark
 import com.stanisryz.logica.shared.ui.generated.resources.tool_not_selected
 import com.stanisryz.logica.shared.ui.generated.resources.tool_off
 import com.stanisryz.logica.shared.ui.generated.resources.tool_on
@@ -171,6 +172,7 @@ fun CrownsToolBar(
                 crownsValueTool(
                     value = CrownsPlayerCell.CROWN,
                     label = stringResource(Res.string.crowns_tool_crown),
+                    caption = stringResource(Res.string.crowns_tool_crown),
                     selectedValue = selectedValue,
                     onSelectValue = onSelectValue,
                     symbol = { CrownIcon(Modifier.size(CROWN_TOOL_SIZE)) },
@@ -178,6 +180,7 @@ fun CrownsToolBar(
                 crownsValueTool(
                     value = CrownsPlayerCell.MARKED,
                     label = stringResource(Res.string.crowns_tool_mark),
+                    caption = stringResource(Res.string.tool_caption_mark),
                     selectedValue = selectedValue,
                     onSelectValue = onSelectValue,
                     symbol = { Text("×", style = MaterialTheme.typography.headlineSmall) },
@@ -189,6 +192,7 @@ fun CrownsToolBar(
                     selected = isPencilMode,
                     onClick = onTogglePencil,
                     symbol = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                    caption = stringResource(Res.string.tool_pencil),
                 ),
             ) +
                 listOfNotNull(
@@ -203,6 +207,7 @@ fun CrownsToolBar(
 private fun crownsValueTool(
     value: CrownsPlayerCell,
     label: String,
+    caption: String,
     selectedValue: CrownsPlayerCell,
     onSelectValue: (CrownsPlayerCell) -> Unit,
     symbol: @Composable () -> Unit,
@@ -216,6 +221,7 @@ private fun crownsValueTool(
         selected = selectedValue == value,
         onClick = { onSelectValue(value) },
         symbol = symbol,
+        caption = caption,
     )
 
 @Composable

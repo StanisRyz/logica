@@ -17,12 +17,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.shared.ui.generated.resources.Res
 import com.stanisryz.logica.shared.ui.generated.resources.sudoku_auto_candidates
+import com.stanisryz.logica.shared.ui.generated.resources.sudoku_digits_left
 import com.stanisryz.logica.shared.ui.generated.resources.sudoku_erase
 import com.stanisryz.logica.shared.ui.generated.resources.sudoku_undo
+import com.stanisryz.logica.shared.ui.generated.resources.tool_caption_auto
+import com.stanisryz.logica.shared.ui.generated.resources.tool_caption_erase
+import com.stanisryz.logica.shared.ui.generated.resources.tool_caption_undo
 import com.stanisryz.logica.shared.ui.generated.resources.tool_off
 import com.stanisryz.logica.shared.ui.generated.resources.tool_on
 import com.stanisryz.logica.shared.ui.generated.resources.tool_pencil
@@ -37,6 +44,7 @@ fun SudokuNumberPad(
     onDigit: (Int) -> Unit,
     modifier: Modifier = Modifier,
     spacing: Dp = SUDOKU_DIGIT_ROW_SPACING,
+    remaining: ((Int) -> Int)? = null,
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -49,7 +57,9 @@ fun SudokuNumberPad(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 row.forEach { digit ->
-                    SudokuDigitButton(digit = digit, enabled = enabled, onClick = { onDigit(digit) })
+                    val left = remaining?.invoke(digit)
+                    // A digit whose nine places are all confirmed has nothing left to place.
+                    SudokuDigitButton(digit = digit, left = left, enabled = enabled && left != 0, onClick = { onDigit(digit) })
                 }
             }
         }
@@ -59,16 +69,31 @@ fun SudokuNumberPad(
 @Composable
 private fun SudokuDigitButton(
     digit: Int,
+    left: Int?,
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
+    val leftDescription = left?.let { stringResource(Res.string.sudoku_digits_left, it) }
     FilledTonalIconButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.size(SUDOKU_DIGIT_CONTROL_SIZE),
+        modifier =
+            Modifier.size(SUDOKU_DIGIT_CONTROL_SIZE).semantics {
+                leftDescription?.let { stateDescription = it }
+            },
         shape = CircleShape,
     ) {
-        Text(text = digit.toString(), style = MaterialTheme.typography.titleMedium)
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = digit.toString(), style = MaterialTheme.typography.titleMedium)
+            if (left != null && left > 0) {
+                Text(
+                    text = left.toString(),
+                    modifier = Modifier.clearAndSetSemantics {},
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
@@ -99,6 +124,7 @@ fun SudokuToolBar(
                 enabled = eraseEnabled,
                 onClick = onErase,
                 symbol = { Icon(Icons.AutoMirrored.Filled.Backspace, contentDescription = null) },
+                caption = stringResource(Res.string.tool_caption_erase),
             ),
             PuzzleTool(
                 label = stringResource(Res.string.sudoku_auto_candidates),
@@ -107,6 +133,7 @@ fun SudokuToolBar(
                 enabled = autoCandidatesEnabled,
                 onClick = onAutoCandidates,
                 symbol = { Text("1–9", style = MaterialTheme.typography.labelSmall) },
+                caption = stringResource(Res.string.tool_caption_auto),
             ),
             PuzzleTool(
                 label = stringResource(Res.string.sudoku_undo),
@@ -115,6 +142,7 @@ fun SudokuToolBar(
                 enabled = canUndo,
                 onClick = onUndo,
                 symbol = { Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null) },
+                caption = stringResource(Res.string.tool_caption_undo),
             ),
             hintTool(hintCount = hintCount, enabled = hintEnabled, onClick = onHint),
         )
@@ -155,6 +183,7 @@ private fun pencilTool(
         selected = isPencilMode,
         onClick = onToggle,
         symbol = { Icon(Icons.Filled.Edit, contentDescription = null) },
+        caption = stringResource(Res.string.tool_pencil),
     )
 
 private const val DIGIT_COUNT = 9

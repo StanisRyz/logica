@@ -52,16 +52,18 @@ class SudokuGameplayTest {
     }
 
     @Test
-    fun `pencil candidates toggle without mistakes and only confirmed values clean peers`() {
+    fun `any digit can be pencilled without mistakes and only confirmed values clean peers`() {
         val peer = SudokuPosition(0, 2)
         var state = engine.toggleCandidate(engine.start(), peer, 1)
         state = engine.toggleCandidate(state, peer, 2)
         assertEquals(listOf(1, 2), state.cellAt(peer).candidates.digits)
         assertEquals(0, state.mistakesUsed)
-        assertEquals(state, engine.toggleCandidate(state, peer, 5))
+        // A digit the row already holds is still a legal pencil mark: refusing it would leak information.
+        state = engine.toggleCandidate(state, peer, 5)
+        assertEquals(listOf(1, 2, 5), state.cellAt(peer).candidates.digits)
 
         state = engine.placeValue(state, SudokuPosition(0, 0), 1)
-        assertEquals(listOf(2), state.cellAt(peer).candidates.digits)
+        assertEquals(listOf(2, 5), state.cellAt(peer).candidates.digits)
 
         state = engine.toggleCandidate(engine.start(), peer, 2)
         state = engine.placeValue(state, SudokuPosition(0, 0), 2)

@@ -99,6 +99,12 @@
     <string name="cell_one">единица</string>
 
     <string name="tool_pencil">Карандаш</string>
+    <string name="tool_caption_black">Чёрная</string>
+    <string name="tool_caption_white">Белая</string>
+    <string name="tool_caption_mark">Метка</string>
+    <string name="tool_caption_erase">Стереть</string>
+    <string name="tool_caption_auto">Заметки</string>
+    <string name="tool_caption_undo">Отмена</string>
     <string name="tool_selected">Выбрано</string>
     <string name="tool_not_selected">Не выбрано</string>
     <string name="tool_on">Включён</string>
@@ -168,6 +174,7 @@
     <string name="sudoku_erase">Очистить клетку</string>
     <string name="sudoku_auto_candidates">Автозаметки</string>
     <string name="sudoku_undo">Отменить ход</string>
+    <string name="sudoku_digits_left">Осталось поставить: %1$d</string>
     <string name="game_2048_undo">Отменить ход</string>
     <string name="sudoku_hint_naked_single">В клетке %1$d:%2$d подходит только число %3$d.</string>
     <string name="sudoku_hint_hidden_row">Число %1$d может стоять только в столбце %3$d строки %2$d.</string>

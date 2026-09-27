@@ -62,7 +62,8 @@ class SudokuGameEngine(
         if (state.status.isTerminal) return state
         val current = state.cellAt(position)
         if (current.status != SudokuCellStatus.EMPTY) return state
-        if (!current.candidates.contains(digit) && hasConfirmedPeerValue(state.cells, position, digit)) return state
+        // Any digit may be pencilled: refusing one that a peer already holds would tell the player
+        // something about the board for free. Confirmed values still clean their peers' candidates.
 
         val cells = state.cells.toMutableList()
         cells[position.index] = current.copy(candidates = current.candidates.toggle(digit))
@@ -185,15 +186,6 @@ class SudokuGameEngine(
                     SudokuCellState(playerValue, status)
                 }
             }
-        cells.forEachIndexed { index, cell ->
-            if (cell.status == SudokuCellStatus.EMPTY) {
-                cell.candidates.digits.forEach { digit ->
-                    require(!hasConfirmedPeerValue(cells, SudokuPosition.fromIndex(index), digit)) {
-                        "Saved Sudoku candidate conflicts with a confirmed peer."
-                    }
-                }
-            }
-        }
         require(cells.count { it.status == SudokuCellStatus.INCORRECT } <= mistakesUsed) {
             "Saved Sudoku has more current errors than committed mistake events."
         }

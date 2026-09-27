@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
@@ -54,6 +53,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.incorrect_cell
 import com.stanisryz.logica.shared.ui.generated.resources.pencil_marks_suffix
 import com.stanisryz.logica.shared.ui.generated.resources.sudoku_cell_description
 import com.stanisryz.logica.shared.ui.generated.resources.sudoku_selected_suffix
+import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -164,6 +164,7 @@ private fun SudokuCell(
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
+    val palette = LocalLogicaPalette.current
     val background =
         when {
             isSelected -> colors.primaryContainer
@@ -172,6 +173,7 @@ private fun SudokuCell(
             isPeer -> colors.surfaceContainerHigh
             cell.status == SudokuCellStatus.INCORRECT -> colors.errorContainer
             cell.status == SudokuCellStatus.GIVEN -> colors.surfaceVariant
+            cell.status == SudokuCellStatus.CORRECT -> palette.successContainer.copy(alpha = CONFIRMED_FILL_ALPHA)
             else -> colors.surface
         }
     val animatedBackground by
@@ -231,8 +233,9 @@ private fun SudokuCell(
             )
         }
         when (cell.status) {
-            SudokuCellStatus.GIVEN -> CellStatusIcon(Icons.Filled.Lock, colors.onSurfaceVariant, Alignment.TopEnd)
-            SudokuCellStatus.CORRECT -> CellStatusIcon(Icons.Filled.Check, colors.primary, Alignment.TopEnd)
+            // Clues are told apart by tone and weight; a check marks what the player closed correctly.
+            SudokuCellStatus.GIVEN -> Unit
+            SudokuCellStatus.CORRECT -> CellStatusIcon(Icons.Filled.Check, palette.success, Alignment.TopEnd)
             SudokuCellStatus.INCORRECT -> CellStatusIcon(Icons.Filled.PriorityHigh, colors.error, Alignment.TopStart)
             SudokuCellStatus.EMPTY -> Unit
         }
@@ -343,3 +346,4 @@ private val SELECTED_WIDTH = 2.dp
 private val HINT_WIDTH = 1.5.dp
 private val STATUS_ICON_SIZE = 10.dp
 private const val CELL_HIGHLIGHT_MILLIS = 120
+private const val CONFIRMED_FILL_ALPHA = 0.55f

@@ -92,6 +92,15 @@ fun SudokuGameContent(
                 (selectedState.status == SudokuCellStatus.INCORRECT || !selectedState.candidates.isEmpty)
         val autoCandidatesEnabled = gameplayEnabled && game.status == SudokuGameStatus.IN_PROGRESS
         val undoEnabled = canUndo && gameplayEnabled
+        // The keypad stays live for the whole attempt; a digit simply does nothing without a cell to
+        // fill, instead of the whole pad greying out after every hint or tap on a clue.
+        val keypadEnabled = gameplayEnabled && game.status == SudokuGameStatus.IN_PROGRESS
+        val guardedDigit: (Int) -> Unit = { digit -> if (inputEnabled) onDigit(digit) }
+        val confirmedCounts = IntArray(DIGIT_SLOTS)
+        game.cells.forEach { cell ->
+            if (cell.status == SudokuCellStatus.GIVEN || cell.status == SudokuCellStatus.CORRECT) confirmedCounts[cell.value]++
+        }
+        val remaining: (Int) -> Int = { digit -> (DIGIT_SLOTS - 1 - confirmedCounts[digit]).coerceAtLeast(0) }
         val difficultyLabel =
             stringResource(
                 puzzle.id.difficulty
@@ -146,8 +155,9 @@ fun SudokuGameContent(
                         hintCount = hintCount,
                     )
                     SudokuNumberPad(
-                        enabled = inputEnabled,
-                        onDigit = onDigit,
+                        enabled = keypadEnabled,
+                        onDigit = guardedDigit,
+                        remaining = remaining,
                         spacing = keypadSpacing,
                     )
                     SudokuHintRegion(game.currentHint, compact, contextHeight)
@@ -204,8 +214,9 @@ fun SudokuGameContent(
                     hintCount = hintCount,
                 )
                 SudokuNumberPad(
-                    enabled = inputEnabled,
-                    onDigit = onDigit,
+                    enabled = keypadEnabled,
+                    onDigit = guardedDigit,
+                    remaining = remaining,
                     spacing = keypadSpacing,
                 )
                 SudokuHintRegion(game.currentHint, compact, contextHeight)
@@ -307,3 +318,6 @@ private val COMPACT_WIDE_PANEL_WIDTH = 256.dp
 private val CONTEXT_CARD_PADDING = 8.dp
 private const val MAX_HINT_LINES = 2
 private const val CONTEXT_REVEAL_MILLIS = 180
+
+/** Nine places per digit; index 0 is the empty value and stays unused. */
+private const val DIGIT_SLOTS = 10

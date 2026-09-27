@@ -1,13 +1,21 @@
 package com.stanisryz.logica.web
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Diamond
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.HeartBroken
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -15,10 +23,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.puzzle.core.balance.BalanceCellStatus
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameState
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameState
@@ -57,7 +71,7 @@ internal fun WebGameplayHeader(
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(Modifier.weight(1f))
-        Spacer(Modifier.width(GAME_HEADER_TITLE_SPACER))
+        WebGameplayWallet()
     }
     if (confirmingExit && hasMeaningfulProgress) {
         PauseGameKeysWhileShown()
@@ -129,4 +143,59 @@ internal fun Game2048State.hasMeaningfulProgress(
 private const val GAME_2048_INITIAL_SPAWN_COUNT = 2L
 
 internal val GAME_HEADER_HEIGHT = 52.dp
-private val GAME_HEADER_TITLE_SPACER = 92.dp
+
+/** Lives and gems stay in sight during play, like Android's game bar; tapping opens the Store sheet. */
+@Composable
+private fun WebGameplayWallet() {
+    val wallet = LocalWebLives.current.state ?: return
+    val openStore = LocalWebOpenStore.current
+    Row(horizontalArrangement = Arrangement.spacedBy(WALLET_CHIP_GAP), verticalAlignment = Alignment.CenterVertically) {
+        WalletChip(
+            icon = if (wallet.lives > 0) Icons.Filled.Favorite else Icons.Filled.HeartBroken,
+            value = "${wallet.lives}",
+            description = "Жизни: ${wallet.lives} из ${EconomyPolicy.MAXIMUM_LIVES}",
+            tint = if (wallet.lives > 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
+            onClick = openStore,
+        )
+        WalletChip(
+            icon = Icons.Filled.Diamond,
+            value = "${wallet.gems}",
+            description = "Кристаллы: ${wallet.gems}",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            onClick = openStore,
+        )
+    }
+}
+
+@Composable
+private fun WalletChip(
+    icon: ImageVector,
+    value: String,
+    description: String,
+    tint: Color,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier.clearAndSetSemantics { contentDescription = description },
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = WALLET_CHIP_PADDING, vertical = WALLET_CHIP_VERTICAL_PADDING),
+            horizontalArrangement = Arrangement.spacedBy(WALLET_CHIP_GAP),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(WALLET_ICON_SIZE))
+            Text(value, style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+/** Opens the Store as a sheet over the running game; provided by the Web host. */
+internal val LocalWebOpenStore = staticCompositionLocalOf<() -> Unit> { {} }
+
+private val WALLET_CHIP_GAP = 4.dp
+private val WALLET_CHIP_PADDING = 10.dp
+private val WALLET_CHIP_VERTICAL_PADDING = 6.dp
+private val WALLET_ICON_SIZE = 16.dp

@@ -49,6 +49,8 @@ import com.stanisryz.logica.shared.ui.generated.resources.rule_complete_quota
 import com.stanisryz.logica.shared.ui.generated.resources.rule_preserve_uniqueness
 import com.stanisryz.logica.shared.ui.generated.resources.rule_prevent_three
 import com.stanisryz.logica.shared.ui.generated.resources.searching_hint
+import com.stanisryz.logica.shared.ui.generated.resources.tool_caption_black
+import com.stanisryz.logica.shared.ui.generated.resources.tool_caption_white
 import com.stanisryz.logica.shared.ui.generated.resources.tool_not_selected
 import com.stanisryz.logica.shared.ui.generated.resources.tool_off
 import com.stanisryz.logica.shared.ui.generated.resources.tool_on
@@ -233,12 +235,14 @@ fun BalanceToolBar(
                 balanceValueTool(
                     value = BalanceCell.ONE,
                     label = stringResource(Res.string.balance_tool_black),
+                    caption = stringResource(Res.string.tool_caption_black),
                     selectedValue = selectedValue,
                     onSelectValue = onSelectValue,
                 ),
                 balanceValueTool(
                     value = BalanceCell.ZERO,
                     label = stringResource(Res.string.balance_tool_white),
+                    caption = stringResource(Res.string.tool_caption_white),
                     selectedValue = selectedValue,
                     onSelectValue = onSelectValue,
                 ),
@@ -249,6 +253,7 @@ fun BalanceToolBar(
                     selected = isPencilMode,
                     onClick = onTogglePencil,
                     symbol = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                    caption = stringResource(Res.string.tool_pencil),
                 ),
             ) +
                 listOfNotNull(
@@ -263,6 +268,7 @@ fun BalanceToolBar(
 private fun balanceValueTool(
     value: BalanceCell,
     label: String,
+    caption: String,
     selectedValue: BalanceCell,
     onSelectValue: (BalanceCell) -> Unit,
 ): PuzzleTool =
@@ -275,6 +281,7 @@ private fun balanceValueTool(
         selected = selectedValue == value,
         onClick = { onSelectValue(value) },
         symbol = { BalancePiece(value, Modifier.size(BALANCE_TOOL_PIECE_SIZE)) },
+        caption = caption,
     )
 
 @Composable

@@ -411,6 +411,7 @@ private fun ReadyContent(
 
     CompositionLocalProvider(
         LocalWebLives provides livesUi,
+        LocalWebOpenStore provides openStore,
         LocalWebKeyboard provides keyboard,
         LocalOpenTutorial provides { puzzleType -> tutorialFor = puzzleType },
     ) {

@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -46,6 +46,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.editable_cell
 import com.stanisryz.logica.shared.ui.generated.resources.fixed_cell
 import com.stanisryz.logica.shared.ui.generated.resources.incorrect_cell
 import com.stanisryz.logica.shared.ui.generated.resources.pencil_marks_suffix
+import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -116,17 +117,20 @@ private fun BalanceCellView(
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
+    val palette = LocalLogicaPalette.current
     val isFixed = status == BalanceCellStatus.FIXED
     val isIncorrect = status == BalanceCellStatus.INCORRECT
     val isConfirmed = status == BalanceCellStatus.CORRECT
+    // Only the wrong piece is filled red; the rest of the broken line keeps its tone and gets a thin
+    // red edge, so a single mistake no longer paints a whole row and column.
     val background =
         when {
-            isIncorrect || isConflict -> colors.errorContainer
+            isIncorrect -> colors.errorContainer
             isHintTarget -> colors.tertiaryContainer
             isHintEvidence -> colors.secondaryContainer
             isGuided -> colors.primaryContainer
             isFixed -> colors.surfaceVariant
-            isConfirmed -> colors.surfaceContainerHighest
+            isConfirmed -> palette.successContainer.copy(alpha = CONFIRMED_FILL_ALPHA)
             else -> colors.surface
         }
     val borderColor =
@@ -158,17 +162,19 @@ private fun BalanceCellView(
     Box(
         modifier =
             modifier
-                .border(if (isHintTarget || isConflict || isIncorrect || isGuided) 2.dp else 1.dp, borderColor)
+                .border(if (isHintTarget || isIncorrect || isGuided) 2.dp else 1.dp, borderColor)
                 .background(background)
                 .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
                 .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
         BalancePiece(value, Modifier.fillMaxSize().padding(8.dp))
-        if (isFixed) {
+        // Clues are told apart by their tone alone; a check marks what the player has closed correctly.
+        if (isConfirmed) {
             Icon(
-                imageVector = Icons.Filled.Lock,
+                imageVector = Icons.Filled.Check,
                 contentDescription = null,
+                tint = palette.success,
                 modifier = Modifier.align(Alignment.TopEnd).offset((-2).dp, 2.dp).size(14.dp),
             )
         }
@@ -177,7 +183,7 @@ private fun BalanceCellView(
                 imageVector = Icons.Filled.PriorityHigh,
                 contentDescription = null,
                 tint = colors.error,
-                modifier = Modifier.align(Alignment.TopStart).size(12.dp),
+                modifier = Modifier.align(Alignment.TopStart).padding(2.dp).size(16.dp),
             )
         }
         if (pencilMarks.isNotEmpty()) {
@@ -237,3 +243,4 @@ private const val PENCIL_PIECE_RATIO = 0.24f
 private val MIN_PENCIL_PIECE_SIZE = 7.dp
 private val MAX_PENCIL_PIECE_SIZE = 12.dp
 private val PIECE_OUTLINE = 1.dp
+private const val CONFIRMED_FILL_ALPHA = 0.55f

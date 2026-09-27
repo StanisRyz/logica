@@ -154,7 +154,8 @@ private fun CrownsCellView(
     val isConfirmed = status == CrownsCellStatus.CORRECT
     val background =
         when {
-            isConflict || isIncorrect -> colors.errorContainer
+            // Only the wrong value is filled red; conflicting cells keep their region and get a ring.
+            isIncorrect -> colors.errorContainer
             isHintConflict -> colors.errorContainer.copy(alpha = 0.72f)
             isHintTarget -> colors.tertiaryContainer
             isHintEvidence -> colors.secondaryContainer
@@ -269,7 +270,7 @@ private fun CrownsCellView(
                 },
         contentAlignment = Alignment.Center,
     ) {
-        val symbolTint = if (isConflict || isIncorrect) colors.onErrorContainer else palette.onCrownsRegion
+        val symbolTint = if (isIncorrect) colors.onErrorContainer else palette.onCrownsRegion
         when (cell) {
             CrownsPlayerCell.EMPTY -> Unit
             CrownsPlayerCell.MARKED ->
