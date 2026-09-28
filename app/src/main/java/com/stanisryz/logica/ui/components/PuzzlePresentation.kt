@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Balance
+import androidx.compose.material.icons.rounded.Brush
 import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.Grid4x4
 import androidx.compose.material.icons.rounded.SortByAlpha
@@ -31,6 +32,7 @@ internal fun PuzzleType.titleResource(): Int =
         PuzzleType.WORD -> R.string.word
         PuzzleType.SUDOKU -> R.string.sudoku
         PuzzleType.GAME_2048 -> R.string.game_2048_title
+        PuzzleType.NONOGRAM -> R.string.nonogram
         else -> error("$this has no user-facing title yet.")
     }
 
@@ -43,6 +45,7 @@ internal fun PuzzleType.accentColor(): Color =
         PuzzleType.WORD -> MaterialTheme.colorScheme.secondary
         PuzzleType.SUDOKU -> MaterialTheme.colorScheme.primary
         PuzzleType.GAME_2048 -> MaterialTheme.colorScheme.tertiary
+        PuzzleType.NONOGRAM -> MaterialTheme.colorScheme.secondary
         else -> MaterialTheme.colorScheme.primary
     }
 
@@ -76,6 +79,7 @@ internal fun PuzzleArtwork(
                     PuzzleType.WORD -> Icons.Rounded.SortByAlpha
                     PuzzleType.SUDOKU -> Icons.Rounded.Extension
                     PuzzleType.GAME_2048 -> Icons.Rounded.Grid4x4
+                    PuzzleType.NONOGRAM -> Icons.Rounded.Brush
                     else -> Icons.Rounded.Extension
                 }
             Icon(icon, contentDescription = null, tint = accent, modifier = iconModifier)

@@ -45,6 +45,16 @@ internal fun WebStatisticsAggregate.toProfileStatistics(): ProfileStatistics {
                 solvedAttemptDistribution = ProfileAttemptDistribution.from(word.wordSolvedAttempts),
             ),
         dailyMetrics = null,
+        nonogram =
+            totals(PuzzleType.NONOGRAM).let { nonogram ->
+                SudokuProfileStatistics(
+                    played = nonogram.played,
+                    solved = nonogram.solved,
+                    failed = nonogram.failed,
+                    hintsUsed = nonogram.hints,
+                    solvedByDifficulty = solvedDifficultyCounts(PuzzleType.NONOGRAM),
+                )
+            },
     )
 }
 

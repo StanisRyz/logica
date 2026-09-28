@@ -58,6 +58,10 @@ internal sealed interface AppDestination {
 
     data object Game2048Tutorial : AppDestination
 
+    data object NonogramStart : AppDestination
+
+    data object NonogramTutorial : AppDestination
+
     data class BalanceGame(
         val launch: GameAttemptLaunch,
     ) : AppDestination
@@ -75,6 +79,10 @@ internal sealed interface AppDestination {
     ) : AppDestination
 
     data class Game2048Game(
+        val launch: GameAttemptLaunch,
+    ) : AppDestination
+
+    data class NonogramGame(
         val launch: GameAttemptLaunch,
     ) : AppDestination
 }
@@ -97,11 +105,13 @@ internal fun AppDestination.showsWallet(): Boolean =
         AppDestination.WordStart,
         AppDestination.SudokuStart,
         AppDestination.Game2048Start,
+        AppDestination.NonogramStart,
         is AppDestination.BalanceGame,
         is AppDestination.CrownsGame,
         is AppDestination.WordGame,
         is AppDestination.SudokuGame,
         is AppDestination.Game2048Game,
+        is AppDestination.NonogramGame,
         -> true
         else -> false
     }
@@ -125,6 +135,7 @@ internal fun AppDestination.isGameplay(): Boolean =
         is AppDestination.WordGame,
         is AppDestination.SudokuGame,
         is AppDestination.Game2048Game,
+        is AppDestination.NonogramGame,
         -> true
         else -> false
     }
@@ -137,6 +148,7 @@ internal fun AppDestination.gameplayPuzzleType(): PuzzleType? =
         is AppDestination.WordGame -> PuzzleType.WORD
         is AppDestination.SudokuGame -> PuzzleType.SUDOKU
         is AppDestination.Game2048Game -> PuzzleType.GAME_2048
+        is AppDestination.NonogramGame -> PuzzleType.NONOGRAM
         else -> null
     }
 

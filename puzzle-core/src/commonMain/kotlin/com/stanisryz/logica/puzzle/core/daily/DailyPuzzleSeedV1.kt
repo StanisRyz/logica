@@ -44,6 +44,7 @@ object DailyPuzzleSeedV1 {
                 PuzzleType.WATER_JUGS -> 6
                 PuzzleType.WORD -> 7
                 PuzzleType.GAME_2048 -> 8
+                PuzzleType.NONOGRAM -> 9
             }
 
     private const val FNV_OFFSET_BASIS = -3750763034362895579L

@@ -21,6 +21,7 @@ class GameHubModelTest {
                 PuzzleType.WORD,
                 PuzzleType.SUDOKU,
                 PuzzleType.GAME_2048,
+                PuzzleType.NONOGRAM,
             ),
             GAME_CATALOG_PUZZLE_TYPES,
         )

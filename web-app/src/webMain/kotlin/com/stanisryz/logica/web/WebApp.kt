@@ -62,6 +62,7 @@ import com.stanisryz.logica.puzzle.core.game2048.Game2048Direction
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Status
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.puzzle.core.nonogram.NonogramGameStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameStatus
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
@@ -94,6 +95,7 @@ import com.stanisryz.logica.ui.daily.DailyShareFormatter
 import com.stanisryz.logica.ui.daily.DailyShareLanguage
 import com.stanisryz.logica.ui.game2048.Game2048Content
 import com.stanisryz.logica.ui.game2048.formatGame2048Number
+import com.stanisryz.logica.ui.nonogram.NonogramGameContent
 import com.stanisryz.logica.ui.profile.Achievement
 import com.stanisryz.logica.ui.profile.AchievementAnnouncementHost
 import com.stanisryz.logica.ui.profile.AchievementAnnouncer
@@ -143,6 +145,8 @@ private sealed interface WebRoute {
     data object Sudoku : WebRoute
 
     data object Game2048 : WebRoute
+
+    data object Nonogram : WebRoute
 }
 
 private fun routeHasActivePuzzle(
@@ -152,6 +156,7 @@ private fun routeHasActivePuzzle(
     wordState: WebWordState,
     sudokuState: WebSudokuState,
     game2048State: Web2048State,
+    nonogramState: WebNonogramState,
 ): Boolean =
     when (route) {
         WebRoute.GameHub, WebRoute.Profile, WebRoute.Store -> false
@@ -170,6 +175,9 @@ private fun routeHasActivePuzzle(
         WebRoute.Game2048 ->
             game2048State is Web2048State.Playing &&
                 game2048State.game.status == Game2048Status.IN_PROGRESS
+        WebRoute.Nonogram ->
+            nonogramState is WebNonogramState.Playing &&
+                nonogramState.game.status == NonogramGameStatus.IN_PROGRESS
     }
 
 /**
@@ -194,6 +202,7 @@ internal fun WebApp(
     wordController: WebWordController,
     sudokuController: WebSudokuController,
     game2048Controller: Web2048Controller,
+    nonogramController: WebNonogramController,
     lifecycle: WebHostLifecycle,
     playerSession: WebPlayerSessionController,
     dailyCoordinator: WebDailyGameplayCoordinator,
@@ -229,6 +238,7 @@ internal fun WebApp(
                 wordController,
                 sudokuController,
                 game2048Controller,
+                nonogramController,
                 playerSession,
             ) {
                 onDispose {
@@ -238,6 +248,7 @@ internal fun WebApp(
                     wordController.dispose()
                     sudokuController.dispose()
                     game2048Controller.dispose()
+                    nonogramController.dispose()
                     playerSession.dispose()
                 }
             }
@@ -255,6 +266,7 @@ internal fun WebApp(
                             wordController = wordController,
                             sudokuController = sudokuController,
                             game2048Controller = game2048Controller,
+                            nonogramController = nonogramController,
                             playerSession = playerSession,
                             dailyCoordinator = dailyCoordinator,
                             storeProcessor = storeProcessor,
@@ -345,6 +357,7 @@ private fun ReadyContent(
     wordController: WebWordController,
     sudokuController: WebSudokuController,
     game2048Controller: Web2048Controller,
+    nonogramController: WebNonogramController,
     playerSession: WebPlayerSessionController,
     dailyCoordinator: WebDailyGameplayCoordinator,
     storeProcessor: WebStoreProcessor,
@@ -373,13 +386,14 @@ private fun ReadyContent(
     val wordState = wordController.state
     val sudokuState = sudokuController.state
     val game2048State = game2048Controller.state
+    val nonogramState = nonogramController.state
     val accountChangeRevision = playerSession.accountChangeRevision
 
     // Fullscreen ads are part of the EFFECTIVE lifecycle: WebHostLifecycle owns the suppression
     // flag, so lifecycleState already reflects ad-driven inactivity for GameplayAPI and audio
     // consumers; closing an ad recomputes from real browser visibility/focus/Yandex state.
     val hasActivePuzzle =
-        routeHasActivePuzzle(route, balanceState, crownsState, wordState, sudokuState, game2048State)
+        routeHasActivePuzzle(route, balanceState, crownsState, wordState, sudokuState, game2048State, nonogramState)
     LaunchedEffect(route, hasActivePuzzle, storeSheetOpen, lifecycleState) {
         controller.setGameplayActive(
             hasActivePuzzle && !storeSheetOpen && lifecycleState == PlatformLifecycleState.ACTIVE,
@@ -421,6 +435,7 @@ private fun ReadyContent(
             wordController.showDifficultySelector()
             sudokuController.showDifficultySelector()
             game2048Controller.showDifficultySelector()
+            nonogramController.showDifficultySelector()
             storeSheetOpen = false
             tutorialFor = null
             route = WebRoute.GameHub
@@ -562,6 +577,10 @@ private fun ReadyContent(
                                         game2048Controller.showDifficultySelector()
                                         WebRoute.Game2048
                                     }
+                                    PuzzleType.NONOGRAM -> {
+                                        nonogramController.showDifficultySelector()
+                                        WebRoute.Nonogram
+                                    }
                                     else -> error("$puzzleType has no Web game flow.")
                                 }
                         },
@@ -616,6 +635,8 @@ private fun ReadyContent(
                                                             }
                                                         PuzzleType.GAME_2048 ->
                                                             WebRoute.Game2048.also { game2048Controller.selectDifficulty(difficulty) }
+                                                        PuzzleType.NONOGRAM ->
+                                                            WebRoute.Nonogram.also { nonogramController.selectDifficulty(difficulty) }
                                                         else -> error("$puzzleType has no Web game flow.")
                                                     }
                                             }
@@ -750,6 +771,18 @@ private fun ReadyContent(
                     onSolvedNextLevel = runSolvedNextLevel,
                     onExitGame2048 = {
                         game2048Controller.showDifficultySelector()
+                        route = WebRoute.GameHub
+                    },
+                )
+            WebRoute.Nonogram ->
+                NonogramFlow(
+                    state = nonogramState,
+                    controller = nonogramController,
+                    hintCount = hintCount,
+                    onOpenStore = openStore,
+                    onSolvedNextLevel = runSolvedNextLevel,
+                    onExitNonogram = {
+                        nonogramController.showDifficultySelector()
                         route = WebRoute.GameHub
                     },
                 )
@@ -1039,6 +1072,92 @@ private fun webEconomyMetricsOrNull(
         }
         else -> null
     }
+
+@Composable
+private fun NonogramFlow(
+    state: WebNonogramState,
+    controller: WebNonogramController,
+    hintCount: Int?,
+    onOpenStore: () -> Unit,
+    onExitNonogram: () -> Unit,
+    onSolvedNextLevel: (() -> Unit) -> Unit,
+) {
+    when (state) {
+        WebNonogramState.DifficultySelection ->
+            DifficultyContent(
+                puzzleType = PuzzleType.NONOGRAM,
+                onBack = onExitNonogram,
+                onStart = controller::selectDifficulty,
+            )
+        is WebNonogramState.Loading ->
+            WebCatalogLoadingContent(
+                difficulty = state.difficulty,
+                levelNumber = state.levelNumber?.value,
+                onBack = controller::showDifficultySelector,
+                isDaily = false,
+            )
+        is WebNonogramState.Error ->
+            WebCatalogLevelErrorContent(
+                levelNumber = state.levelNumber?.value,
+                detail = state.detail,
+                onRetry = controller::retryLoading,
+                onBack = controller::showDifficultySelector,
+                isDaily = false,
+            )
+        is WebNonogramState.Playing -> {
+            val livesGuard = LocalWebLives.current.guard
+            val transitionAd = LocalWebTransitionAd.current
+            Column(Modifier.fillMaxSize()) {
+                WebGameplayHeader(
+                    puzzleType = PuzzleType.NONOGRAM,
+                    isDaily = false,
+                    hasMeaningfulProgress = state.hasMeaningfulProgress,
+                    onExit = controller::showDifficultySelector,
+                )
+                NonogramGameContent(
+                    puzzle = state.puzzle,
+                    game = state.game,
+                    difficulty = state.source.difficulty,
+                    levelNumber = state.source.catalogLevelNumberOrNull,
+                    selectedTool = state.selectedTool,
+                    gameplayEnabled = state.game.status == NonogramGameStatus.IN_PROGRESS,
+                    onCell = controller::onCell,
+                    onSelectTool = controller::selectTool,
+                    onHint = controller::requestHint,
+                    modifier = Modifier.weight(1f),
+                    hintCount = hintCount,
+                )
+            }
+            if (controller.hintsExhaustedNotice) {
+                WebHintsExhaustedDialog(
+                    onOpenStore = {
+                        controller.dismissHintsExhaustedNotice()
+                        onOpenStore()
+                    },
+                    onDismiss = controller::dismissHintsExhaustedNotice,
+                )
+            }
+            WebCatalogSaveErrorBanner(
+                completion = controller.completionState,
+                onRetrySave = controller::retrySave,
+            )
+            WebOrdinaryCatalogTerminalDialog(
+                puzzleType = PuzzleType.NONOGRAM,
+                visible = state.game.status.isTerminal,
+                difficulty = state.source.difficulty,
+                mistakesUsed = state.game.mistakesUsed,
+                hintsUsed = state.game.hintsUsed,
+                levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
+                solved = state.game.status == NonogramGameStatus.SOLVED,
+                completion = controller.completionState,
+                onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },
+                onRetry = { livesGuard { transitionAd(controller::retry) } },
+                onRetrySave = controller::retrySave,
+                onBack = { transitionAd(controller::showDifficultySelector) },
+            )
+        }
+    }
+}
 
 @Composable
 private fun BalanceFlow(

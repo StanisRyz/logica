@@ -137,8 +137,9 @@ tasks.register<JavaExec>("buildCatalogLevelPacks") {
             .asFile.path
     val levelPackGames = providers.gradleProperty("levelPackGames").orElse("all")
     val levelPackSlots = providers.gradleProperty("levelPackSlots").orElse("10000")
+    val levelPackCreate = providers.gradleProperty("levelPackCreate").orElse("false")
     argumentProviders.add(
-        CommandLineArgumentProvider { listOf(puzzleDataPath, levelPackGames.get(), levelPackSlots.get()) },
+        CommandLineArgumentProvider { listOf(puzzleDataPath, levelPackGames.get(), levelPackSlots.get(), levelPackCreate.get()) },
     )
 }
 

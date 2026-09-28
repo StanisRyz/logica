@@ -36,6 +36,9 @@ import com.stanisryz.logica.shared.ui.generated.resources.rules_crowns_2
 import com.stanisryz.logica.shared.ui.generated.resources.rules_crowns_3
 import com.stanisryz.logica.shared.ui.generated.resources.rules_done
 import com.stanisryz.logica.shared.ui.generated.resources.rules_mistakes
+import com.stanisryz.logica.shared.ui.generated.resources.rules_nonogram_1
+import com.stanisryz.logica.shared.ui.generated.resources.rules_nonogram_2
+import com.stanisryz.logica.shared.ui.generated.resources.rules_nonogram_3
 import com.stanisryz.logica.shared.ui.generated.resources.rules_sudoku_1
 import com.stanisryz.logica.shared.ui.generated.resources.rules_sudoku_2
 import com.stanisryz.logica.shared.ui.generated.resources.rules_title
@@ -108,6 +111,8 @@ private fun PuzzleType.ruleResources(): List<StringResource> =
         PuzzleType.WORD ->
             listOf(Res.string.rules_word_language, Res.string.rules_word_1, Res.string.rules_word_2, Res.string.rules_word_3)
         PuzzleType.GAME_2048 -> listOf(Res.string.rules_2048_1, Res.string.rules_2048_2, Res.string.rules_2048_3)
+        PuzzleType.NONOGRAM ->
+            listOf(Res.string.rules_nonogram_1, Res.string.rules_nonogram_2, Res.string.rules_nonogram_3, Res.string.rules_mistakes)
         else -> emptyList()
     }
 

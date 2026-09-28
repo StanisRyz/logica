@@ -104,6 +104,8 @@ import com.stanisryz.logica.ui.screens.CrownsTutorialRoute
 import com.stanisryz.logica.ui.screens.Game2048Route
 import com.stanisryz.logica.ui.screens.Game2048TutorialRoute
 import com.stanisryz.logica.ui.screens.GameHubRoute
+import com.stanisryz.logica.ui.screens.NonogramGameRoute
+import com.stanisryz.logica.ui.screens.NonogramTutorialRoute
 import com.stanisryz.logica.ui.screens.ProfileRoute
 import com.stanisryz.logica.ui.screens.SettingsScreen
 import com.stanisryz.logica.ui.screens.StoreRewardedOffers
@@ -554,6 +556,24 @@ internal fun LogicaNavigation(
                                 onDone = { backStack.removeLastOrNull() },
                             )
                         }
+                        entry<AppDestination.NonogramStart> {
+                            PuzzleStartScreen(
+                                puzzleType = PuzzleType.NONOGRAM,
+                                stars = difficultyStars(statisticsRepository, PuzzleType.NONOGRAM),
+                                economy = economy,
+                                tutorialPending = !settings.tutorialCompleted(PuzzleType.NONOGRAM),
+                                onTutorialOffered = { onTutorialSeen(PuzzleType.NONOGRAM) },
+                                onOpenTutorial = { backStack.add(AppDestination.NonogramTutorial) },
+                                onStart = { difficulty -> openLevel(PuzzleType.NONOGRAM, difficulty) },
+                                onRestoreLife = onRestoreLife,
+                            )
+                        }
+                        entry<AppDestination.NonogramTutorial> {
+                            NonogramTutorialRoute(
+                                settingsRepository = settingsRepository,
+                                onDone = { backStack.removeLastOrNull() },
+                            )
+                        }
                         entry<AppDestination.BalanceGame> { destination ->
                             BalanceGameRoute(
                                 launch = destination.launch,
@@ -632,6 +652,22 @@ internal fun LogicaNavigation(
                                 onRestoreLife = onRestoreLife,
                             )
                         }
+                        entry<AppDestination.NonogramGame> { destination ->
+                            NonogramGameRoute(
+                                launch = destination.launch,
+                                attemptFactory = attemptFactory,
+                                completionRepository = gameCompletionRepository,
+                                economyRepository = economyRepository,
+                                exitGuard = exitGuard,
+                                hapticsEnabled = settings.hapticsEnabled,
+                                onBack = goBack,
+                                onNextLevel = { openNextLevel(PuzzleType.NONOGRAM, destination.launch) },
+                                onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                                onTerminalAction = onTerminalAction,
+                                onRestoreLife = onRestoreLife,
+                                onOpenStore = openStore,
+                            )
+                        }
                     },
             )
         }
@@ -682,6 +718,7 @@ private fun PuzzleType.gameDestination(launch: GameAttemptLaunch): AppDestinatio
         PuzzleType.WORD -> AppDestination.WordGame(launch)
         PuzzleType.SUDOKU -> AppDestination.SudokuGame(launch)
         PuzzleType.GAME_2048 -> AppDestination.Game2048Game(launch)
+        PuzzleType.NONOGRAM -> AppDestination.NonogramGame(launch)
         else -> error("$this is not a Catalog game.")
     }
 
@@ -692,6 +729,7 @@ private fun PuzzleType.startDestination(): AppDestination =
         PuzzleType.WORD -> AppDestination.WordStart
         PuzzleType.SUDOKU -> AppDestination.SudokuStart
         PuzzleType.GAME_2048 -> AppDestination.Game2048Start
+        PuzzleType.NONOGRAM -> AppDestination.NonogramStart
         else -> error("$this is not a Catalog game.")
     }
 
@@ -865,6 +903,8 @@ private fun destinationTitle(
             AppDestination.SudokuTutorial -> R.string.sudoku_tutorial_title
             AppDestination.Game2048Start, is AppDestination.Game2048Game -> R.string.game_2048_title
             AppDestination.Game2048Tutorial -> R.string.game_2048_tutorial_title
+            AppDestination.NonogramStart, is AppDestination.NonogramGame -> R.string.nonogram
+            AppDestination.NonogramTutorial -> R.string.nonogram_tutorial_title
         },
     )
 

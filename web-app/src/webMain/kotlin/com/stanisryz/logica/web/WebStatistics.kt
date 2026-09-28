@@ -74,7 +74,7 @@ internal data class WebStatisticsDeviceComponent(
     }
 
     companion object {
-        const val MAX_BUCKETS = 5 * 4
+        const val MAX_BUCKETS = 6 * 4
     }
 }
 
@@ -389,6 +389,7 @@ private val WEB_STATISTICS_PUZZLE_TYPES =
         PuzzleType.WORD,
         PuzzleType.SUDOKU,
         PuzzleType.GAME_2048,
+        PuzzleType.NONOGRAM,
     )
 
 private fun puzzleCode(puzzleType: PuzzleType): Int =
@@ -398,6 +399,7 @@ private fun puzzleCode(puzzleType: PuzzleType): Int =
         PuzzleType.WORD -> 3
         PuzzleType.SUDOKU -> 4
         PuzzleType.GAME_2048 -> 5
+        PuzzleType.NONOGRAM -> 6
         else -> error("$puzzleType has no Web statistics code.")
     }
 
@@ -408,6 +410,7 @@ private fun puzzleType(code: Int): PuzzleType =
         3 -> PuzzleType.WORD
         4 -> PuzzleType.SUDOKU
         5 -> PuzzleType.GAME_2048
+        6 -> PuzzleType.NONOGRAM
         else -> error("Unknown Web statistics puzzle code $code.")
     }
 

@@ -54,10 +54,12 @@ import com.stanisryz.logica.shared.ui.generated.resources.game_catalog_action
 import com.stanisryz.logica.shared.ui.generated.resources.game_catalog_play_label
 import com.stanisryz.logica.shared.ui.generated.resources.game_catalog_section_title
 import com.stanisryz.logica.shared.ui.generated.resources.game_crowns
+import com.stanisryz.logica.shared.ui.generated.resources.game_nonogram
 import com.stanisryz.logica.shared.ui.generated.resources.game_sudoku
 import com.stanisryz.logica.shared.ui.generated.resources.game_title_2048
 import com.stanisryz.logica.shared.ui.generated.resources.game_title_balance
 import com.stanisryz.logica.shared.ui.generated.resources.game_title_crowns
+import com.stanisryz.logica.shared.ui.generated.resources.game_title_nonogram
 import com.stanisryz.logica.shared.ui.generated.resources.game_title_sudoku
 import com.stanisryz.logica.shared.ui.generated.resources.game_title_word
 import com.stanisryz.logica.shared.ui.generated.resources.game_word
@@ -67,7 +69,7 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
-/** The canonical five-game catalog order shared by Android and Web hosts. */
+/** The canonical six-game catalog order shared by Android and Web hosts. */
 val GAME_CATALOG_PUZZLE_TYPES: List<PuzzleType> =
     listOf(
         PuzzleType.BALANCE,
@@ -75,6 +77,7 @@ val GAME_CATALOG_PUZZLE_TYPES: List<PuzzleType> =
         PuzzleType.WORD,
         PuzzleType.SUDOKU,
         PuzzleType.GAME_2048,
+        PuzzleType.NONOGRAM,
     )
 
 /** One scrollable game catalog with optional host-owned content before the cards. */
@@ -311,6 +314,7 @@ fun PuzzleType.catalogArtworkResource(): DrawableResource =
         PuzzleType.WORD -> Res.drawable.game_word
         PuzzleType.SUDOKU -> Res.drawable.game_sudoku
         PuzzleType.GAME_2048 -> Res.drawable.game_2048
+        PuzzleType.NONOGRAM -> Res.drawable.game_nonogram
         else -> error("$this has no Catalog artwork.")
     }
 
@@ -321,6 +325,7 @@ fun PuzzleType.catalogTitleResource(): StringResource =
         PuzzleType.WORD -> Res.string.game_title_word
         PuzzleType.SUDOKU -> Res.string.game_title_sudoku
         PuzzleType.GAME_2048 -> Res.string.game_title_2048
+        PuzzleType.NONOGRAM -> Res.string.game_title_nonogram
         else -> error("$this has no Catalog title.")
     }
 

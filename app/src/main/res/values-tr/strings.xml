@@ -216,4 +216,6 @@
     <string name="store_rewarded_offer">Kısa bir reklam izleyerek</string>
     <string name="store_rewarded_watch">İzle</string>
     <string name="store_rewarded_unavailable">Reklam şu anda kullanılamıyor.</string>
+    <string name="nonogram">Nonogram</string>
+    <string name="nonogram_tutorial_title">Nonogram eğitimi</string>
 </resources>

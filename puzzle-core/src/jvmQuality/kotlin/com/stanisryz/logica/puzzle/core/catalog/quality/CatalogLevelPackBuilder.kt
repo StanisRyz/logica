@@ -16,6 +16,7 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV1
 import com.stanisryz.logica.puzzle.core.random.PuzzleRandomV1
 import com.stanisryz.logica.puzzle.core.sudoku.BinarySudokuDataset
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetResult
@@ -34,7 +35,9 @@ import kotlin.system.exitProcess
  * content slot and verifies separately generated candidate bytes against the read-only release.
  *
  * Usage: `./gradlew :puzzle-core:buildCatalogLevelPacks [-PlevelPackGames=balance,crowns]
- * [-PlevelPackSlots=10000]`.
+ * [-PlevelPackSlots=10000] [-PlevelPackCreate=true]`. `levelPackCreate` freezes the buckets of a
+ * newly added game once: it writes only buckets that do not exist yet and records their checksums;
+ * every existing bucket is still only verified.
  */
 object CatalogLevelPackBuilder {
     @JvmStatic
@@ -47,7 +50,8 @@ object CatalogLevelPackBuilder {
         val requestedGames = parseGames(args[1])
         val slots = args.getOrNull(2)?.toIntOrNull() ?: CatalogLevelPacks.SLOTS_PER_BUCKET
         require(slots in 1..CatalogLevelPacks.SLOTS_PER_BUCKET) { "Slot count must be within 1..10000." }
-        CatalogLevelPackIntegrity.verify(puzzleDataDirectory)
+        createMissing = args.getOrNull(3).toBoolean()
+        if (!createMissing) CatalogLevelPackIntegrity.verify(puzzleDataDirectory)
 
         println("Building Catalog Level Pack V1: $slots slots per bucket, games=${requestedGames.joinToString()}")
         val startedAt = System.nanoTime()
@@ -71,7 +75,11 @@ object CatalogLevelPackBuilder {
         }
         println("Finished in ${elapsedSeconds(startedAt)}s.")
         if (failures > 0) exitProcess(1)
+        if (createMissing) CatalogLevelPackIntegrity.verify(puzzleDataDirectory)
     }
+
+    /** Set by `levelPackCreate`: a missing bucket of a new game may be written once. */
+    private var createMissing = false
 
     private fun parseGames(raw: String): List<PuzzleType> =
         if (raw.equals("all", ignoreCase = true)) {
@@ -100,6 +108,7 @@ object CatalogLevelPackBuilder {
                 PuzzleType.WORD -> wordBucket(difficulty, slots)
                 PuzzleType.SUDOKU -> sudokuBucket(puzzleDataDirectory, difficulty, slots)
                 PuzzleType.GAME_2048 -> game2048Bucket(difficulty, slots)
+                PuzzleType.NONOGRAM -> nonogramBucket(difficulty, slots)
                 else -> error("$puzzleType has no Catalog level pack.")
             }
         check(bucket.seeds.size == slots) { "Expected $slots accepted seeds, found ${bucket.seeds.size}." }
@@ -139,6 +148,20 @@ object CatalogLevelPackBuilder {
         }
         val candidate = output.toByteArray()
         verify(candidate, puzzleType, difficulty, bucket)
+        if (createMissing && !target.exists()) {
+            target.parentFile.mkdirs()
+            target.writeBytes(candidate)
+            val manifest = File(puzzleDataDirectory, "levels/v1/checksums.sha256")
+            val relativePath =
+                CatalogLevelPackFormat
+                    .assetPath(
+                        CatalogLevelPackVersion.V1,
+                        puzzleType,
+                        difficulty,
+                    ).removePrefix("levels/v1/")
+            manifest.appendText("${CatalogLevelPackIntegrity.sha256(candidate)}  $relativePath\n")
+            return target
+        }
         require(target.isFile) {
             "Frozen Level Pack V1 bucket is missing: ${target.path}. Restore the released asset instead of recreating V1."
         }
@@ -312,6 +335,25 @@ object CatalogLevelPackBuilder {
             "The frozen 2048 opening is not a fresh board."
         }
         return Bucket(seeds.toList(), GeneratorVersion(Game2048GeneratorVersion.V2.value))
+    }
+
+    /** Nonogram reuses Generator V1: only seeds whose picture line logic completes enter the pack. */
+    private fun nonogramBucket(
+        difficulty: Difficulty,
+        slots: Int,
+    ): Bucket {
+        val result =
+            searchAcceptedSeeds(slots) { seed ->
+                runCatching {
+                    val puzzle = NonogramGeneratorV1().generate(PuzzleSeed(seed), difficulty)
+                    puzzle.size.toString() + ":" + puzzle.solution.joinToString("") { if (it) "1" else "0" }
+                }.getOrNull()
+            }
+        return Bucket(
+            seeds = result.seeds,
+            generatorVersion = NonogramGeneratorV1().version,
+            uniqueness = result.uniqueness,
+        )
     }
 
     // ---- Shared deterministic seed search ------------------------------------------------------

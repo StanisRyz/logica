@@ -29,6 +29,8 @@ data class ProfileStatistics(
     val game2048: Game2048ProfileStatistics,
     val word: WordProfileStatistics,
     val dailyMetrics: DailyProfileMetrics?,
+    /** Nonogram shares Sudoku's shape: played, solved, failed, hints, and solves per difficulty. */
+    val nonogram: SudokuProfileStatistics = SudokuProfileStatistics.EMPTY,
     val economy: ProfileEconomyMetrics? = null,
     /** Best stars per Catalog level; null when the host keeps no star history. */
     val stars: ProfileStarSummary? = null,
@@ -184,6 +186,10 @@ data class SudokuProfileStatistics(
 ) {
     init {
         require(played >= 0L && solved >= 0L && failed >= 0L && hintsUsed >= 0L)
+    }
+
+    companion object {
+        val EMPTY = SudokuProfileStatistics(0L, 0L, 0L, 0L, ProfileDifficultyCounts(0L, 0L, 0L, 0L))
     }
 }
 

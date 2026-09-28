@@ -279,7 +279,7 @@
     <string name="achievement_first_solve">İlk adım</string>
     <string name="achievement_first_solve_body">İlk bulmacanı çöz</string>
     <string name="achievement_all_games">Çok yönlü</string>
-    <string name="achievement_all_games_body">Beş oyunun her birinde bir bulmaca çöz</string>
+    <string name="achievement_all_games_body">Altı oyunun her birinde bir bulmaca çöz</string>
     <string name="achievement_solver_50">Çözücü</string>
     <string name="achievement_solver_50_body">50 bulmaca çöz</string>
     <string name="achievement_solver_250">Bulmaca ustası</string>
@@ -347,4 +347,23 @@
         <item>Cmt</item>
         <item>Paz</item>
     </string-array>
+    <string name="game_title_nonogram">Nonogram</string>
+    <string name="nonogram_tool_fill">Hücreyi boya</string>
+    <string name="nonogram_tool_cross">Boş hücreyi işaretle</string>
+    <string name="nonogram_caption_fill">Boya</string>
+    <string name="nonogram_caption_cross">Çarpı</string>
+    <string name="nonogram_board_description">%1$d x %2$d tahta: %4$d boyalı hücreden %3$d tanesi bulundu.</string>
+    <string name="rules_nonogram_1">Her satırın yanındaki ve sütunun üstündeki sayılar, sırasıyla boyalı parçaların uzunluklarıdır. Parçalar arasında en az bir boş hücre vardır.</string>
+    <string name="rules_nonogram_2">Hücreleri boya ya da boş olanlara çarpı koy. Birden çok hücreyi işaretlemek için satır ya da sütun boyunca sürükle.</string>
+    <string name="rules_nonogram_3">Bir satırın ya da sütunun tüm boyalı hücreleri bulununca geri kalanı kendiliğinden işaretlenir.</string>
+    <string name="nonogram_tutorial_clues_title">Sayılar parçalardır</string>
+    <string name="nonogram_tutorial_clues_body">Satırın yanındaki ve sütunun üstündeki sayılar, sırasıyla boyalı parçaların uzunluklarıdır; parçalar arasında en az bir boş hücre vardır. Beş hücrelik satırda 5, satırın tamamının boyalı olduğu anlamına gelir.</string>
+    <string name="nonogram_tutorial_play_title">Kendin dene</string>
+    <string name="nonogram_tutorial_play_body">Boya\'yı seç ve hücrelere dokun ya da satır boyunca sürükle. Boş hücrelere çarpı koyabilirsin. Kalbi çiz.</string>
+    <string name="nonogram_tutorial_rules_title">Hatalar ve ipuçları</string>
+    <string name="nonogram_tutorial_rules_body">Yanlış hücre bir hataya mal olur ve doğru cevabı hemen gösterir. Üç hata seviyeyi kaybettirir. İpucu, sayılardan çıkarılabilen bir hücreyi açar.</string>
+    <string name="nonogram_tutorial_solved">Tamam — resim hazır!</string>
+    <string name="nonogram_tutorial_failed">Üç hata — resme baştan başlayalım.</string>
+    <string name="achievement_nonogram">Ressam</string>
+    <string name="achievement_nonogram_body">25 nonogram çöz</string>
 </resources>

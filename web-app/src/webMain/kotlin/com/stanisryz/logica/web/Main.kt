@@ -175,6 +175,14 @@ fun main() {
     // Migration + canonical write happen once per bound Player context, after all legacy
     // per-domain cloud merges; afterwards durable changes coalesce into unified writes only.
     playerSession.postBindAction = { token -> saveScheduler.restoreAndEstablish(token) }
+    val nonogramController =
+        WebNonogramController.create(
+            controller.puzzleDataLoader,
+            progressCoordinator,
+            statisticsCoordinator,
+            economyCoordinator,
+            storeCoordinator,
+        )
     val balanceController =
         WebBalanceController.create(
             controller.puzzleDataLoader,
@@ -227,6 +235,7 @@ fun main() {
             wordController,
             sudokuController,
             game2048Controller,
+            nonogramController,
             lifecycle,
             playerSession,
             dailyCoordinator,

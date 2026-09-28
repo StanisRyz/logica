@@ -226,4 +226,6 @@
     <string name="store_rewarded_offer">За просмотр короткой рекламы</string>
     <string name="store_rewarded_watch">Смотреть</string>
     <string name="store_rewarded_unavailable">Реклама сейчас недоступна.</string>
+    <string name="nonogram">Нонограмма</string>
+    <string name="nonogram_tutorial_title">Обучение «Нонограмма»</string>
 </resources>

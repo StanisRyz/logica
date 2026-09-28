@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Balance
 import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Brush
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.EventAvailable
@@ -85,6 +86,8 @@ import com.stanisryz.logica.shared.ui.generated.resources.achievement_first_solv
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_first_solve_body
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_game2048
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_game2048_body
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_nonogram
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_nonogram_body
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_perfect_25
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_perfect_25_body
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_solver_1000
@@ -134,9 +137,15 @@ enum class Achievement(
     FIRST_SOLVE("first_solve", Icons.Rounded.TaskAlt, Res.string.achievement_first_solve, Res.string.achievement_first_solve_body, 1, {
         it.totalSolved
     }),
-    ALL_GAMES("all_games", Icons.Rounded.ViewModule, Res.string.achievement_all_games, Res.string.achievement_all_games_body, 5, { stats ->
-        listOf(stats.balance.totalSolved, stats.crowns.totalSolved, stats.sudoku.solved, stats.word.solved, stats.game2048.solved)
-            .count { it > 0L }
+    ALL_GAMES("all_games", Icons.Rounded.ViewModule, Res.string.achievement_all_games, Res.string.achievement_all_games_body, 6, { stats ->
+        listOf(
+            stats.balance.totalSolved,
+            stats.crowns.totalSolved,
+            stats.sudoku.solved,
+            stats.word.solved,
+            stats.game2048.solved,
+            stats.nonogram.solved,
+        ).count { it > 0L }
             .toLong()
     }),
     SOLVER_50("solver_50", Icons.Rounded.Psychology, Res.string.achievement_solver_50, Res.string.achievement_solver_50_body, 50, {
@@ -163,6 +172,9 @@ enum class Achievement(
     WORD("word_50", Icons.Rounded.SortByAlpha, Res.string.achievement_word, Res.string.achievement_word_body, 50, { it.word.solved }),
     GAME_2048("game2048_25", Icons.Rounded.Extension, Res.string.achievement_game2048, Res.string.achievement_game2048_body, 25, {
         it.game2048.solved
+    }),
+    NONOGRAM("nonogram_25", Icons.Rounded.Brush, Res.string.achievement_nonogram, Res.string.achievement_nonogram_body, 25, {
+        it.nonogram.solved
     }),
     WORD_FIRST_TRY(
         "word_first_try",
@@ -218,6 +230,7 @@ private fun expertSolved(statistics: ProfileStatistics): Long =
         statistics.crowns.solvedByDifficulty,
         statistics.sudoku.solvedByDifficulty,
         statistics.game2048.solvedByDifficulty,
+        statistics.nonogram.solvedByDifficulty,
     ).sumOf { it[Difficulty.EXPERT] }
 
 /** Ids of every achievement [statistics] has reached, for hosts that announce new ones. */

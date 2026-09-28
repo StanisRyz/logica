@@ -510,6 +510,14 @@ private fun profileGames(statistics: ProfileStatistics): List<ProfileGame> {
             statistics.game2048.failed,
             statistics.game2048.solvedByDifficulty,
         ),
+        ProfileGame(
+            PuzzleType.NONOGRAM,
+            statistics.nonogram.solved,
+            statistics.nonogram.played,
+            statistics.nonogram.failed,
+            statistics.nonogram.solvedByDifficulty,
+            stars = stars.forGame(PuzzleType.NONOGRAM),
+        ),
     )
 }
 
@@ -806,7 +814,7 @@ private fun PuzzleType.profileAccentColor(): Color =
     when (this) {
         PuzzleType.BALANCE, PuzzleType.SUDOKU -> MaterialTheme.colorScheme.primary
         PuzzleType.CROWNS, PuzzleType.GAME_2048 -> MaterialTheme.colorScheme.tertiary
-        PuzzleType.WORD -> MaterialTheme.colorScheme.secondary
+        PuzzleType.WORD, PuzzleType.NONOGRAM -> MaterialTheme.colorScheme.secondary
         else -> MaterialTheme.colorScheme.primary
     }
 

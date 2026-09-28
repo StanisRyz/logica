@@ -134,6 +134,7 @@ internal object WebCatalogStarsCodec {
             PuzzleType.WORD -> 3
             PuzzleType.SUDOKU -> 4
             PuzzleType.GAME_2048 -> 5
+            PuzzleType.NONOGRAM -> 6
             else -> error("$puzzleType has no Web stars code.")
         }
 
@@ -144,6 +145,7 @@ internal object WebCatalogStarsCodec {
             3 -> PuzzleType.WORD
             4 -> PuzzleType.SUDOKU
             5 -> PuzzleType.GAME_2048
+            6 -> PuzzleType.NONOGRAM
             else -> error("Unknown Web stars puzzle code $code.")
         }
 

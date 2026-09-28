@@ -279,7 +279,7 @@
     <string name="achievement_first_solve">First step</string>
     <string name="achievement_first_solve_body">Solve your first puzzle</string>
     <string name="achievement_all_games">All-rounder</string>
-    <string name="achievement_all_games_body">Solve a puzzle in each of the five games</string>
+    <string name="achievement_all_games_body">Solve a puzzle in each of the six games</string>
     <string name="achievement_solver_50">Solver</string>
     <string name="achievement_solver_50_body">Solve 50 puzzles</string>
     <string name="achievement_solver_250">Puzzle master</string>
@@ -347,4 +347,23 @@
         <item>Sat</item>
         <item>Sun</item>
     </string-array>
+    <string name="game_title_nonogram">Nonogram</string>
+    <string name="nonogram_tool_fill">Fill a cell</string>
+    <string name="nonogram_tool_cross">Mark an empty cell</string>
+    <string name="nonogram_caption_fill">Fill</string>
+    <string name="nonogram_caption_cross">Cross</string>
+    <string name="nonogram_board_description">Board %1$d by %2$d: %3$d of %4$d filled cells found.</string>
+    <string name="rules_nonogram_1">The numbers next to each row and above each column are the lengths of its filled runs, in order. There is at least one empty cell between runs.</string>
+    <string name="rules_nonogram_2">Fill cells or cross out empty ones. Drag along a row or column to mark several cells at once.</string>
+    <string name="rules_nonogram_3">Once every filled cell of a row or column is found, the rest of it is crossed out for you.</string>
+    <string name="nonogram_tutorial_clues_title">Numbers are runs</string>
+    <string name="nonogram_tutorial_clues_body">The numbers next to a row and above a column are the lengths of its filled runs, in order, with at least one empty cell between runs. A 5 in a row of five cells means the whole row is filled.</string>
+    <string name="nonogram_tutorial_play_title">Try it</string>
+    <string name="nonogram_tutorial_play_body">Pick Fill and tap cells, or drag along a row. Cross out empty cells if you like. Draw the heart.</string>
+    <string name="nonogram_tutorial_rules_title">Mistakes and hints</string>
+    <string name="nonogram_tutorial_rules_body">A wrong cell costs one mistake and shows the right answer at once. Three mistakes fail the level. A hint opens a cell the numbers prove.</string>
+    <string name="nonogram_tutorial_solved">Done — the picture is complete!</string>
+    <string name="nonogram_tutorial_failed">Three mistakes — let\'s start the picture again.</string>
+    <string name="achievement_nonogram">Artist</string>
+    <string name="achievement_nonogram_body">Solve 25 nonograms</string>
 </resources>

@@ -55,6 +55,7 @@ class SettingsViewModel(
                 PuzzleType.WORD -> repository.setWordTutorialCompleted(true)
                 PuzzleType.SUDOKU -> repository.setSudokuTutorialCompleted(true)
                 PuzzleType.GAME_2048 -> repository.setGame2048TutorialCompleted(true)
+                PuzzleType.NONOGRAM -> repository.setNonogramTutorialCompleted(true)
                 else -> Unit
             }
         }

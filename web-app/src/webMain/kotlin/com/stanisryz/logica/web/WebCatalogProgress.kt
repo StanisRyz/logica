@@ -103,6 +103,7 @@ internal object WebCatalogProgressCodec {
             PuzzleType.WORD -> 3
             PuzzleType.SUDOKU -> 4
             PuzzleType.GAME_2048 -> 5
+            PuzzleType.NONOGRAM -> 6
             else -> error("$puzzleType has no Web Catalog progress code.")
         }
 
@@ -113,6 +114,7 @@ internal object WebCatalogProgressCodec {
             3 -> PuzzleType.WORD
             4 -> PuzzleType.SUDOKU
             5 -> PuzzleType.GAME_2048
+            6 -> PuzzleType.NONOGRAM
             else -> error("Unknown Web Catalog puzzle code $code.")
         }
 

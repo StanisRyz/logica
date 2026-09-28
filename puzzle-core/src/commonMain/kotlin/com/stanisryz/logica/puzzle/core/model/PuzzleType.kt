@@ -9,4 +9,5 @@ enum class PuzzleType {
     MOSAIC,
     WATER_JUGS,
     WORD,
+    NONOGRAM,
 }

@@ -23,6 +23,7 @@ import com.stanisryz.logica.ui.components.catalogTitleResource
 import com.stanisryz.logica.ui.tutorial.BalanceTutorial
 import com.stanisryz.logica.ui.tutorial.CrownsTutorial
 import com.stanisryz.logica.ui.tutorial.Game2048Tutorial
+import com.stanisryz.logica.ui.tutorial.NonogramTutorial
 import com.stanisryz.logica.ui.tutorial.SudokuTutorial
 import com.stanisryz.logica.ui.tutorial.WordTutorial
 import com.stanisryz.logica.web.generated.resources.web_back
@@ -97,6 +98,7 @@ internal fun WebTutorialScreen(
             PuzzleType.SUDOKU -> SudokuTutorial(onDone = onClose, modifier = modifier)
             PuzzleType.GAME_2048 ->
                 Game2048Tutorial(onDone = onClose, modifier = modifier, hardwareKeys = LocalWebKeyboard.current?.keys)
+            PuzzleType.NONOGRAM -> NonogramTutorial(onDone = onClose, modifier = modifier)
             else -> Unit
         }
     }

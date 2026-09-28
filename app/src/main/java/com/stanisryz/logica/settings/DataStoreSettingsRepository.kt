@@ -39,6 +39,7 @@ class DataStoreSettingsRepository(
                     wordTutorialCompleted = preferences[WORD_TUTORIAL_COMPLETED] ?: false,
                     sudokuTutorialCompleted = preferences[SUDOKU_TUTORIAL_COMPLETED] ?: false,
                     game2048TutorialCompleted = preferences[GAME_2048_TUTORIAL_COMPLETED] ?: false,
+                    nonogramTutorialCompleted = preferences[NONOGRAM_TUTORIAL_COMPLETED] ?: false,
                     lastPlayedPuzzle =
                         preferences[LAST_PLAYED_PUZZLE]?.let { stored ->
                             PuzzleType.entries.firstOrNull { it.name == stored }
@@ -113,6 +114,12 @@ class DataStoreSettingsRepository(
         }
     }
 
+    override suspend fun setNonogramTutorialCompleted(completed: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[NONOGRAM_TUTORIAL_COMPLETED] = completed
+        }
+    }
+
     private companion object {
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val LAST_PLAYED_PUZZLE = stringPreferencesKey("last_played_puzzle")
@@ -125,5 +132,6 @@ class DataStoreSettingsRepository(
         val WORD_TUTORIAL_COMPLETED = booleanPreferencesKey("word_tutorial_completed")
         val SUDOKU_TUTORIAL_COMPLETED = booleanPreferencesKey("sudoku_tutorial_completed")
         val GAME_2048_TUTORIAL_COMPLETED = booleanPreferencesKey("game_2048_tutorial_completed")
+        val NONOGRAM_TUTORIAL_COMPLETED = booleanPreferencesKey("nonogram_tutorial_completed")
     }
 }

@@ -299,7 +299,7 @@
     <string name="achievement_first_solve">Первый шаг</string>
     <string name="achievement_first_solve_body">Решите первую головоломку</string>
     <string name="achievement_all_games">Разносторонний</string>
-    <string name="achievement_all_games_body">Решите головоломку в каждой из пяти игр</string>
+    <string name="achievement_all_games_body">Решите головоломку в каждой из шести игр</string>
     <string name="achievement_solver_50">Решатель</string>
     <string name="achievement_solver_50_body">Решите 50 головоломок</string>
     <string name="achievement_solver_250">Мастер головоломок</string>
@@ -358,4 +358,23 @@
     <string name="rules_2048_1">Смахивайте или нажимайте стрелки: все плитки сдвигаются в эту сторону.</string>
     <string name="rules_2048_2">Две равные плитки сливаются в одну и приносят очки.</string>
     <string name="rules_2048_3">Наберите цель уровня, пока на поле остаются ходы.</string>
+    <string name="game_title_nonogram">Нонограмма</string>
+    <string name="nonogram_tool_fill">Закрасить клетку</string>
+    <string name="nonogram_tool_cross">Отметить пустую клетку</string>
+    <string name="nonogram_caption_fill">Закрасить</string>
+    <string name="nonogram_caption_cross">Крестик</string>
+    <string name="nonogram_board_description">Поле %1$d на %2$d: найдено %3$d из %4$d закрашенных клеток.</string>
+    <string name="rules_nonogram_1">Нонограмма — это японский кроссворд. Числа слева от строки и над столбцом — длины закрашенных отрезков по порядку. Между отрезками есть хотя бы одна пустая клетка.</string>
+    <string name="rules_nonogram_2">Закрашивайте клетки или отмечайте пустые крестиком. Проведите пальцем по строке или столбцу, чтобы отметить сразу несколько клеток.</string>
+    <string name="rules_nonogram_3">Когда все закрашенные клетки строки или столбца найдены, остальные отмечаются сами.</string>
+    <string name="nonogram_tutorial_clues_title">Числа — это отрезки</string>
+    <string name="nonogram_tutorial_clues_body">Числа слева от строки и над столбцом — длины закрашенных отрезков по порядку, а между отрезками есть хотя бы одна пустая клетка. «5» в строке из пяти клеток значит, что закрашена вся строка.</string>
+    <string name="nonogram_tutorial_play_title">Попробуйте сами</string>
+    <string name="nonogram_tutorial_play_body">Выберите «Закрасить» и нажимайте на клетки или ведите пальцем по строке. Пустые клетки можно отметить крестиком. Нарисуйте сердечко.</string>
+    <string name="nonogram_tutorial_rules_title">Ошибки и подсказки</string>
+    <string name="nonogram_tutorial_rules_body">Неверная клетка стоит одну ошибку и сразу показывает правильный ответ. После трёх ошибок уровень не пройден. Подсказка открывает клетку, которую можно вывести из чисел.</string>
+    <string name="nonogram_tutorial_solved">Готово — рисунок сложился!</string>
+    <string name="nonogram_tutorial_failed">Три ошибки — начнём рисунок заново.</string>
+    <string name="achievement_nonogram">Художник</string>
+    <string name="achievement_nonogram_body">Решите 25 нонограмм</string>
 </resources>

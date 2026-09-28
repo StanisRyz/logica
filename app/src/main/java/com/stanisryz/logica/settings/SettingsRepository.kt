@@ -25,6 +25,8 @@ interface SettingsRepository {
 
     suspend fun setGame2048TutorialCompleted(completed: Boolean)
 
+    suspend fun setNonogramTutorialCompleted(completed: Boolean)
+
     suspend fun setLastPlayed(
         puzzleType: PuzzleType,
         difficulty: Difficulty,
