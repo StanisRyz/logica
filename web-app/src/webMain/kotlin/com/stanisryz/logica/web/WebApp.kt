@@ -182,6 +182,7 @@ internal fun WebApp(
     storeProcessor: WebStoreProcessor,
     paymentsCoordinator: WebPaymentsCoordinator,
     rewardedAds: WebRewardedAds,
+    leaderboard: WebLeaderboardController,
     interstitialController: WebInterstitialContinuationController,
     stickyBannerController: WebStickyBannerController,
 ) {
@@ -243,6 +244,7 @@ internal fun WebApp(
                             dailyCoordinator = dailyCoordinator,
                             storeProcessor = storeProcessor,
                             rewardedAds = rewardedAds,
+                            leaderboard = leaderboard,
                             interstitialController = interstitialController,
                             stickyBannerController = stickyBannerController,
                             paymentsCoordinator = paymentsCoordinator,
@@ -333,6 +335,7 @@ private fun ReadyContent(
     storeProcessor: WebStoreProcessor,
     paymentsCoordinator: WebPaymentsCoordinator,
     rewardedAds: WebRewardedAds,
+    leaderboard: WebLeaderboardController,
     interstitialController: WebInterstitialContinuationController,
     stickyBannerController: WebStickyBannerController,
     onRendered: () -> Unit,
@@ -429,6 +432,15 @@ private fun ReadyContent(
         nextLifeRestoreAtEpochMs = economyState?.nextLifeRestoreAtEpochMs,
         active = lifecycleState == PlatformLifecycleState.ACTIVE,
     )
+    // The bound Player's solved total feeds the Yandex leaderboard whenever it grows.
+    val leaderboardBinding = playerSession.statisticsBinding.collectAsState().value as? WebStatisticsBinding.Ready
+    if (leaderboardBinding != null) {
+        key(leaderboardBinding.token) {
+            val statisticsSnapshot by leaderboardBinding.repository.snapshot.collectAsState()
+            val solvedTotal = WebStatisticsAggregator.aggregate(statisticsSnapshot).toProfileStatistics().totalSolved
+            LaunchedEffect(solvedTotal) { leaderboard.submitSolved(leaderboardBinding.token, solvedTotal) }
+        }
+    }
     var showNoLives by remember { mutableStateOf(false) }
     val livesUi =
         WebLivesUi(economyState) { start ->
@@ -624,6 +636,7 @@ private fun ReadyContent(
                     WideReadableColumn(WIDE_PROFILE_MAX_WIDTH) {
                         WebProfileRoute(
                             playerSession = playerSession,
+                            leaderboard = leaderboard,
                             binding = playerSession.statisticsBinding.collectAsState().value,
                             currentDate = dailyDate,
                             onRetry = playerSession::retryCurrentContext,
@@ -872,6 +885,7 @@ private fun WebDailyHubRoute(
 @Composable
 private fun WebProfileRoute(
     playerSession: WebPlayerSessionController,
+    leaderboard: WebLeaderboardController,
     binding: WebStatisticsBinding,
     currentDate: DailyDate,
     onRetry: () -> Unit,
@@ -913,6 +927,7 @@ private fun WebProfileRoute(
                             .toUiState(),
                     onRetry = onRetry,
                     onOpenGames = onOpenGames,
+                    footer = if (leaderboard.isSupported) ({ WebLeaderboardCard(leaderboard) }) else null,
                 )
             }
     }

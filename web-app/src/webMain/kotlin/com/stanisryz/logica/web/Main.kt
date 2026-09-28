@@ -118,6 +118,7 @@ fun main() {
             hints = rewardedController(WebRewardedPlacementController.HINT_REWARD),
             life = rewardedController(WebRewardedPlacementController.LIFE_REWARD),
         )
+    val leaderboard = WebLeaderboardController(bridge, rememberMainScope())
     val interstitialController =
         WebInterstitialContinuationController(
             provider = YandexInterstitialAdProvider(bridge),
@@ -231,6 +232,7 @@ fun main() {
             storeProcessor,
             paymentsCoordinator,
             rewardedAds,
+            leaderboard,
             interstitialController,
             stickyBannerController,
         )

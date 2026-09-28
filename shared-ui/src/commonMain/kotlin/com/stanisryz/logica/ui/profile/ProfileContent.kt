@@ -110,6 +110,7 @@ fun ProfileContent(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
     onOpenGames: (() -> Unit)? = null,
+    footer: (@Composable () -> Unit)? = null,
 ) {
     AnimatedContent(
         targetState = uiState,
@@ -126,7 +127,7 @@ fun ProfileContent(
                 ProfileUiState.Loading -> LoadingState(modifier)
                 ProfileUiState.Error -> ErrorState(onRetry, modifier)
                 ProfileUiState.Empty -> EmptyState(modifier, onOpenGames)
-                is ProfileUiState.Ready -> ReadyProfileContent(state.statistics, modifier)
+                is ProfileUiState.Ready -> ReadyProfileContent(state.statistics, modifier, footer)
             }
         }
     }
@@ -144,6 +145,7 @@ private fun ProfileUiState.presentationKey(): String =
 private fun ReadyProfileContent(
     statistics: ProfileStatistics,
     modifier: Modifier,
+    footer: (@Composable () -> Unit)?,
 ) {
     Column(
         modifier =
@@ -181,6 +183,8 @@ private fun ReadyProfileContent(
                 }
             }
         }
+        // A host section after the games, such as the Web leaderboard.
+        footer?.invoke()
     }
 }
 

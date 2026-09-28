@@ -31,6 +31,7 @@ internal interface WebPlayerContextEvents {
 
 /** The only raw JavaScript boundary for the Yandex Games SDK. */
 internal class YandexGamesBridge :
+    WebLeaderboardBridge,
     WebPlayerContextEvents,
     WebStickyBannerBridge {
     private var sdk: YandexSdk? = null
@@ -340,6 +341,50 @@ internal class YandexGamesBridge :
             true
         } catch (_: Throwable) {
             false
+        }
+
+    // endregion
+
+    // region Yandex Games leaderboards
+
+    /** Whether the loaded SDK exposes `ysdk.leaderboards` (standalone development never does). */
+    override fun isLeaderboardsSupported(): Boolean = runCatching { sdk?.let(::sdkLeaderboardsOrNull) != null }.getOrDefault(false)
+
+    /** Records [score]; false when unsupported, unauthorized, rate-limited, or failed. */
+    override suspend fun setLeaderboardScore(
+        name: String,
+        score: Int,
+    ): Boolean =
+        try {
+            val leaderboards = sdk?.let(::sdkLeaderboardsOrNull) ?: return false
+            leaderboardsSetScore(leaderboards, name, score).await()
+            true
+        } catch (_: Throwable) {
+            false
+        }
+
+    /** The top entries plus the Player's own rank, or null when unsupported or failed. */
+    override suspend fun leaderboardEntries(name: String): WebLeaderboardSnapshot? =
+        try {
+            val leaderboards = sdk?.let(::sdkLeaderboardsOrNull) ?: return null
+            val result = leaderboardsGetEntries(leaderboards, name, LEADERBOARD_TOP, LEADERBOARD_AROUND).await() ?: return null
+            val rawEntries = anyPropertyOrNull(result, ENTRIES_KEY) ?: return null
+            if (!isJsArray(rawEntries)) return null
+            val entries =
+                (0 until jsArrayLength(rawEntries)).mapNotNull { index ->
+                    val entry = jsArrayGet(rawEntries, index)
+                    val rank = numberPropertyOrMinusOne(entry, RANK_KEY)
+                    if (rank <= 0) return@mapNotNull null
+                    val player = anyPropertyOrNull(entry, PLAYER_KEY)
+                    WebLeaderboardEntry(
+                        rank = rank,
+                        score = numberPropertyOrMinusOne(entry, SCORE_KEY).coerceAtLeast(0),
+                        name = player?.let { stringPropertyOrNull(it, PUBLIC_NAME_KEY) }?.trim()?.takeIf(String::isNotEmpty),
+                    )
+                }
+            WebLeaderboardSnapshot(entries = entries, playerRank = numberPropertyOrMinusOne(result, USER_RANK_KEY).takeIf { it > 0 })
+        } catch (_: Throwable) {
+            null
         }
 
     // endregion
@@ -702,3 +747,35 @@ private fun booleanPropertyOrNull(
 ): Boolean? = js("typeof data[key] === 'boolean' ? data[key] : null")
 
 private fun describeJsFailure(reason: JsAny?): String = js("reason && reason.message ? String(reason.message) : String(reason)")
+
+private fun sdkLeaderboardsOrNull(sdk: YandexSdk): JsAny? =
+    js(
+        "typeof sdk.leaderboards === 'object' && sdk.leaderboards != null && typeof sdk.leaderboards.setScore === 'function' && typeof sdk.leaderboards.getEntries === 'function' ? sdk.leaderboards : null",
+    )
+
+private fun leaderboardsSetScore(
+    leaderboards: JsAny,
+    name: String,
+    score: Int,
+): Promise<JsAny?> = js("leaderboards.setScore(name, score)")
+
+private fun leaderboardsGetEntries(
+    leaderboards: JsAny,
+    name: String,
+    top: Int,
+    around: Int,
+): Promise<JsAny?> = js("leaderboards.getEntries(name, { quantityTop: top, includeUser: true, quantityAround: around })")
+
+private fun numberPropertyOrMinusOne(
+    data: JsAny,
+    key: String,
+): Int = js("typeof data[key] === 'number' && isFinite(data[key]) ? Math.trunc(data[key]) : -1")
+
+private const val LEADERBOARD_TOP = 10
+private const val LEADERBOARD_AROUND = 1
+private const val ENTRIES_KEY = "entries"
+private const val RANK_KEY = "rank"
+private const val SCORE_KEY = "score"
+private const val PLAYER_KEY = "player"
+private const val PUBLIC_NAME_KEY = "publicName"
+private const val USER_RANK_KEY = "userRank"
