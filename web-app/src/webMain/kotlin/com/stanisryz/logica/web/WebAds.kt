@@ -25,8 +25,8 @@ internal fun interface WebFullscreenAdActivity {
     fun setFullscreenAdActive(active: Boolean)
 }
 
-/** Compact UI state of the Store's rewarded-hints placement. */
-internal enum class WebRewardedHintState {
+/** Compact UI state of one rewarded placement. */
+internal enum class WebRewardedAdState {
     Idle,
     Showing,
     RewardGranted,
@@ -37,8 +37,9 @@ internal enum class WebRewardedHintState {
 }
 
 /**
- * The first production rewarded placement: Store -> controller -> Yandex rewarded provider ->
- * [WebRewardService] -> existing Store inventory -> normal durable-change unified save flow.
+ * One rewarded placement: UI -> controller -> Yandex rewarded provider -> [WebRewardService] ->
+ * existing Store inventory ([HINT_REWARD]) or Economy wallet ([LIFE_REWARD]) -> normal
+ * durable-change unified save flow. Each placement owns its own controller instance.
  *
  * Hardening (45.14a): every invocation owns a runtime-only session id; callbacks may mutate
  * state only while their session is still active, so late callbacks from a finished ad can
@@ -46,7 +47,8 @@ internal enum class WebRewardedHintState {
  * and re-validated right before granting, so an account switch can never pay the new Player
  * for an old session. Cooldowns begin only after the platform reports the ad actually opened.
  */
-internal class WebStoreRewardedHintsController(
+internal class WebRewardedPlacementController(
+    private val reward: AdRewardDefinition,
     private val provider: RewardedAdProvider,
     private val policy: WebAdPolicy,
     private val rewardService: WebRewardService,
@@ -55,8 +57,8 @@ internal class WebStoreRewardedHintsController(
     private val currentPlayerContext: () -> WebPlayerContextToken?,
     private val currentTimeMs: () -> Long,
 ) {
-    private val mutableState = MutableStateFlow(WebRewardedHintState.Idle)
-    val state: StateFlow<WebRewardedHintState> = mutableState.asStateFlow()
+    private val mutableState = MutableStateFlow(WebRewardedAdState.Idle)
+    val state: StateFlow<WebRewardedAdState> = mutableState.asStateFlow()
 
     private var nextSessionId = 0L
 
@@ -71,14 +73,14 @@ internal class WebStoreRewardedHintsController(
         val now = currentTimeMs()
         if (!policy.canShow(AdKind.REWARDED, now)) {
             analytics.record(now, MonetizationAnalyticsEvent.AD_FAILED)
-            mutableState.value = WebRewardedHintState.Cooldown
+            mutableState.value = WebRewardedAdState.Cooldown
             return
         }
         val session = ++nextSessionId
         activeSession = session
         val capturedContext = currentPlayerContext()
         analytics.record(now, MonetizationAnalyticsEvent.AD_STARTED)
-        mutableState.value = WebRewardedHintState.Showing
+        mutableState.value = WebRewardedAdState.Showing
         provider.show(
             onOpened = {
                 if (activeSession == session) {
@@ -108,34 +110,41 @@ internal class WebStoreRewardedHintsController(
                     capturedContext != null && capturedContext == currentPlayerContext()
                 val granted =
                     contextStillValid &&
-                        rewardService.apply(HINT_REWARD).also { granted ->
+                        rewardService.apply(reward).also { granted ->
                             if (granted) {
                                 analytics.record(currentTimeMs(), MonetizationAnalyticsEvent.REWARD_GRANTED)
                             }
                         }
                 mutableState.value =
-                    if (granted) WebRewardedHintState.RewardGranted else WebRewardedHintState.Error
+                    if (granted) WebRewardedAdState.RewardGranted else WebRewardedAdState.Error
             }
             AdShowResult.Dismissed -> {
                 analytics.record(currentTimeMs(), MonetizationAnalyticsEvent.AD_FAILED)
-                mutableState.value = WebRewardedHintState.Dismissed
+                mutableState.value = WebRewardedAdState.Dismissed
             }
             AdShowResult.Unavailable -> {
                 analytics.record(currentTimeMs(), MonetizationAnalyticsEvent.AD_FAILED)
-                mutableState.value = WebRewardedHintState.Unavailable
+                mutableState.value = WebRewardedAdState.Unavailable
             }
             is AdShowResult.Failed -> {
                 analytics.record(currentTimeMs(), MonetizationAnalyticsEvent.AD_FAILED)
-                mutableState.value = WebRewardedHintState.Error
+                mutableState.value = WebRewardedAdState.Error
             }
         }
     }
 
     companion object {
-        /** The explicit, always-disclosed exchange for this placement. */
+        /** The explicit, always-disclosed exchanges of the two placements. */
         val HINT_REWARD = AdRewardDefinition(rewardType = StoreRewardType.HINTS, amount = 3)
+        val LIFE_REWARD = AdRewardDefinition(rewardType = StoreRewardType.LIFE_RESTORE, amount = 1)
     }
 }
+
+/** The two rewarded placements: +3 hints in the Store, +1 life in the Store and the no-lives dialog. */
+internal class WebRewardedAds(
+    val hints: WebRewardedPlacementController,
+    val life: WebRewardedPlacementController,
+)
 
 /**
  * The interstitial continuation controller: eligibility is checked against [WebAdPolicy], one ad

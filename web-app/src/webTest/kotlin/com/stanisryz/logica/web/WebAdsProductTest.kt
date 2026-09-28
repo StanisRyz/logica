@@ -106,8 +106,9 @@ class WebAdsProductTest {
         activity: RecordingFullscreenActivity = RecordingFullscreenActivity(),
         context: () -> WebPlayerContextToken?,
         currentTimeMs: () -> Long = { 1_000L },
-    ): WebStoreRewardedHintsController =
-        WebStoreRewardedHintsController(
+    ): WebRewardedPlacementController =
+        WebRewardedPlacementController(
+            reward = WebRewardedPlacementController.HINT_REWARD,
             provider = provider,
             policy = policy,
             rewardService =
@@ -136,11 +137,11 @@ class WebAdsProductTest {
 
         // Session A starts, really opens, and terminates normally: exactly +3 hints once.
         controller.requestReward()
-        assertEquals(WebRewardedHintState.Showing, controller.state.value)
+        assertEquals(WebRewardedAdState.Showing, controller.state.value)
         providerA.onOpened?.invoke() // real exposure: the rewarded cooldown begins HERE
         providerA.onResult?.invoke(AdShowResult.Completed)
         assertTrue(
-            controller.state.value == WebRewardedHintState.RewardGranted,
+            controller.state.value == WebRewardedAdState.RewardGranted,
             "A: state=${controller.state.value} hints=${store.snapshot.value.quantityOf(STORE_INVENTORY_HINTS)}",
         )
         assertEquals(3, store.snapshot.value.quantityOf(STORE_INVENTORY_HINTS))
@@ -148,13 +149,13 @@ class WebAdsProductTest {
 
         // An immediate second request sits inside the exposure-based cooldown window.
         controller.requestReward()
-        assertEquals(WebRewardedHintState.Cooldown, controller.state.value)
+        assertEquals(WebRewardedAdState.Cooldown, controller.state.value)
 
         // After the cooldown Session B starts normally through the same placement: the
         // controller stamps this invocation with a NEW runtime session id.
         now += WebAdPolicy.DEFAULT_REWARDED_COOLDOWN_MS
         controller.requestReward()
-        assertEquals(WebRewardedHintState.Showing, controller.state.value)
+        assertEquals(WebRewardedAdState.Showing, controller.state.value)
         assertFalse(controller.isRequestAllowed)
         val sessionBHandler = checkNotNull(providerA.onResult) // fresh handler for session B
         val sessionBOpened = checkNotNull(providerA.onOpened)
@@ -162,14 +163,14 @@ class WebAdsProductTest {
         // A late callback from session A (captured before B started) is ignored: it can
         // neither finish nor grant for the newer session.
         lateSessionACallback.invoke(AdShowResult.Completed)
-        assertEquals(WebRewardedHintState.Showing, controller.state.value) // B untouched by A
+        assertEquals(WebRewardedAdState.Showing, controller.state.value) // B untouched by A
         assertEquals(3, store.snapshot.value.quantityOf(STORE_INVENTORY_HINTS))
 
         // Session B completes for the still-current context: grants exactly once.
         sessionBOpened.invoke()
         sessionBHandler.invoke(AdShowResult.Completed)
         assertTrue(
-            controller.state.value == WebRewardedHintState.RewardGranted,
+            controller.state.value == WebRewardedAdState.RewardGranted,
             "B: state=${controller.state.value} hints=${store.snapshot.value.quantityOf(STORE_INVENTORY_HINTS)}",
         )
         assertEquals(6, store.snapshot.value.quantityOf(STORE_INVENTORY_HINTS))
@@ -182,12 +183,51 @@ class WebAdsProductTest {
         switchableController.requestReward()
         currentContext = WebPlayerContextToken(2L) // account switched mid-session
         switchableProvider.onResult?.invoke(AdShowResult.Completed)
-        assertEquals(WebRewardedHintState.Error, switchableController.state.value)
+        assertEquals(WebRewardedAdState.Error, switchableController.state.value)
         assertEquals(6, store.snapshot.value.quantityOf(STORE_INVENTORY_HINTS)) // no +3 anywhere
 
         // The finished old session cannot grant afterwards either.
         switchableProvider.onResult?.invoke(AdShowResult.Completed)
         assertEquals(6, store.snapshot.value.quantityOf(STORE_INVENTORY_HINTS))
+    }
+
+    // The life placement pays exactly +1 life into the wallet, once, and nothing at full lives.
+    @Test
+    fun rewardedLifeRestoresOneLifeOnce() {
+        val economyStore = FakeEconomyStore()
+        economyStore.snapshot = WebEconomySnapshot(gems = 0, lives = 0, nextLifeRestoreAtEpochMs = 5_000L)
+        val economy =
+            WebPlayerEconomyRepository(standaloneScope, economyStore, WebPlayerStateRevisions(), currentTimeMs = { 0L })
+                .also { it.loadLocal() }
+        val provider = ScriptedRewardedProvider()
+        val context = WebPlayerContextToken(1L)
+        var now = 1_000L
+        val controller =
+            WebRewardedPlacementController(
+                reward = WebRewardedPlacementController.LIFE_REWARD,
+                provider = provider,
+                policy = WebAdPolicy(),
+                rewardService = WebRewardService(economyRepository = { economy }, storeRepository = { hintsStore() }),
+                analytics = WebMonetizationAnalytics(),
+                fullscreenAdActivity = RecordingFullscreenActivity(),
+                currentPlayerContext = { context },
+                currentTimeMs = { now },
+            )
+
+        controller.requestReward()
+        provider.onOpened?.invoke()
+        val result = checkNotNull(provider.onResult)
+        result(AdShowResult.Completed)
+        result(AdShowResult.Completed) // a repeated terminal callback pays nothing more
+        assertEquals(WebRewardedAdState.RewardGranted, controller.state.value)
+        assertEquals(1, economy.state.value.lives)
+
+        // A dismissed ad pays nothing.
+        now += WebAdPolicy.DEFAULT_REWARDED_COOLDOWN_MS
+        controller.requestReward()
+        provider.onResult?.invoke(AdShowResult.Dismissed)
+        assertEquals(WebRewardedAdState.Dismissed, controller.state.value)
+        assertEquals(1, economy.state.value.lives)
     }
 
     // Test 2: double tap during an active interstitial is ignored; continuation runs exactly once.

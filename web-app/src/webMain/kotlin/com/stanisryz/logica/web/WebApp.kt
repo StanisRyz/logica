@@ -180,7 +180,7 @@ internal fun WebApp(
     dailyCoordinator: WebDailyGameplayCoordinator,
     storeProcessor: WebStoreProcessor,
     paymentsCoordinator: WebPaymentsCoordinator,
-    rewardedHintsController: WebStoreRewardedHintsController,
+    rewardedAds: WebRewardedAds,
     interstitialController: WebInterstitialContinuationController,
     stickyBannerController: WebStickyBannerController,
 ) {
@@ -238,7 +238,7 @@ internal fun WebApp(
                             playerSession = playerSession,
                             dailyCoordinator = dailyCoordinator,
                             storeProcessor = storeProcessor,
-                            rewardedHintsController = rewardedHintsController,
+                            rewardedAds = rewardedAds,
                             interstitialController = interstitialController,
                             stickyBannerController = stickyBannerController,
                             paymentsCoordinator = paymentsCoordinator,
@@ -328,7 +328,7 @@ private fun ReadyContent(
     dailyCoordinator: WebDailyGameplayCoordinator,
     storeProcessor: WebStoreProcessor,
     paymentsCoordinator: WebPaymentsCoordinator,
-    rewardedHintsController: WebStoreRewardedHintsController,
+    rewardedAds: WebRewardedAds,
     interstitialController: WebInterstitialContinuationController,
     stickyBannerController: WebStickyBannerController,
     onRendered: () -> Unit,
@@ -434,6 +434,7 @@ private fun ReadyContent(
     if (showNoLives) {
         WebNoLivesDialog(
             state = economyState,
+            rewardedLife = rewardedAds.life,
             onOpenStore = {
                 showNoLives = false
                 openStore()
@@ -636,7 +637,7 @@ private fun ReadyContent(
                             playerSession = playerSession,
                             storeProcessor = storeProcessor,
                             paymentsCoordinator = paymentsCoordinator,
-                            rewardedHintsController = rewardedHintsController,
+                            rewardedAds = rewardedAds,
                         )
                     }
                 }
@@ -708,7 +709,7 @@ private fun ReadyContent(
             playerSession = playerSession,
             storeProcessor = storeProcessor,
             paymentsCoordinator = paymentsCoordinator,
-            rewardedHintsController = rewardedHintsController,
+            rewardedAds = rewardedAds,
         )
     }
 }

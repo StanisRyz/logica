@@ -4,6 +4,7 @@ package com.stanisryz.logica.web
 
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport
+import com.stanisryz.logica.platform.AdRewardDefinition
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -98,10 +99,12 @@ fun main() {
             economyRepository = { playerSession.economyRepository },
             storeRepository = { playerSession.storeRepository },
         )
+
     // Fullscreen ads participate in the real effective lifecycle: WebHostLifecycle itself owns
     // the suppression flag, so no competing lifecycle and no dependency cycle can exist.
-    val rewardedHintsController =
-        WebStoreRewardedHintsController(
+    fun rewardedController(reward: AdRewardDefinition) =
+        WebRewardedPlacementController(
+            reward = reward,
             provider = YandexRewardedAdProvider(bridge),
             policy = adPolicy,
             rewardService = adRewardService,
@@ -109,6 +112,11 @@ fun main() {
             fullscreenAdActivity = lifecycle,
             currentPlayerContext = { playerSession.currentPlayerContextToken() },
             currentTimeMs = ::currentTimeMillis,
+        )
+    val rewardedAds =
+        WebRewardedAds(
+            hints = rewardedController(WebRewardedPlacementController.HINT_REWARD),
+            life = rewardedController(WebRewardedPlacementController.LIFE_REWARD),
         )
     val interstitialController =
         WebInterstitialContinuationController(
@@ -222,7 +230,7 @@ fun main() {
             dailyCoordinator,
             storeProcessor,
             paymentsCoordinator,
-            rewardedHintsController,
+            rewardedAds,
             interstitialController,
             stickyBannerController,
         )

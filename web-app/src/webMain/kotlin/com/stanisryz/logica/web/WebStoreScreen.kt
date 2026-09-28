@@ -40,6 +40,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.platform.PaymentProductSnapshot
@@ -63,7 +65,7 @@ internal fun WebStoreScreen(
     playerSession: WebPlayerSessionController,
     storeProcessor: WebStoreProcessor,
     paymentsCoordinator: WebPaymentsCoordinator,
-    rewardedHintsController: WebStoreRewardedHintsController,
+    rewardedAds: WebRewardedAds,
 ) {
     val economyBinding by playerSession.economyBinding.collectAsState()
     val storeBinding by playerSession.storeBinding.collectAsState()
@@ -110,7 +112,29 @@ internal fun WebStoreScreen(
             else -> Text("Кошелёк недоступен", style = MaterialTheme.typography.bodyMedium)
         }
 
-        RewardedHintsCard(rewardedHintsController, storeBinding)
+        RewardedAdRow(
+            controller = rewardedAds.hints,
+            title = "+3 подсказки",
+            grantedText = "Реклама просмотрена: +3 подсказки.",
+            enabled = storeBinding is WebStoreBinding.Ready,
+        )
+        // The life placement exists only while a life is actually missing.
+        val walletLives =
+            (economyBinding as? WebEconomyBinding.Ready)
+                ?.repository
+                ?.state
+                ?.collectAsState()
+                ?.value
+                ?.lives
+        if (walletLives != null && walletLives < EconomyPolicy.MAXIMUM_LIVES) {
+            RewardedAdRow(
+                controller = rewardedAds.life,
+                title = "+1 жизнь",
+                grantedText = "Реклама просмотрена: +1 жизнь.",
+                enabled = true,
+                icon = Icons.Filled.Favorite,
+            )
+        }
 
         // Real-money gem top-up (Yandex Payments): price/currency come from the Yandex catalog.
         if (paidCatalog is WebPaidCatalogState.Ready) {
@@ -190,36 +214,46 @@ private fun paidPurchaseMessage(state: WebPaidPurchaseState): String? =
         WebPaidPurchaseState.Idle -> null
     }
 
+/** One rewarded placement row; the exchange is always disclosed: watching an advertisement is required. */
 @Composable
-private fun RewardedHintsCard(
-    controller: WebStoreRewardedHintsController,
-    storeBinding: WebStoreBinding,
+internal fun RewardedAdRow(
+    controller: WebRewardedPlacementController,
+    title: String,
+    grantedText: String,
+    enabled: Boolean,
+    icon: ImageVector = Icons.Filled.PlayCircle,
 ) {
     val state by controller.state.collectAsState()
     val colors = MaterialTheme.colorScheme
-    // The exchange is always disclosed explicitly: watching an advertisement is required.
-    val (subtitle, subtitleColor) =
-        when (state) {
-            WebRewardedHintState.RewardGranted -> "Реклама просмотрена: +3 подсказки." to colors.primary
-            WebRewardedHintState.Dismissed -> "Награда не получена: реклама закрыта раньше времени." to colors.onSurfaceVariant
-            WebRewardedHintState.Unavailable, WebRewardedHintState.Error ->
-                "Реклама сейчас недоступна. Попробуйте позже." to colors.error
-            WebRewardedHintState.Cooldown -> "Подождите немного перед следующей рекламой." to colors.onSurfaceVariant
-            else -> "За просмотр короткой рекламы" to colors.onSurfaceVariant
-        }
+    val (subtitle, subtitleColor) = rewardedAdSubtitle(state, grantedText)
     StoreItemRow(
-        icon = Icons.Filled.PlayCircle,
-        title = "+3 подсказки",
+        icon = icon,
+        title = title,
         subtitle = subtitle,
-        subtitleColor = subtitleColor,
+        subtitleColor = subtitleColor ?: colors.onSurfaceVariant,
         highlighted = true,
     ) {
         Button(
             onClick = controller::requestReward,
-            enabled = controller.isRequestAllowed && storeBinding is WebStoreBinding.Ready,
+            enabled = controller.isRequestAllowed && enabled,
         ) {
-            Text(if (state == WebRewardedHintState.Showing) "Идёт…" else "Смотреть")
+            Text(if (state == WebRewardedAdState.Showing) "Идёт…" else "Смотреть")
         }
+    }
+}
+
+@Composable
+internal fun rewardedAdSubtitle(
+    state: WebRewardedAdState,
+    grantedText: String,
+): Pair<String, Color?> {
+    val colors = MaterialTheme.colorScheme
+    return when (state) {
+        WebRewardedAdState.RewardGranted -> grantedText to colors.primary
+        WebRewardedAdState.Dismissed -> "Награда не получена: реклама закрыта раньше времени." to null
+        WebRewardedAdState.Unavailable, WebRewardedAdState.Error -> "Реклама сейчас недоступна. Попробуйте позже." to colors.error
+        WebRewardedAdState.Cooldown -> "Подождите немного перед следующей рекламой." to null
+        else -> "За просмотр короткой рекламы" to null
     }
 }
 
