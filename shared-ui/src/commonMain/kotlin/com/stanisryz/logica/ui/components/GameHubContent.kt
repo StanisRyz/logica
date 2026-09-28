@@ -4,15 +4,16 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,8 +38,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -83,35 +84,53 @@ fun GameHubContent(
     headerContent: (@Composable () -> Unit)? = null,
     statusContent: (@Composable () -> Unit)? = null,
 ) {
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        state = rememberLazyListState(),
-        contentPadding =
-            PaddingValues(
-                horizontal = LogicaSpacing.screenHorizontal,
-                vertical = LogicaSpacing.screenVertical,
-            ),
-        verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
-    ) {
-        headerContent?.let { content -> item(key = "host-header") { content() } }
-        statusContent?.let { content -> item(key = "host-status") { content() } }
-        item(key = "games-title") {
-            Text(
-                text = stringResource(Res.string.game_catalog_section_title),
-                modifier = Modifier.padding(top = LogicaSpacing.text),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        items(puzzleTypes, key = { it }) { puzzleType ->
-            GameCatalogCard(
-                puzzleType = puzzleType,
-                enabled = catalogEnabled,
-                onClick = { onGameSelected(puzzleType) },
-            )
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        // Wide windows (a desktop, a tablet) lay the game cards out in a grid instead of one tall list.
+        val columns =
+            when {
+                maxWidth >= THREE_COLUMN_WIDTH -> 3
+                maxWidth >= TWO_COLUMN_WIDTH -> 2
+                else -> 1
+            }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            state = rememberLazyListState(),
+            contentPadding =
+                PaddingValues(
+                    horizontal = LogicaSpacing.screenHorizontal,
+                    vertical = LogicaSpacing.screenVertical,
+                ),
+            verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
+        ) {
+            headerContent?.let { content -> item(key = "host-header") { content() } }
+            statusContent?.let { content -> item(key = "host-status") { content() } }
+            item(key = "games-title") {
+                Text(
+                    text = stringResource(Res.string.game_catalog_section_title),
+                    modifier = Modifier.padding(top = LogicaSpacing.text),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            items(puzzleTypes.chunked(columns), key = { row -> row.first() }) { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
+                    row.forEach { puzzleType ->
+                        GameCatalogCard(
+                            puzzleType = puzzleType,
+                            enabled = catalogEnabled,
+                            onClick = { onGameSelected(puzzleType) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
         }
     }
 }
+
+private val TWO_COLUMN_WIDTH = 640.dp
+private val THREE_COLUMN_WIDTH = 1000.dp
 
 /** A full-width Catalog artwork card shared by Android and Web. */
 @Composable
@@ -164,35 +183,24 @@ fun GameCatalogCard(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(
-                        // The label scrim follows the theme, so a dark UI never shows a bright band.
-                        Brush.horizontalGradient(
-                            0f to colors.surfaceContainerLow.copy(alpha = CATALOG_LABEL_SCRIM_START_ALPHA),
-                            0.46f to colors.surfaceContainerLow.copy(alpha = CATALOG_LABEL_SCRIM_MIDDLE_ALPHA),
-                            0.78f to colors.surfaceContainerLow.copy(alpha = CATALOG_LABEL_SCRIM_END_ALPHA),
-                            1f to Color.Transparent,
-                        ),
-                    ),
-            )
             Column(
                 modifier = Modifier.fillMaxWidth(0.68f).padding(start = GAME_CATALOG_LABEL_PADDING),
                 verticalArrangement = Arrangement.spacedBy(CATALOG_ACTION_GAP),
                 horizontalAlignment = Alignment.Start,
             ) {
+                // The artwork is always light, so the label keeps fixed ink colours in both themes
+                // and a soft glow instead of a scrim over the picture.
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = colors.onSurface.copy(alpha = if (enabled) 1f else DISABLED_ALPHA),
+                    style =
+                        MaterialTheme.typography.headlineSmall.copy(
+                            shadow = Shadow(color = CATALOG_TITLE_GLOW, blurRadius = CATALOG_TITLE_GLOW_RADIUS),
+                        ),
+                    color = CATALOG_TITLE_INK.copy(alpha = if (enabled) 1f else DISABLED_ALPHA),
                 )
                 Surface(
-                    color =
-                        colors.surfaceContainerLowest.copy(
-                            alpha = if (enabled) CATALOG_ACTION_ALPHA else DISABLED_ACTION_ALPHA,
-                        ),
-                    contentColor = if (enabled) colors.primary else colors.onSurfaceVariant,
+                    color = Color.White.copy(alpha = if (enabled) CATALOG_ACTION_ALPHA else DISABLED_ACTION_ALPHA),
+                    contentColor = if (enabled) CATALOG_ACTION_INK else CATALOG_TITLE_INK.copy(alpha = DISABLED_ALPHA),
                     shape = CircleShape,
                 ) {
                     Row(
@@ -242,9 +250,6 @@ fun PuzzleType.catalogTitleResource(): StringResource =
 
 private val GAME_CATALOG_CARD_HEIGHT = 148.dp
 private val GAME_CATALOG_LABEL_PADDING = 24.dp
-private const val CATALOG_LABEL_SCRIM_START_ALPHA = 0.98f
-private const val CATALOG_LABEL_SCRIM_MIDDLE_ALPHA = 0.86f
-private const val CATALOG_LABEL_SCRIM_END_ALPHA = 0.26f
 private val CATALOG_ACTION_HORIZONTAL_PADDING = 12.dp
 private val CATALOG_ACTION_VERTICAL_PADDING = 6.dp
 private val CATALOG_ACTION_ICON_GAP = 2.dp
@@ -253,6 +258,10 @@ private val CATALOG_ACTION_GAP = 8.dp
 private const val CATALOG_CARD_PRESSED_SCALE = 0.985f
 private const val CATALOG_CARD_SPRING_DAMPING = 0.72f
 private const val CATALOG_CARD_SPRING_STIFFNESS = 700f
+private val CATALOG_TITLE_INK = Color(0xFF231F1A)
+private val CATALOG_ACTION_INK = Color(0xFF2F5D4E)
+private val CATALOG_TITLE_GLOW = Color(0xCCFFFBF4)
+private const val CATALOG_TITLE_GLOW_RADIUS = 18f
 private const val CATALOG_ACTION_ALPHA = 0.86f
 private const val DISABLED_ACTION_ALPHA = 0.58f
 private const val DISABLED_ALPHA = 0.38f

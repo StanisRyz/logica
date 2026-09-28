@@ -9,11 +9,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.Settings
@@ -25,6 +27,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,11 +43,13 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.platform.PlatformLifecycleState
@@ -243,6 +249,18 @@ private fun PortraitHostSurface(content: @Composable () -> Unit) {
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center,
     ) {
+        // A landscape window (a desktop browser, Yandex Games on a computer) gets the whole width;
+        // a portrait or narrow one keeps the 9:16 phone column.
+        val wide = maxWidth >= WIDE_HOST_MIN_WIDTH && maxWidth > maxHeight * WIDE_HOST_ASPECT
+        if (wide) {
+            Surface(
+                modifier = Modifier.widthIn(max = WIDE_HOST_MAX_WIDTH).fillMaxSize(),
+                color = MaterialTheme.colorScheme.surface,
+            ) {
+                CompositionLocalProvider(LocalWebWideLayout provides true) { content() }
+            }
+            return@BoxWithConstraints
+        }
         val widthLimited = maxWidth * 16f <= maxHeight * 9f
         val portraitWidth = if (widthLimited) maxWidth else maxHeight * 9f / 16f
         val portraitHeight = if (widthLimited) maxWidth * 16f / 9f else maxHeight
@@ -254,6 +272,24 @@ private fun PortraitHostSurface(content: @Composable () -> Unit) {
         ) {
             content()
         }
+    }
+}
+
+/** True when the Web host fills a landscape window instead of the 9:16 column. */
+internal val LocalWebWideLayout = staticCompositionLocalOf { false }
+
+/** Centres a tab's content at a readable width in the wide host; the phone column is untouched. */
+@Composable
+internal fun WideReadableColumn(
+    maxWidth: Dp,
+    content: @Composable () -> Unit,
+) {
+    if (!LocalWebWideLayout.current) {
+        content()
+        return
+    }
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        Box(Modifier.widthIn(max = maxWidth).fillMaxHeight()) { content() }
     }
 }
 
@@ -429,7 +465,9 @@ private fun ReadyContent(
         LocalOpenTutorial provides { puzzleType -> tutorialFor = puzzleType },
     ) {
         tutorialFor?.let { puzzleType ->
-            WebTutorialScreen(puzzleType = puzzleType, onClose = { tutorialFor = null })
+            WideReadableColumn(WIDE_TUTORIAL_MAX_WIDTH) {
+                WebTutorialScreen(puzzleType = puzzleType, onClose = { tutorialFor = null })
+            }
             return@CompositionLocalProvider
         }
         when (route) {
@@ -512,25 +550,29 @@ private fun ReadyContent(
                     selected = WebRoute.Profile,
                     onSelect = { route = it },
                 ) {
-                    WebProfileRoute(
-                        playerSession = playerSession,
-                        binding = playerSession.statisticsBinding.collectAsState().value,
-                        currentDate = dailyDate,
-                        onRetry = playerSession::retryCurrentContext,
-                        onOpenGames = { route = WebRoute.GameHub },
-                    )
+                    WideReadableColumn(WIDE_PROFILE_MAX_WIDTH) {
+                        WebProfileRoute(
+                            playerSession = playerSession,
+                            binding = playerSession.statisticsBinding.collectAsState().value,
+                            currentDate = dailyDate,
+                            onRetry = playerSession::retryCurrentContext,
+                            onOpenGames = { route = WebRoute.GameHub },
+                        )
+                    }
                 }
             WebRoute.Store ->
                 PrimaryDestinationShell(
                     selected = WebRoute.Store,
                     onSelect = { route = it },
                 ) {
-                    WebStoreScreen(
-                        playerSession = playerSession,
-                        storeProcessor = storeProcessor,
-                        paymentsCoordinator = paymentsCoordinator,
-                        rewardedHintsController = rewardedHintsController,
-                    )
+                    WideReadableColumn(WIDE_STORE_MAX_WIDTH) {
+                        WebStoreScreen(
+                            playerSession = playerSession,
+                            storeProcessor = storeProcessor,
+                            paymentsCoordinator = paymentsCoordinator,
+                            rewardedHintsController = rewardedHintsController,
+                        )
+                    }
                 }
             WebRoute.Balance ->
                 BalanceFlow(
@@ -611,56 +653,64 @@ private fun PrimaryDestinationShell(
     onSelect: (WebRoute) -> Unit,
     content: @Composable () -> Unit,
 ) {
-    Column(Modifier.fillMaxSize()) {
-        // Every tab opens with its name and, except in the Store that shows the full balance, the wallet.
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(GAME_HEADER_HEIGHT)
-                    .padding(start = LogicaSpacing.screenHorizontal, end = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text =
-                    stringResource(
-                        when (selected) {
-                            WebRoute.Profile -> Res.string.primary_profile
-                            WebRoute.Store -> Res.string.primary_store
-                            else -> Res.string.primary_games
-                        },
-                    ),
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-            if (selected != WebRoute.Store) WebGameplayWallet()
-            var settingsOpen by remember { mutableStateOf(false) }
-            IconButton(onClick = { settingsOpen = true }) {
-                Icon(Icons.Outlined.Settings, contentDescription = "Настройки")
+    val wide = LocalWebWideLayout.current
+    val destinations =
+        listOf(
+            Triple(WebRoute.GameHub, Icons.Outlined.SportsEsports, Res.string.primary_games),
+            Triple(WebRoute.Profile, Icons.Outlined.PersonOutline, Res.string.primary_profile),
+            Triple(WebRoute.Store, Icons.Outlined.ShoppingCart, Res.string.primary_store),
+        )
+    Row(Modifier.fillMaxSize()) {
+        // A landscape window keeps the tabs in a rail on the left, so the content gets the height.
+        if (wide) {
+            NavigationRail(modifier = Modifier.fillMaxHeight()) {
+                Spacer(Modifier.height(LogicaSpacing.section))
+                destinations.forEach { (route, icon, label) ->
+                    NavigationRailItem(
+                        selected = selected == route,
+                        onClick = { onSelect(route) },
+                        icon = { Icon(icon, contentDescription = null) },
+                        label = { Text(stringResource(label)) },
+                    )
+                }
             }
-            if (settingsOpen) WebSettingsDialog(onDismiss = { settingsOpen = false })
         }
-        Box(Modifier.weight(1f)) { content() }
-        NavigationBar(modifier = Modifier.fillMaxWidth().height(PRIMARY_NAVIGATION_HEIGHT)) {
-            NavigationBarItem(
-                selected = selected == WebRoute.GameHub,
-                onClick = { onSelect(WebRoute.GameHub) },
-                icon = { Icon(Icons.Outlined.SportsEsports, contentDescription = null) },
-                label = { Text(stringResource(Res.string.primary_games)) },
-            )
-            NavigationBarItem(
-                selected = selected == WebRoute.Profile,
-                onClick = { onSelect(WebRoute.Profile) },
-                icon = { Icon(Icons.Outlined.PersonOutline, contentDescription = null) },
-                label = { Text(stringResource(Res.string.primary_profile)) },
-            )
-            NavigationBarItem(
-                selected = selected == WebRoute.Store,
-                onClick = { onSelect(WebRoute.Store) },
-                icon = { Icon(Icons.Outlined.ShoppingCart, contentDescription = null) },
-                label = { Text(stringResource(Res.string.primary_store)) },
-            )
+        Column(Modifier.weight(1f).fillMaxHeight()) {
+            // Every tab opens with its name and, except in the Store that shows the full balance, the wallet.
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(GAME_HEADER_HEIGHT)
+                        .padding(start = LogicaSpacing.screenHorizontal, end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(destinations.first { it.first == selected }.third),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                if (selected != WebRoute.Store) WebGameplayWallet()
+                var settingsOpen by remember { mutableStateOf(false) }
+                IconButton(onClick = { settingsOpen = true }) {
+                    Icon(Icons.Outlined.Settings, contentDescription = "Настройки")
+                }
+                if (settingsOpen) WebSettingsDialog(onDismiss = { settingsOpen = false })
+            }
+            Box(Modifier.weight(1f)) { content() }
+            if (!wide) {
+                NavigationBar(modifier = Modifier.fillMaxWidth().height(PRIMARY_NAVIGATION_HEIGHT)) {
+                    destinations.forEach { (route, icon, label) ->
+                        NavigationBarItem(
+                            selected = selected == route,
+                            onClick = { onSelect(route) },
+                            icon = { Icon(icon, contentDescription = null) },
+                            label = { Text(stringResource(label)) },
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -1136,13 +1186,16 @@ private fun DifficultyContent(
             // The wallet chip in the header already shows the lives; the line only adds the countdown.
             val livesState = lives.state?.takeIf { it.nextLifeRestoreAtEpochMs != null }
             val livesHeight = if (livesState != null) LIVES_STATUS_HEIGHT + LogicaSpacing.section else 0.dp
+            // The wide host shows the four difficulties as a 2x2 grid of taller cards.
+            val columns = if (LocalWebWideLayout.current) 2 else 1
+            val rows = 4 / columns
             val cardHeight =
                 (
                     (
                         maxHeight - TUTORIAL_ACTION_HEIGHT - livesHeight -
-                            LogicaSpacing.section - LogicaSpacing.item * 3
-                    ) / 4
-                ).coerceIn(MIN_DIFFICULTY_CARD_HEIGHT, MAX_DIFFICULTY_CARD_HEIGHT)
+                            LogicaSpacing.section - LogicaSpacing.item * (rows - 1)
+                    ) / rows
+                ).coerceIn(MIN_DIFFICULTY_CARD_HEIGHT, if (columns > 1) MAX_WIDE_DIFFICULTY_CARD_HEIGHT else MAX_DIFFICULTY_CARD_HEIGHT)
             Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.section)) {
                 Row(
                     modifier = Modifier.fillMaxWidth().height(TUTORIAL_ACTION_HEIGHT),
@@ -1164,6 +1217,7 @@ private fun DifficultyContent(
                     },
                     enabled = true,
                     cardHeight = cardHeight,
+                    columns = columns,
                 )
             }
         }
@@ -1601,8 +1655,15 @@ private fun Difficulty.webLabel(): String =
 private val LIVES_STATUS_HEIGHT = 24.dp
 private val TUTORIAL_ACTION_HEIGHT = 40.dp
 private val PRIMARY_NAVIGATION_HEIGHT = 64.dp
+private val WIDE_HOST_MIN_WIDTH = 720.dp
+private val WIDE_PROFILE_MAX_WIDTH = 720.dp
+private val WIDE_STORE_MAX_WIDTH = 640.dp
+private val WIDE_TUTORIAL_MAX_WIDTH = 560.dp
+private val WIDE_HOST_MAX_WIDTH = 1440.dp
+private const val WIDE_HOST_ASPECT = 1.2f
 private val MIN_DIFFICULTY_CARD_HEIGHT = 96.dp
 private val MAX_DIFFICULTY_CARD_HEIGHT = 152.dp
+private val MAX_WIDE_DIFFICULTY_CARD_HEIGHT = 260.dp
 
 private fun GameKey.game2048Direction(): Game2048Direction? =
     when (this) {

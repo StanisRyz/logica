@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -43,19 +44,25 @@ fun DifficultySelector(
     enabled: Boolean,
     cardHeight: Dp,
     modifier: Modifier = Modifier,
+    columns: Int = 1,
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
     ) {
-        Difficulty.entries.forEach { difficulty ->
-            DifficultyCard(
-                difficulty = difficulty,
-                onClick = { onStart(difficulty) },
-                enabled = enabled,
-                cardHeight = cardHeight,
-                modifier = Modifier.fillMaxWidth(),
-            )
+        // A wide window shows the four cards as a 2x2 grid; a phone keeps one column.
+        Difficulty.entries.chunked(columns).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
+                row.forEach { difficulty ->
+                    DifficultyCard(
+                        difficulty = difficulty,
+                        onClick = { onStart(difficulty) },
+                        enabled = enabled,
+                        cardHeight = cardHeight,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
         }
     }
 }

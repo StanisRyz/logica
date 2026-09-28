@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -155,21 +155,27 @@ fun Game2048Content(
                     Modifier
                         .fillMaxSize()
                         .padding(horizontal = gameplayHorizontal, vertical = verticalPadding),
-                horizontalArrangement = Arrangement.spacedBy(WIDE_SECTION_SPACING),
+                horizontalArrangement = Arrangement.spacedBy(WIDE_GROUP_SPACING, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                // Board and panel form one centred group, like the other square boards.
                 Box(
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    modifier =
+                        Modifier
+                            .weight(1f, fill = false)
+                            .fillMaxHeight()
+                            .aspectRatio(1f, matchHeightConstraintsFirst = true),
                     contentAlignment = Alignment.Center,
                 ) { board() }
-                Column(
-                    modifier = Modifier.width(panelWidth).fillMaxHeight(),
-                    verticalArrangement = Arrangement.spacedBy(sectionSpacing),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    header()
-                    Spacer(Modifier.weight(1f))
-                    controls()
+                CompositionLocalProvider(LocalRoomyGameplayControls provides true) {
+                    Column(
+                        modifier = Modifier.width(panelWidth),
+                        verticalArrangement = Arrangement.spacedBy(WIDE_PANEL_SPACING),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        header()
+                        controls()
+                    }
                 }
             }
         } else {
@@ -305,7 +311,9 @@ private val TARGET_LABEL_HEIGHT = 18.dp
 private val SCORE_PROGRESS_HEIGHT = 4.dp
 private const val SCORE_PROGRESS_MILLIS = 250
 private val WIDE_SECTION_SPACING = 8.dp
-private val WIDE_PANEL_MAX_WIDTH = 232.dp
+private val WIDE_PANEL_MAX_WIDTH = 320.dp
+private val WIDE_GROUP_SPACING = 40.dp
+private val WIDE_PANEL_SPACING = 28.dp
 private const val WIDE_PANEL_WIDTH_FRACTION = 0.38f
 private const val GROUP_SIZE = 3
 private const val GROUP_SEPARATOR = "\u00A0"

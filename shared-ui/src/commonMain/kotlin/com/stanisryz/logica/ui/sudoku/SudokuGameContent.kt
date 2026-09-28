@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -113,11 +113,16 @@ fun SudokuGameContent(
                         .fillMaxSize()
                         .padding(horizontal = LogicaSpacing.gameplayHorizontal, vertical = verticalPadding)
                         .animateContentSize(),
-                horizontalArrangement = Arrangement.spacedBy(WIDE_SECTION_SPACING),
+                horizontalArrangement = Arrangement.spacedBy(WIDE_GROUP_SPACING, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                // Board and panel form one centred group, like the other square boards.
                 Box(
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    modifier =
+                        Modifier
+                            .weight(1f, fill = false)
+                            .fillMaxHeight()
+                            .aspectRatio(1f, matchHeightConstraintsFirst = true),
                     contentAlignment = Alignment.Center,
                 ) {
                     SudokuBoard(
@@ -129,7 +134,7 @@ fun SudokuGameContent(
                     )
                 }
                 Column(
-                    modifier = Modifier.width(panelWidth).fillMaxHeight(),
+                    modifier = Modifier.width(panelWidth),
                     verticalArrangement = Arrangement.spacedBy(sectionSpacing),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
@@ -141,10 +146,8 @@ fun SudokuGameContent(
                         contextLabel = contextBadgeLabel,
                         solvedCells = game.cells.count { it.status == SudokuCellStatus.CORRECT },
                         totalCells = game.cells.count { it.status != SudokuCellStatus.GIVEN },
-                        showTitle = false,
                     )
                     hostStatusContent()
-                    Spacer(Modifier.weight(1f))
                     SudokuToolBar(
                         isPencilMode = isPencilMode,
                         onToggle = onTogglePencil,
@@ -155,7 +158,7 @@ fun SudokuGameContent(
                         onHint = onHint,
                         hintEnabled = game.status == SudokuGameStatus.IN_PROGRESS && gameplayEnabled,
                         enabled = gameplayEnabled,
-                        wrapTools = wideLayout && !compact,
+                        wrapTools = wideLayout,
                         hintCount = hintCount,
                     )
                     SudokuNumberPad(
@@ -253,7 +256,8 @@ private val NORMAL_SECTION_SPACING = 14.dp
 private val WIDE_SECTION_SPACING = 8.dp
 private val PORTRAIT_HORIZONTAL_PADDING = 6.dp
 private const val WIDE_DIGIT_COLUMNS = 3
-private val WIDE_PANEL_WIDTH = 224.dp
+private val WIDE_PANEL_WIDTH = 300.dp
+private val WIDE_GROUP_SPACING = 40.dp
 private val COMPACT_WIDE_PANEL_WIDTH = 256.dp
 
 /** Nine places per digit; index 0 is the empty value and stays unused. */

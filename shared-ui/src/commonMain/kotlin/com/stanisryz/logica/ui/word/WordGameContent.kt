@@ -208,7 +208,9 @@ fun WordGameContent(
     ) {
         val compact = maxHeight < COMPACT_SCREEN_HEIGHT
         val gap = if (compact) LogicaSpacing.text else LogicaSpacing.item
-        val wideLayout = isPlaying && isWideGameplayLayout(maxWidth, maxHeight)
+        // Side by side only when the window is too low for the board over the keyboard (a phone in
+        // landscape); a tall wide window (a desktop) keeps the full keyboard under the board.
+        val wideLayout = isPlaying && isWideGameplayLayout(maxWidth, maxHeight) && maxHeight < STACKED_MIN_HEIGHT
         val keyHeight = (maxHeight * KEY_HEIGHT_RATIO).coerceIn(MIN_KEY_HEIGHT, MAX_KEY_HEIGHT)
         val keyboardHeight = keyHeight * WORD_KEYBOARD_ROWS + WORD_KEY_SPACING * (WORD_KEYBOARD_ROWS - 1)
         val boardHeight = (maxHeight - keyboardHeight - HEADER_HEIGHT_BUDGET).coerceAtLeast(MIN_BOARD_HEIGHT)
@@ -286,7 +288,12 @@ fun WordGameContent(
             }
         } else {
             Column(
-                modifier = Modifier.fillMaxSize().animateContentSize(),
+                modifier =
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .widthIn(max = STACKED_MAX_WIDTH)
+                        .fillMaxHeight()
+                        .animateContentSize(),
                 verticalArrangement = Arrangement.spacedBy(gap),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -466,6 +473,8 @@ private val REJECTION_NOTE_ELEVATION = 4.dp
 private val REJECTION_NOTE_MAX_WIDTH = 300.dp
 private const val SHAKE_STEP_MILLIS = 35
 private val COMPACT_SCREEN_HEIGHT = 620.dp
+private val STACKED_MIN_HEIGHT = 520.dp
+private val STACKED_MAX_WIDTH = 600.dp
 private const val KEY_HEIGHT_RATIO = 0.068f
 private val MIN_KEY_HEIGHT = 36.dp
 private val MIN_LANDSCAPE_KEY_HEIGHT = 32.dp

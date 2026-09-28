@@ -34,8 +34,6 @@ import com.stanisryz.logica.shared.ui.generated.resources.tool_pencil
 import com.stanisryz.logica.shared.ui.generated.resources.tool_selected
 import com.stanisryz.logica.ui.components.BoardInfoHeader
 import com.stanisryz.logica.ui.components.CellGameSounds
-import com.stanisryz.logica.ui.components.GameHeaderBadges
-import com.stanisryz.logica.ui.components.MistakeIndicator
 import com.stanisryz.logica.ui.components.PuzzleTool
 import com.stanisryz.logica.ui.components.PuzzleToolBar
 import com.stanisryz.logica.ui.components.SquareGameLayout
@@ -75,21 +73,16 @@ fun BalanceGameContent(
     )
     SquareGameLayout(
         modifier = modifier,
-        metadataContent = { wideLayout ->
-            if (wideLayout) {
-                GameHeaderBadges(stringResource(difficulty.labelResource()), levelNumber, contextLabel = contextBadgeLabel)
-                MistakeIndicator(game.mistakesUsed, PuzzleMistakes.MAX_MISTAKES)
-            } else {
-                BoardInfoHeader(
-                    difficultyLabel = stringResource(difficulty.labelResource()),
-                    mistakesUsed = game.mistakesUsed,
-                    maxMistakes = PuzzleMistakes.MAX_MISTAKES,
-                    levelNumber = levelNumber,
-                    contextLabel = contextBadgeLabel,
-                    solvedCells = game.cellStatuses.count { it.value == BalanceCellStatus.CORRECT },
-                    totalCells = puzzle.size * puzzle.size - puzzle.fixedClues.size,
-                )
-            }
+        metadataContent = {
+            BoardInfoHeader(
+                difficultyLabel = stringResource(difficulty.labelResource()),
+                mistakesUsed = game.mistakesUsed,
+                maxMistakes = PuzzleMistakes.MAX_MISTAKES,
+                levelNumber = levelNumber,
+                contextLabel = contextBadgeLabel,
+                solvedCells = game.cellStatuses.count { it.value == BalanceCellStatus.CORRECT },
+                totalCells = puzzle.size * puzzle.size - puzzle.fixedClues.size,
+            )
         },
         hostStatusContent = hostStatusContent,
         boardContent = {

@@ -1,6 +1,5 @@
 package com.stanisryz.logica.ui.components
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -8,7 +7,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,29 +41,35 @@ internal fun SquareGameLayout(
         val panelWidth = minOf(WIDE_PANEL_MAX_WIDTH, maxWidth * WIDE_PANEL_WIDTH_FRACTION)
 
         if (wideLayout) {
+            // Landscape: the square board and a side panel form one centred group — the panel
+            // carries the same header as portrait and the large controls under it.
             Row(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(horizontal = LogicaSpacing.screenHorizontal, vertical = verticalPadding)
-                        .animateContentSize(),
-                horizontalArrangement = Arrangement.spacedBy(sectionSpacing),
+                        .padding(horizontal = LogicaSpacing.screenHorizontal, vertical = verticalPadding),
+                horizontalArrangement = Arrangement.spacedBy(WIDE_GROUP_SPACING, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    modifier =
+                        Modifier
+                            .weight(1f, fill = false)
+                            .fillMaxHeight()
+                            .aspectRatio(1f, matchHeightConstraintsFirst = true),
                     contentAlignment = Alignment.Center,
                     content = boardContent,
                 )
-                Column(
-                    modifier = Modifier.width(panelWidth).fillMaxHeight(),
-                    verticalArrangement = Arrangement.spacedBy(sectionSpacing),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    metadataContent(true)
-                    hostStatusContent()
-                    Spacer(Modifier.weight(1f))
-                    toolContent()
+                CompositionLocalProvider(LocalRoomyGameplayControls provides true) {
+                    Column(
+                        modifier = Modifier.width(panelWidth),
+                        verticalArrangement = Arrangement.spacedBy(WIDE_PANEL_SPACING),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        metadataContent(true)
+                        hostStatusContent()
+                        toolContent()
+                    }
                 }
             }
         } else {
@@ -99,7 +104,9 @@ private val COMPACT_HEIGHT_THRESHOLD = 700.dp
 private val COMPACT_VERTICAL_PADDING = 6.dp
 private val NORMAL_VERTICAL_PADDING = 10.dp
 private val COMPACT_SECTION_SPACING = 6.dp
-private val WIDE_PANEL_MAX_WIDTH = 232.dp
+private val WIDE_PANEL_MAX_WIDTH = 340.dp
+private val WIDE_GROUP_SPACING = 40.dp
+private val WIDE_PANEL_SPACING = 28.dp
 private val ROOMY_EXTRA_HEIGHT = 320.dp
 
 /**
