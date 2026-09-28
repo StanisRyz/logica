@@ -56,6 +56,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.hint_evidence_suffix
 import com.stanisryz.logica.shared.ui.generated.resources.hint_target_suffix
 import com.stanisryz.logica.shared.ui.generated.resources.incorrect_cell
 import com.stanisryz.logica.shared.ui.generated.resources.pencil_marks_suffix
+import com.stanisryz.logica.ui.components.cellFeedbackMotion
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -276,10 +277,11 @@ private fun CrownsCellView(
             CrownsPlayerCell.MARKED ->
                 Text(
                     text = "×",
+                    modifier = Modifier.cellFeedbackMotion(isConfirmed, isIncorrect),
                     style = MaterialTheme.typography.titleMedium,
                     color = symbolTint,
                 )
-            CrownsPlayerCell.CROWN -> CrownIcon(Modifier.fillMaxSize(0.55f), symbolTint)
+            CrownsPlayerCell.CROWN -> CrownIcon(Modifier.fillMaxSize(0.55f).cellFeedbackMotion(isConfirmed, isIncorrect), symbolTint)
         }
         if (isIncorrect) {
             Icon(

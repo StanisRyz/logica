@@ -1,8 +1,11 @@
 package com.stanisryz.logica.ui.components
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,7 +38,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -70,6 +76,7 @@ import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
+import kotlin.random.Random
 
 /** Where the durable result of a finished attempt stands; hosts map their own completion states. */
 enum class GameResultSaveState {
@@ -147,86 +154,132 @@ fun GameResultCard(
         color = colors.surfaceContainerHigh,
         tonalElevation = 0.dp,
     ) {
-        Column(
-            modifier = Modifier.padding(CARD_PADDING),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
-        ) {
-            if (positive && stars != null) {
-                ResultStars(stars)
-            } else {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(MARK_SIZE)
-                            .clip(CircleShape)
-                            .background(if (positive) palette.successContainer else colors.errorContainer),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = if (positive) Icons.Filled.TaskAlt else Icons.Filled.ErrorOutline,
-                        contentDescription = null,
-                        tint = if (positive) palette.onSuccessContainer else colors.onErrorContainer,
-                        modifier = Modifier.size(MARK_ICON_SIZE),
+        Box {
+            // A solved attempt bursts a little confetti from the stars, behind the card's content.
+            if (positive) ResultConfetti(Modifier.matchParentSize())
+            Column(
+                modifier = Modifier.padding(CARD_PADDING),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
+            ) {
+                if (positive && stars != null) {
+                    ResultStars(stars)
+                } else {
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(MARK_SIZE)
+                                .clip(CircleShape)
+                                .background(if (positive) palette.successContainer else colors.errorContainer),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = if (positive) Icons.Filled.TaskAlt else Icons.Filled.ErrorOutline,
+                            contentDescription = null,
+                            tint = if (positive) palette.onSuccessContainer else colors.onErrorContainer,
+                            modifier = Modifier.size(MARK_ICON_SIZE),
+                        )
+                    }
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = resolvedTitle,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = colors.onSurface,
+                        textAlign = TextAlign.Center,
+                    )
+                    Text(
+                        text = difficultyLabel,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurfaceVariant,
                     )
                 }
-            }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = resolvedTitle,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = colors.onSurface,
-                    textAlign = TextAlign.Center,
+                bodyLine?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (saveError) colors.error else colors.onSurface,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                ResultTiles(
+                    economy = economy.takeIf { saveState == GameResultSaveState.SAVED },
+                    mistakesUsed = mistakesUsed,
+                    maxMistakes = maxMistakes,
+                    hintsUsed = hintsUsed,
                 )
-                Text(
-                    text = difficultyLabel,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.onSurfaceVariant,
-                )
-            }
-            bodyLine?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (saveError) colors.error else colors.onSurface,
-                    textAlign = TextAlign.Center,
-                )
-            }
-            ResultTiles(
-                economy = economy.takeIf { saveState == GameResultSaveState.SAVED },
-                mistakesUsed = mistakesUsed,
-                maxMistakes = maxMistakes,
-                hintsUsed = hintsUsed,
-            )
-            val primaryModifier = Modifier.fillMaxWidth().padding(top = LogicaSpacing.text)
-            when {
-                saveError ->
-                    Button(onClick = onRetrySave, modifier = primaryModifier) {
-                        Text(stringResource(Res.string.result_retry_save))
-                    }
-                saveState == GameResultSaveState.SAVING ->
-                    Button(onClick = {}, enabled = false, modifier = primaryModifier) {
-                        Text(stringResource(Res.string.result_saving))
-                    }
-                !solved ->
-                    Button(onClick = onRetry, enabled = retryAllowed, modifier = primaryModifier) {
-                        Text(stringResource(Res.string.result_retry))
-                    }
-                !isDaily ->
-                    Button(onClick = onNextLevel, modifier = primaryModifier) {
-                        Text(stringResource(Res.string.result_next_level))
-                    }
-                else -> Unit
-            }
-            val exitLabel = stringResource(if (exitToDifficulty) Res.string.result_to_difficulty else Res.string.result_to_games)
-            if (solved && isDaily && saveState == GameResultSaveState.SAVED) {
-                // A solved Daily entry is done for the day: leaving is the one action, so it leads.
-                Button(onClick = onExit, modifier = primaryModifier) { Text(exitLabel) }
-            } else {
-                TextButton(onClick = onExit, modifier = Modifier.fillMaxWidth()) { Text(exitLabel) }
+                val primaryModifier = Modifier.fillMaxWidth().padding(top = LogicaSpacing.text)
+                when {
+                    saveError ->
+                        Button(onClick = onRetrySave, modifier = primaryModifier) {
+                            Text(stringResource(Res.string.result_retry_save))
+                        }
+                    saveState == GameResultSaveState.SAVING ->
+                        Button(onClick = {}, enabled = false, modifier = primaryModifier) {
+                            Text(stringResource(Res.string.result_saving))
+                        }
+                    !solved ->
+                        Button(onClick = onRetry, enabled = retryAllowed, modifier = primaryModifier) {
+                            Text(stringResource(Res.string.result_retry))
+                        }
+                    !isDaily ->
+                        Button(onClick = onNextLevel, modifier = primaryModifier) {
+                            Text(stringResource(Res.string.result_next_level))
+                        }
+                    else -> Unit
+                }
+                val exitLabel = stringResource(if (exitToDifficulty) Res.string.result_to_difficulty else Res.string.result_to_games)
+                if (solved && isDaily && saveState == GameResultSaveState.SAVED) {
+                    // A solved Daily entry is done for the day: leaving is the one action, so it leads.
+                    Button(onClick = onExit, modifier = primaryModifier) { Text(exitLabel) }
+                } else {
+                    TextButton(onClick = onExit, modifier = Modifier.fillMaxWidth()) { Text(exitLabel) }
+                }
             }
         }
     }
+}
+
+/** One short confetti burst: pieces fly up and out from the stars, then fall and fade. */
+@Composable
+private fun ResultConfetti(modifier: Modifier) {
+    val palette = LocalLogicaPalette.current
+    val colors = MaterialTheme.colorScheme
+    val tints = listOf(palette.star, colors.primary, colors.tertiary, palette.success, colors.secondary)
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { progress.animateTo(1f, tween(CONFETTI_MILLIS, easing = LinearEasing)) }
+    val pieces = remember { List(CONFETTI_COUNT) { ConfettiPiece(Random(it * 7919 + 13)) } }
+    Canvas(modifier) {
+        val t = progress.value
+        if (t >= 1f) return@Canvas
+        val seconds = t * CONFETTI_MILLIS / 1000f
+        val originY = CONFETTI_ORIGIN.toPx()
+        val pieceWidth = CONFETTI_PIECE.toPx()
+        pieces.forEach { piece ->
+            val x = size.width / 2 + piece.spread * size.width * 0.1f + piece.velocityX * size.width * seconds
+            val y = originY - piece.velocityY * size.height * seconds + CONFETTI_GRAVITY * size.height * seconds * seconds
+            val alpha = if (t > CONFETTI_FADE_FROM) (1f - t) / (1f - CONFETTI_FADE_FROM) else 1f
+            rotate(piece.spin * seconds, pivot = Offset(x, y)) {
+                drawRect(
+                    color = tints[piece.tint % tints.size],
+                    topLeft = Offset(x - pieceWidth / 2, y - pieceWidth * piece.aspect / 2),
+                    size = Size(pieceWidth, pieceWidth * piece.aspect),
+                    alpha = alpha,
+                )
+            }
+        }
+    }
+}
+
+private class ConfettiPiece(
+    random: Random,
+) {
+    val spread = random.nextFloat() - 0.5f
+    val velocityX = (random.nextFloat() - 0.5f) * 1.1f
+    val velocityY = 0.5f + random.nextFloat() * 0.7f
+    val spin = (random.nextFloat() - 0.5f) * 900f
+    val aspect = 0.5f + random.nextFloat() * 1.2f
+    val tint = random.nextInt(0, 100)
 }
 
 /**
@@ -398,6 +451,12 @@ private class ResultTile(
 
 private const val REWARD_SOUND_DELAY_MILLIS = 450L
 private const val MAX_STARS = 3
+private const val CONFETTI_MILLIS = 1800
+private const val CONFETTI_COUNT = 44
+private const val CONFETTI_GRAVITY = 0.9f
+private const val CONFETTI_FADE_FROM = 0.7f
+private val CONFETTI_ORIGIN = 56.dp
+private val CONFETTI_PIECE = 7.dp
 private const val STAR_STAGGER_MILLIS = 160L
 private const val STAR_SPRING_DAMPING = 0.45f
 private val STAR_SIZE = 44.dp

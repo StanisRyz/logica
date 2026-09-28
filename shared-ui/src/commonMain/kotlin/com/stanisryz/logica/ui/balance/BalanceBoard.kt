@@ -46,6 +46,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.editable_cell
 import com.stanisryz.logica.shared.ui.generated.resources.fixed_cell
 import com.stanisryz.logica.shared.ui.generated.resources.incorrect_cell
 import com.stanisryz.logica.shared.ui.generated.resources.pencil_marks_suffix
+import com.stanisryz.logica.ui.components.cellFeedbackMotion
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -168,7 +169,7 @@ private fun BalanceCellView(
                 .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        BalancePiece(value, Modifier.fillMaxSize().padding(8.dp))
+        BalancePiece(value, Modifier.fillMaxSize().padding(8.dp).cellFeedbackMotion(isConfirmed, isIncorrect))
         // Clues are told apart by their tone alone; a check marks what the player has closed correctly.
         if (isConfirmed) {
             Icon(

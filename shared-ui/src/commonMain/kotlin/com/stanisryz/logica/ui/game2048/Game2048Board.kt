@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -55,6 +54,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.game_2048_move_left
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_move_right
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_move_up
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_tile_description
+import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.abs
@@ -290,7 +290,7 @@ private fun Game2048TileSurface(
     value: Int,
     modifier: Modifier,
 ) {
-    val (containerColor, contentColor) = tileColors(value, MaterialTheme.colorScheme)
+    val (containerColor, contentColor) = tileColors(value, LocalLogicaPalette.current.game2048Tiles)
     Box(
         modifier =
             modifier
@@ -368,22 +368,12 @@ private fun semanticMove(
 
 private fun tileColors(
     value: Int,
-    colors: ColorScheme,
-): Pair<Color, Color> =
-    when (value) {
-        // Brighter than an empty cell in both themes, so the smallest tile never reads as a hole.
-        2 -> colors.surfaceBright to colors.onSurface
-        4 -> colors.secondaryContainer to colors.onSecondaryContainer
-        8 -> colors.tertiaryContainer to colors.onTertiaryContainer
-        16 -> colors.primaryContainer to colors.onPrimaryContainer
-        32 -> colors.inverseSurface to colors.inverseOnSurface
-        64 -> colors.primary to colors.onPrimary
-        128 -> colors.secondary to colors.onSecondary
-        256 -> colors.tertiary to colors.onTertiary
-        512 -> colors.primaryContainer to colors.onPrimaryContainer
-        1024 -> colors.secondaryContainer to colors.onSecondaryContainer
-        else -> colors.inverseSurface to colors.inverseOnSurface
-    }
+    ramp: List<Pair<Color, Color>>,
+): Pair<Color, Color> {
+    // 2 -> step 0, 4 -> step 1, ... one step per doubling.
+    val step = (31 - value.coerceAtLeast(2).countLeadingZeroBits()) - 1
+    return ramp[step.coerceIn(0, ramp.lastIndex)]
+}
 
 private enum class Game2048MotionPhase {
     IDLE,

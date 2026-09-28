@@ -52,6 +52,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.incorrect_cell
 import com.stanisryz.logica.shared.ui.generated.resources.pencil_marks_suffix
 import com.stanisryz.logica.shared.ui.generated.resources.sudoku_cell_description
 import com.stanisryz.logica.shared.ui.generated.resources.sudoku_selected_suffix
+import com.stanisryz.logica.ui.components.cellFeedbackMotion
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -219,6 +220,11 @@ private fun SudokuCell(
         } else {
             Text(
                 text = cell.value.toString(),
+                modifier =
+                    Modifier.cellFeedbackMotion(
+                        correct = cell.status == SudokuCellStatus.CORRECT,
+                        incorrect = cell.status == SudokuCellStatus.INCORRECT,
+                    ),
                 fontSize = valueTextSize,
                 lineHeight = valueTextSize,
                 fontWeight = FontWeight.Normal,
