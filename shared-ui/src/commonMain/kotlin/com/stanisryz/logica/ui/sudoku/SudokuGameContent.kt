@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -31,6 +32,8 @@ import com.stanisryz.logica.shared.ui.generated.resources.difficulty_hard
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_medium
 import com.stanisryz.logica.ui.components.BoardInfoHeader
 import com.stanisryz.logica.ui.components.CenteredBoardLayout
+import com.stanisryz.logica.ui.components.LocalRoomyGameplayControls
+import com.stanisryz.logica.ui.components.isRoomyPortrait
 import com.stanisryz.logica.ui.components.isWideGameplayLayout
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.StringResource
@@ -148,67 +151,71 @@ fun SudokuGameContent(
                 }
             }
         } else {
-            CenteredBoardLayout(
-                spacing = sectionSpacing,
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = PORTRAIT_HORIZONTAL_PADDING, vertical = verticalPadding),
-                header = {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(sectionSpacing),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        BoardInfoHeader(
-                            difficultyLabel = difficultyLabel,
-                            mistakesUsed = game.mistakesUsed,
-                            maxMistakes = SudokuGameState.MAX_MISTAKES,
-                            levelNumber = levelNumber,
-                            contextLabel = contextBadgeLabel,
-                            solvedCells = game.cells.count { it.status == SudokuCellStatus.CORRECT },
-                            totalCells = game.cells.count { it.status != SudokuCellStatus.GIVEN },
-                            showTitle = false,
-                        )
-                        hostStatusContent()
-                    }
-                },
-                board = {
-                    SudokuBoard(
-                        game = game,
-                        selectedCell = selectedCell,
-                        enabled = gameplayEnabled,
-                        onCellSelected = onCellSelected,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                },
-                controls = {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(sectionSpacing),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        SudokuToolBar(
-                            isPencilMode = isPencilMode,
-                            onToggle = onTogglePencil,
-                            onErase = onErase,
-                            eraseEnabled = eraseEnabled,
-                            canUndo = undoEnabled,
-                            onUndo = onUndo,
-                            onHint = onHint,
-                            hintEnabled = game.status == SudokuGameStatus.IN_PROGRESS && gameplayEnabled,
+            val roomy = isRoomyPortrait(maxWidth, maxHeight)
+            CompositionLocalProvider(LocalRoomyGameplayControls provides roomy) {
+                CenteredBoardLayout(
+                    spacing = sectionSpacing,
+                    anchorControlsToBottom = roomy,
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = PORTRAIT_HORIZONTAL_PADDING, vertical = verticalPadding),
+                    header = {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(sectionSpacing),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            BoardInfoHeader(
+                                difficultyLabel = difficultyLabel,
+                                mistakesUsed = game.mistakesUsed,
+                                maxMistakes = SudokuGameState.MAX_MISTAKES,
+                                levelNumber = levelNumber,
+                                contextLabel = contextBadgeLabel,
+                                solvedCells = game.cells.count { it.status == SudokuCellStatus.CORRECT },
+                                totalCells = game.cells.count { it.status != SudokuCellStatus.GIVEN },
+                                showTitle = false,
+                            )
+                            hostStatusContent()
+                        }
+                    },
+                    board = {
+                        SudokuBoard(
+                            game = game,
+                            selectedCell = selectedCell,
                             enabled = gameplayEnabled,
-                            hintCount = hintCount,
+                            onCellSelected = onCellSelected,
+                            modifier = Modifier.fillMaxSize(),
                         )
-                        SudokuNumberPad(
-                            enabled = keypadEnabled,
-                            onDigit = guardedDigit,
-                            remaining = remaining,
-                            isPencilMode = isPencilMode,
-                        )
-                    }
-                },
-            )
+                    },
+                    controls = {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(sectionSpacing),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            SudokuToolBar(
+                                isPencilMode = isPencilMode,
+                                onToggle = onTogglePencil,
+                                onErase = onErase,
+                                eraseEnabled = eraseEnabled,
+                                canUndo = undoEnabled,
+                                onUndo = onUndo,
+                                onHint = onHint,
+                                hintEnabled = game.status == SudokuGameStatus.IN_PROGRESS && gameplayEnabled,
+                                enabled = gameplayEnabled,
+                                hintCount = hintCount,
+                            )
+                            SudokuNumberPad(
+                                enabled = keypadEnabled,
+                                onDigit = guardedDigit,
+                                remaining = remaining,
+                                isPencilMode = isPencilMode,
+                            )
+                        }
+                    },
+                )
+            }
         }
     }
 }

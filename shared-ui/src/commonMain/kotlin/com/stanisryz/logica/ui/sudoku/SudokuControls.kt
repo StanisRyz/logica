@@ -49,6 +49,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.tool_caption_undo
 import com.stanisryz.logica.shared.ui.generated.resources.tool_off
 import com.stanisryz.logica.shared.ui.generated.resources.tool_on
 import com.stanisryz.logica.shared.ui.generated.resources.tool_pencil
+import com.stanisryz.logica.ui.components.LocalRoomyGameplayControls
 import com.stanisryz.logica.ui.components.PuzzleTool
 import com.stanisryz.logica.ui.components.PuzzleToolBar
 import org.jetbrains.compose.resources.stringResource
@@ -99,10 +100,11 @@ private fun SudokuDigitKey(
 ) {
     val colors = MaterialTheme.colorScheme
     val leftDescription = left?.let { stringResource(Res.string.sudoku_digits_left, it) }
+    val roomy = LocalRoomyGameplayControls.current
     BoxWithConstraints(
         modifier =
             modifier
-                .height(SUDOKU_DIGIT_KEY_HEIGHT)
+                .height(if (roomy) ROOMY_DIGIT_KEY_HEIGHT else SUDOKU_DIGIT_KEY_HEIGHT)
                 .clip(MaterialTheme.shapes.small)
                 .alpha(if (visible) 1f else 0f)
                 .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
@@ -112,7 +114,10 @@ private fun SudokuDigitKey(
                 },
         contentAlignment = Alignment.Center,
     ) {
-        val fontSize = with(LocalDensity.current) { (maxWidth * DIGIT_TEXT_RATIO).coerceIn(DIGIT_MIN_TEXT, DIGIT_MAX_TEXT).toSp() }
+        val fontSize =
+            with(LocalDensity.current) {
+                (maxWidth * DIGIT_TEXT_RATIO).coerceIn(DIGIT_MIN_TEXT, if (roomy) ROOMY_DIGIT_MAX_TEXT else DIGIT_MAX_TEXT).toSp()
+            }
         Text(
             text = digit.toString(),
             fontSize = fontSize,
@@ -245,6 +250,7 @@ private fun FlatTool(
     symbol: @Composable () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    val roomy = LocalRoomyGameplayControls.current
     val tint =
         when {
             !enabled -> colors.onSurfaceVariant.copy(alpha = DISABLED_DIGIT_ALPHA)
@@ -259,7 +265,7 @@ private fun FlatTool(
                 .semantics(mergeDescendants = true) {
                     contentDescription = label
                     stateDescription?.let { this.stateDescription = it }
-                }.padding(vertical = FLAT_TOOL_VERTICAL_PADDING),
+                }.padding(vertical = if (roomy) ROOMY_FLAT_TOOL_VERTICAL_PADDING else FLAT_TOOL_VERTICAL_PADDING),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         CompositionLocalProvider(LocalContentColor provides tint) {
@@ -267,7 +273,7 @@ private fun FlatTool(
             Text(
                 text = caption,
                 modifier = Modifier.clearAndSetSemantics {},
-                style = MaterialTheme.typography.labelMedium,
+                style = if (roomy) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelMedium,
                 maxLines = 1,
             )
         }
@@ -315,3 +321,6 @@ internal val SUDOKU_DIGIT_KEY_HEIGHT = 56.dp
 private val COMPACT_TOOL_ROW_SPACING = 2.dp
 private val FLAT_TOOL_VERTICAL_PADDING = 4.dp
 private val FLAT_TOOL_ICON_HEIGHT = 28.dp
+private val ROOMY_DIGIT_KEY_HEIGHT = 68.dp
+private val ROOMY_DIGIT_MAX_TEXT = 46.dp
+private val ROOMY_FLAT_TOOL_VERTICAL_PADDING = 10.dp

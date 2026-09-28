@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lightbulb
@@ -69,9 +70,11 @@ fun PuzzleToolBar(
                 checkedContainerColor = colors.primaryContainer,
                 checkedContentColor = colors.onPrimaryContainer,
             )
+        val roomy = LocalRoomyGameplayControls.current
         tools.forEach { tool ->
             val toolModifier =
                 Modifier
+                    .then(if (roomy) Modifier.size(ROOMY_TOOL_SIZE) else Modifier)
                     .then(
                         if (tool.selected == true) {
                             Modifier.border(SELECTED_RING_WIDTH, MaterialTheme.colorScheme.primary, CircleShape)
@@ -106,7 +109,7 @@ fun PuzzleToolBar(
                     Text(
                         text = caption,
                         modifier = Modifier.clearAndSetSemantics {},
-                        style = MaterialTheme.typography.labelSmall,
+                        style = if (roomy) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall,
                         color =
                             when {
                                 tool.selected == true -> colors.primary
@@ -122,6 +125,7 @@ fun PuzzleToolBar(
 }
 
 private val SELECTED_RING_WIDTH = 2.dp
+private val ROOMY_TOOL_SIZE = 56.dp
 private const val MAX_BADGE_COUNT = 99
 private const val DISABLED_CAPTION_ALPHA = 0.38f
 

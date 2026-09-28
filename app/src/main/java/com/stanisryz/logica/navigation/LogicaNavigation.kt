@@ -746,7 +746,7 @@ private fun GameTopBar(
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.statusBars)
                 .height(GAME_TOP_BAR_HEIGHT)
-                .background(MaterialTheme.colorScheme.surface)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(horizontal = GAME_TOP_BAR_HORIZONTAL_PADDING),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(GAME_TOP_BAR_CONTENT_GAP),

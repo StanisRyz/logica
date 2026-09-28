@@ -2,12 +2,20 @@ package com.stanisryz.logica.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -15,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -28,10 +37,11 @@ import com.stanisryz.logica.shared.ui.generated.resources.sudoku_mistakes_short
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The header that sits right on top of a square board. With [showTitle] the level (or the Daily
- * label) becomes a title over a difficulty/mistakes line; without it everything shares one line,
- * as Sudoku needs every row for its board. A thin bar shows how much of the board the player has
- * closed; only cells the board already shows as correct count, so it reveals nothing new.
+ * The header that sits right on top of a square board. With [showTitle] it is a small title block:
+ * the level (or the Daily label), the difficulty under it, and the mistakes as marks that turn red
+ * one by one. Without it everything shares one line, as Sudoku needs every row for its board. A
+ * thin bar shows how much of the board the player has closed; only cells the board already shows
+ * as correct count, so it reveals nothing new.
  */
 @Composable
 fun BoardInfoHeader(
@@ -46,44 +56,53 @@ fun BoardInfoHeader(
     showTitle: Boolean = true,
 ) {
     val colors = MaterialTheme.colorScheme
-    val mistakesDescription = stringResource(Res.string.mistakes_description, mistakesUsed, maxMistakes)
     val progressDescription = stringResource(Res.string.board_progress_description, solvedCells, totalCells)
     val progress by animateFloatAsState(
         targetValue = if (totalCells > 0) (solvedCells.toFloat() / totalCells).coerceIn(0f, 1f) else 0f,
         animationSpec = tween(PROGRESS_ANIMATION_MILLIS),
     )
+    val placeLabel = contextLabel ?: levelNumber?.let { stringResource(Res.string.catalog_level, it) }.orEmpty()
     Column(
         modifier = modifier.fillMaxWidth().padding(horizontal = HEADER_HORIZONTAL_PADDING),
         verticalArrangement = Arrangement.spacedBy(HEADER_ROW_SPACING),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        val placeLabel = contextLabel ?: levelNumber?.let { stringResource(Res.string.catalog_level, it) }.orEmpty()
-        if (showTitle && placeLabel.isNotEmpty()) {
-            Text(
-                text = placeLabel,
-                modifier = Modifier.fillMaxWidth(),
-                style = MaterialTheme.typography.headlineSmall,
-                color = colors.onSurface,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-            )
-        }
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = difficultyLabel,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyLarge,
-                color = colors.onSurfaceVariant,
-                maxLines = 1,
-            )
-            Text(
-                text = stringResource(Res.string.sudoku_mistakes_short, mistakesUsed, maxMistakes),
-                modifier = Modifier.clearAndSetSemantics { contentDescription = mistakesDescription },
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (mistakesUsed == 0) colors.onSurfaceVariant else colors.error,
-                maxLines = 1,
-            )
-            // Under a title the line is difficulty on the left and mistakes on the right.
-            if (!showTitle) {
+        if (showTitle) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (placeLabel.isNotEmpty()) {
+                    Text(
+                        text = placeLabel,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = colors.onSurface,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                    )
+                }
+                Text(
+                    text = difficultyLabel,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+            MistakeMarks(mistakesUsed, maxMistakes)
+        } else {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = difficultyLabel,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colors.onSurfaceVariant,
+                    maxLines = 1,
+                )
+                val mistakesDescription = stringResource(Res.string.mistakes_description, mistakesUsed, maxMistakes)
+                Text(
+                    text = stringResource(Res.string.sudoku_mistakes_short, mistakesUsed, maxMistakes),
+                    modifier = Modifier.clearAndSetSemantics { contentDescription = mistakesDescription },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (mistakesUsed == 0) colors.onSurfaceVariant else colors.error,
+                    maxLines = 1,
+                )
                 Text(
                     text = placeLabel,
                     modifier = Modifier.weight(1f),
@@ -110,7 +129,47 @@ fun BoardInfoHeader(
     }
 }
 
+/** Mistakes as a row of marks: an empty ring per mistake left, a red cross per mistake made. */
+@Composable
+private fun MistakeMarks(
+    mistakesUsed: Int,
+    maxMistakes: Int,
+) {
+    val colors = MaterialTheme.colorScheme
+    val description = stringResource(Res.string.mistakes_description, mistakesUsed, maxMistakes)
+    Row(
+        modifier = Modifier.clearAndSetSemantics { contentDescription = description },
+        horizontalArrangement = Arrangement.spacedBy(MISTAKE_MARK_SPACING),
+    ) {
+        repeat(maxMistakes) { index ->
+            val used = index < mistakesUsed
+            Box(
+                modifier =
+                    Modifier
+                        .size(MISTAKE_MARK_SIZE)
+                        .clip(CircleShape)
+                        .background(if (used) colors.error else colors.surfaceContainerHigh)
+                        .border(MISTAKE_MARK_BORDER, if (used) colors.error else colors.outlineVariant, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (used) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = null,
+                        tint = colors.onError,
+                        modifier = Modifier.size(MISTAKE_ICON_SIZE),
+                    )
+                }
+            }
+        }
+    }
+}
+
 private val HEADER_HORIZONTAL_PADDING = 4.dp
-private val HEADER_ROW_SPACING = 8.dp
+private val HEADER_ROW_SPACING = 10.dp
 private val PROGRESS_HEIGHT = 4.dp
 private const val PROGRESS_ANIMATION_MILLIS = 250
+private val MISTAKE_MARK_SIZE = 22.dp
+private val MISTAKE_ICON_SIZE = 16.dp
+private val MISTAKE_MARK_BORDER = 1.dp
+private val MISTAKE_MARK_SPACING = 10.dp
