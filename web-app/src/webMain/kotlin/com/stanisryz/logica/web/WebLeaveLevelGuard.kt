@@ -47,7 +47,17 @@ import com.stanisryz.logica.puzzle.core.word.WordGameState
 import com.stanisryz.logica.ui.components.GameRulesSheet
 import com.stanisryz.logica.ui.components.LocalGameSounds
 import com.stanisryz.logica.ui.components.catalogTitleResource
+import com.stanisryz.logica.web.generated.resources.web_leave_body
+import com.stanisryz.logica.web.generated.resources.web_leave_confirm
+import com.stanisryz.logica.web.generated.resources.web_leave_stay
+import com.stanisryz.logica.web.generated.resources.web_leave_title
+import com.stanisryz.logica.web.generated.resources.web_rules
+import com.stanisryz.logica.web.generated.resources.web_to_difficulty
+import com.stanisryz.logica.web.generated.resources.web_to_games
+import com.stanisryz.logica.web.generated.resources.web_wallet_gems
+import com.stanisryz.logica.web.generated.resources.web_wallet_lives
 import org.jetbrains.compose.resources.stringResource
+import com.stanisryz.logica.web.generated.resources.Res as WebRes
 
 /**
  * Gameplay header with the Web counterpart of Android's `LeaveLevelGuard`: leaving a non-terminal
@@ -63,7 +73,7 @@ internal fun WebGameplayHeader(
 ) {
     var confirmingExit by remember { mutableStateOf(false) }
     WebTopBar(
-        backLabel = if (isDaily) "К играм" else "К сложности",
+        backLabel = stringResource(if (isDaily) WebRes.string.web_to_games else WebRes.string.web_to_difficulty),
         onBack = { if (hasMeaningfulProgress) confirmingExit = true else onExit() },
         title = stringResource(puzzleType.catalogTitleResource()),
         helpFor = puzzleType,
@@ -72,17 +82,17 @@ internal fun WebGameplayHeader(
         PauseGameKeysWhileShown()
         AlertDialog(
             onDismissRequest = { confirmingExit = false },
-            title = { Text("Выйти из уровня?") },
-            text = { Text("Незавершённый уровень не сохраняется: прогресс этой попытки будет потерян.") },
+            title = { Text(stringResource(WebRes.string.web_leave_title)) },
+            text = { Text(stringResource(WebRes.string.web_leave_body)) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         confirmingExit = false
                         onExit()
                     },
-                ) { Text("Выйти") }
+                ) { Text(stringResource(WebRes.string.web_leave_confirm)) }
             },
-            dismissButton = { TextButton(onClick = { confirmingExit = false }) { Text("Остаться") } },
+            dismissButton = { TextButton(onClick = { confirmingExit = false }) { Text(stringResource(WebRes.string.web_leave_stay)) } },
         )
     }
 }
@@ -122,7 +132,7 @@ internal fun WebTopBar(
                 IconButton(onClick = { rulesOpen = true }, modifier = Modifier.size(HELP_BUTTON_SIZE)) {
                     Icon(
                         Icons.AutoMirrored.Rounded.HelpOutline,
-                        contentDescription = "Правила",
+                        contentDescription = stringResource(WebRes.string.web_rules),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(HELP_ICON_SIZE),
                     )
@@ -196,14 +206,14 @@ internal fun WebGameplayWallet() {
         WalletChip(
             icon = if (wallet.lives > 0) Icons.Rounded.Favorite else Icons.Rounded.HeartBroken,
             value = "${wallet.lives}",
-            description = "Жизни: ${wallet.lives} из ${EconomyPolicy.MAXIMUM_LIVES}",
+            description = stringResource(WebRes.string.web_wallet_lives, wallet.lives, EconomyPolicy.MAXIMUM_LIVES),
             tint = if (wallet.lives > 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
             onClick = openStore,
         )
         WalletChip(
             icon = Icons.Rounded.Diamond,
             value = "${wallet.gems}",
-            description = "Кристаллы: ${wallet.gems}",
+            description = stringResource(WebRes.string.web_wallet_gems, wallet.gems),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             onClick = openStore,
         )

@@ -83,6 +83,7 @@ import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
 import com.stanisryz.logica.ui.components.GameHubContent
 import com.stanisryz.logica.ui.components.GameKey
 import com.stanisryz.logica.ui.components.LocalGameSounds
+import com.stanisryz.logica.ui.components.WordLanguageNotice
 import com.stanisryz.logica.ui.components.catalogTitleResource
 import com.stanisryz.logica.ui.components.starsForWordAttempts
 import com.stanisryz.logica.ui.crowns.CrownsGameContent
@@ -90,6 +91,7 @@ import com.stanisryz.logica.ui.daily.DailyHubResultRow
 import com.stanisryz.logica.ui.daily.DailyHubSection
 import com.stanisryz.logica.ui.daily.DailyHubUiState
 import com.stanisryz.logica.ui.daily.DailyShareFormatter
+import com.stanisryz.logica.ui.daily.DailyShareLanguage
 import com.stanisryz.logica.ui.game2048.Game2048Content
 import com.stanisryz.logica.ui.game2048.formatGame2048Number
 import com.stanisryz.logica.ui.profile.Achievement
@@ -108,10 +110,20 @@ import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.ui.theme.LogicaTheme
 import com.stanisryz.logica.ui.tutorial.FirstPlayTutorialDialog
 import com.stanisryz.logica.ui.word.WordGameContent
+import com.stanisryz.logica.web.generated.resources.web_fatal_title
+import com.stanisryz.logica.web.generated.resources.web_loading
+import com.stanisryz.logica.web.generated.resources.web_score_final
+import com.stanisryz.logica.web.generated.resources.web_settings
+import com.stanisryz.logica.web.generated.resources.web_to_games
+import com.stanisryz.logica.web.generated.resources.web_word_answer
+import com.stanisryz.logica.web.generated.resources.web_word_guessed
+import com.stanisryz.logica.web.generated.resources.web_word_level_solved
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import com.stanisryz.logica.web.generated.resources.Res as WebRes
 
 private val PRIMARY_ROUTES = setOf<WebRoute>(WebRoute.GameHub, WebRoute.Profile, WebRoute.Store)
 
@@ -316,7 +328,7 @@ private fun LoadingContent() {
         CircularProgressIndicator()
         Spacer(Modifier.height(24.dp))
         Text(
-            text = "Логика загружается",
+            text = stringResource(WebRes.string.web_loading),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
         )
@@ -806,7 +818,7 @@ private fun PrimaryDestinationShell(
                 if (selected != WebRoute.Store) WebGameplayWallet()
                 var settingsOpen by remember { mutableStateOf(false) }
                 IconButton(onClick = { settingsOpen = true }) {
-                    Icon(Icons.Outlined.Settings, contentDescription = "Настройки")
+                    Icon(Icons.Outlined.Settings, contentDescription = stringResource(WebRes.string.web_settings))
                 }
                 if (settingsOpen) WebSettingsDialog(onDismiss = { settingsOpen = false })
             }
@@ -891,7 +903,12 @@ private fun WebDailyHubRoute(
                                                 )
                                             },
                                         onShare = {
-                                            WebDailyTextSharer.share(DailyShareFormatter.format(sharePayload))
+                                            WebDailyTextSharer.share(
+                                                DailyShareFormatter.format(
+                                                    sharePayload,
+                                                    DailyShareLanguage.fromTag(currentWebAppLanguage.tag),
+                                                ),
+                                            )
                                         },
                                     )
                                 }
@@ -1301,7 +1318,11 @@ private fun DifficultyContent(
     }
     Column(Modifier.fillMaxSize()) {
         // The same bar as gameplay: the way back, the game in the middle, and the wallet.
-        WebTopBar(backLabel = "К играм", onBack = onBack, title = stringResource(puzzleType.catalogTitleResource()))
+        WebTopBar(
+            backLabel = stringResource(WebRes.string.web_to_games),
+            onBack = onBack,
+            title = stringResource(puzzleType.catalogTitleResource()),
+        )
         BoxWithConstraints(
             modifier =
                 Modifier
@@ -1315,13 +1336,16 @@ private fun DifficultyContent(
             // The wallet chip in the header already shows the lives; the line only adds the countdown.
             val livesState = lives.state?.takeIf { it.nextLifeRestoreAtEpochMs != null }
             val livesHeight = if (livesState != null) LIVES_STATUS_HEIGHT + LogicaSpacing.section else 0.dp
+            // The Word game says up front that its words are Russian in every language.
+            val showsWordNotice = puzzleType == PuzzleType.WORD
+            val noticeHeight = if (showsWordNotice) WORD_NOTICE_HEIGHT + LogicaSpacing.section else 0.dp
             // The wide host shows the four difficulties as a 2x2 grid of taller cards.
             val columns = if (LocalWebWideLayout.current) 2 else 1
             val rows = 4 / columns
             val cardHeight =
                 (
                     (
-                        maxHeight - TUTORIAL_ACTION_HEIGHT - livesHeight -
+                        maxHeight - TUTORIAL_ACTION_HEIGHT - livesHeight - noticeHeight -
                             LogicaSpacing.section - LogicaSpacing.item * (rows - 1)
                     ) / rows
                 ).coerceIn(MIN_DIFFICULTY_CARD_HEIGHT, if (columns > 1) MAX_WIDE_DIFFICULTY_CARD_HEIGHT else MAX_DIFFICULTY_CARD_HEIGHT)
@@ -1333,6 +1357,7 @@ private fun DifficultyContent(
                 ) {
                     OutlinedButton(onClick = openTutorial) { Text(stringResource(Res.string.how_to_play)) }
                 }
+                if (showsWordNotice) WordLanguageNotice(Modifier.height(WORD_NOTICE_HEIGHT))
                 if (livesState != null) {
                     WebLivesStatus(livesState, Modifier.height(LIVES_STATUS_HEIGHT))
                 }
@@ -1556,7 +1581,7 @@ private fun PlayingWordContent(
             difficulty = state.source.difficulty,
             solved = state.game.status == WordGameStatus.SOLVED,
             // Spoiler-free: the Daily dialog never reveals the answer, unlike the Catalog one.
-            scoreDetail = "Отгадано за ${state.game.attempts.size} попыток.",
+            scoreDetail = pluralStringResource(WebRes.plurals.web_word_guessed, state.game.attempts.size, state.game.attempts.size),
             stars = starsForWordAttempts(state.game.attempts.size),
             completion = controller.dailyCompletionState,
             onRetry = controller::retry,
@@ -1574,9 +1599,9 @@ private fun PlayingWordContent(
             levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
             solved = state.game.status == WordGameStatus.SOLVED,
             completion = controller.completionState,
-            solvedDetail = "Уровень пройден за ${state.game.attempts.size} попыток.",
+            solvedDetail = pluralStringResource(WebRes.plurals.web_word_level_solved, state.game.attempts.size, state.game.attempts.size),
             stars = starsForWordAttempts(state.game.attempts.size),
-            failedDetail = "Загаданное слово: ${state.puzzle.answer.uppercase()}",
+            failedDetail = stringResource(WebRes.string.web_word_answer, state.puzzle.answer.uppercase()),
             onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },
             onRetry = { livesGuard(controller::retry) },
             onRetrySave = controller::retrySave,
@@ -1723,7 +1748,7 @@ private fun PlayingGame2048Content(
             visible = state.game.status.isTerminal && state.motionTrace == null,
             difficulty = state.source.difficulty,
             solved = state.game.goalReached,
-            scoreDetail = "Итоговый счёт: ${formatGame2048Number(state.game.score)}.",
+            scoreDetail = stringResource(WebRes.string.web_score_final, formatGame2048Number(state.game.score)),
             completion = controller.dailyCompletionState,
             onRetry = controller::retry,
             onRetrySave = controller::retryDailySave,
@@ -1749,7 +1774,7 @@ private fun PlayingGame2048Content(
 private fun FatalContent(message: String) {
     CenteredColumn {
         Text(
-            text = "Не удалось запустить Web-версию",
+            text = stringResource(WebRes.string.web_fatal_title),
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.error,
             fontWeight = FontWeight.Bold,
@@ -1779,16 +1804,9 @@ internal fun CenteredColumn(content: @Composable ColumnScope.() -> Unit) {
     )
 }
 
-private fun Difficulty.webLabel(): String =
-    when (this) {
-        Difficulty.EASY -> "Легко"
-        Difficulty.MEDIUM -> "Средне"
-        Difficulty.HARD -> "Сложно"
-        Difficulty.EXPERT -> "Эксперт"
-    }
-
 private val LIVES_STATUS_HEIGHT = 24.dp
 private val TUTORIAL_ACTION_HEIGHT = 40.dp
+private val WORD_NOTICE_HEIGHT = 40.dp
 private val PRIMARY_NAVIGATION_HEIGHT = 64.dp
 private val WIDE_HOST_MIN_WIDTH = 720.dp
 

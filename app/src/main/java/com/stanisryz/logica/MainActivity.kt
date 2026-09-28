@@ -9,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppLanguage.update(this)
         enableEdgeToEdge()
         // A payment that finished while the application was gone comes back as a cold start.
         proceedPaymentDeeplink(intent)

@@ -31,6 +31,10 @@ kotlin {
     applyDefaultHierarchyTemplate()
 
     sourceSets {
+        commonMain.dependencies {
+            implementation(compose.components.resources)
+        }
+
         webMain {
             resources.srcDir(rootProject.layout.projectDirectory.dir("puzzle-data"))
             resources.srcDir(project(":puzzle-core").layout.projectDirectory.dir("src/commonMain/resources"))
@@ -103,5 +107,16 @@ tasks.register<Zip>("packageYandexDistribution") {
             "Yandex distribution: $uncompressedBytes bytes uncompressed, " +
                 "${archive.length()} bytes compressed at ${archive.absolutePath}",
         )
+    }
+}
+
+compose.resources {
+    packageOfResClass = "com.stanisryz.logica.web.generated.resources"
+    generateResClass = always
+}
+
+ktlint {
+    filter {
+        exclude { element -> element.file.path.contains("generated") }
     }
 }

@@ -2,6 +2,8 @@
 <resources>
     <string name="how_to_play_question">Как играть?</string>
     <string name="app_name">Логика дня</string>
+    <!-- The language these resources resolved to; drives host-formatted dates and share text. -->
+    <string name="app_language">ru</string>
     <string name="tab_game">Игры</string>
     <string name="game_rules">Правила</string>
     <string name="tab_store">Магазин</string>

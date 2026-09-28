@@ -170,27 +170,47 @@ internal class WebDailyGameplayCoordinator(
 }
 
 /** Host-owned deterministic date label; the shared presentation never formats dates itself. */
-internal fun formatWebDailyDateLabel(date: DailyDate): String =
-    "${date.getDayOfMonth()} ${russianGenitiveMonth(date.getMonthValue())} ${date.getYear()} г."
+internal fun formatWebDailyDateLabel(date: DailyDate): String {
+    val day = date.getDayOfMonth()
+    val year = date.getYear()
+    val month = date.getMonthValue()
+    return when (currentWebAppLanguage) {
+        WebAppLanguage.RUSSIAN -> "$day ${RUSSIAN_GENITIVE_MONTHS[month - 1]} $year г."
+        WebAppLanguage.ENGLISH -> "${ENGLISH_MONTHS[month - 1]} $day, $year"
+        WebAppLanguage.TURKISH -> "$day ${TURKISH_MONTHS[month - 1]} $year"
+    }
+}
 
 /** Short display date shared with the spoiler-free Daily share payload ("24 августа"). */
-internal fun formatWebDailyShortDate(date: DailyDate): String = "${date.getDayOfMonth()} ${russianGenitiveMonth(date.getMonthValue())}"
-
-private fun russianGenitiveMonth(month: Int): String =
-    when (month) {
-        1 -> "января"
-        2 -> "февраля"
-        3 -> "марта"
-        4 -> "апреля"
-        5 -> "мая"
-        6 -> "июня"
-        7 -> "июля"
-        8 -> "августа"
-        9 -> "сентября"
-        10 -> "октября"
-        11 -> "ноября"
-        else -> "декабря"
+internal fun formatWebDailyShortDate(date: DailyDate): String {
+    val day = date.getDayOfMonth()
+    val month = date.getMonthValue()
+    return when (currentWebAppLanguage) {
+        WebAppLanguage.RUSSIAN -> "$day ${RUSSIAN_GENITIVE_MONTHS[month - 1]}"
+        WebAppLanguage.ENGLISH -> "${ENGLISH_MONTHS[month - 1]} $day"
+        WebAppLanguage.TURKISH -> "$day ${TURKISH_MONTHS[month - 1]}"
     }
+}
+
+/** A calendar title such as "Сентябрь 2026", "September 2026", or "Eylül 2026". */
+private fun formatWebMonthTitle(
+    month: Int,
+    year: Int,
+): String =
+    when (currentWebAppLanguage) {
+        WebAppLanguage.RUSSIAN -> "${RUSSIAN_NOMINATIVE_MONTHS[month - 1]} $year"
+        WebAppLanguage.ENGLISH -> "${ENGLISH_MONTHS[month - 1]} $year"
+        WebAppLanguage.TURKISH -> "${TURKISH_MONTHS[month - 1]} $year"
+    }
+
+private val RUSSIAN_GENITIVE_MONTHS =
+    listOf("января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря")
+private val RUSSIAN_NOMINATIVE_MONTHS =
+    listOf("Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь")
+private val ENGLISH_MONTHS =
+    listOf("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
+private val TURKISH_MONTHS =
+    listOf("Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık")
 
 /**
  * Real Web Daily Profile metrics derived only from durable history — completed count stays
@@ -228,29 +248,13 @@ private fun dailyCalendarMonth(
                     }
             }
     return DailyCalendarMonth(
-        title = "${russianNominativeMonth(month)} $year",
+        title = formatWebMonthTitle(month, year),
         year = year,
         month = month,
         today = currentDate.getDayOfMonth(),
         days = days,
     )
 }
-
-private fun russianNominativeMonth(month: Int): String =
-    listOf(
-        "Январь",
-        "Февраль",
-        "Март",
-        "Апрель",
-        "Май",
-        "Июнь",
-        "Июль",
-        "Август",
-        "Сентябрь",
-        "Октябрь",
-        "Ноябрь",
-        "Декабрь",
-    )[month - 1]
 
 private fun WebDailySnapshotV1.recentDailyDays(relevant: List<WebDailyDayRecord>): List<DailyRecentDay> =
     relevant

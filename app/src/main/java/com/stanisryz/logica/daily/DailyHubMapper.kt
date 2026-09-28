@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import com.stanisryz.logica.AppLanguage
 import com.stanisryz.logica.R
 import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.ui.daily.DailyHubCompletion
@@ -15,7 +16,6 @@ import com.stanisryz.logica.ui.daily.DailyHubStreak
 import com.stanisryz.logica.ui.daily.DailyHubUiState
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-import java.util.Locale
 
 /**
  * The thin Android adapter between the Room-backed [TodayUiState] and the shared Daily Hub
@@ -86,7 +86,7 @@ private fun TodayUiState.Content.toDailyHubContent(): DailyHubUiState.Content {
 @Composable
 private fun formattedDateLabel(challengeDate: java.time.LocalDate): String {
     // The interface is Russian-only, so the date is too, whatever the device language is.
-    val formatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(RUSSIAN)
+    val formatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(AppLanguage.locale)
     return formatter.format(challengeDate)
 }
 
@@ -106,5 +106,3 @@ internal fun Context.shareDailyResult(summary: DailyResultSummary) {
         }
     startActivity(Intent.createChooser(sendIntent, null))
 }
-
-private val RUSSIAN: Locale = Locale.forLanguageTag("ru")

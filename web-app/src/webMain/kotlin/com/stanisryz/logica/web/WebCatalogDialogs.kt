@@ -21,7 +21,24 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.ui.components.GameResultDialog
 import com.stanisryz.logica.ui.components.GameResultEconomy
 import com.stanisryz.logica.ui.components.GameResultSaveState
+import com.stanisryz.logica.ui.components.displayName
 import com.stanisryz.logica.ui.components.starsForMistakes
+import com.stanisryz.logica.web.generated.resources.web_back_to_difficulty
+import com.stanisryz.logica.web.generated.resources.web_error_daily
+import com.stanisryz.logica.web.generated.resources.web_error_level
+import com.stanisryz.logica.web.generated.resources.web_error_progress
+import com.stanisryz.logica.web.generated.resources.web_loading_level
+import com.stanisryz.logica.web.generated.resources.web_loading_progress
+import com.stanisryz.logica.web.generated.resources.web_retry
+import com.stanisryz.logica.web.generated.resources.web_save_error_catalog
+import com.stanisryz.logica.web.generated.resources.web_save_error_daily
+import com.stanisryz.logica.web.generated.resources.web_save_error_generic
+import com.stanisryz.logica.web.generated.resources.web_score_failed
+import com.stanisryz.logica.web.generated.resources.web_score_final
+import com.stanisryz.logica.web.generated.resources.web_to_difficulty
+import com.stanisryz.logica.web.generated.resources.web_to_games
+import org.jetbrains.compose.resources.stringResource
+import com.stanisryz.logica.web.generated.resources.Res as WebRes
 
 @Composable
 internal fun WebCatalogLoadingContent(
@@ -35,13 +52,15 @@ internal fun WebCatalogLoadingContent(
         Spacer(Modifier.height(20.dp))
         Text(
             if (levelNumber == null) {
-                "Загружаем прогресс: ${difficulty.webCatalogLabel()}"
+                stringResource(WebRes.string.web_loading_progress, difficulty.displayName())
             } else {
-                "Загружаем уровень $levelNumber: ${difficulty.webCatalogLabel()}"
+                stringResource(WebRes.string.web_loading_level, levelNumber, difficulty.displayName())
             },
         )
         Spacer(Modifier.height(12.dp))
-        TextButton(onClick = onBack) { Text(if (isDaily) "К играм" else "Назад к сложности") }
+        TextButton(onClick = onBack) {
+            Text(stringResource(if (isDaily) WebRes.string.web_to_games else WebRes.string.web_back_to_difficulty))
+        }
     }
 }
 
@@ -57,9 +76,9 @@ internal fun WebCatalogLevelErrorContent(
         Text(
             text =
                 when {
-                    isDaily -> "Не удалось открыть задачу дня"
-                    levelNumber != null -> "Не удалось открыть уровень $levelNumber"
-                    else -> "Не удалось загрузить прогресс"
+                    isDaily -> stringResource(WebRes.string.web_error_daily)
+                    levelNumber != null -> stringResource(WebRes.string.web_error_level, levelNumber)
+                    else -> stringResource(WebRes.string.web_error_progress)
                 },
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.error,
@@ -73,8 +92,10 @@ internal fun WebCatalogLevelErrorContent(
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(20.dp))
-        Button(onClick = onRetry) { Text("Повторить") }
-        TextButton(onClick = onBack) { Text(if (isDaily) "К играм" else "К сложности") }
+        Button(onClick = onRetry) { Text(stringResource(WebRes.string.web_retry)) }
+        TextButton(onClick = onBack) {
+            Text(stringResource(if (isDaily) WebRes.string.web_to_games else WebRes.string.web_to_difficulty))
+        }
     }
 }
 
@@ -110,14 +131,14 @@ internal fun WebOrdinaryCatalogTerminalDialog(
         solved = solved,
         levelNumber = levelNumber,
         isDaily = false,
-        difficultyLabel = difficulty.webCatalogLabel(),
+        difficultyLabel = difficulty.displayName(),
         saveState = saveState,
         onNextLevel = onNextLevel,
         onRetry = onRetry,
         onRetrySave = onRetrySave,
         onExit = onBack,
         detail = if (solved) solvedDetail else failedDetail,
-        saveErrorDetail = saveError?.let { "Уровень решён, но прогресс не сохранён. ${it.detail}" },
+        saveErrorDetail = saveError?.let { stringResource(WebRes.string.web_save_error_catalog, it.detail) },
         economy =
             if (solved) {
                 GameResultEconomy(gemsEarned = WebEconomyProcessor.gemRewardFor(difficulty))
@@ -151,7 +172,7 @@ internal fun WebDailyOrdinaryTerminalDialog(
         solved = solved,
         levelNumber = null,
         isDaily = true,
-        difficultyLabel = difficulty.webCatalogLabel(),
+        difficultyLabel = difficulty.displayName(),
         saveState =
             when (completion) {
                 is WebDailyCompletionState.SaveError -> GameResultSaveState.ERROR
@@ -166,7 +187,7 @@ internal fun WebDailyOrdinaryTerminalDialog(
         detail = scoreDetail,
         saveErrorDetail =
             (completion as? WebDailyCompletionState.SaveError)?.let {
-                "Игра завершена, но прогресс задачи дня не сохранён. ${it.detail}"
+                stringResource(WebRes.string.web_save_error_daily, it.detail)
             },
         mistakesUsed = mistakesUsed,
         hintsUsed = hintsUsed,
@@ -187,11 +208,11 @@ internal fun WebCatalogSaveErrorBanner(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "Прогресс не сохранён: ${error.detail}",
+                stringResource(WebRes.string.web_save_error_generic, error.detail),
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodySmall,
             )
-            TextButton(onClick = onRetrySave) { Text("Повторить") }
+            TextButton(onClick = onRetrySave) { Text(stringResource(WebRes.string.web_retry)) }
         }
     }
 }
@@ -216,19 +237,11 @@ internal fun Web2048CatalogTerminalDialog(
         difficulty = difficulty,
         solved = goalReached,
         completion = completion,
-        solvedDetail = "Итоговый счёт: $score.",
-        failedDetail = "Цель не достигнута. Итоговый счёт: $score.",
+        solvedDetail = stringResource(WebRes.string.web_score_final, score),
+        failedDetail = stringResource(WebRes.string.web_score_failed, score),
         onNextLevel = onNextLevel,
         onRetry = onRetry,
         onRetrySave = onRetrySave,
         onBack = onBack,
     )
 }
-
-private fun Difficulty.webCatalogLabel(): String =
-    when (this) {
-        Difficulty.EASY -> "Легко"
-        Difficulty.MEDIUM -> "Средне"
-        Difficulty.HARD -> "Сложно"
-        Difficulty.EXPERT -> "Эксперт"
-    }

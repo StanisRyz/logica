@@ -29,7 +29,16 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.ui.components.GameSound
 import com.stanisryz.logica.ui.components.GameSoundPlayer
 import com.stanisryz.logica.ui.components.gameSoundUri
+import com.stanisryz.logica.web.generated.resources.web_done
+import com.stanisryz.logica.web.generated.resources.web_settings
+import com.stanisryz.logica.web.generated.resources.web_settings_sound
+import com.stanisryz.logica.web.generated.resources.web_settings_theme
+import com.stanisryz.logica.web.generated.resources.web_theme_dark
+import com.stanisryz.logica.web.generated.resources.web_theme_light
+import com.stanisryz.logica.web.generated.resources.web_theme_system
 import kotlinx.coroutines.flow.StateFlow
+import org.jetbrains.compose.resources.stringResource
+import com.stanisryz.logica.web.generated.resources.Res as WebRes
 
 internal enum class WebThemeMode {
     SYSTEM,
@@ -117,14 +126,18 @@ internal fun WebSettingsDialog(onDismiss: () -> Unit) {
     PauseGameKeysWhileShown()
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Настройки") },
+        title = { Text(stringResource(WebRes.string.web_settings)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Тема", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    stringResource(WebRes.string.web_settings_theme),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 listOf(
-                    WebThemeMode.SYSTEM to "Как в системе",
-                    WebThemeMode.LIGHT to "Светлая",
-                    WebThemeMode.DARK to "Тёмная",
+                    WebThemeMode.SYSTEM to stringResource(WebRes.string.web_theme_system),
+                    WebThemeMode.LIGHT to stringResource(WebRes.string.web_theme_light),
+                    WebThemeMode.DARK to stringResource(WebRes.string.web_theme_dark),
                 ).forEach { (mode, label) ->
                     Row(
                         modifier =
@@ -141,10 +154,10 @@ internal fun WebSettingsDialog(onDismiss: () -> Unit) {
                         Text(label, modifier = Modifier.padding(start = 8.dp))
                     }
                 }
-                SettingSwitch("Звук", WebSettings.soundEnabled, WebSettings::updateSoundEnabled)
+                SettingSwitch(stringResource(WebRes.string.web_settings_sound), WebSettings.soundEnabled, WebSettings::updateSoundEnabled)
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Готово") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(WebRes.string.web_done)) } },
     )
 }
 

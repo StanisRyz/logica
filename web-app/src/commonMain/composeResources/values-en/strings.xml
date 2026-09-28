@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="web_loading">Logica is loading</string>
+    <string name="web_fatal_title">The web version could not start</string>
+    <string name="web_settings">Settings</string>
+    <string name="web_settings_theme">Theme</string>
+    <string name="web_theme_system">System default</string>
+    <string name="web_theme_light">Light</string>
+    <string name="web_theme_dark">Dark</string>
+    <string name="web_settings_sound">Sound</string>
+    <string name="web_done">Done</string>
+    <string name="web_back">Back</string>
+    <string name="web_to_games">To games</string>
+    <string name="web_to_difficulty">To difficulty</string>
+    <string name="web_back_to_difficulty">Back to difficulty</string>
+    <string name="web_rules">Rules</string>
+    <string name="web_how_to_play_title">How to play: %1$s</string>
+    <string name="web_leave_title">Leave the level?</string>
+    <string name="web_leave_body">An unfinished level is not saved: this attempt\'s progress will be lost.</string>
+    <string name="web_leave_confirm">Leave</string>
+    <string name="web_leave_stay">Stay</string>
+    <string name="web_wallet_lives">Lives: %1$d of %2$d</string>
+    <string name="web_wallet_gems">Gems: %1$d</string>
+    <string name="web_loading_progress">Loading progress: %1$s</string>
+    <string name="web_loading_level">Loading level %1$d: %2$s</string>
+    <string name="web_error_daily">The daily puzzle could not be opened</string>
+    <string name="web_error_level">Level %1$d could not be opened</string>
+    <string name="web_error_progress">Progress could not be loaded</string>
+    <string name="web_retry">Retry</string>
+    <string name="web_save_error_catalog">The level is solved, but progress was not saved. %1$s</string>
+    <string name="web_save_error_daily">The game is over, but daily progress was not saved. %1$s</string>
+    <string name="web_save_error_generic">Progress not saved: %1$s</string>
+    <string name="web_score_final">Final score: %1$s.</string>
+    <string name="web_score_failed">Target not reached. Final score: %1$s.</string>
+    <string name="web_word_answer">The word was: %1$s</string>
+    <string name="web_lives_status">Lives: %1$d of %2$d</string>
+    <string name="web_lives_next"> · next in %1$s</string>
+    <string name="web_no_lives_title">Out of lives</string>
+    <string name="web_no_lives_next">A new life arrives in %1$s. </string>
+    <string name="web_no_lives_body">Get a life for watching an ad or restore one in the store. The daily puzzle is playable without lives.</string>
+    <string name="web_life_ad_button">+1 life for an ad</string>
+    <string name="web_ad_showing">Ad playing…</string>
+    <string name="web_life_ad_granted">Ad watched: +1 life.</string>
+    <string name="web_to_store">To store</string>
+    <string name="web_got_it">Got it</string>
+    <string name="web_store_next_life">Next life in %1$s</string>
+    <string name="web_wallet_unavailable">Wallet unavailable</string>
+    <string name="web_store_hints_ad_title">+3 hints</string>
+    <string name="web_store_hints_ad_granted">Ad watched: +3 hints.</string>
+    <string name="web_store_life_ad_title">+1 life</string>
+    <string name="web_store_section_gems">Gems</string>
+    <string name="web_store_section_for_gems">For gems</string>
+    <string name="web_store_topup">Gem top-up</string>
+    <string name="web_paid_purchasing">Opening payment…</string>
+    <string name="web_paid_fulfilling">Adding gems…</string>
+    <string name="web_paid_saving">Saving the purchase…</string>
+    <string name="web_paid_success">Purchase complete: +100 gems.</string>
+    <string name="web_paid_cancelled">Payment cancelled.</string>
+    <string name="web_paid_unavailable">Payments are unavailable right now.</string>
+    <string name="web_paid_pending">The purchase is saved and will finish automatically.</string>
+    <string name="web_paid_error">The purchase could not be completed. Please try again.</string>
+    <string name="web_ad_in_progress">Playing…</string>
+    <string name="web_ad_watch">Watch</string>
+    <string name="web_ad_dismissed">No reward: the ad was closed early.</string>
+    <string name="web_ad_unavailable">Ads are unavailable right now. Try again later.</string>
+    <string name="web_ad_cooldown">Please wait a moment before the next ad.</string>
+    <string name="web_ad_offer">For watching a short ad</string>
+    <string name="web_lives_full">Lives are already full</string>
+    <string name="web_purchase_insufficient">Not enough gems: %1$d needed, %2$d available.</string>
+    <string name="web_purchase_failed">The purchase failed. Please try again.</string>
+    <string name="web_item_hint">Hint</string>
+    <string name="web_item_hint_pack">Hint pack</string>
+    <string name="web_item_life">Life refill</string>
+    <string name="web_no_hints_title">Out of hints</string>
+    <string name="web_no_hints_body">Buy hints with gems in the store or get them free by watching an ad. The store opens over the game, so your game stays as it is.</string>
+    <string name="web_not_now">Not now</string>
+    <string name="web_back_to_game">Back to the game</string>
+    <string name="web_leaderboard_title">Leaderboard: puzzles solved</string>
+    <string name="web_refresh">Refresh</string>
+    <string name="web_leaderboard_loading">Loading the leaderboard…</string>
+    <string name="web_leaderboard_unavailable">The leaderboard is unavailable right now. Try again later.</string>
+    <string name="web_leaderboard_empty">Nobody is on the leaderboard yet.</string>
+    <string name="web_leaderboard_you">You</string>
+    <string name="web_leaderboard_player">Player</string>
+    <string name="web_leaderboard_join">Solve puzzles to join the leaderboard.</string>
+    <plurals name="web_word_guessed">
+        <item quantity="one">Guessed in %1$d try.</item>
+        <item quantity="other">Guessed in %1$d tries.</item>
+    </plurals>
+    <plurals name="web_word_level_solved">
+        <item quantity="one">Level solved in %1$d try.</item>
+        <item quantity="other">Level solved in %1$d tries.</item>
+    </plurals>
+    <plurals name="web_missing_gems">
+        <item quantity="one">%1$d more gem needed</item>
+        <item quantity="other">%1$d more gems needed</item>
+    </plurals>
+    <plurals name="web_purchase_done_hints">
+        <item quantity="one">Purchased: +%1$d hint</item>
+        <item quantity="other">Purchased: +%1$d hints</item>
+    </plurals>
+    <plurals name="web_purchase_done_lives">
+        <item quantity="one">Purchased: +%1$d life</item>
+        <item quantity="other">Purchased: +%1$d lives</item>
+    </plurals>
+    <plurals name="web_hints_plus">
+        <item quantity="one">+%1$d hint</item>
+        <item quantity="other">+%1$d hints</item>
+    </plurals>
+    <plurals name="web_lives_plus">
+        <item quantity="one">+%1$d life</item>
+        <item quantity="other">+%1$d lives</item>
+    </plurals>
+    <plurals name="web_gems_plus">
+        <item quantity="one">+%1$d gem</item>
+        <item quantity="other">+%1$d gems</item>
+    </plurals>
+</resources>

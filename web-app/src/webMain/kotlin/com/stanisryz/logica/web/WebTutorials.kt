@@ -25,7 +25,10 @@ import com.stanisryz.logica.ui.tutorial.CrownsTutorial
 import com.stanisryz.logica.ui.tutorial.Game2048Tutorial
 import com.stanisryz.logica.ui.tutorial.SudokuTutorial
 import com.stanisryz.logica.ui.tutorial.WordTutorial
+import com.stanisryz.logica.web.generated.resources.web_back
+import com.stanisryz.logica.web.generated.resources.web_how_to_play_title
 import org.jetbrains.compose.resources.stringResource
+import com.stanisryz.logica.web.generated.resources.Res as WebRes
 
 /** Opens the shared onboarding for a game; provided by the host around the game routes. */
 internal val LocalOpenTutorial = staticCompositionLocalOf<(PuzzleType) -> Unit> { {} }
@@ -79,9 +82,9 @@ internal fun WebTutorialScreen(
             modifier = Modifier.fillMaxWidth().height(TUTORIAL_HEADER_HEIGHT).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = onClose) { Text("Назад") }
+            TextButton(onClick = onClose) { Text(stringResource(WebRes.string.web_back)) }
             Text(
-                text = "Как играть: ${stringResource(puzzleType.catalogTitleResource())}",
+                text = stringResource(WebRes.string.web_how_to_play_title, stringResource(puzzleType.catalogTitleResource())),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )

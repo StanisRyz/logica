@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="web_loading">Logica yükleniyor</string>
+    <string name="web_fatal_title">Web sürümü başlatılamadı</string>
+    <string name="web_settings">Ayarlar</string>
+    <string name="web_settings_theme">Tema</string>
+    <string name="web_theme_system">Sistem ayarı</string>
+    <string name="web_theme_light">Açık</string>
+    <string name="web_theme_dark">Koyu</string>
+    <string name="web_settings_sound">Ses</string>
+    <string name="web_done">Tamam</string>
+    <string name="web_back">Geri</string>
+    <string name="web_to_games">Oyunlara</string>
+    <string name="web_to_difficulty">Zorluk seçimine</string>
+    <string name="web_back_to_difficulty">Zorluk seçimine dön</string>
+    <string name="web_rules">Kurallar</string>
+    <string name="web_how_to_play_title">Nasıl oynanır: %1$s</string>
+    <string name="web_leave_title">Seviyeden çıkılsın mı?</string>
+    <string name="web_leave_body">Bitmemiş seviye kaydedilmez: bu denemedeki ilerleme kaybolur.</string>
+    <string name="web_leave_confirm">Çık</string>
+    <string name="web_leave_stay">Kal</string>
+    <string name="web_wallet_lives">Can: %1$d / %2$d</string>
+    <string name="web_wallet_gems">Elmas: %1$d</string>
+    <string name="web_loading_progress">İlerleme yükleniyor: %1$s</string>
+    <string name="web_loading_level">Seviye %1$d yükleniyor: %2$s</string>
+    <string name="web_error_daily">Günün bulmacası açılamadı</string>
+    <string name="web_error_level">Seviye %1$d açılamadı</string>
+    <string name="web_error_progress">İlerleme yüklenemedi</string>
+    <string name="web_retry">Tekrar dene</string>
+    <string name="web_save_error_catalog">Seviye çözüldü ama ilerleme kaydedilmedi. %1$s</string>
+    <string name="web_save_error_daily">Oyun bitti ama günlük ilerleme kaydedilmedi. %1$s</string>
+    <string name="web_save_error_generic">İlerleme kaydedilmedi: %1$s</string>
+    <string name="web_score_final">Son puan: %1$s.</string>
+    <string name="web_score_failed">Hedefe ulaşılamadı. Son puan: %1$s.</string>
+    <string name="web_word_answer">Gizli kelime: %1$s</string>
+    <string name="web_lives_status">Can: %1$d / %2$d</string>
+    <string name="web_lives_next"> · yenisi %1$s sonra</string>
+    <string name="web_no_lives_title">Canın kalmadı</string>
+    <string name="web_no_lives_next">Yeni can %1$s sonra gelecek. </string>
+    <string name="web_no_lives_body">Reklam izleyerek can kazanabilir ya da mağazadan yenileyebilirsin. Günün bulmacası can olmadan da oynanır.</string>
+    <string name="web_life_ad_button">Reklamla +1 can</string>
+    <string name="web_ad_showing">Reklam oynatılıyor…</string>
+    <string name="web_life_ad_granted">Reklam izlendi: +1 can.</string>
+    <string name="web_to_store">Mağazaya</string>
+    <string name="web_got_it">Anladım</string>
+    <string name="web_store_next_life">Yeni can %1$s sonra</string>
+    <string name="web_wallet_unavailable">Cüzdan kullanılamıyor</string>
+    <string name="web_store_hints_ad_title">+3 ipucu</string>
+    <string name="web_store_hints_ad_granted">Reklam izlendi: +3 ipucu.</string>
+    <string name="web_store_life_ad_title">+1 can</string>
+    <string name="web_store_section_gems">Elmaslar</string>
+    <string name="web_store_section_for_gems">Elmasla</string>
+    <string name="web_store_topup">Elmas yükleme</string>
+    <string name="web_paid_purchasing">Ödeme açılıyor…</string>
+    <string name="web_paid_fulfilling">Elmaslar ekleniyor…</string>
+    <string name="web_paid_saving">Satın alma kaydediliyor…</string>
+    <string name="web_paid_success">Satın alma tamamlandı: +100 elmas.</string>
+    <string name="web_paid_cancelled">Ödeme iptal edildi.</string>
+    <string name="web_paid_unavailable">Ödeme şu anda kullanılamıyor.</string>
+    <string name="web_paid_pending">Satın alma kaydedildi ve otomatik olarak tamamlanacak.</string>
+    <string name="web_paid_error">Satın alma tamamlanamadı. Lütfen tekrar dene.</string>
+    <string name="web_ad_in_progress">Oynatılıyor…</string>
+    <string name="web_ad_watch">İzle</string>
+    <string name="web_ad_dismissed">Ödül alınmadı: reklam erken kapatıldı.</string>
+    <string name="web_ad_unavailable">Reklam şu anda kullanılamıyor. Daha sonra tekrar dene.</string>
+    <string name="web_ad_cooldown">Sonraki reklamdan önce biraz bekle.</string>
+    <string name="web_ad_offer">Kısa bir reklam izleyerek</string>
+    <string name="web_lives_full">Canlar zaten dolu</string>
+    <string name="web_purchase_insufficient">Yeterli elmas yok: %1$d gerekli, %2$d var.</string>
+    <string name="web_purchase_failed">Satın alma başarısız. Lütfen tekrar dene.</string>
+    <string name="web_item_hint">İpucu</string>
+    <string name="web_item_hint_pack">İpucu paketi</string>
+    <string name="web_item_life">Can yenileme</string>
+    <string name="web_no_hints_title">İpucun kalmadı</string>
+    <string name="web_no_hints_body">İpuçlarını mağazadan elmasla alabilir ya da reklam izleyerek ücretsiz kazanabilirsin. Mağaza oyunun üzerinde açılır, oyunun olduğu gibi kalır.</string>
+    <string name="web_not_now">Şimdi değil</string>
+    <string name="web_back_to_game">Oyuna dön</string>
+    <string name="web_leaderboard_title">Sıralama: çözülen bulmacalar</string>
+    <string name="web_refresh">Yenile</string>
+    <string name="web_leaderboard_loading">Sıralama yükleniyor…</string>
+    <string name="web_leaderboard_unavailable">Sıralama şu anda kullanılamıyor. Daha sonra tekrar dene.</string>
+    <string name="web_leaderboard_empty">Sıralamada henüz kimse yok.</string>
+    <string name="web_leaderboard_you">Sen</string>
+    <string name="web_leaderboard_player">Oyuncu</string>
+    <string name="web_leaderboard_join">Sıralamaya girmek için bulmaca çöz.</string>
+    <plurals name="web_word_guessed">
+        <item quantity="one">%1$d denemede bilindi.</item>
+        <item quantity="other">%1$d denemede bilindi.</item>
+    </plurals>
+    <plurals name="web_word_level_solved">
+        <item quantity="one">Seviye %1$d denemede geçildi.</item>
+        <item quantity="other">Seviye %1$d denemede geçildi.</item>
+    </plurals>
+    <plurals name="web_missing_gems">
+        <item quantity="one">%1$d elmas daha gerekli</item>
+        <item quantity="other">%1$d elmas daha gerekli</item>
+    </plurals>
+    <plurals name="web_purchase_done_hints">
+        <item quantity="one">Satın alındı: +%1$d ipucu</item>
+        <item quantity="other">Satın alındı: +%1$d ipucu</item>
+    </plurals>
+    <plurals name="web_purchase_done_lives">
+        <item quantity="one">Satın alındı: +%1$d can</item>
+        <item quantity="other">Satın alındı: +%1$d can</item>
+    </plurals>
+    <plurals name="web_hints_plus">
+        <item quantity="one">+%1$d ipucu</item>
+        <item quantity="other">+%1$d ipucu</item>
+    </plurals>
+    <plurals name="web_lives_plus">
+        <item quantity="one">+%1$d can</item>
+        <item quantity="other">+%1$d can</item>
+    </plurals>
+    <plurals name="web_gems_plus">
+        <item quantity="one">+%1$d elmas</item>
+        <item quantity="other">+%1$d elmas</item>
+    </plurals>
+</resources>

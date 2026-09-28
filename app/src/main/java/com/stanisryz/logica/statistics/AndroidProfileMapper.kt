@@ -1,5 +1,6 @@
 package com.stanisryz.logica.statistics
 
+import com.stanisryz.logica.AppLanguage
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.ui.profile.DailyCalendarDayState
 import com.stanisryz.logica.ui.profile.DailyCalendarMonth
@@ -14,7 +15,6 @@ import com.stanisryz.logica.ui.profile.SolvedPuzzleProfileStatistics
 import com.stanisryz.logica.ui.profile.SudokuProfileStatistics
 import com.stanisryz.logica.ui.profile.WordProfileStatistics
 import java.time.format.TextStyle
-import java.util.Locale
 
 internal fun StatisticsUiState.toProfileUiState(): ProfileUiState =
     when (this) {
@@ -54,8 +54,8 @@ internal fun GameStatistics.toProfileStatistics(): ProfileStatistics {
 private fun DailyMonthHistory.toCalendarMonth(): DailyCalendarMonth {
     val monthName =
         currentDate.month
-            .getDisplayName(TextStyle.FULL_STANDALONE, RUSSIAN)
-            .replaceFirstChar { it.titlecase(RUSSIAN) }
+            .getDisplayName(TextStyle.FULL_STANDALONE, AppLanguage.locale)
+            .replaceFirstChar { it.titlecase(AppLanguage.locale) }
     return DailyCalendarMonth(
         title = "$monthName ${currentDate.year}",
         year = currentDate.year,
@@ -66,8 +66,6 @@ private fun DailyMonthHistory.toCalendarMonth(): DailyCalendarMonth {
                 partialDays.associateWith { DailyCalendarDayState.PARTIAL },
     )
 }
-
-private val RUSSIAN: Locale = Locale.forLanguageTag("ru")
 
 private fun PuzzleStatistics.toProfileStatistics(): SolvedPuzzleProfileStatistics =
     SolvedPuzzleProfileStatistics(

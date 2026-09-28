@@ -54,6 +54,49 @@ import com.stanisryz.logica.ui.components.StoreBalanceCard
 import com.stanisryz.logica.ui.components.StoreItemRow
 import com.stanisryz.logica.ui.components.StoreSectionTitle
 import com.stanisryz.logica.ui.theme.LogicaSpacing
+import com.stanisryz.logica.web.generated.resources.web_ad_cooldown
+import com.stanisryz.logica.web.generated.resources.web_ad_dismissed
+import com.stanisryz.logica.web.generated.resources.web_ad_in_progress
+import com.stanisryz.logica.web.generated.resources.web_ad_offer
+import com.stanisryz.logica.web.generated.resources.web_ad_unavailable
+import com.stanisryz.logica.web.generated.resources.web_ad_watch
+import com.stanisryz.logica.web.generated.resources.web_back_to_game
+import com.stanisryz.logica.web.generated.resources.web_gems_plus
+import com.stanisryz.logica.web.generated.resources.web_hints_plus
+import com.stanisryz.logica.web.generated.resources.web_item_hint
+import com.stanisryz.logica.web.generated.resources.web_item_hint_pack
+import com.stanisryz.logica.web.generated.resources.web_item_life
+import com.stanisryz.logica.web.generated.resources.web_life_ad_granted
+import com.stanisryz.logica.web.generated.resources.web_lives_full
+import com.stanisryz.logica.web.generated.resources.web_lives_plus
+import com.stanisryz.logica.web.generated.resources.web_missing_gems
+import com.stanisryz.logica.web.generated.resources.web_no_hints_body
+import com.stanisryz.logica.web.generated.resources.web_no_hints_title
+import com.stanisryz.logica.web.generated.resources.web_not_now
+import com.stanisryz.logica.web.generated.resources.web_paid_cancelled
+import com.stanisryz.logica.web.generated.resources.web_paid_error
+import com.stanisryz.logica.web.generated.resources.web_paid_fulfilling
+import com.stanisryz.logica.web.generated.resources.web_paid_pending
+import com.stanisryz.logica.web.generated.resources.web_paid_purchasing
+import com.stanisryz.logica.web.generated.resources.web_paid_saving
+import com.stanisryz.logica.web.generated.resources.web_paid_success
+import com.stanisryz.logica.web.generated.resources.web_paid_unavailable
+import com.stanisryz.logica.web.generated.resources.web_purchase_done_hints
+import com.stanisryz.logica.web.generated.resources.web_purchase_done_lives
+import com.stanisryz.logica.web.generated.resources.web_purchase_failed
+import com.stanisryz.logica.web.generated.resources.web_purchase_insufficient
+import com.stanisryz.logica.web.generated.resources.web_store_hints_ad_granted
+import com.stanisryz.logica.web.generated.resources.web_store_hints_ad_title
+import com.stanisryz.logica.web.generated.resources.web_store_life_ad_title
+import com.stanisryz.logica.web.generated.resources.web_store_next_life
+import com.stanisryz.logica.web.generated.resources.web_store_section_for_gems
+import com.stanisryz.logica.web.generated.resources.web_store_section_gems
+import com.stanisryz.logica.web.generated.resources.web_store_topup
+import com.stanisryz.logica.web.generated.resources.web_to_store
+import com.stanisryz.logica.web.generated.resources.web_wallet_unavailable
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
+import com.stanisryz.logica.web.generated.resources.Res as WebRes
 
 /**
  * The minimal internal Store screen: gems balance, the static catalog, purchase buttons, and
@@ -69,7 +112,7 @@ internal fun WebStoreScreen(
 ) {
     val economyBinding by playerSession.economyBinding.collectAsState()
     val storeBinding by playerSession.storeBinding.collectAsState()
-    var feedback by remember { mutableStateOf<String?>(null) }
+    var feedback by remember { mutableStateOf<WebStoreFeedback?>(null) }
 
     // Real-money catalog loads once per visit; standalone/unsupported hides the section.
     LaunchedEffect(paymentsCoordinator) { paymentsCoordinator.refreshCatalog() }
@@ -106,16 +149,19 @@ internal fun WebStoreScreen(
                     lives = state.lives,
                     maximumLives = EconomyPolicy.MAXIMUM_LIVES,
                     hints = hints,
-                    footnote = state.nextLifeRestoreAtEpochMs?.let { "Новая жизнь через ${formatLifeCountdown(it - now)}" },
+                    footnote =
+                        state.nextLifeRestoreAtEpochMs?.let {
+                            stringResource(WebRes.string.web_store_next_life, formatLifeCountdown(it - now))
+                        },
                 )
             }
-            else -> Text("Кошелёк недоступен", style = MaterialTheme.typography.bodyMedium)
+            else -> Text(stringResource(WebRes.string.web_wallet_unavailable), style = MaterialTheme.typography.bodyMedium)
         }
 
         RewardedAdRow(
             controller = rewardedAds.hints,
-            title = "+3 подсказки",
-            grantedText = "Реклама просмотрена: +3 подсказки.",
+            title = stringResource(WebRes.string.web_store_hints_ad_title),
+            grantedText = stringResource(WebRes.string.web_store_hints_ad_granted),
             enabled = storeBinding is WebStoreBinding.Ready,
         )
         // The life placement exists only while a life is actually missing.
@@ -129,8 +175,8 @@ internal fun WebStoreScreen(
         if (walletLives != null && walletLives < EconomyPolicy.MAXIMUM_LIVES) {
             RewardedAdRow(
                 controller = rewardedAds.life,
-                title = "+1 жизнь",
-                grantedText = "Реклама просмотрена: +1 жизнь.",
+                title = stringResource(WebRes.string.web_store_life_ad_title),
+                grantedText = stringResource(WebRes.string.web_life_ad_granted),
                 enabled = true,
                 icon = Icons.Rounded.Favorite,
             )
@@ -139,11 +185,11 @@ internal fun WebStoreScreen(
         // Real-money gem top-up (Yandex Payments): price/currency come from the Yandex catalog.
         if (paidCatalog is WebPaidCatalogState.Ready) {
             val entries = (paidCatalog as WebPaidCatalogState.Ready).entries
-            StoreSectionTitle("Кристаллы")
+            StoreSectionTitle(stringResource(WebRes.string.web_store_section_gems))
             entries.forEach { entry -> PaidGemTopUpCard(entry, purchaseState, paymentsCoordinator) }
         }
 
-        StoreSectionTitle("За кристаллы")
+        StoreSectionTitle(stringResource(WebRes.string.web_store_section_for_gems))
         WebStoreCatalog.ITEMS.forEach { item -> StoreCatalogRow(item, economyBinding, storeProcessor, { feedback = it }) }
 
         feedback?.let { message ->
@@ -153,7 +199,7 @@ internal fun WebStoreScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
-                    text = message,
+                    text = message.text(),
                     modifier = Modifier.padding(LogicaSpacing.cardContent),
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -172,8 +218,8 @@ private fun PaidGemTopUpCard(
     val message = paidPurchaseMessage(state)
     StoreItemRow(
         icon = Icons.Rounded.Diamond,
-        title = "+${entry.product.gemReward} ${gemsWord(entry.product.gemReward)}",
-        subtitle = message ?: entry.details.description ?: "Пополнение кристаллов",
+        title = pluralStringResource(WebRes.plurals.web_gems_plus, entry.product.gemReward, entry.product.gemReward),
+        subtitle = message ?: entry.details.description ?: stringResource(WebRes.string.web_store_topup),
         subtitleColor =
             if (state == WebPaidPurchaseState.Success) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
     ) {
@@ -203,14 +249,14 @@ private fun paidPriceLabel(details: PaymentProductSnapshot): String =
 @Composable
 private fun paidPurchaseMessage(state: WebPaidPurchaseState): String? =
     when (state) {
-        WebPaidPurchaseState.Purchasing -> "Открывается оплата…"
-        WebPaidPurchaseState.Fulfilling -> "Начисляем кристаллы…"
-        WebPaidPurchaseState.Saving -> "Сохраняем покупку…"
-        WebPaidPurchaseState.Success -> "Покупка завершена: +100 кристаллов."
-        WebPaidPurchaseState.Cancelled -> "Оплата отменена."
-        WebPaidPurchaseState.Unavailable -> "Оплата сейчас недоступна."
-        WebPaidPurchaseState.CloudPending -> "Покупка сохранена и будет завершена автоматически."
-        WebPaidPurchaseState.Error -> "Не удалось завершить покупку. Попробуйте ещё раз."
+        WebPaidPurchaseState.Purchasing -> stringResource(WebRes.string.web_paid_purchasing)
+        WebPaidPurchaseState.Fulfilling -> stringResource(WebRes.string.web_paid_fulfilling)
+        WebPaidPurchaseState.Saving -> stringResource(WebRes.string.web_paid_saving)
+        WebPaidPurchaseState.Success -> stringResource(WebRes.string.web_paid_success)
+        WebPaidPurchaseState.Cancelled -> stringResource(WebRes.string.web_paid_cancelled)
+        WebPaidPurchaseState.Unavailable -> stringResource(WebRes.string.web_paid_unavailable)
+        WebPaidPurchaseState.CloudPending -> stringResource(WebRes.string.web_paid_pending)
+        WebPaidPurchaseState.Error -> stringResource(WebRes.string.web_paid_error)
         WebPaidPurchaseState.Idle -> null
     }
 
@@ -237,7 +283,7 @@ internal fun RewardedAdRow(
             onClick = controller::requestReward,
             enabled = controller.isRequestAllowed && enabled,
         ) {
-            Text(if (state == WebRewardedAdState.Showing) "Идёт…" else "Смотреть")
+            Text(stringResource(if (state == WebRewardedAdState.Showing) WebRes.string.web_ad_in_progress else WebRes.string.web_ad_watch))
         }
     }
 }
@@ -250,10 +296,10 @@ internal fun rewardedAdSubtitle(
     val colors = MaterialTheme.colorScheme
     return when (state) {
         WebRewardedAdState.RewardGranted -> grantedText to colors.primary
-        WebRewardedAdState.Dismissed -> "Награда не получена: реклама закрыта раньше времени." to null
-        WebRewardedAdState.Unavailable, WebRewardedAdState.Error -> "Реклама сейчас недоступна. Попробуйте позже." to colors.error
-        WebRewardedAdState.Cooldown -> "Подождите немного перед следующей рекламой." to null
-        else -> "За просмотр короткой рекламы" to null
+        WebRewardedAdState.Dismissed -> stringResource(WebRes.string.web_ad_dismissed) to null
+        WebRewardedAdState.Unavailable, WebRewardedAdState.Error -> stringResource(WebRes.string.web_ad_unavailable) to colors.error
+        WebRewardedAdState.Cooldown -> stringResource(WebRes.string.web_ad_cooldown) to null
+        else -> stringResource(WebRes.string.web_ad_offer) to null
     }
 }
 
@@ -262,7 +308,7 @@ private fun StoreCatalogRow(
     item: StoreItem,
     economyBinding: WebEconomyBinding,
     storeProcessor: WebStoreProcessor,
-    onFeedback: (String) -> Unit,
+    onFeedback: (WebStoreFeedback) -> Unit,
 ) {
     val wallet =
         (economyBinding as? WebEconomyBinding.Ready)
@@ -278,8 +324,8 @@ private fun StoreCatalogRow(
         title = item.webTitle(),
         subtitle =
             when {
-                livesFull -> "Жизни уже полные"
-                missingGems > 0 -> "Не хватает $missingGems ${russianPlural(missingGems, "кристалла", "кристаллов", "кристаллов")}"
+                livesFull -> stringResource(WebRes.string.web_lives_full)
+                missingGems > 0 -> pluralStringResource(WebRes.plurals.web_missing_gems, missingGems, missingGems)
                 else -> item.webDescription()
             },
         subtitleColor =
@@ -294,61 +340,51 @@ private fun StoreCatalogRow(
     }
 }
 
+/** The outcome of one internal purchase, turned into text in the current language when shown. */
+internal data class WebStoreFeedback(
+    val item: StoreItem,
+    val result: PurchaseResult,
+)
+
 private fun purchaseFeedback(
     storeProcessor: WebStoreProcessor,
     item: StoreItem,
     economyBinding: WebEconomyBinding,
-): String =
-    when (val result = storeProcessor.purchase(item, (economyBinding as? WebEconomyBinding.Ready)?.identity?.playerId)) {
+): WebStoreFeedback =
+    WebStoreFeedback(item, storeProcessor.purchase(item, (economyBinding as? WebEconomyBinding.Ready)?.identity?.playerId))
+
+@Composable
+private fun WebStoreFeedback.text(): String =
+    when (val outcome = result) {
         is PurchaseResult.Success ->
-            "Покупка выполнена: +${result.grantedAmount} ${item.reward.type.webGrantWord(result.grantedAmount)}"
+            when (item.reward.type) {
+                StoreRewardType.HINTS ->
+                    pluralStringResource(WebRes.plurals.web_purchase_done_hints, outcome.grantedAmount, outcome.grantedAmount)
+                StoreRewardType.LIFE_RESTORE ->
+                    pluralStringResource(WebRes.plurals.web_purchase_done_lives, outcome.grantedAmount, outcome.grantedAmount)
+            }
         is PurchaseResult.Failure ->
-            when (result.status) {
+            when (outcome.status) {
                 PurchaseStatus.INSUFFICIENT_GEMS ->
-                    "Недостаточно кристаллов: нужно ${result.requiredGems}, есть ${result.availableGems}."
-                else -> "Покупка не выполнена. Попробуйте ещё раз."
+                    stringResource(WebRes.string.web_purchase_insufficient, outcome.requiredGems, outcome.availableGems)
+                else -> stringResource(WebRes.string.web_purchase_failed)
             }
     }
 
+@Composable
 private fun StoreItem.webTitle(): String =
     when (id) {
-        WebStoreCatalog.ITEM_HINT_SINGLE -> "Подсказка"
-        WebStoreCatalog.ITEM_HINT_PACK -> "Набор подсказок"
-        WebStoreCatalog.ITEM_LIFE_RESTORE -> "Восстановление жизни"
+        WebStoreCatalog.ITEM_HINT_SINGLE -> stringResource(WebRes.string.web_item_hint)
+        WebStoreCatalog.ITEM_HINT_PACK -> stringResource(WebRes.string.web_item_hint_pack)
+        WebStoreCatalog.ITEM_LIFE_RESTORE -> stringResource(WebRes.string.web_item_life)
         else -> id
     }
 
+@Composable
 private fun StoreItem.webDescription(): String =
-    when (id) {
-        WebStoreCatalog.ITEM_HINT_SINGLE, WebStoreCatalog.ITEM_HINT_PACK ->
-            "+${reward.amount} ${russianPlural(reward.amount, "подсказка", "подсказки", "подсказок")}"
-        WebStoreCatalog.ITEM_LIFE_RESTORE -> "+${reward.amount} ${russianPlural(reward.amount, "жизнь", "жизни", "жизней")}"
-        else -> ""
-    }
-
-/** Russian noun form for [count]: one / few / many ("1 подсказка", "3 подсказки", "5 подсказок"). */
-private fun gemsWord(count: Int): String = russianPlural(count, "кристалл", "кристалла", "кристаллов")
-
-internal fun russianPlural(
-    count: Int,
-    one: String,
-    few: String,
-    many: String,
-): String {
-    val lastTwo = count % 100
-    val last = count % 10
-    return when {
-        lastTwo in 11..14 -> many
-        last == 1 -> one
-        last in 2..4 -> few
-        else -> many
-    }
-}
-
-private fun StoreRewardType.webGrantWord(amount: Int): String =
-    when (this) {
-        StoreRewardType.HINTS -> russianPlural(amount, "подсказка", "подсказки", "подсказок")
-        StoreRewardType.LIFE_RESTORE -> russianPlural(amount, "жизнь", "жизни", "жизней")
+    when (reward.type) {
+        StoreRewardType.HINTS -> pluralStringResource(WebRes.plurals.web_hints_plus, reward.amount, reward.amount)
+        StoreRewardType.LIFE_RESTORE -> pluralStringResource(WebRes.plurals.web_lives_plus, reward.amount, reward.amount)
     }
 
 /** Shown when a hint is requested with an empty hint inventory. */
@@ -360,15 +396,12 @@ internal fun WebHintsExhaustedDialog(
     PauseGameKeysWhileShown()
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Подсказки закончились") },
+        title = { Text(stringResource(WebRes.string.web_no_hints_title)) },
         text = {
-            Text(
-                "Подсказки можно купить в магазине за кристаллы или получить бесплатно за просмотр рекламы. " +
-                    "Магазин откроется поверх игры — партия останется на месте.",
-            )
+            Text(stringResource(WebRes.string.web_no_hints_body))
         },
-        confirmButton = { TextButton(onClick = onOpenStore) { Text("В магазин") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Не сейчас") } },
+        confirmButton = { TextButton(onClick = onOpenStore) { Text(stringResource(WebRes.string.web_to_store)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(WebRes.string.web_not_now)) } },
     )
 }
 
@@ -410,7 +443,7 @@ internal fun WebStoreSheet(
             ) {
                 Column {
                     TextButton(onClick = onDismiss, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
-                        Text("Вернуться к игре")
+                        Text(stringResource(WebRes.string.web_back_to_game))
                     }
                     Box(Modifier.weight(1f)) { content() }
                 }

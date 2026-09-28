@@ -171,6 +171,10 @@ private fun Difficulty.artworkResource(): DrawableResource =
         Difficulty.EXPERT -> Res.drawable.difficulty_expert
     }
 
+/** The difficulty's name in the current language. */
+@Composable
+fun Difficulty.displayName(): String = stringResource(labelResource())
+
 private fun Difficulty.labelResource(): StringResource =
     when (this) {
         Difficulty.EASY -> Res.string.difficulty_easy

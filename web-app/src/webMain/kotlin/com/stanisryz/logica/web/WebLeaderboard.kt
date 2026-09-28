@@ -24,12 +24,22 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.ui.theme.LogicaSpacing
+import com.stanisryz.logica.web.generated.resources.web_leaderboard_empty
+import com.stanisryz.logica.web.generated.resources.web_leaderboard_join
+import com.stanisryz.logica.web.generated.resources.web_leaderboard_loading
+import com.stanisryz.logica.web.generated.resources.web_leaderboard_player
+import com.stanisryz.logica.web.generated.resources.web_leaderboard_title
+import com.stanisryz.logica.web.generated.resources.web_leaderboard_unavailable
+import com.stanisryz.logica.web.generated.resources.web_leaderboard_you
+import com.stanisryz.logica.web.generated.resources.web_refresh
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
+import com.stanisryz.logica.web.generated.resources.Res as WebRes
 
 /** The Yandex leaderboard calls the controller needs; `YandexGamesBridge` implements them. */
 internal interface WebLeaderboardBridge {
@@ -142,12 +152,15 @@ internal fun WebLeaderboardCard(controller: WebLeaderboardController) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "Рейтинг: решено головоломок",
+                stringResource(WebRes.string.web_leaderboard_title),
                 style = MaterialTheme.typography.titleSmall,
                 color = colors.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = controller::load, enabled = state != WebLeaderboardState.Loading) { Text("Обновить") }
+            TextButton(
+                onClick = controller::load,
+                enabled = state != WebLeaderboardState.Loading,
+            ) { Text(stringResource(WebRes.string.web_refresh)) }
         }
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -156,10 +169,14 @@ internal fun WebLeaderboardCard(controller: WebLeaderboardController) {
             Column(Modifier.padding(LogicaSpacing.cardPadding), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 when (val current = state) {
                     WebLeaderboardState.Idle, WebLeaderboardState.Loading ->
-                        Text("Загружаем рейтинг…", style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                        Text(
+                            stringResource(WebRes.string.web_leaderboard_loading),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.onSurfaceVariant,
+                        )
                     WebLeaderboardState.Unavailable ->
                         Text(
-                            "Рейтинг сейчас недоступен. Попробуйте позже.",
+                            stringResource(WebRes.string.web_leaderboard_unavailable),
                             style = MaterialTheme.typography.bodyMedium,
                             color = colors.onSurfaceVariant,
                         )
@@ -174,7 +191,11 @@ internal fun WebLeaderboardCard(controller: WebLeaderboardController) {
 private fun LeaderboardRows(snapshot: WebLeaderboardSnapshot) {
     val colors = MaterialTheme.colorScheme
     if (snapshot.entries.isEmpty()) {
-        Text("Пока в рейтинге никого нет.", style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+        Text(
+            stringResource(WebRes.string.web_leaderboard_empty),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.onSurfaceVariant,
+        )
         return
     }
     val sorted = snapshot.entries.distinctBy { it.rank }.sortedBy { it.rank }
@@ -199,7 +220,12 @@ private fun LeaderboardRows(snapshot: WebLeaderboardSnapshot) {
                 color = if (mine) colors.onPrimaryContainer else colors.onSurfaceVariant,
             )
             Text(
-                if (mine) "Вы" else entry.name ?: "Игрок",
+                if (mine) {
+                    stringResource(WebRes.string.web_leaderboard_you)
+                } else {
+                    entry.name
+                        ?: stringResource(WebRes.string.web_leaderboard_player)
+                },
                 modifier = Modifier.weight(1f).padding(end = LogicaSpacing.item),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (mine) FontWeight.SemiBold else null,
@@ -216,7 +242,7 @@ private fun LeaderboardRows(snapshot: WebLeaderboardSnapshot) {
     }
     if (snapshot.playerRank == null) {
         Text(
-            "Решайте головоломки, чтобы попасть в рейтинг.",
+            stringResource(WebRes.string.web_leaderboard_join),
             style = MaterialTheme.typography.bodySmall,
             color = colors.onSurfaceVariant,
         )

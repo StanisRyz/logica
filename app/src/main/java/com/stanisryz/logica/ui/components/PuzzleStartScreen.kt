@@ -77,12 +77,13 @@ internal fun PuzzleStartScreen(
                     ),
         ) {
             StartDifficultyContent(
-                cardHeight = normalCardHeight(maxHeight),
+                cardHeight = normalCardHeight(if (puzzleType == PuzzleType.WORD) maxHeight - WORD_NOTICE_ALLOWANCE else maxHeight),
                 onOpenTutorial = openTutorial,
                 onStart = start,
                 enabled = true,
                 modifier = Modifier.fillMaxSize(),
                 stars = stars,
+                showsWordNotice = puzzleType == PuzzleType.WORD,
             )
         }
     } else {
@@ -96,6 +97,7 @@ internal fun PuzzleStartScreen(
                 enabled = false,
                 modifier = Modifier,
                 stars = stars,
+                showsWordNotice = puzzleType == PuzzleType.WORD,
             )
         }
     }
@@ -109,6 +111,7 @@ private fun StartDifficultyContent(
     enabled: Boolean,
     modifier: Modifier,
     stars: Map<Difficulty, Long> = emptyMap(),
+    showsWordNotice: Boolean = false,
 ) {
     Column(
         modifier = modifier,
@@ -122,6 +125,8 @@ private fun StartDifficultyContent(
                 Text(stringResource(R.string.how_to_play_question))
             }
         }
+        // The Word game says up front that its words are Russian in every language.
+        if (showsWordNotice) WordLanguageNotice()
         DifficultySelector(
             onStart = onStart,
             enabled = enabled,
@@ -138,6 +143,7 @@ private fun normalCardHeight(availableHeight: androidx.compose.ui.unit.Dp): andr
     ).coerceIn(MIN_CARD_HEIGHT, MAX_CARD_HEIGHT)
 
 private val TUTORIAL_ACTION_HEIGHT = 48.dp
+private val WORD_NOTICE_ALLOWANCE = 44.dp
 private val MIN_CARD_HEIGHT = 104.dp
 private val MAX_CARD_HEIGHT = 168.dp
 private val ZERO_LIVES_CARD_HEIGHT = 112.dp

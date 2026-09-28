@@ -39,10 +39,13 @@ internal class WebBootstrapController(
 
     /**
      * The resolved host presentation language, read from the Yandex SDK I18N environment during
-     * normal Yandex startup. Standalone development keeps the default without any SDK.
+     * normal Yandex startup. Standalone development follows `?lang=` or the browser, without any SDK.
      */
     var hostLanguage: WebAppLanguage = WebAppLanguage.RUSSIAN
-        private set
+        private set(value) {
+            field = value
+            applyWebAppLanguage(value)
+        }
 
     fun start() {
         if (applicationStarted) return
@@ -52,6 +55,7 @@ internal class WebBootstrapController(
         if (!bridge.isAvailable) {
             state =
                 if (isStandaloneDevelopmentEnvironment()) {
+                    hostLanguage = standaloneWebAppLanguage()
                     WebBootstrapState.Ready(WebHostMode.STANDALONE)
                 } else {
                     WebBootstrapState.FatalError(

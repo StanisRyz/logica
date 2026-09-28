@@ -27,7 +27,19 @@ import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.platform.EconomyState
 import com.stanisryz.logica.ui.theme.LogicaSpacing
+import com.stanisryz.logica.web.generated.resources.web_ad_showing
+import com.stanisryz.logica.web.generated.resources.web_got_it
+import com.stanisryz.logica.web.generated.resources.web_life_ad_button
+import com.stanisryz.logica.web.generated.resources.web_life_ad_granted
+import com.stanisryz.logica.web.generated.resources.web_lives_next
+import com.stanisryz.logica.web.generated.resources.web_lives_status
+import com.stanisryz.logica.web.generated.resources.web_no_lives_body
+import com.stanisryz.logica.web.generated.resources.web_no_lives_next
+import com.stanisryz.logica.web.generated.resources.web_no_lives_title
+import com.stanisryz.logica.web.generated.resources.web_to_store
 import kotlinx.coroutines.delay
+import org.jetbrains.compose.resources.stringResource
+import com.stanisryz.logica.web.generated.resources.Res as WebRes
 
 /**
  * Host-side view of the bound Player's lives. [guard] runs a Catalog attempt start only while at
@@ -72,10 +84,8 @@ internal fun WebLivesStatus(
     val now = rememberNowMs(ticking = dueAt != null)
     Text(
         text =
-            buildString {
-                append("Жизни: ${state.lives} из ${EconomyPolicy.MAXIMUM_LIVES}")
-                if (dueAt != null) append(" · новая через ${formatLifeCountdown(dueAt - now)}")
-            },
+            stringResource(WebRes.string.web_lives_status, state.lives, EconomyPolicy.MAXIMUM_LIVES) +
+                (dueAt?.let { stringResource(WebRes.string.web_lives_next, formatLifeCountdown(it - now)) } ?: ""),
         modifier = modifier,
         style = MaterialTheme.typography.bodyMedium,
         color = if (state.lives > 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
@@ -97,14 +107,12 @@ internal fun WebNoLivesDialog(
     LaunchedEffect(lives) { if (lives > 0) onDismiss() }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Жизни закончились") },
+        title = { Text(stringResource(WebRes.string.web_no_lives_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
                 Text(
-                    buildString {
-                        if (dueAt != null) append("Новая жизнь появится через ${formatLifeCountdown(dueAt - now)}. ")
-                        append("Жизнь можно получить за рекламу или восстановить в магазине. Задача дня доступна и без жизней.")
-                    },
+                    (dueAt?.let { stringResource(WebRes.string.web_no_lives_next, formatLifeCountdown(it - now)) } ?: "") +
+                        stringResource(WebRes.string.web_no_lives_body),
                 )
                 Button(
                     onClick = rewardedLife::requestReward,
@@ -113,10 +121,20 @@ internal fun WebNoLivesDialog(
                 ) {
                     Icon(Icons.Rounded.PlayCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(if (adState == WebRewardedAdState.Showing) "Идёт реклама…" else "+1 жизнь за рекламу")
+                    Text(
+                        stringResource(
+                            if (adState ==
+                                WebRewardedAdState.Showing
+                            ) {
+                                WebRes.string.web_ad_showing
+                            } else {
+                                WebRes.string.web_life_ad_button
+                            },
+                        ),
+                    )
                 }
                 if (adState != WebRewardedAdState.Idle && adState != WebRewardedAdState.Showing) {
-                    val (message, color) = rewardedAdSubtitle(adState, "Реклама просмотрена: +1 жизнь.")
+                    val (message, color) = rewardedAdSubtitle(adState, stringResource(WebRes.string.web_life_ad_granted))
                     Text(
                         message,
                         style = MaterialTheme.typography.bodySmall,
@@ -125,8 +143,8 @@ internal fun WebNoLivesDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onOpenStore) { Text("В магазин") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Понятно") } },
+        confirmButton = { TextButton(onClick = onOpenStore) { Text(stringResource(WebRes.string.web_to_store)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(WebRes.string.web_got_it)) } },
     )
 }
 
