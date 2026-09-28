@@ -2,7 +2,7 @@
 <resources>
     <string name="how_to_play_question">Как играть?</string>
     <string name="app_name">Логика дня</string>
-    <string name="tab_game">Игра</string>
+    <string name="tab_game">Игры</string>
     <string name="tab_store">Магазин</string>
     <string name="tab_profile">Профиль</string>
     <string name="statistics">Статистика</string>
@@ -203,5 +203,19 @@
     <string name="hints_not_now">Не сейчас</string>
     <string name="hints_open_store">В магазин</string>
     <string name="hints_store_title">Подсказки</string>
+    <string name="hints_store_for_gems">За кристаллы</string>
+    <string name="gem_store_section">Кристаллы</string>
+    <plurals name="hints_store_offer_title">
+        <item quantity="one">+%1$d подсказка</item>
+        <item quantity="few">+%1$d подсказки</item>
+        <item quantity="many">+%1$d подсказок</item>
+        <item quantity="other">+%1$d подсказки</item>
+    </plurals>
+    <plurals name="hints_store_missing">
+        <item quantity="one">Не хватает %1$d кристалла</item>
+        <item quantity="few">Не хватает %1$d кристаллов</item>
+        <item quantity="many">Не хватает %1$d кристаллов</item>
+        <item quantity="other">Не хватает %1$d кристалла</item>
+    </plurals>
     <string name="hints_store_balance">Подсказок сейчас: %1$d</string>
 </resources>

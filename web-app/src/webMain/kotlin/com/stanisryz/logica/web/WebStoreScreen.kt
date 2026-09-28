@@ -11,18 +11,13 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -32,9 +27,6 @@ import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -48,12 +40,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.platform.PaymentProductSnapshot
@@ -61,6 +47,10 @@ import com.stanisryz.logica.platform.PurchaseResult
 import com.stanisryz.logica.platform.PurchaseStatus
 import com.stanisryz.logica.platform.StoreItem
 import com.stanisryz.logica.platform.StoreRewardType
+import com.stanisryz.logica.ui.components.GemPriceButton
+import com.stanisryz.logica.ui.components.StoreBalanceCard
+import com.stanisryz.logica.ui.components.StoreItemRow
+import com.stanisryz.logica.ui.components.StoreSectionTitle
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 /**
@@ -108,11 +98,13 @@ internal fun WebStoreScreen(
                     economy.repository.state
                         .collectAsState()
                         .value
-                BalanceCard(
-                    gems = state.gems,
+                val now = rememberNowMs(ticking = state.nextLifeRestoreAtEpochMs != null)
+                StoreBalanceCard(
+                    gems = state.gems.toLong(),
                     lives = state.lives,
+                    maximumLives = EconomyPolicy.MAXIMUM_LIVES,
                     hints = hints,
-                    nextLifeAtEpochMs = state.nextLifeRestoreAtEpochMs,
+                    footnote = state.nextLifeRestoreAtEpochMs?.let { "Новая жизнь через ${formatLifeCountdown(it - now)}" },
                 )
             }
             else -> Text("Кошелёк недоступен", style = MaterialTheme.typography.bodyMedium)
@@ -154,7 +146,7 @@ private fun PaidGemTopUpCard(
     coordinator: WebPaymentsCoordinator,
 ) {
     val message = paidPurchaseMessage(state)
-    StoreRow(
+    StoreItemRow(
         icon = Icons.Filled.Diamond,
         title = "+${entry.product.gemReward} ${gemsWord(entry.product.gemReward)}",
         subtitle = message ?: entry.details.description ?: "Пополнение кристаллов",
@@ -215,7 +207,7 @@ private fun RewardedHintsCard(
             WebRewardedHintState.Cooldown -> "Подождите немного перед следующей рекламой." to colors.onSurfaceVariant
             else -> "За просмотр короткой рекламы" to colors.onSurfaceVariant
         }
-    StoreRow(
+    StoreItemRow(
         icon = Icons.Filled.PlayCircle,
         title = "+3 подсказки",
         subtitle = subtitle,
@@ -247,7 +239,7 @@ private fun StoreCatalogRow(
     val livesFull = item.reward.type == StoreRewardType.LIFE_RESTORE && wallet?.let { it.lives >= EconomyPolicy.MAXIMUM_LIVES } == true
     // A purchase the balance cannot cover is shown as such instead of failing after the tap.
     val missingGems = wallet?.let { (item.priceGems - it.gems).coerceAtLeast(0) } ?: 0
-    StoreRow(
+    StoreItemRow(
         icon = if (item.reward.type == StoreRewardType.LIFE_RESTORE) Icons.Filled.Favorite else Icons.Filled.Lightbulb,
         title = item.webTitle(),
         subtitle =
@@ -260,130 +252,13 @@ private fun StoreCatalogRow(
             if (missingGems > 0 && !livesFull) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
     ) {
         // The price is the button: one tap spends exactly what it says.
-        Button(
-            onClick = { onFeedback(purchaseFeedback(storeProcessor, item, economyBinding)) },
+        GemPriceButton(
+            price = item.priceGems,
             enabled = !livesFull && missingGems == 0,
-            contentPadding = PaddingValues(horizontal = 16.dp),
-        ) {
-            Icon(Icons.Filled.Diamond, contentDescription = null, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(item.priceGems.toString())
-        }
+            onClick = { onFeedback(purchaseFeedback(storeProcessor, item, economyBinding)) },
+        )
     }
 }
-
-/** Gems, lives, and hints on one line, with the next-life countdown under them while it runs. */
-@Composable
-private fun BalanceCard(
-    gems: Int,
-    lives: Int,
-    hints: Int?,
-    nextLifeAtEpochMs: Long?,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-            ),
-    ) {
-        Column(
-            modifier = Modifier.padding(LogicaSpacing.cardContent).fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text),
-        ) {
-            Row(Modifier.fillMaxWidth()) {
-                BalanceMetric(Icons.Filled.Diamond, gems.toString(), "Кристаллы", Modifier.weight(1f))
-                BalanceMetric(Icons.Filled.Favorite, "$lives/${EconomyPolicy.MAXIMUM_LIVES}", "Жизни", Modifier.weight(1f))
-                hints?.let { BalanceMetric(Icons.Filled.Lightbulb, it.toString(), "Подсказки", Modifier.weight(1f)) }
-            }
-            nextLifeAtEpochMs?.let { dueAt ->
-                val now = rememberNowMs(ticking = true)
-                Text(
-                    text = "Новая жизнь через ${formatLifeCountdown(dueAt - now)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun BalanceMetric(
-    icon: ImageVector,
-    value: String,
-    label: String,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier.clearAndSetSemantics { contentDescription = "$label: $value" },
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-        }
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable
-private fun StoreSectionTitle(text: String) {
-    Text(
-        text = text,
-        modifier = Modifier.padding(top = LogicaSpacing.text),
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-}
-
-/** One store line: an icon, what it is and what it gives, and its action on the right. */
-@Composable
-private fun StoreRow(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    subtitleColor: Color,
-    highlighted: Boolean = false,
-    action: @Composable () -> Unit,
-) {
-    val colors = MaterialTheme.colorScheme
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = if (highlighted) colors.primaryContainer else colors.surfaceContainerLow,
-                contentColor = if (highlighted) colors.onPrimaryContainer else colors.onSurface,
-            ),
-    ) {
-        Row(
-            modifier = Modifier.padding(STORE_ROW_PADDING).fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(STORE_ICON_BOX)
-                        .clip(CircleShape)
-                        .background(if (highlighted) colors.surface else colors.surfaceContainerHigh),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(icon, contentDescription = null, tint = colors.primary, modifier = Modifier.size(22.dp))
-            }
-            Column(Modifier.weight(1f)) {
-                Text(text = title, style = MaterialTheme.typography.titleMedium)
-                Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = subtitleColor)
-            }
-            action()
-        }
-    }
-}
-
-private val STORE_ROW_PADDING = 14.dp
-private val STORE_ICON_BOX = 40.dp
 
 private fun purchaseFeedback(
     storeProcessor: WebStoreProcessor,

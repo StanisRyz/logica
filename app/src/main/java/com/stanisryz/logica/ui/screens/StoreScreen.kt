@@ -13,9 +13,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Diamond
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -29,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
@@ -37,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
 import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.economy.EconomyRules
 import com.stanisryz.logica.economy.GameplayHints
 import com.stanisryz.logica.economy.GemPack
 import com.stanisryz.logica.economy.HintOffer
@@ -48,11 +51,11 @@ import com.stanisryz.logica.store.GemPurchaseOutcome
 import com.stanisryz.logica.store.GemStoreState
 import com.stanisryz.logica.store.GemStoreViewModel
 import com.stanisryz.logica.store.GemStoreViewModelFactory
-import com.stanisryz.logica.ui.components.HintOfferButtons
-import com.stanisryz.logica.ui.components.LogicaCard
+import com.stanisryz.logica.ui.components.GemPriceButton
 import com.stanisryz.logica.ui.components.ScreenColumn
-import com.stanisryz.logica.ui.components.ScreenTitle
-import com.stanisryz.logica.ui.components.SectionTitle
+import com.stanisryz.logica.ui.components.StoreBalanceCard
+import com.stanisryz.logica.ui.components.StoreItemRow
+import com.stanisryz.logica.ui.components.StoreSectionTitle
 import com.stanisryz.logica.ui.components.SupportingText
 import com.stanisryz.logica.ui.theme.LogicaMotion
 import com.stanisryz.logica.ui.theme.LogicaSpacing
@@ -144,12 +147,14 @@ internal fun StoreScreen(
     DisposableEffect(Unit) { onDispose(onDismissOutcome) }
 
     ScreenColumn(modifier, verticalSpacing = LogicaSpacing.item) {
-        ScreenTitle(stringResource(R.string.gem_store_title))
         // The balance stays visible in every state, including a store that cannot load.
-        Text(
-            text = stringResource(R.string.gem_store_balance, economy.gems),
-            style = MaterialTheme.typography.bodyMedium,
+        StoreBalanceCard(
+            gems = economy.gems.toLong(),
+            lives = economy.lives,
+            maximumLives = EconomyRules.MAX_LIVES,
+            hints = economy.hints,
         )
+        StoreSectionTitle(stringResource(R.string.gem_store_section))
         AnimatedContent(
             targetState = state,
             contentKey = { it.presentationKey() },
@@ -172,12 +177,18 @@ internal fun StoreScreen(
             }
         }
         // Hints are a consumable item bought with gems; this works even when paid packs cannot load.
-        SectionTitle(stringResource(R.string.hints_store_title))
-        Text(
-            text = stringResource(R.string.hints_store_balance, economy.hints),
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        HintOfferButtons(economy, onBuyHints)
+        StoreSectionTitle(stringResource(R.string.hints_store_for_gems))
+        HintOffer.entries.forEach { offer ->
+            val missing = (offer.gemCost - economy.gems).coerceAtLeast(0)
+            StoreItemRow(
+                icon = Icons.Filled.Lightbulb,
+                title = pluralStringResource(R.plurals.hints_store_offer_title, offer.hints, offer.hints),
+                subtitle = if (missing > 0) pluralStringResource(R.plurals.hints_store_missing, missing, missing) else null,
+                subtitleColor = MaterialTheme.colorScheme.error,
+            ) {
+                GemPriceButton(price = offer.gemCost, enabled = missing == 0, onClick = { onBuyHints(offer) })
+            }
+        }
     }
 }
 
@@ -239,21 +250,14 @@ private fun GemPackRow(
     isPurchasing: Boolean,
     onBuy: () -> Unit,
 ) {
-    LogicaCard(verticalSpacing = LogicaSpacing.text) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.action),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(Icons.Filled.Diamond, contentDescription = null, modifier = Modifier.size(ICON_SIZE))
-            Text(
-                text = stringResource(R.string.gem_store_pack_gems, offer.pack.gems),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = onBuy, enabled = enabled) {
-                // The price label is RuStore's, formatted and localized by the store itself.
-                Text(if (isPurchasing) stringResource(R.string.gem_store_purchasing) else offer.priceLabel)
-            }
+    StoreItemRow(
+        icon = Icons.Filled.Diamond,
+        title = stringResource(R.string.gem_store_pack_gems, offer.pack.gems),
+        subtitle = null,
+    ) {
+        Button(onClick = onBuy, enabled = enabled) {
+            // The price label is RuStore's, formatted and localized by the store itself.
+            Text(if (isPurchasing) stringResource(R.string.gem_store_purchasing) else offer.priceLabel)
         }
     }
 }
