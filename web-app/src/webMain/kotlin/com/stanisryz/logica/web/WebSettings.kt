@@ -264,3 +264,26 @@ internal object WebLastPlayed {
 }
 
 private const val LAST_PLAYED_KEY = "logica_last_played_v1"
+
+/**
+ * Which achievements were already announced to this browser's Player scope
+ * (`logica_achievements_seen_v1:<scope>`). The first look at a scope only records what is already
+ * reached, so existing players are not greeted by a burst of old achievements.
+ */
+internal object WebAchievementsSeen {
+    fun newlyUnlocked(
+        scope: WebCatalogProgressScope,
+        unlocked: Set<String>,
+    ): List<String> {
+        val key = "$SEEN_KEY_PREFIX:${scope.keySuffix}"
+        val stored = runCatching { settingsStorageGet(key) }.getOrNull()
+        val seen = stored?.split(',')?.filter(String::isNotEmpty)?.toSet()
+        val fresh = if (seen == null) emptyList() else unlocked.filterNot(seen::contains)
+        if (seen == null || fresh.isNotEmpty()) {
+            runCatching { settingsStorageSet(key, (seen.orEmpty() + unlocked).joinToString(",")) }
+        }
+        return fresh
+    }
+
+    private const val SEEN_KEY_PREFIX = "logica_achievements_seen_v1"
+}

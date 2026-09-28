@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import kotlinx.coroutines.flow.Flow
@@ -42,6 +43,7 @@ class DataStoreSettingsRepository(
                         preferences[LAST_PLAYED_PUZZLE]?.let { stored ->
                             PuzzleType.entries.firstOrNull { it.name == stored }
                         },
+                    seenAchievements = preferences[SEEN_ACHIEVEMENTS],
                     lastPlayedDifficulty =
                         preferences[LAST_PLAYED_DIFFICULTY]?.let { stored -> Difficulty.entries.firstOrNull { it.name == stored } },
                 )
@@ -66,6 +68,12 @@ class DataStoreSettingsRepository(
     override suspend fun setSoundEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[SOUND_ENABLED] = enabled
+        }
+    }
+
+    override suspend fun setSeenAchievements(ids: Set<String>) {
+        dataStore.edit { preferences ->
+            preferences[SEEN_ACHIEVEMENTS] = ids
         }
     }
 
@@ -110,6 +118,7 @@ class DataStoreSettingsRepository(
         val LAST_PLAYED_PUZZLE = stringPreferencesKey("last_played_puzzle")
         val LAST_PLAYED_DIFFICULTY = stringPreferencesKey("last_played_difficulty")
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
+        val SEEN_ACHIEVEMENTS = stringSetPreferencesKey("seen_achievements")
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         val BALANCE_TUTORIAL_COMPLETED = booleanPreferencesKey("balance_tutorial_completed")
         val CROWNS_TUTORIAL_COMPLETED = booleanPreferencesKey("crowns_tutorial_completed")

@@ -11,6 +11,8 @@ interface SettingsRepository {
 
     suspend fun setSoundEnabled(enabled: Boolean)
 
+    suspend fun setSeenAchievements(ids: Set<String>)
+
     suspend fun setHapticsEnabled(enabled: Boolean)
 
     suspend fun setBalanceTutorialCompleted(completed: Boolean)

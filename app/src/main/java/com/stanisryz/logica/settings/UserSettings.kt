@@ -15,6 +15,8 @@ data class UserSettings(
     /** The last Catalog game and difficulty the player started, for the hub's Continue card. */
     val lastPlayedPuzzle: PuzzleType? = null,
     val lastPlayedDifficulty: Difficulty? = null,
+    /** Achievement ids already announced; null until the first look records the reached ones. */
+    val seenAchievements: Set<String>? = null,
 )
 
 /** Whether this game's tutorial was already completed, opened, or declined once. */

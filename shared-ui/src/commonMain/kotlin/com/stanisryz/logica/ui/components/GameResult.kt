@@ -73,6 +73,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.result_solved
 import com.stanisryz.logica.shared.ui.generated.resources.result_stars
 import com.stanisryz.logica.shared.ui.generated.resources.result_to_difficulty
 import com.stanisryz.logica.shared.ui.generated.resources.result_to_games
+import com.stanisryz.logica.ui.profile.ResultCardAchievements
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import kotlinx.coroutines.delay
@@ -203,6 +204,7 @@ fun GameResultCard(
                         textAlign = TextAlign.Center,
                     )
                 }
+                ResultCardAchievements()
                 ResultTiles(
                     economy = economy.takeIf { saveState == GameResultSaveState.SAVED },
                     mistakesUsed = mistakesUsed,

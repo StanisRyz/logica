@@ -92,11 +92,17 @@ import com.stanisryz.logica.ui.daily.DailyHubUiState
 import com.stanisryz.logica.ui.daily.DailyShareFormatter
 import com.stanisryz.logica.ui.game2048.Game2048Content
 import com.stanisryz.logica.ui.game2048.formatGame2048Number
+import com.stanisryz.logica.ui.profile.Achievement
+import com.stanisryz.logica.ui.profile.AchievementAnnouncementHost
+import com.stanisryz.logica.ui.profile.AchievementAnnouncer
 import com.stanisryz.logica.ui.profile.DailyProfileMetrics
+import com.stanisryz.logica.ui.profile.LocalAchievementAnnouncer
 import com.stanisryz.logica.ui.profile.ProfileContent
 import com.stanisryz.logica.ui.profile.ProfileEconomyMetrics
 import com.stanisryz.logica.ui.profile.ProfileStarSummary
+import com.stanisryz.logica.ui.profile.ProfileStatistics
 import com.stanisryz.logica.ui.profile.ProfileUiState
+import com.stanisryz.logica.ui.profile.unlockedAchievementIds
 import com.stanisryz.logica.ui.sudoku.SudokuGameContent
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.ui.theme.LogicaTheme
@@ -485,7 +491,9 @@ private fun ReadyContent(
     val catalogStars =
         progressRepository?.let { repository -> key(repository) { repository.stars.collectAsState().value } }
             ?: WebCatalogStarsSnapshot.EMPTY
+    val achievementAnnouncer = remember { AchievementAnnouncer() }
     CompositionLocalProvider(
+        LocalAchievementAnnouncer provides achievementAnnouncer,
         LocalWebCatalogStars provides catalogStars,
         LocalWebLives provides livesUi,
         LocalWebOpenStore provides openStore,
@@ -732,6 +740,23 @@ private fun ReadyContent(
             rewardedAds = rewardedAds,
         )
     }
+    // A newly reached achievement is announced once: inside an open result card, else as a banner.
+    if (leaderboardBinding != null) {
+        key(leaderboardBinding.token) {
+            CompositionLocalProvider(LocalWebCatalogStars provides catalogStars) {
+                val unlocked = webProfileStatistics(playerSession, leaderboardBinding, dailyDate).unlockedAchievementIds()
+                LaunchedEffect(unlocked) {
+                    WebAchievementsSeen
+                        .newlyUnlocked(leaderboardBinding.repository.scope, unlocked)
+                        .mapNotNull { id -> Achievement.entries.firstOrNull { it.id == id } }
+                        .let(achievementAnnouncer::announce)
+                }
+            }
+        }
+    }
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        AchievementAnnouncementHost(achievementAnnouncer)
+    }
 }
 
 @Composable
@@ -907,36 +932,45 @@ private fun WebProfileRoute(
             )
         is WebStatisticsBinding.Ready ->
             key(binding.token) {
-                val snapshot by binding.repository.snapshot.collectAsState()
-                // Real Daily metrics come from the currently bound Player's Daily repository and
-                // update locally after gameplay; opening Profile never triggers a cloud read.
-                val dailyMetrics =
-                    webDailyProfileMetricsOrNull(
-                        dailyBinding = playerSession.dailyBinding.collectAsState().value,
-                        statisticsToken = binding.token,
-                        currentDate = currentDate,
-                    )
-                val economyMetrics =
-                    webEconomyMetricsOrNull(
-                        economyBinding = playerSession.economyBinding.collectAsState().value,
-                        statisticsToken = binding.token,
-                    )
                 ProfileContent(
-                    uiState =
-                        WebStatisticsAggregator
-                            .aggregate(snapshot)
-                            .toProfileStatistics()
-                            .copy(
-                                dailyMetrics = dailyMetrics,
-                                economy = economyMetrics,
-                                stars = ProfileStarSummary.from(LocalWebCatalogStars.current.levelRecords()),
-                            ).toUiState(),
+                    uiState = webProfileStatistics(playerSession, binding, currentDate).toUiState(),
                     onRetry = onRetry,
                     onOpenGames = onOpenGames,
                     footer = if (leaderboard.isSupported) ({ WebLeaderboardCard(leaderboard) }) else null,
                 )
             }
     }
+}
+
+/** Everything the Profile shows for the bound Player, derived locally without any cloud read. */
+@Composable
+private fun webProfileStatistics(
+    playerSession: WebPlayerSessionController,
+    binding: WebStatisticsBinding.Ready,
+    currentDate: DailyDate,
+): ProfileStatistics {
+    val snapshot by binding.repository.snapshot.collectAsState()
+    // Real Daily metrics come from the currently bound Player's Daily repository and update
+    // locally after gameplay; opening Profile never triggers a cloud read.
+    val dailyMetrics =
+        webDailyProfileMetricsOrNull(
+            dailyBinding = playerSession.dailyBinding.collectAsState().value,
+            statisticsToken = binding.token,
+            currentDate = currentDate,
+        )
+    val economyMetrics =
+        webEconomyMetricsOrNull(
+            economyBinding = playerSession.economyBinding.collectAsState().value,
+            statisticsToken = binding.token,
+        )
+    return WebStatisticsAggregator
+        .aggregate(snapshot)
+        .toProfileStatistics()
+        .copy(
+            dailyMetrics = dailyMetrics,
+            economy = economyMetrics,
+            stars = ProfileStarSummary.from(LocalWebCatalogStars.current.levelRecords()),
+        )
 }
 
 /** Daily metrics from the Daily repository bound to exactly this Player context, else absent. */
