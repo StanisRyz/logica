@@ -47,6 +47,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.fixed_cell
 import com.stanisryz.logica.shared.ui.generated.resources.incorrect_cell
 import com.stanisryz.logica.shared.ui.generated.resources.pencil_marks_suffix
 import com.stanisryz.logica.ui.components.cellFeedbackMotion
+import com.stanisryz.logica.ui.theme.LightBoardTheme
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -63,38 +64,42 @@ fun BalanceBoard(
 ) {
     val conflictPositions = remember(game.violations) { game.violations.flatMapTo(mutableSetOf()) { it.affectedPositions } }
     val hint = game.currentHint
-    BoxWithConstraints(
-        modifier = modifier.fillMaxWidth(),
-        contentAlignment = Alignment.Center,
-    ) {
-        // Tutorial callers may offer unbounded height; in that case width remains the real limit.
-        // Gameplay offers both dimensions, so a short host shrinks the board instead of clipping it.
-        val boardSide = minOf(maxWidth, maxHeight)
-        val pencilPieceSize =
-            (boardSide / puzzle.size * PENCIL_PIECE_RATIO).coerceIn(MIN_PENCIL_PIECE_SIZE, MAX_PENCIL_PIECE_SIZE)
-        Column(modifier = Modifier.size(boardSide)) {
-            repeat(puzzle.size) { row ->
-                Row(Modifier.fillMaxWidth().weight(1f)) {
-                    repeat(puzzle.size) { column ->
-                        val position = BalancePosition(row, column)
-                        BalanceCellView(
-                            position = position,
-                            value = game.board.cellAt(position),
-                            status = game.statusAt(position),
-                            pencilMarks = game.pencilMarksAt(position),
-                            pencilPieceSize = pencilPieceSize,
-                            isConflict = position in conflictPositions,
-                            isHintTarget = hint?.position == position,
-                            isHintEvidence = position in (hint?.evidencePositions ?: emptySet()),
-                            isGuided = position in guidedPositions,
-                            enabled =
-                                enabled &&
-                                    !game.isLocked(position) &&
-                                    !game.status.isTerminal &&
-                                    (enabledPositions == null || position in enabledPositions),
-                            onClick = { onCellTapped(position) },
-                            modifier = Modifier.weight(1f).fillMaxHeight(),
-                        )
+    // Like Crowns, the board is always drawn in the light scheme: the literal black and white
+    // pieces need a light board to stay visible, including a wrong piece on its red cell.
+    LightBoardTheme {
+        BoxWithConstraints(
+            modifier = modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center,
+        ) {
+            // Tutorial callers may offer unbounded height; in that case width remains the real limit.
+            // Gameplay offers both dimensions, so a short host shrinks the board instead of clipping it.
+            val boardSide = minOf(maxWidth, maxHeight)
+            val pencilPieceSize =
+                (boardSide / puzzle.size * PENCIL_PIECE_RATIO).coerceIn(MIN_PENCIL_PIECE_SIZE, MAX_PENCIL_PIECE_SIZE)
+            Column(modifier = Modifier.size(boardSide).background(MaterialTheme.colorScheme.surface)) {
+                repeat(puzzle.size) { row ->
+                    Row(Modifier.fillMaxWidth().weight(1f)) {
+                        repeat(puzzle.size) { column ->
+                            val position = BalancePosition(row, column)
+                            BalanceCellView(
+                                position = position,
+                                value = game.board.cellAt(position),
+                                status = game.statusAt(position),
+                                pencilMarks = game.pencilMarksAt(position),
+                                pencilPieceSize = pencilPieceSize,
+                                isConflict = position in conflictPositions,
+                                isHintTarget = hint?.position == position,
+                                isHintEvidence = position in (hint?.evidencePositions ?: emptySet()),
+                                isGuided = position in guidedPositions,
+                                enabled =
+                                    enabled &&
+                                        !game.isLocked(position) &&
+                                        !game.status.isTerminal &&
+                                        (enabledPositions == null || position in enabledPositions),
+                                onClick = { onCellTapped(position) },
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                            )
+                        }
                     }
                 }
             }

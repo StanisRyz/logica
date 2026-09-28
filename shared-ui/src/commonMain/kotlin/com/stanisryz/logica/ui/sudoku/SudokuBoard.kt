@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -166,7 +167,9 @@ private fun SudokuCell(
     val background =
         when {
             isSelected -> colors.primaryContainer
-            isSameNumber -> colors.secondaryContainer
+            // In the dark theme the warm secondary tone reads like an error, so equal digits get a
+            // neutral lighter surface there instead.
+            isSameNumber -> if (colors.surface.luminance() < DARK_SURFACE_LUMINANCE) colors.surfaceBright else colors.secondaryContainer
             isHintTarget -> colors.tertiaryContainer
             isPeer -> colors.surfaceContainerHigh
             cell.status == SudokuCellStatus.INCORRECT -> colors.errorContainer
@@ -349,3 +352,5 @@ private val SELECTED_WIDTH = 2.dp
 private val HINT_WIDTH = 1.5.dp
 private val STATUS_ICON_SIZE = 10.dp
 private const val CELL_HIGHLIGHT_MILLIS = 120
+
+private const val DARK_SURFACE_LUMINANCE = 0.5f

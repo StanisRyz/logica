@@ -229,7 +229,8 @@ private fun WordBoardCell(
         when (cell.feedback) {
             WordLetterFeedback.CORRECT -> colors.onPrimary
             WordLetterFeedback.PRESENT -> colors.onTertiaryContainer
-            WordLetterFeedback.ABSENT -> colors.onSurfaceVariant.copy(alpha = DIMMED_ALPHA)
+            // The grey tile already says "absent"; the letter itself stays fully readable.
+            WordLetterFeedback.ABSENT -> colors.onSurfaceVariant
             null -> colors.onSurface
         }
     val borderWidth =
@@ -374,7 +375,6 @@ private val CORRECT_CORNER = 12.dp
 private val PRESENT_BORDER_WIDTH = 3.dp
 private val SELECTED_BORDER_WIDTH = 3.dp
 private val EMPTY_BORDER_WIDTH = 1.dp
-private const val DIMMED_ALPHA = 0.6f
 private const val LETTER_POP_SCALE = 1.1f
 private const val LETTER_POP_MILLIS = 120
 private const val REPLACE_FADE_MILLIS = 80
