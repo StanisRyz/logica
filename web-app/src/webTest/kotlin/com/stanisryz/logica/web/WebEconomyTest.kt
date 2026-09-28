@@ -49,12 +49,12 @@ class WebEconomyTest {
         // Player A earns and spends; Player B must stay at the untouched starting wallet.
         assertTrue(playerA.addGems(100))
         assertTrue(playerA.spendGems(40))
-        assertEquals(60, playerA.state.value.gems)
+        assertEquals(EconomyPolicy.STARTING_GEMS + 60, playerA.state.value.gems)
         assertEquals(EconomyPolicy.STARTING_GEMS, playerB.state.value.gems)
 
         // Reloading the same scope restores exactly that Player's durable wallet...
         val reloadedA = repository(storeA)
-        assertEquals(60, reloadedA.state.value.gems)
+        assertEquals(EconomyPolicy.STARTING_GEMS + 60, reloadedA.state.value.gems)
         // ...and reloading the other scope still shows no leakage from Player A.
         val reloadedB = repository(storeB)
         assertEquals(EconomyPolicy.STARTING_GEMS, reloadedB.state.value.gems)
@@ -65,8 +65,8 @@ class WebEconomyTest {
         session.economyBinding.value =
             WebEconomyBinding.Ready(WebPlayerContextToken(1L), playerB, null)
         coordinator.recordTerminalResult(PuzzleType.SUDOKU, Difficulty.EXPERT, solved = true)
-        assertEquals(2, playerB.state.value.gems)
-        assertEquals(60, playerA.state.value.gems)
+        assertEquals(EconomyPolicy.STARTING_GEMS + 2, playerB.state.value.gems)
+        assertEquals(EconomyPolicy.STARTING_GEMS + 60, playerA.state.value.gems)
     }
 
     @Test
@@ -78,9 +78,9 @@ class WebEconomyTest {
             listOf<EconomyEvent>(EconomyEvent.GameCompleted),
             repository.applyTerminalResult(PuzzleType.BALANCE, Difficulty.EXPERT, solved = true),
         )
-        assertEquals(0, repository.state.value.gems)
+        assertEquals(EconomyPolicy.STARTING_GEMS, repository.state.value.gems)
         val solvedEvents = repository.applyTerminalResult(PuzzleType.GAME_2048, Difficulty.EXPERT, solved = true)
-        assertEquals(2, repository.state.value.gems)
+        assertEquals(EconomyPolicy.STARTING_GEMS + 2, repository.state.value.gems)
         assertEquals(EconomyPolicy.STARTING_LIVES, repository.state.value.lives)
         assertEquals(EconomyEvent.GameCompleted, solvedEvents[0])
         val granted = assertIs<EconomyEvent.RewardGranted>(solvedEvents[1])
@@ -112,7 +112,7 @@ class WebEconomyTest {
         assertEquals(0, repository.state.value.lives)
 
         // Spending beyond the balance is rejected; an exact balance spends cleanly.
-        assertTrue(repository.spendGems(2))
+        assertTrue(repository.spendGems(EconomyPolicy.STARTING_GEMS + 2))
         assertEquals(0, repository.state.value.gems)
         assertFalse(repository.spendGems(1))
     }

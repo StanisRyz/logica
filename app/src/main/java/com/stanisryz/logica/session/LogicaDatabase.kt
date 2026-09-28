@@ -239,7 +239,7 @@ internal abstract class LogicaDatabase : RoomDatabase() {
                         INSERT OR IGNORE INTO `player_economy` (
                             `economy_id`, `gems`, `lives`, `next_life_at_epoch_millis`, `updated_at_epoch_millis`
                         ) VALUES (
-                            ${PlayerEconomyEntity.SINGLETON_ID}, ${EconomyRules.STARTING_GEMS},
+                            ${PlayerEconomyEntity.SINGLETON_ID}, $MIGRATION_5_6_SEED_GEMS,
                             ${EconomyRules.STARTING_LIVES}, NULL,
                             CAST(strftime('%s', 'now') AS INTEGER) * 1000
                         )
@@ -328,3 +328,6 @@ internal abstract class LogicaDatabase : RoomDatabase() {
         }
     }
 }
+
+/** Players migrated to Room v6 started from zero gems; the later welcome gift is for new wallets only. */
+private const val MIGRATION_5_6_SEED_GEMS = 0

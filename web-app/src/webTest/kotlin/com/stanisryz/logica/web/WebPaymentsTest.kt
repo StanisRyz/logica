@@ -1,5 +1,6 @@
 package com.stanisryz.logica.web
 
+import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.platform.PaymentPurchaseSnapshot
 import com.stanisryz.logica.platform.PaymentResult
 import kotlinx.coroutines.CoroutineScope
@@ -130,14 +131,14 @@ class WebPaymentsTest {
 
             val outcome = coordinator.fulfillPurchase(PaymentPurchaseSnapshot("tok-1", "gems_150"))
             assertEquals(WebPaymentOutcome.Fulfilled, outcome)
-            assertEquals(150, economy.currentSnapshot.gems)
+            assertEquals(EconomyPolicy.STARTING_GEMS + 150, economy.currentSnapshot.gems)
             assertTrue(payments.isFulfilled("tok-1"))
 
             // Presenting the SAME token again must never pay a second time.
             val repeatOutcome =
                 coordinator.fulfillPurchase(PaymentPurchaseSnapshot("tok-1", "gems_150"))
             assertEquals(WebPaymentOutcome.AlreadyFulfilled, repeatOutcome)
-            assertEquals(150, economy.currentSnapshot.gems)
+            assertEquals(EconomyPolicy.STARTING_GEMS + 150, economy.currentSnapshot.gems)
             assertEquals(1, payments.snapshot.value.fulfilledTokens.size)
         }
 
@@ -210,20 +211,20 @@ class WebPaymentsTest {
 
             // Local fulfillment succeeds durably (no consume attempt happens here)...
             assertEquals(WebPaymentOutcome.Fulfilled, coordinator.fulfillPurchase(PaymentPurchaseSnapshot("tok-5", "gems_150")))
-            assertEquals(150, economy.currentSnapshot.gems)
+            assertEquals(EconomyPolicy.STARTING_GEMS + 150, economy.currentSnapshot.gems)
             assertNull(journal.stored)
 
             // ...but the post-bind reconcile's consumption fails while cloud flush works.
             provider.pending = listOf(PaymentPurchaseSnapshot("tok-5", "gems_150"))
             coordinator.reconcilePendingPurchases()
             assertEquals(0, provider.consumedTokens.size) // never consumed while failing
-            assertEquals(150, economy.currentSnapshot.gems) // and never granted twice
+            assertEquals(EconomyPolicy.STARTING_GEMS + 150, economy.currentSnapshot.gems) // and never granted twice
 
             // Later reconcile: consume now succeeds exactly once for this token.
             provider.consumeSucceeds = true
             coordinator.reconcilePendingPurchases()
             assertEquals(listOf("tok-5"), provider.consumedTokens.toList())
-            assertEquals(150, economy.currentSnapshot.gems)
+            assertEquals(EconomyPolicy.STARTING_GEMS + 150, economy.currentSnapshot.gems)
 
             // A failed canonical flush gates consumption entirely: no consume call at all.
             val failingFlush =
@@ -264,6 +265,6 @@ class WebPaymentsTest {
             assertEquals(listOf(PaymentPurchaseSnapshot("tok-unknown", "mystery_pack")), coordinator.unknownProducts.value)
             assertEquals(0, provider.consumedTokens.size) // never consumed
             assertFalse(payments.isFulfilled("tok-unknown")) // never granted
-            assertEquals(0, economy.currentSnapshot.gems)
+            assertEquals(EconomyPolicy.STARTING_GEMS, economy.currentSnapshot.gems)
         }
 }

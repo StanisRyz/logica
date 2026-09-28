@@ -77,7 +77,10 @@ internal class AppContainer(
     val interstitialOpportunities: InterstitialOpportunities = InterstitialOpportunities()
 
     val interstitialCooldownPolicy: InterstitialCooldownPolicy by lazy {
-        InterstitialCooldownPolicy(DataStoreInterstitialCooldownStore(context.advertisingDataStore))
+        InterstitialCooldownPolicy(
+            DataStoreInterstitialCooldownStore(context.advertisingDataStore),
+            launchGraceMillis = InterstitialCooldownPolicy.LAUNCH_GRACE_MILLIS,
+        )
     }
 
     /**

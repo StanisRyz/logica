@@ -94,7 +94,7 @@ fun main() {
     // every provider degrades safely: rewarded -> Unavailable, interstitial -> skip+continue,
     // sticky banner -> no-op, so standalone mode keeps working unchanged.
     val monetizationAnalytics = WebMonetizationAnalytics()
-    val adPolicy = WebAdPolicy()
+    val adPolicy = WebAdPolicy(firstInterstitialAtMs = currentTimeMillis() + WebAdPolicy.SESSION_GRACE_MS)
     val adRewardService =
         WebRewardService(
             economyRepository = { playerSession.economyRepository },

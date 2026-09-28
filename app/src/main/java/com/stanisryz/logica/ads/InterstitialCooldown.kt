@@ -55,15 +55,21 @@ internal class DataStoreInterstitialCooldownStore(
 internal class InterstitialCooldownPolicy(
     private val store: InterstitialCooldownStore,
     private val clock: InterstitialClock = InterstitialClock.SYSTEM,
+    /** No interstitial this soon after the app starts, so a session never opens with an ad. */
+    private val launchGraceMillis: Long = 0L,
 ) {
+    private val startedAt = clock.nowEpochMillis()
+
     suspend fun isEligible(): Boolean = remainingMillis() == 0L
 
     /** How long is left before another interstitial may be shown; `0` means it may be shown now. */
     suspend fun remainingMillis(): Long {
-        val lastShownAt = store.lastShownAtEpochMillis() ?: return 0L
+        val sinceLaunch = clock.nowEpochMillis() - startedAt
+        val grace = if (sinceLaunch < 0L) launchGraceMillis else (launchGraceMillis - sinceLaunch).coerceAtLeast(0L)
+        val lastShownAt = store.lastShownAtEpochMillis() ?: return grace
         val elapsed = clock.nowEpochMillis() - lastShownAt
         if (elapsed < 0L) return COOLDOWN_MILLIS
-        return (COOLDOWN_MILLIS - elapsed).coerceAtLeast(0L)
+        return maxOf(grace, (COOLDOWN_MILLIS - elapsed).coerceAtLeast(0L))
     }
 
     /** Called from the successful shown callback, and from no other event. */
@@ -74,5 +80,8 @@ internal class InterstitialCooldownPolicy(
     companion object {
         /** Exactly five minutes between actual interstitial shows. */
         const val COOLDOWN_MILLIS = 5L * 60L * 1000L
+
+        /** The production grace after each app start before the first interstitial. */
+        const val LAUNCH_GRACE_MILLIS = 2L * 60L * 1000L
     }
 }

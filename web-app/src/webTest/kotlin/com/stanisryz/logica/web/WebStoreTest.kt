@@ -69,7 +69,7 @@ class WebStoreTest {
         assertIs<PurchaseResult.Success>(result)
 
         // Player A paid and received the reward; Player B keeps the untouched defaults.
-        assertEquals(90, economyA.state.value.gems)
+        assertEquals(EconomyPolicy.STARTING_GEMS + 90, economyA.state.value.gems)
         assertEquals(3, storeA.snapshot.value.quantityOf(STORE_INVENTORY_HINTS))
         assertEquals(com.stanisryz.logica.platform.EconomyPolicy.STARTING_GEMS, economyB.state.value.gems)
         assertEquals(0, storeB.snapshot.value.quantityOf(STORE_INVENTORY_HINTS))
@@ -107,7 +107,7 @@ class WebStoreTest {
         val success = assertIs<PurchaseResult.Success>(result)
         assertEquals(item, success.item)
         assertEquals(STORE_INVENTORY_HINTS, success.inventoryItemId)
-        assertEquals(80, economy.state.value.gems)
+        assertEquals(EconomyPolicy.STARTING_GEMS + 80, economy.state.value.gems)
         assertEquals(3, store.snapshot.value.quantityOf(STORE_INVENTORY_HINTS))
 
         val record =
@@ -140,7 +140,7 @@ class WebStoreTest {
         assertIs<PurchaseResult.Success>(processor.purchase(pack, playerId = "player"))
 
         assertEquals(single.reward.amount + pack.reward.amount, store.snapshot.value.quantityOf(STORE_INVENTORY_HINTS))
-        assertEquals(100 - single.priceGems - pack.priceGems, economy.state.value.gems)
+        assertEquals(EconomyPolicy.STARTING_GEMS + 100 - single.priceGems - pack.priceGems, economy.state.value.gems)
         assertTrue(store.consumeInventory(STORE_INVENTORY_HINTS))
         assertEquals(single.reward.amount + pack.reward.amount - 1, store.snapshot.value.quantityOf(STORE_INVENTORY_HINTS))
     }
@@ -157,11 +157,11 @@ class WebStoreTest {
                 transactionStoreProvider = { MemoryPurchaseTransactionStore() },
             )
 
-        // Zero-gem wallet cannot afford the pack.
-        val item = StoreItem("hint_pack", 10, StoreReward(StoreRewardType.HINTS, 3))
+        // The starting wallet cannot afford a pack priced above it.
+        val item = StoreItem("hint_pack", EconomyPolicy.STARTING_GEMS + 10, StoreReward(StoreRewardType.HINTS, 3))
         val failure = assertIs<PurchaseResult.Failure>(processor.purchase(item, playerId = "player-b"))
         assertEquals(PurchaseStatus.INSUFFICIENT_GEMS, failure.status)
-        assertEquals(0, failure.availableGems)
+        assertEquals(EconomyPolicy.STARTING_GEMS, failure.availableGems)
 
         assertEquals(com.stanisryz.logica.platform.EconomyPolicy.STARTING_GEMS, economy.state.value.gems)
         assertEquals(EconomyPolicy.STARTING_LIVES, economy.state.value.lives)

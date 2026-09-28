@@ -17,7 +17,8 @@ data class EconomyState(
 
 /** The single place economy constants live for every platform; no platform APIs may enter here. */
 object EconomyPolicy {
-    const val STARTING_GEMS = 0
+    /** A new player's welcome gift, the same as on Android. */
+    const val STARTING_GEMS = 10
     const val STARTING_LIVES = 5
     const val MAXIMUM_LIVES = 5
     const val FAILED_ATTEMPT_LIFE_COST = 1

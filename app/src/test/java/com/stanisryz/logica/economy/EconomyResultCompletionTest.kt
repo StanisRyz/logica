@@ -49,7 +49,7 @@ class EconomyResultCompletionTest {
             }
 
             // Balance 0 + Crowns 1 + Word 0 + Sudoku 1 + 2048 2, and repeating each completion three times changed nothing.
-            assertEquals(4, dao.wallet(NOW).gems)
+            assertEquals(EconomyRules.STARTING_GEMS + 4, dao.wallet(NOW).gems)
             assertEquals(EconomyRules.STARTING_LIVES, dao.wallet(NOW).lives)
             assertEquals(rewards.size, dao.results.size)
             assertEquals(rewards.size, dao.economyEvents.size)
@@ -87,7 +87,7 @@ class EconomyResultCompletionTest {
                 expected,
                 dao.economyEvents.getValue(EconomyEvent.resultEventId(catalog.resultId)).gemDelta,
             )
-            assertEquals(expected * 2, dao.wallet(NOW).gems)
+            assertEquals(EconomyRules.STARTING_GEMS + expected * 2, dao.wallet(NOW).gems)
         }
 
     /** Failure is flat: the hardest attempt costs exactly the same single life as the easiest. */

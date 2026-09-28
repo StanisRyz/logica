@@ -11,7 +11,8 @@ import java.time.Duration
  * these values instead of restating them.
  */
 internal object EconomyRules {
-    const val STARTING_GEMS = 0
+    /** A new player's welcome gift: enough for a first hint pack, so the store makes sense from the start. */
+    const val STARTING_GEMS = 10
 
     const val STARTING_LIVES = 5
 

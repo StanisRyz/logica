@@ -36,6 +36,8 @@ internal class WebMonetizationAnalytics {
 internal class WebAdPolicy(
     private val rewardedCooldownMs: Long = DEFAULT_REWARDED_COOLDOWN_MS,
     private val interstitialCooldownMs: Long = DEFAULT_INTERSTITIAL_COOLDOWN_MS,
+    /** No interstitial before this moment of the session, so a visit never opens with an ad. */
+    private val firstInterstitialAtMs: Long = 0L,
 ) {
     private val lastShownAt = mutableMapOf<AdKind, Long>()
 
@@ -44,7 +46,7 @@ internal class WebAdPolicy(
         nowMs: Long,
     ): Boolean =
         when (val shownAt = lastShownAt[kind]) {
-            null -> true
+            null -> kind != AdKind.INTERSTITIAL || nowMs >= firstInterstitialAtMs
             else -> nowMs - shownAt >= cooldownFor(kind)
         }
 
@@ -73,6 +75,9 @@ internal class WebAdPolicy(
     companion object {
         const val DEFAULT_REWARDED_COOLDOWN_MS = 30_000L
         const val DEFAULT_INTERSTITIAL_COOLDOWN_MS = 90_000L
+
+        /** How long a Web session plays before its first interstitial. */
+        const val SESSION_GRACE_MS = 120_000L
     }
 }
 
