@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -111,7 +111,7 @@ internal fun WebNoLivesDialog(
                     enabled = rewardedLife.isRequestAllowed,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Icon(Icons.Filled.PlayCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.PlayCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(if (adState == WebRewardedAdState.Showing) "Идёт реклама…" else "+1 жизнь за рекламу")
                 }

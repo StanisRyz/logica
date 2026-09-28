@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -139,7 +139,7 @@ fun Game2048Tutorial(
             // The arrow is an icon: the Web font has no glyph for "→".
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
                 Text(stringResource(Res.string.game_2048_tutorial_merge_before), style = MaterialTheme.typography.titleLarge)
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
+                Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null)
                 Text(stringResource(Res.string.game_2048_tutorial_merge_after), style = MaterialTheme.typography.titleLarge)
             }
         }

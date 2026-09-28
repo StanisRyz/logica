@@ -21,10 +21,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Diamond
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.rounded.Diamond
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Lightbulb
+import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -132,7 +132,7 @@ internal fun WebStoreScreen(
                 title = "+1 жизнь",
                 grantedText = "Реклама просмотрена: +1 жизнь.",
                 enabled = true,
-                icon = Icons.Filled.Favorite,
+                icon = Icons.Rounded.Favorite,
             )
         }
 
@@ -171,7 +171,7 @@ private fun PaidGemTopUpCard(
 ) {
     val message = paidPurchaseMessage(state)
     StoreItemRow(
-        icon = Icons.Filled.Diamond,
+        icon = Icons.Rounded.Diamond,
         title = "+${entry.product.gemReward} ${gemsWord(entry.product.gemReward)}",
         subtitle = message ?: entry.details.description ?: "Пополнение кристаллов",
         subtitleColor =
@@ -221,7 +221,7 @@ internal fun RewardedAdRow(
     title: String,
     grantedText: String,
     enabled: Boolean,
-    icon: ImageVector = Icons.Filled.PlayCircle,
+    icon: ImageVector = Icons.Rounded.PlayCircle,
 ) {
     val state by controller.state.collectAsState()
     val colors = MaterialTheme.colorScheme
@@ -274,7 +274,7 @@ private fun StoreCatalogRow(
     // A purchase the balance cannot cover is shown as such instead of failing after the tap.
     val missingGems = wallet?.let { (item.priceGems - it.gems).coerceAtLeast(0) } ?: 0
     StoreItemRow(
-        icon = if (item.reward.type == StoreRewardType.LIFE_RESTORE) Icons.Filled.Favorite else Icons.Filled.Lightbulb,
+        icon = if (item.reward.type == StoreRewardType.LIFE_RESTORE) Icons.Rounded.Favorite else Icons.Rounded.Lightbulb,
         title = item.webTitle(),
         subtitle =
             when {

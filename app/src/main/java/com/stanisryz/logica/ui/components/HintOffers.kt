@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -29,7 +29,7 @@ internal fun HintsExhaustedDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Filled.Lightbulb, contentDescription = null) },
+        icon = { Icon(Icons.Rounded.Lightbulb, contentDescription = null) },
         title = { Text(stringResource(R.string.hints_exhausted_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {

@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Backspace
+import androidx.compose.material.icons.automirrored.rounded.Backspace
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -86,7 +86,7 @@ fun WordKeyboard(
                 modifier = Modifier.weight(2f),
             )
             ActionKey(
-                label = { Icon(Icons.AutoMirrored.Filled.Backspace, contentDescription = null) },
+                label = { Icon(Icons.AutoMirrored.Rounded.Backspace, contentDescription = null) },
                 description = stringResource(Res.string.word_backspace),
                 enabled = enabled,
                 keyHeight = keyHeight,

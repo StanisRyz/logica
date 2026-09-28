@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -148,7 +148,7 @@ fun BalanceToolBar(
                         stringResource(if (isPencilMode) Res.string.tool_on else Res.string.tool_off),
                     selected = isPencilMode,
                     onClick = onTogglePencil,
-                    symbol = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                    symbol = { Icon(Icons.Rounded.Edit, contentDescription = null) },
                     caption = stringResource(Res.string.tool_pencil),
                 ),
             ) +

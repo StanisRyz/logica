@@ -7,10 +7,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Diamond
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.HeartBroken
-import androidx.compose.material.icons.filled.Slideshow
+import androidx.compose.material.icons.rounded.Diamond
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.HeartBroken
+import androidx.compose.material.icons.rounded.Slideshow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -61,7 +61,7 @@ internal fun EconomyBar(
         val livesDescription =
             stringResource(R.string.economy_lives_action_description, economy.lives, EconomyRules.MAX_LIVES)
         StatusChip(
-            icon = if (economy.isGameplayAllowed) Icons.Filled.Favorite else Icons.Filled.HeartBroken,
+            icon = if (economy.isGameplayAllowed) Icons.Rounded.Favorite else Icons.Rounded.HeartBroken,
             label = stringResource(R.string.economy_lives_short, economy.lives, EconomyRules.MAX_LIVES),
             contentColor =
                 if (economy.isGameplayAllowed) {
@@ -83,7 +83,7 @@ internal fun EconomyBar(
         )
         val gemsDescription = stringResource(R.string.economy_gems_action_description, economy.gems)
         StatusChip(
-            icon = Icons.Filled.Diamond,
+            icon = Icons.Rounded.Diamond,
             label = economy.gems.toString(),
             modifier =
                 Modifier
@@ -120,7 +120,7 @@ internal fun LivesDialog(
     val countdown = rememberLifeCountdown(economy)
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Filled.Favorite, contentDescription = null) },
+        icon = { Icon(Icons.Rounded.Favorite, contentDescription = null) },
         title = { Text(stringResource(R.string.economy_lives_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
@@ -200,7 +200,7 @@ private fun RewardedLifeOffer(
             TextButton(onClick = onRetry) { Text(stringResource(R.string.economy_rewarded_ad_retry)) }
         } else {
             Button(onClick = onWatch, enabled = state == RewardedAdState.READY) {
-                Icon(Icons.Filled.Slideshow, contentDescription = null, modifier = Modifier.size(ICON_SIZE))
+                Icon(Icons.Rounded.Slideshow, contentDescription = null, modifier = Modifier.size(ICON_SIZE))
                 Text(
                     text = stringResource(R.string.economy_rewarded_ad_watch),
                     modifier = Modifier.padding(start = LogicaSpacing.text),
@@ -232,7 +232,7 @@ internal fun ZeroLivesCard(
             horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.action),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Filled.HeartBroken, contentDescription = null, modifier = Modifier.size(ICON_SIZE))
+            Icon(Icons.Rounded.HeartBroken, contentDescription = null, modifier = Modifier.size(ICON_SIZE))
             Text(
                 text = stringResource(R.string.economy_no_lives_title),
                 style = MaterialTheme.typography.titleMedium,

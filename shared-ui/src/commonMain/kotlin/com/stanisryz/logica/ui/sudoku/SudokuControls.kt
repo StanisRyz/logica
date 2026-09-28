@@ -12,10 +12,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Backspace
-import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.automirrored.rounded.Backspace
+import androidx.compose.material.icons.automirrored.rounded.Undo
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -164,7 +164,7 @@ fun SudokuToolBar(
                     onUndo,
                     m,
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null)
+                    Icon(Icons.AutoMirrored.Rounded.Undo, contentDescription = null)
                 }
             },
             { m ->
@@ -175,7 +175,7 @@ fun SudokuToolBar(
                     onErase,
                     m,
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.Backspace, contentDescription = null)
+                    Icon(Icons.AutoMirrored.Rounded.Backspace, contentDescription = null)
                 }
             },
             { m ->
@@ -189,7 +189,7 @@ fun SudokuToolBar(
                     stateDescription = pencilState,
                 ) {
                     Row(verticalAlignment = Alignment.Bottom) {
-                        Icon(Icons.Filled.Edit, contentDescription = null)
+                        Icon(Icons.Rounded.Edit, contentDescription = null)
                         Text(
                             text =
                                 stringResource(
@@ -218,7 +218,7 @@ fun SudokuToolBar(
                                 }
                             }
                         },
-                    ) { Icon(Icons.Filled.Lightbulb, contentDescription = null) }
+                    ) { Icon(Icons.Rounded.Lightbulb, contentDescription = null) }
                 }
             },
         )
@@ -305,7 +305,7 @@ private fun pencilTool(
         stateDescription = stringResource(if (isPencilMode) Res.string.tool_on else Res.string.tool_off),
         selected = isPencilMode,
         onClick = onToggle,
-        symbol = { Icon(Icons.Filled.Edit, contentDescription = null) },
+        symbol = { Icon(Icons.Rounded.Edit, contentDescription = null) },
         caption = stringResource(Res.string.tool_pencil),
     )
 

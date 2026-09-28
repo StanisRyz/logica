@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Diamond
-import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.rounded.Diamond
+import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -181,7 +181,7 @@ internal fun StoreScreen(
         HintOffer.entries.forEach { offer ->
             val missing = (offer.gemCost - economy.gems).coerceAtLeast(0)
             StoreItemRow(
-                icon = Icons.Filled.Lightbulb,
+                icon = Icons.Rounded.Lightbulb,
                 title = pluralStringResource(R.plurals.hints_store_offer_title, offer.hints, offer.hints),
                 subtitle = if (missing > 0) pluralStringResource(R.plurals.hints_store_missing, missing, missing) else null,
                 subtitleColor = MaterialTheme.colorScheme.error,
@@ -251,7 +251,7 @@ private fun GemPackRow(
     onBuy: () -> Unit,
 ) {
     StoreItemRow(
-        icon = Icons.Filled.Diamond,
+        icon = Icons.Rounded.Diamond,
         title = stringResource(R.string.gem_store_pack_gems, offer.pack.gems),
         subtitle = null,
     ) {

@@ -25,7 +25,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -195,7 +195,7 @@ fun ContinueGameCard(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = Icons.Filled.PlayArrow,
+                    imageVector = Icons.Rounded.PlayArrow,
                     contentDescription = null,
                     tint = if (enabled) colors.onPrimary else colors.onSurfaceVariant,
                 )
@@ -289,7 +289,7 @@ fun GameCatalogCard(
                         horizontalArrangement = Arrangement.spacedBy(CATALOG_ACTION_ICON_GAP),
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.PlayArrow,
+                            imageVector = Icons.Rounded.PlayArrow,
                             contentDescription = null,
                             modifier = Modifier.size(CATALOG_ACTION_ICON_SIZE),
                         )

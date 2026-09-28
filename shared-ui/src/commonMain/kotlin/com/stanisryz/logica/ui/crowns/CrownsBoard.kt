@@ -13,8 +13,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.PriorityHigh
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.PriorityHigh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -298,7 +298,7 @@ private fun CrownsCellView(
         }
         if (isIncorrect) {
             Icon(
-                imageVector = Icons.Filled.PriorityHigh,
+                imageVector = Icons.Rounded.PriorityHigh,
                 contentDescription = null,
                 tint = colors.error,
                 modifier = Modifier.align(Alignment.TopStart).size(pencilSize),
@@ -306,7 +306,7 @@ private fun CrownsCellView(
         }
         if (isConfirmed && cell != CrownsPlayerCell.EMPTY) {
             Icon(
-                imageVector = Icons.Filled.Check,
+                imageVector = Icons.Rounded.Check,
                 contentDescription = null,
                 tint = palette.success,
                 modifier = Modifier.align(Alignment.TopEnd).padding(1.dp).size(pencilSize),

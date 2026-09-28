@@ -8,8 +8,17 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.nunito_bold
+import com.stanisryz.logica.shared.ui.generated.resources.nunito_medium
+import com.stanisryz.logica.shared.ui.generated.resources.nunito_regular
+import com.stanisryz.logica.shared.ui.generated.resources.nunito_semibold
+import org.jetbrains.compose.resources.Font
 
 private val LightColorScheme =
     lightColorScheme(
@@ -98,6 +107,41 @@ private val LogicaShapes =
         extraLarge = RoundedCornerShape(30.dp),
     )
 
+/**
+ * Nunito (SIL Open Font License, bundled in `font/`) on every Material text style: a rounded,
+ * friendly face with full Cyrillic that matches the rounded icons. Weights follow Material's own.
+ */
+@Composable
+private fun logicaTypography(): Typography {
+    val nunito =
+        FontFamily(
+            Font(Res.font.nunito_regular, FontWeight.Normal),
+            Font(Res.font.nunito_medium, FontWeight.Medium),
+            Font(Res.font.nunito_semibold, FontWeight.SemiBold),
+            Font(Res.font.nunito_bold, FontWeight.Bold),
+        )
+    val base = Typography()
+    return remember(nunito) {
+        Typography(
+            displayLarge = base.displayLarge.copy(fontFamily = nunito),
+            displayMedium = base.displayMedium.copy(fontFamily = nunito),
+            displaySmall = base.displaySmall.copy(fontFamily = nunito),
+            headlineLarge = base.headlineLarge.copy(fontFamily = nunito, fontWeight = FontWeight.SemiBold),
+            headlineMedium = base.headlineMedium.copy(fontFamily = nunito, fontWeight = FontWeight.SemiBold),
+            headlineSmall = base.headlineSmall.copy(fontFamily = nunito, fontWeight = FontWeight.SemiBold),
+            titleLarge = base.titleLarge.copy(fontFamily = nunito, fontWeight = FontWeight.SemiBold),
+            titleMedium = base.titleMedium.copy(fontFamily = nunito, fontWeight = FontWeight.SemiBold),
+            titleSmall = base.titleSmall.copy(fontFamily = nunito, fontWeight = FontWeight.SemiBold),
+            bodyLarge = base.bodyLarge.copy(fontFamily = nunito),
+            bodyMedium = base.bodyMedium.copy(fontFamily = nunito),
+            bodySmall = base.bodySmall.copy(fontFamily = nunito),
+            labelLarge = base.labelLarge.copy(fontFamily = nunito, fontWeight = FontWeight.SemiBold),
+            labelMedium = base.labelMedium.copy(fontFamily = nunito, fontWeight = FontWeight.SemiBold),
+            labelSmall = base.labelSmall.copy(fontFamily = nunito, fontWeight = FontWeight.SemiBold),
+        )
+    }
+}
+
 /** Host-neutral product theme. The application host resolves system/user settings to [darkTheme]. */
 @Composable
 fun LogicaTheme(
@@ -109,7 +153,7 @@ fun LogicaTheme(
     ) {
         MaterialTheme(
             colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
-            typography = Typography(),
+            typography = logicaTypography(),
             shapes = LogicaShapes,
             content = content,
         )

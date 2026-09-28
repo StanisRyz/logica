@@ -16,8 +16,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.PriorityHigh
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.PriorityHigh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -173,7 +173,7 @@ private fun BalanceCellView(
         // Clues are told apart by their tone alone; a check marks what the player has closed correctly.
         if (isConfirmed) {
             Icon(
-                imageVector = Icons.Filled.Check,
+                imageVector = Icons.Rounded.Check,
                 contentDescription = null,
                 tint = palette.success,
                 modifier = Modifier.align(Alignment.TopEnd).offset((-2).dp, 2.dp).size(14.dp),
@@ -181,7 +181,7 @@ private fun BalanceCellView(
         }
         if (isIncorrect) {
             Icon(
-                imageVector = Icons.Filled.PriorityHigh,
+                imageVector = Icons.Rounded.PriorityHigh,
                 contentDescription = null,
                 tint = colors.error,
                 modifier = Modifier.align(Alignment.TopStart).padding(2.dp).size(16.dp),

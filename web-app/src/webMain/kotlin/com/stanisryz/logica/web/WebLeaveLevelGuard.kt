@@ -9,10 +9,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.HelpOutline
-import androidx.compose.material.icons.filled.Diamond
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.HeartBroken
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
+import androidx.compose.material.icons.rounded.Diamond
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.HeartBroken
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -121,7 +121,7 @@ internal fun WebTopBar(
             if (helpFor != null) {
                 IconButton(onClick = { rulesOpen = true }, modifier = Modifier.size(HELP_BUTTON_SIZE)) {
                     Icon(
-                        Icons.AutoMirrored.Outlined.HelpOutline,
+                        Icons.AutoMirrored.Rounded.HelpOutline,
                         contentDescription = "Правила",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(HELP_ICON_SIZE),
@@ -194,14 +194,14 @@ internal fun WebGameplayWallet() {
     val openStore = LocalWebOpenStore.current
     Row(horizontalArrangement = Arrangement.spacedBy(WALLET_CHIP_GAP), verticalAlignment = Alignment.CenterVertically) {
         WalletChip(
-            icon = if (wallet.lives > 0) Icons.Filled.Favorite else Icons.Filled.HeartBroken,
+            icon = if (wallet.lives > 0) Icons.Rounded.Favorite else Icons.Rounded.HeartBroken,
             value = "${wallet.lives}",
             description = "Жизни: ${wallet.lives} из ${EconomyPolicy.MAXIMUM_LIVES}",
             tint = if (wallet.lives > 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
             onClick = openStore,
         )
         WalletChip(
-            icon = Icons.Filled.Diamond,
+            icon = Icons.Rounded.Diamond,
             value = "${wallet.gems}",
             description = "Кристаллы: ${wallet.gems}",
             tint = MaterialTheme.colorScheme.onSurfaceVariant,

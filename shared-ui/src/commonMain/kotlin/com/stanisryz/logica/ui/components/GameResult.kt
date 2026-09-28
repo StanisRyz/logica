@@ -17,14 +17,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Diamond
-import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.HeartBroken
-import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.StarOutline
-import androidx.compose.material.icons.filled.TaskAlt
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Diamond
+import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.HeartBroken
+import androidx.compose.material.icons.rounded.Lightbulb
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarOutline
+import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -174,7 +174,7 @@ fun GameResultCard(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            imageVector = if (positive) Icons.Filled.TaskAlt else Icons.Filled.ErrorOutline,
+                            imageVector = if (positive) Icons.Rounded.TaskAlt else Icons.Rounded.ErrorOutline,
                             contentDescription = null,
                             tint = if (positive) palette.onSuccessContainer else colors.onErrorContainer,
                             modifier = Modifier.size(MARK_ICON_SIZE),
@@ -317,7 +317,7 @@ private fun ResultStars(stars: Int) {
                 }
             }
             Icon(
-                imageVector = if (earned) Icons.Filled.Star else Icons.Filled.StarOutline,
+                imageVector = if (earned) Icons.Rounded.Star else Icons.Rounded.StarOutline,
                 contentDescription = null,
                 tint = if (earned) palette.star else colors.outlineVariant,
                 modifier =
@@ -392,15 +392,15 @@ private fun ResultTiles(
     val tiles =
         buildList {
             economy?.gemsEarned?.takeIf { it > 0 }?.let {
-                add(ResultTile(Icons.Filled.Diamond, "+$it", stringResource(Res.string.result_reward), colors.primary))
+                add(ResultTile(Icons.Rounded.Diamond, "+$it", stringResource(Res.string.result_reward), colors.primary))
             }
             economy?.livesLost?.takeIf { it > 0 }?.let {
-                add(ResultTile(Icons.Filled.HeartBroken, "−$it", stringResource(Res.string.result_life), colors.error))
+                add(ResultTile(Icons.Rounded.HeartBroken, "−$it", stringResource(Res.string.result_life), colors.error))
             }
             mistakesUsed?.let {
                 add(
                     ResultTile(
-                        Icons.Filled.Close,
+                        Icons.Rounded.Close,
                         "$it/$maxMistakes",
                         stringResource(Res.string.result_mistakes),
                         if (it > 0) colors.error else colors.onSurfaceVariant,
@@ -408,7 +408,7 @@ private fun ResultTiles(
                 )
             }
             hintsUsed?.let {
-                add(ResultTile(Icons.Filled.Lightbulb, "$it", stringResource(Res.string.result_hints), colors.onSurfaceVariant))
+                add(ResultTile(Icons.Rounded.Lightbulb, "$it", stringResource(Res.string.result_hints), colors.onSurfaceVariant))
             }
         }
     if (tiles.isEmpty()) return

@@ -17,8 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.TaskAlt
+import androidx.compose.material.icons.automirrored.rounded.Undo
+import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -134,7 +134,7 @@ fun Game2048Content(
                         enabled = canUndo,
                         onClick = onUndo,
                         // An icon, not the "↶" glyph: the Web font has no glyph for it.
-                        symbol = { Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null) },
+                        symbol = { Icon(Icons.AutoMirrored.Rounded.Undo, contentDescription = null) },
                         caption = stringResource(Res.string.tool_caption_undo),
                     ),
                 ),
@@ -246,7 +246,7 @@ private fun Game2048ScoreLine(
                 ) {
                     if (reached) {
                         Icon(
-                            imageVector = Icons.Filled.TaskAlt,
+                            imageVector = Icons.Rounded.TaskAlt,
                             contentDescription = null,
                             tint = palette.success,
                             modifier = Modifier.size(REACHED_ICON_SIZE),

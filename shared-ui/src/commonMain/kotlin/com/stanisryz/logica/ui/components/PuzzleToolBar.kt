@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.FilledTonalIconButton
@@ -145,7 +145,7 @@ fun hintTool(
         selected = null,
         enabled = enabled,
         onClick = onClick,
-        symbol = { Icon(Icons.Filled.Lightbulb, contentDescription = null) },
+        symbol = { Icon(Icons.Rounded.Lightbulb, contentDescription = null) },
         caption = stringResource(Res.string.hint),
         badge = hintCount?.let { if (it > MAX_BADGE_COUNT) "$MAX_BADGE_COUNT+" else it.toString() },
     )

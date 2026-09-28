@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PriorityHigh
+import androidx.compose.material.icons.rounded.PriorityHigh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -242,7 +242,7 @@ private fun SudokuCell(
         }
         when (cell.status) {
             SudokuCellStatus.GIVEN, SudokuCellStatus.CORRECT -> Unit
-            SudokuCellStatus.INCORRECT -> CellStatusIcon(Icons.Filled.PriorityHigh, colors.error, Alignment.TopStart)
+            SudokuCellStatus.INCORRECT -> CellStatusIcon(Icons.Rounded.PriorityHigh, colors.error, Alignment.TopStart)
             SudokuCellStatus.EMPTY -> Unit
         }
     }

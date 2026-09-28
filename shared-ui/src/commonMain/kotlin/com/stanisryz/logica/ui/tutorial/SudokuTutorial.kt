@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
@@ -149,7 +149,7 @@ fun SudokuTutorial(
                 if (step == 3) {
                     Spacer(Modifier.width(LogicaSpacing.action))
                     FilledTonalButton(onClick = { update(engine.requestHint(game)) }, enabled = game.hintsUsed == 0) {
-                        Icon(Icons.Filled.Lightbulb, contentDescription = null)
+                        Icon(Icons.Rounded.Lightbulb, contentDescription = null)
                         Text(stringResource(Res.string.hint))
                     }
                 }

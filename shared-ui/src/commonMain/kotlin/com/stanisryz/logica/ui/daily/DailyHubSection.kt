@@ -31,11 +31,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.HighlightOff
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.PlayCircleOutline
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.HighlightOff
+import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.PlayCircleOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -334,7 +334,7 @@ private fun DailyStreakChip(streak: DailyHubStreak) {
         horizontalArrangement = Arrangement.spacedBy(DAILY_CHIP_GAP),
     ) {
         Icon(
-            imageVector = if (streak.qualifiedToday) Icons.Filled.LocalFireDepartment else Icons.Filled.Bolt,
+            imageVector = if (streak.qualifiedToday) Icons.Rounded.LocalFireDepartment else Icons.Rounded.Bolt,
             contentDescription = null,
             tint = contentColor,
             modifier = Modifier.size(DAILY_CHIP_ICON_SIZE),
@@ -470,9 +470,9 @@ private fun DailyEntryStateChip(state: DailyHubEntryState) {
 
 private fun DailyHubEntryState.chipIcon(): ImageVector =
     when (this) {
-        DailyHubEntryState.AVAILABLE -> Icons.Filled.PlayCircleOutline
-        DailyHubEntryState.RETRY -> Icons.Filled.HighlightOff
-        DailyHubEntryState.COMPLETED -> Icons.Filled.CheckCircle
+        DailyHubEntryState.AVAILABLE -> Icons.Rounded.PlayCircleOutline
+        DailyHubEntryState.RETRY -> Icons.Rounded.HighlightOff
+        DailyHubEntryState.COMPLETED -> Icons.Rounded.CheckCircle
     }
 
 @Composable
@@ -504,7 +504,7 @@ private fun DailyCompletionCard(completion: DailyHubCompletion) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(DAILY_CHIP_GAP),
             ) {
-                Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(20.dp))
+                Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(20.dp))
                 Text(text = stringResource(Res.string.daily_completed), style = MaterialTheme.typography.titleMedium)
             }
             completion.resultRows?.forEach { row -> DailyResultRow(row) }

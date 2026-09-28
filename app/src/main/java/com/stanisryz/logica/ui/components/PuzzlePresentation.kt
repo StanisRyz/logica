@@ -4,10 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Balance
-import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.Grid4x4
-import androidx.compose.material.icons.filled.SortByAlpha
+import androidx.compose.material.icons.rounded.Balance
+import androidx.compose.material.icons.rounded.Extension
+import androidx.compose.material.icons.rounded.Grid4x4
+import androidx.compose.material.icons.rounded.SortByAlpha
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -72,11 +72,11 @@ internal fun PuzzleArtwork(
         } else {
             val icon =
                 when (puzzleType) {
-                    PuzzleType.BALANCE -> Icons.Filled.Balance
-                    PuzzleType.WORD -> Icons.Filled.SortByAlpha
-                    PuzzleType.SUDOKU -> Icons.Filled.Extension
-                    PuzzleType.GAME_2048 -> Icons.Filled.Grid4x4
-                    else -> Icons.Filled.Extension
+                    PuzzleType.BALANCE -> Icons.Rounded.Balance
+                    PuzzleType.WORD -> Icons.Rounded.SortByAlpha
+                    PuzzleType.SUDOKU -> Icons.Rounded.Extension
+                    PuzzleType.GAME_2048 -> Icons.Rounded.Grid4x4
+                    else -> Icons.Rounded.Extension
                 }
             Icon(icon, contentDescription = null, tint = accent, modifier = iconModifier)
         }

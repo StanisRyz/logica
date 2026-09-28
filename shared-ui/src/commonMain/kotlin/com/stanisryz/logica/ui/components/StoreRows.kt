@@ -13,9 +13,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Diamond
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.rounded.Diamond
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -66,11 +66,11 @@ fun StoreBalanceCard(
             verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text),
         ) {
             Row(Modifier.fillMaxWidth()) {
-                BalanceMetric(Icons.Filled.Diamond, gems.toString(), stringResource(Res.string.profile_gems), Modifier.weight(1f))
-                BalanceMetric(Icons.Filled.Favorite, "$lives/$maximumLives", stringResource(Res.string.profile_lives), Modifier.weight(1f))
+                BalanceMetric(Icons.Rounded.Diamond, gems.toString(), stringResource(Res.string.profile_gems), Modifier.weight(1f))
+                BalanceMetric(Icons.Rounded.Favorite, "$lives/$maximumLives", stringResource(Res.string.profile_lives), Modifier.weight(1f))
                 hints?.let {
                     BalanceMetric(
-                        Icons.Filled.Lightbulb,
+                        Icons.Rounded.Lightbulb,
                         it.toString(),
                         stringResource(Res.string.profile_hints_short),
                         Modifier.weight(1f),
@@ -166,7 +166,7 @@ fun GemPriceButton(
     onClick: () -> Unit,
 ) {
     Button(onClick = onClick, enabled = enabled, contentPadding = PaddingValues(horizontal = 16.dp)) {
-        Icon(Icons.Filled.Diamond, contentDescription = null, modifier = Modifier.size(16.dp))
+        Icon(Icons.Rounded.Diamond, contentDescription = null, modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(6.dp))
         Text(price.toString())
     }

@@ -28,13 +28,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.Diamond
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.rounded.BarChart
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Diamond
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -201,7 +201,7 @@ private fun SummaryCard(statistics: ProfileStatistics) {
                     label = stringResource(Res.string.profile_streak),
                     caption = stringResource(Res.string.profile_best_streak, daily.bestStreak),
                     modifier = Modifier.weight(1f),
-                    icon = Icons.Filled.Bolt,
+                    icon = Icons.Rounded.Bolt,
                 )
                 SummaryMetric(
                     value = daily.completedCount.toString(),
@@ -222,14 +222,14 @@ private fun SummaryCard(statistics: ProfileStatistics) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             statistics.economy?.let { economy ->
-                InlineMetric(Icons.Filled.Diamond, economy.gems.toString(), stringResource(Res.string.profile_gems))
+                InlineMetric(Icons.Rounded.Diamond, economy.gems.toString(), stringResource(Res.string.profile_gems))
                 InlineMetric(
-                    Icons.Filled.Favorite,
+                    Icons.Rounded.Favorite,
                     "${economy.lives}/${economy.maximumLives}",
                     stringResource(Res.string.profile_lives),
                 )
             }
-            InlineMetric(Icons.Filled.Lightbulb, statistics.totalHintsUsed.toString(), stringResource(Res.string.total_hints_used))
+            InlineMetric(Icons.Rounded.Lightbulb, statistics.totalHintsUsed.toString(), stringResource(Res.string.total_hints_used))
         }
         statistics.economy?.restoreLabel?.let { restore ->
             SupportingText(restore, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
@@ -509,7 +509,7 @@ private fun GameRow(game: ProfileGame) {
                     color = colors.onSurface,
                 )
                 Icon(
-                    if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                     contentDescription = null,
                     tint = colors.onSurfaceVariant,
                 )
@@ -691,7 +691,7 @@ private fun EmptyState(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                Icons.Filled.BarChart,
+                Icons.Rounded.BarChart,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.size(EMPTY_ICON_SIZE),

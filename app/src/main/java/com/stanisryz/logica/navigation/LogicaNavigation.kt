@@ -22,12 +22,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.HelpOutline
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SportsEsports
-import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SportsEsports
+import androidx.compose.material.icons.rounded.Storefront
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -698,7 +698,7 @@ private fun AppTopBar(
         navigationIcon = {
             if (showBack) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
                 }
             }
         },
@@ -713,7 +713,7 @@ private fun AppTopBar(
             }
             if (showSettings) {
                 IconButton(onClick = onOpenSettings) {
-                    Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings))
+                    Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings))
                 }
             }
         },
@@ -754,9 +754,9 @@ private fun AppBottomBar(
                 onClick = { onTabSelected(tab) },
                 icon = {
                     when (tab) {
-                        PrimaryTab.GAME -> Icon(Icons.Filled.SportsEsports, null)
-                        PrimaryTab.STORE -> Icon(Icons.Filled.Storefront, null)
-                        PrimaryTab.PROFILE -> Icon(Icons.Filled.Person, null)
+                        PrimaryTab.GAME -> Icon(Icons.Rounded.SportsEsports, null)
+                        PrimaryTab.STORE -> Icon(Icons.Rounded.Storefront, null)
+                        PrimaryTab.PROFILE -> Icon(Icons.Rounded.Person, null)
                     }
                 },
                 label = { Text(stringResource(tab.titleResource)) },
@@ -788,7 +788,7 @@ private fun GameTopBar(
         horizontalArrangement = Arrangement.spacedBy(GAME_TOP_BAR_CONTENT_GAP),
     ) {
         IconButton(onClick = onBack, modifier = Modifier.size(GAME_TOP_BAR_HEIGHT)) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
         }
         Text(
             text = title,
@@ -798,7 +798,7 @@ private fun GameTopBar(
         )
         IconButton(onClick = onHelp, modifier = Modifier.size(HELP_BUTTON_SIZE)) {
             Icon(
-                Icons.AutoMirrored.Outlined.HelpOutline,
+                Icons.AutoMirrored.Rounded.HelpOutline,
                 contentDescription = stringResource(R.string.game_rules),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(HELP_ICON_SIZE),
@@ -812,7 +812,7 @@ private fun GameTopBar(
             compact = true,
         )
         IconButton(onClick = onOpenSettings, modifier = Modifier.size(GAME_TOP_BAR_HEIGHT)) {
-            Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings))
+            Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings))
         }
     }
 }
