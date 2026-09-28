@@ -1,3 +1,5 @@
+import java.util.Properties
+
 /** The official Yandex rewarded demo unit; it always fills and never bills a real placement. */
 val demoRewardedAdUnitId = "demo-rewarded-yandex"
 
@@ -12,6 +14,16 @@ plugins {
     alias(libs.plugins.ktlint)
 }
 
+/** Private build configuration from `local.properties`, which Gradle itself never reads. */
+val localProperties =
+    Properties().apply {
+        rootProject.file("local.properties").takeIf { it.isFile }?.reader()?.use { load(it) }
+    }
+
+/** A private `logica.*` setting: a Gradle property wins, then `local.properties`. */
+fun privateSetting(name: String): String? =
+    providers.gradleProperty(name).orNull ?: localProperties.getProperty(name)?.trim()?.takeIf { it.isNotEmpty() }
+
 /**
  * The Yandex rewarded placement for release builds. It is an ad unit identifier, not a credential,
  * but it is still never committed: set `logica.rewardedAdUnitId` in `local.properties`, in a private
@@ -20,7 +32,7 @@ plugins {
  * safe, instead of silently shipping someone else's placement.
  */
 val releaseRewardedAdUnitId: String =
-    (providers.gradleProperty("logica.rewardedAdUnitId").orNull ?: demoRewardedAdUnitId).also {
+    (privateSetting("logica.rewardedAdUnitId") ?: demoRewardedAdUnitId).also {
         if (it == demoRewardedAdUnitId) {
             logger.warn("logica.rewardedAdUnitId is not set: release builds would use the Yandex demo rewarded unit.")
         }
@@ -34,7 +46,7 @@ val releaseRewardedAdUnitId: String =
  * like the rewarded configuration above.
  */
 val releaseInterstitialAdUnitId: String =
-    (providers.gradleProperty("logica.interstitialAdUnitId").orNull ?: demoInterstitialAdUnitId).also {
+    (privateSetting("logica.interstitialAdUnitId") ?: demoInterstitialAdUnitId).also {
         if (it == demoInterstitialAdUnitId) {
             logger.warn("logica.interstitialAdUnitId is not set: release builds would use the Yandex demo interstitial unit.")
         }
@@ -48,7 +60,7 @@ val releaseInterstitialAdUnitId: String =
  * unavailable, which changes nothing else in the application.
  */
 val rustoreConsoleAppId: String =
-    (providers.gradleProperty("logica.rustoreConsoleAppId").orNull ?: "").also {
+    (privateSetting("logica.rustoreConsoleAppId") ?: "").also {
         if (it.isEmpty()) logger.warn("logica.rustoreConsoleAppId is not set: RuStore purchases will be unavailable.")
     }
 

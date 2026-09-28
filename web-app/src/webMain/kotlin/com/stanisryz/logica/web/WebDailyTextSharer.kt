@@ -33,5 +33,5 @@ private fun nativeWebShare(text: String): Unit =
 
 private fun copyWebTextToClipboard(text: String): Unit =
     js(
-        "try { globalThis.navigator.clipboard.writeText(text); } catch (ignored) {}",
+        "{ try { globalThis.navigator.clipboard.writeText(text); } catch (ignored) {} }",
     )
