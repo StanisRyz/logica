@@ -235,9 +235,10 @@ private fun CrownsReadyState(
         PuzzleTerminalDialog(
             isSolved = game.status == CrownsGameStatus.SOLVED,
             completionPersistence = completionPersistence,
+            levelNumber = levelNumber,
+            mistakesUsed = game.mistakesUsed,
             hintsUsed = game.hintsUsed,
             maxMistakes = PuzzleMistakes.MAX_MISTAKES,
-            lives = economy.lives,
             difficulty = difficulty,
             isRetryAllowed = economy.isGameplayAllowed,
             isDaily = isDaily,

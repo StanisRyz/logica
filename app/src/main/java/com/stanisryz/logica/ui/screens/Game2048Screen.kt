@@ -1,14 +1,6 @@
 package com.stanisryz.logica.ui.screens
 
 import android.view.HapticFeedbackConstants
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.TaskAlt
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -42,16 +34,17 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.settings.ThemeMode
-import com.stanisryz.logica.ui.components.EconomyResultFeedback
+import com.stanisryz.logica.ui.components.GameResultDialog
 import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.LeaveLevelGuard
 import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.components.RetryableErrorState
 import com.stanisryz.logica.ui.components.ZeroLivesCard
+import com.stanisryz.logica.ui.components.resultEconomy
+import com.stanisryz.logica.ui.components.russianLabel
+import com.stanisryz.logica.ui.components.toResultSaveState
 import com.stanisryz.logica.ui.game2048.Game2048Content
 import com.stanisryz.logica.ui.game2048.formatGame2048Number
-import com.stanisryz.logica.ui.theme.LocalLogicaPalette
-import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.ui.theme.LogicaTheme
 
 @Composable
@@ -246,6 +239,7 @@ private fun Game2048ReadyState(
             completionPersistence = uiState.completionPersistence,
             economy = economy,
             isDaily = isDaily,
+            levelNumber = levelNumber,
             levelCleared = uiState.levelCleared,
             onRetryLevel = onRetryLevel,
             onRetryCompletion = onRetryCompletion,
@@ -261,6 +255,7 @@ private fun Game2048TerminalDialog(
     completionPersistence: CompletionPersistence,
     economy: PlayerEconomy,
     isDaily: Boolean,
+    levelNumber: Int?,
     levelCleared: Boolean,
     onRetryLevel: () -> Unit,
     onRetryCompletion: () -> Unit,
@@ -270,77 +265,23 @@ private fun Game2048TerminalDialog(
     // A Catalog level that was already cleared at its score target is never a failure afterwards,
     // however the freeplay board ends.
     val solved = levelCleared || game.status == Game2048Status.SOLVED
-    val isSaved = completionPersistence == CompletionPersistence.Saved
-    // A solved Daily entry is done for the day: the only way on is back to the hub.
-    val isDailySolved = isDaily && solved
-    val targetScore = game.puzzleId.rules.targetScore
-    val targetTile = game.puzzleId.rules.targetTile
-    AlertDialog(
-        onDismissRequest = {},
-        icon = {
-            Icon(
-                imageVector = if (solved) Icons.Filled.TaskAlt else Icons.Filled.ErrorOutline,
-                contentDescription = null,
-                tint = if (solved) LocalLogicaPalette.current.success else MaterialTheme.colorScheme.error,
-            )
-        },
-        title = {
-            Text(
-                stringResource(
-                    when {
-                        levelCleared -> R.string.game_2048_cleared_title
-                        solved -> R.string.game_2048_solved_title
-                        else -> R.string.game_2048_failed_title
-                    },
-                ),
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
-                Text(
-                    // A V2 attempt is judged on its final score; a restored V1 attempt still reports
-                    // the target tile it was actually playing for.
-                    if (levelCleared) {
-                        stringResource(R.string.game_2048_cleared_body)
-                    } else if (targetScore != null) {
-                        stringResource(
-                            if (solved) R.string.game_2048_solved_body_score else R.string.game_2048_failed_body_score,
-                            formatGame2048Number(targetScore),
-                        )
-                    } else {
-                        stringResource(
-                            if (solved) R.string.game_2048_solved_body else R.string.game_2048_failed_body,
-                            if (solved) requireNotNull(targetTile) else game.maximumTile,
-                        )
-                    },
-                )
-                Text(stringResource(R.string.game_2048_final_score, formatGame2048Number(game.score)))
-                when (completionPersistence) {
-                    CompletionPersistence.Error -> Text(stringResource(R.string.completion_save_error_body))
-                    CompletionPersistence.Saving -> Text(stringResource(R.string.saving_completion))
-                    CompletionPersistence.Saved ->
-                        EconomyResultFeedback(solved, economy.lives, game.puzzleId.difficulty)
-                    CompletionPersistence.NotRequired -> Unit
-                }
-            }
-        },
-        confirmButton = {
-            when {
-                completionPersistence == CompletionPersistence.Error ->
-                    TextButton(onClick = onRetryCompletion) { Text(stringResource(R.string.retry)) }
-                completionPersistence != CompletionPersistence.Saved ->
-                    TextButton(onClick = {}, enabled = false) { Text(stringResource(R.string.saving)) }
-                isDailySolved -> TextButton(onClick = onGameHub) { Text(stringResource(R.string.to_games)) }
-                solved -> TextButton(onClick = onNextLevel) { Text(stringResource(R.string.next_level)) }
-                else ->
-                    TextButton(onClick = onRetryLevel, enabled = economy.isGameplayAllowed) {
-                        Text(stringResource(R.string.retry_puzzle))
-                    }
-            }
-        },
-        dismissButton = {
-            if (isSaved && !isDailySolved) TextButton(onClick = onGameHub) { Text(stringResource(R.string.to_games)) }
-        },
+    val difficulty = game.puzzleId.difficulty
+    GameResultDialog(
+        solved = solved,
+        levelNumber = levelNumber,
+        isDaily = isDaily,
+        difficultyLabel = difficulty.russianLabel(),
+        saveState = completionPersistence.toResultSaveState(),
+        onNextLevel = onNextLevel,
+        onRetry = onRetryLevel,
+        onRetrySave = onRetryCompletion,
+        onExit = onGameHub,
+        detail = stringResource(R.string.game_2048_final_score, formatGame2048Number(game.score)),
+        saveErrorDetail = stringResource(R.string.completion_save_error_body),
+        economy = resultEconomy(solved, difficulty),
+        retryAllowed = economy.isGameplayAllowed,
+        // The board simply ran out of moves before the target: say that instead of a bare failure.
+        title = if (solved) null else stringResource(R.string.game_2048_failed_title),
     )
 }
 

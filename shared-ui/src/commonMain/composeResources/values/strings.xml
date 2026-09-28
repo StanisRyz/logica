@@ -249,4 +249,21 @@
     <string name="word_tutorial_rules_title">Правила игры</string>
     <string name="balance_piece_black">чёрная фишка</string>
     <string name="balance_piece_white">белая фишка</string>
+    <string name="result_level_solved">Уровень %1$d пройден</string>
+    <string name="result_level_failed">Уровень %1$d не пройден</string>
+    <string name="result_daily_solved">Задача дня решена</string>
+    <string name="result_daily_failed">Задача дня не пройдена</string>
+    <string name="result_solved">Головоломка решена</string>
+    <string name="result_failed">Головоломка не решена</string>
+    <string name="result_save_error">Прогресс не сохранён</string>
+    <string name="result_reward">Награда</string>
+    <string name="result_life">Жизнь</string>
+    <string name="result_mistakes">Ошибки</string>
+    <string name="result_hints">Подсказки</string>
+    <string name="result_next_level">Следующий уровень</string>
+    <string name="result_retry">Повторить</string>
+    <string name="result_retry_save">Сохранить ещё раз</string>
+    <string name="result_saving">Сохраняем…</string>
+    <string name="result_to_games">К играм</string>
+    <string name="result_to_difficulty">К сложности</string>
 </resources>

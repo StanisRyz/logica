@@ -26,7 +26,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -38,7 +37,6 @@ import com.stanisryz.logica.ads.RewardedAdState
 import com.stanisryz.logica.economy.EconomyClock
 import com.stanisryz.logica.economy.EconomyRules
 import com.stanisryz.logica.economy.PlayerEconomy
-import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import kotlinx.coroutines.delay
 
@@ -259,41 +257,6 @@ internal fun ZeroLivesCard(
         Button(onClick = onRestoreLife, enabled = economy.canRefillLifeWithGems) {
             Text(stringResource(R.string.economy_restore_for_gems, EconomyRules.LIFE_REFILL_GEM_COST))
         }
-    }
-}
-
-/**
- * What one finished attempt did to the wallet. It is only ever rendered once the Room transaction
- * that persisted the result reported success, and it reports the same difficulty-based reward the
- * transaction applied.
- */
-@Composable
-internal fun EconomyResultFeedback(
-    isSolved: Boolean,
-    lives: Int,
-    difficulty: Difficulty,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.text),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = if (isSolved) Icons.Filled.Diamond else Icons.Filled.HeartBroken,
-            contentDescription = null,
-            modifier = Modifier.size(ICON_SIZE),
-        )
-        val reward = EconomyRules.solvedGemReward(difficulty)
-        Text(
-            text =
-                if (isSolved) {
-                    pluralStringResource(R.plurals.economy_reward_gems, reward, reward)
-                } else {
-                    stringResource(R.string.economy_penalty_life, lives, EconomyRules.MAX_LIVES)
-                },
-            style = MaterialTheme.typography.bodyMedium,
-        )
     }
 }
 

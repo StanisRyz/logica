@@ -245,9 +245,10 @@ private fun SudokuReadyState(
         PuzzleTerminalDialog(
             isSolved = game.status == SudokuGameStatus.SOLVED,
             completionPersistence = uiState.completionPersistence,
+            levelNumber = levelNumber,
+            mistakesUsed = game.mistakesUsed,
             hintsUsed = game.hintsUsed,
             maxMistakes = SudokuGameState.MAX_MISTAKES,
-            lives = economy.lives,
             difficulty =
                 uiState.puzzle.id.difficulty
                     .toPlatformDifficulty(),

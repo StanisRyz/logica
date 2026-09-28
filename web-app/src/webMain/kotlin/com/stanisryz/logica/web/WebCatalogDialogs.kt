@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -19,6 +18,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.ui.components.GameResultDialog
+import com.stanisryz.logica.ui.components.GameResultEconomy
+import com.stanisryz.logica.ui.components.GameResultSaveState
 
 @Composable
 internal fun WebCatalogLoadingContent(
@@ -79,101 +81,91 @@ internal fun WebCatalogLevelErrorContent(
 internal fun WebOrdinaryCatalogTerminalDialog(
     visible: Boolean,
     levelNumber: Int,
+    difficulty: Difficulty,
     solved: Boolean,
     completion: WebCatalogCompletionState,
     solvedDetail: String? = null,
     failedDetail: String? = null,
+    mistakesUsed: Int? = null,
+    hintsUsed: Int? = null,
     onNextLevel: () -> Unit,
     onRetry: () -> Unit,
     onRetrySave: () -> Unit,
     onBack: () -> Unit,
 ) {
     if (!visible) return
+    PauseGameKeysWhileShown()
     val saveError = completion as? WebCatalogCompletionState.SaveError
-    AlertDialog(
-        onDismissRequest = {},
-        title = {
-            Text(
-                when {
-                    !solved -> "Уровень $levelNumber не пройден"
-                    saveError != null -> "Прогресс не сохранён"
-                    else -> "Уровень $levelNumber пройден"
-                },
-            )
-        },
-        text = {
-            Text(
-                when {
-                    !solved -> failedDetail ?: "Попробуйте ещё раз."
-                    saveError != null ->
-                        "Уровень решён, но прогресс не сохранён. ${saveError.detail}"
-                    completion is WebCatalogCompletionState.Saved ->
-                        solvedDetail ?: "Можно перейти к следующему уровню."
-                    else -> "Сохраняем прогресс…"
-                },
-            )
-        },
-        confirmButton = {
-            when {
-                !solved ->
-                    TextButton(onClick = onRetry) { Text("Повторить") }
-                saveError != null ->
-                    TextButton(onClick = onRetrySave) { Text("Сохранить ещё раз") }
-                completion is WebCatalogCompletionState.Saved ->
-                    TextButton(onClick = onNextLevel) { Text("Следующий уровень") }
-                else ->
-                    TextButton(onClick = {}, enabled = false) { Text("Сохраняем…") }
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onBack) { Text("К сложности") }
-        },
+    // A failed level never saves progress, so only a solved one can wait on or fail its save.
+    val saveState =
+        when {
+            !solved -> GameResultSaveState.SAVED
+            saveError != null -> GameResultSaveState.ERROR
+            completion is WebCatalogCompletionState.Saved -> GameResultSaveState.SAVED
+            else -> GameResultSaveState.SAVING
+        }
+    GameResultDialog(
+        solved = solved,
+        levelNumber = levelNumber,
+        isDaily = false,
+        difficultyLabel = difficulty.webCatalogLabel(),
+        saveState = saveState,
+        onNextLevel = onNextLevel,
+        onRetry = onRetry,
+        onRetrySave = onRetrySave,
+        onExit = onBack,
+        detail = if (solved) solvedDetail else failedDetail,
+        saveErrorDetail = saveError?.let { "Уровень решён, но прогресс не сохранён. ${it.detail}" },
+        economy =
+            if (solved) {
+                GameResultEconomy(gemsEarned = WebEconomyProcessor.gemRewardFor(difficulty))
+            } else {
+                GameResultEconomy(livesLost = 1)
+            },
+        mistakesUsed = mistakesUsed,
+        hintsUsed = hintsUsed,
+        exitToDifficulty = true,
     )
 }
 
 @Composable
 internal fun WebDailyOrdinaryTerminalDialog(
     visible: Boolean,
+    difficulty: Difficulty,
     solved: Boolean,
     completion: WebDailyCompletionState,
     scoreDetail: String? = null,
+    mistakesUsed: Int? = null,
+    hintsUsed: Int? = null,
     onRetry: () -> Unit,
     onRetrySave: () -> Unit,
     onExit: () -> Unit,
 ) {
     if (!visible) return
-    AlertDialog(
-        onDismissRequest = {},
-        title = { Text(if (solved) "Задача дня выполнена ✓" else "Задача дня не пройдена") },
-        text = {
-            Text(
-                when {
-                    completion is WebDailyCompletionState.SaveError ->
-                        "Игра завершена, но прогресс задачи дня не сохранён. ${completion.detail}"
-                    completion is WebDailyCompletionState.Saved ->
-                        buildString {
-                            append("Результат сохранён.")
-                            if (!solved) append(" Попробуйте ещё раз.")
-                            scoreDetail?.let { append(" $it") }
-                        }
-                    else -> "Сохраняем результат…"
-                },
-            )
-        },
-        confirmButton = {
-            when {
-                completion is WebDailyCompletionState.SaveError ->
-                    TextButton(onClick = onRetrySave) { Text("Сохранить ещё раз") }
-                completion is WebDailyCompletionState.Saved && !solved ->
-                    // A failed Daily entry stays open for a fresh real attempt of the same puzzle.
-                    TextButton(onClick = onRetry) { Text("Повторить") }
-                completion is WebDailyCompletionState.Idle ->
-                    TextButton(onClick = {}, enabled = false) { Text("Сохраняем…") }
-                // Saved + solved: no replay, no next level; returning to Games is the only action.
-                else -> {}
-            }
-        },
-        dismissButton = { TextButton(onClick = onExit) { Text("К играм") } },
+    PauseGameKeysWhileShown()
+    GameResultDialog(
+        solved = solved,
+        levelNumber = null,
+        isDaily = true,
+        difficultyLabel = difficulty.webCatalogLabel(),
+        saveState =
+            when (completion) {
+                is WebDailyCompletionState.SaveError -> GameResultSaveState.ERROR
+                is WebDailyCompletionState.Saved -> GameResultSaveState.SAVED
+                else -> GameResultSaveState.SAVING
+            },
+        onNextLevel = onExit,
+        // A failed Daily entry stays open for a fresh real attempt of the same puzzle.
+        onRetry = onRetry,
+        onRetrySave = onRetrySave,
+        onExit = onExit,
+        detail = scoreDetail,
+        saveErrorDetail =
+            (completion as? WebDailyCompletionState.SaveError)?.let {
+                "Игра завершена, но прогресс задачи дня не сохранён. ${it.detail}"
+            },
+        mistakesUsed = mistakesUsed,
+        hintsUsed = hintsUsed,
     )
 }
 
@@ -203,6 +195,7 @@ internal fun WebCatalogSaveErrorBanner(
 internal fun Web2048CatalogTerminalDialog(
     visible: Boolean,
     levelNumber: Int,
+    difficulty: Difficulty,
     goalReached: Boolean,
     score: String,
     completion: WebCatalogCompletionState,
@@ -215,6 +208,7 @@ internal fun Web2048CatalogTerminalDialog(
     WebOrdinaryCatalogTerminalDialog(
         visible = true,
         levelNumber = levelNumber,
+        difficulty = difficulty,
         solved = goalReached,
         completion = completion,
         solvedDetail = "Итоговый счёт: $score.",

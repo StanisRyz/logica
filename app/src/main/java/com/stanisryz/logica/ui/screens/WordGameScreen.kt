@@ -1,13 +1,7 @@
 package com.stanisryz.logica.ui.screens
 
 import android.view.HapticFeedbackConstants
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.HighlightOff
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,15 +23,15 @@ import com.stanisryz.logica.puzzle.core.word.WordGuessRejection
 import com.stanisryz.logica.puzzle.core.word.WordPuzzle
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
-import com.stanisryz.logica.ui.components.CompletionActions
-import com.stanisryz.logica.ui.components.CompletionCard
-import com.stanisryz.logica.ui.components.EconomyResultFeedback
+import com.stanisryz.logica.ui.components.GameResultCard
 import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.LeaveLevelGuard
 import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.components.RetryableErrorState
 import com.stanisryz.logica.ui.components.ZeroLivesCard
-import com.stanisryz.logica.ui.theme.LocalLogicaPalette
+import com.stanisryz.logica.ui.components.resultEconomy
+import com.stanisryz.logica.ui.components.russianLabel
+import com.stanisryz.logica.ui.components.toResultSaveState
 import com.stanisryz.logica.ui.word.WordGameContent
 import com.stanisryz.logica.word.WordGameError
 import com.stanisryz.logica.word.WordGameUiState
@@ -209,6 +203,7 @@ private fun WordReadyState(
             WordTerminalCard(
                 puzzle = puzzle,
                 game = game,
+                levelNumber = levelNumber,
                 completionPersistence = completionPersistence,
                 economy = economy,
                 onRetryCompletion = onRetryCompletion,
@@ -225,6 +220,7 @@ private fun WordReadyState(
 private fun WordTerminalCard(
     puzzle: WordPuzzle,
     game: WordGameState,
+    levelNumber: Int?,
     completionPersistence: CompletionPersistence,
     economy: PlayerEconomy,
     onRetryCompletion: () -> Unit,
@@ -234,77 +230,26 @@ private fun WordTerminalCard(
     isDaily: Boolean,
 ) {
     val isSolved = game.status == WordGameStatus.SOLVED
-    val palette = LocalLogicaPalette.current
-    CompletionCard(
-        icon = if (isSolved) Icons.Filled.CheckCircle else Icons.Filled.HighlightOff,
-        title = stringResource(if (isSolved) R.string.word_solved else R.string.word_failed),
-        containerColor = if (isSolved) palette.successContainer else MaterialTheme.colorScheme.errorContainer,
-        contentColor = if (isSolved) palette.onSuccessContainer else MaterialTheme.colorScheme.onErrorContainer,
-    ) {
-        if (isSolved) {
-            Text(
-                stringResource(R.string.word_attempts_used, game.attempts.size),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        } else {
-            Text(
-                stringResource(R.string.word_answer_was, puzzle.answer.uppercase()),
-                style = MaterialTheme.typography.titleMedium,
-            )
-        }
-
-        when (completionPersistence) {
-            CompletionPersistence.Error -> {
-                Text(
-                    stringResource(R.string.completion_save_error_body),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                TextButton(onClick = onRetryCompletion) { Text(stringResource(R.string.retry)) }
-            }
-            CompletionPersistence.Saving ->
-                Text(
-                    stringResource(R.string.saving_completion),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            CompletionPersistence.Saved ->
-                EconomyResultFeedback(
-                    isSolved = isSolved,
-                    lives = economy.lives,
-                    difficulty = puzzle.id.difficulty,
-                )
-            CompletionPersistence.NotRequired -> Unit
-        }
-
-        CompletionActions {
-            when (completionPersistence) {
-                CompletionPersistence.Saved -> {
-                    if (!isSolved) {
-                        Button(
-                            onClick = onRetryLevel,
-                            enabled = economy.isGameplayAllowed,
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text(stringResource(R.string.retry_puzzle))
-                        }
-                        TextButton(onClick = onGameHub) { Text(stringResource(R.string.to_games)) }
-                    } else if (isDaily) {
-                        Button(onClick = onGameHub, modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.to_games))
-                        }
-                    } else {
-                        Button(onClick = onNextLevel, modifier = Modifier.weight(1f)) {
-                            Text(stringResource(R.string.next_level))
-                        }
-                        TextButton(onClick = onGameHub) { Text(stringResource(R.string.to_games)) }
-                    }
-                }
-                CompletionPersistence.Saving -> {
-                    TextButton(onClick = {}, enabled = false) { Text(stringResource(R.string.saving)) }
-                }
-                CompletionPersistence.Error,
-                CompletionPersistence.NotRequired,
-                -> Unit
-            }
-        }
-    }
+    val difficulty = puzzle.id.difficulty
+    GameResultCard(
+        solved = isSolved,
+        levelNumber = levelNumber,
+        isDaily = isDaily,
+        difficultyLabel = difficulty.russianLabel(),
+        saveState = completionPersistence.toResultSaveState(),
+        onNextLevel = onNextLevel,
+        onRetry = onRetryLevel,
+        onRetrySave = onRetryCompletion,
+        onExit = onGameHub,
+        modifier = Modifier.fillMaxWidth(),
+        detail =
+            if (isSolved) {
+                stringResource(R.string.word_attempts_used, game.attempts.size)
+            } else {
+                stringResource(R.string.word_answer_was, puzzle.answer.uppercase())
+            },
+        saveErrorDetail = stringResource(R.string.completion_save_error_body),
+        economy = resultEconomy(isSolved, difficulty),
+        retryAllowed = economy.isGameplayAllowed,
+    )
 }

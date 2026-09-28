@@ -1179,6 +1179,9 @@ private fun PlayingBalanceContent(
     if (state.source.isDaily) {
         WebDailyOrdinaryTerminalDialog(
             visible = state.game.status.isTerminal,
+            difficulty = state.source.difficulty,
+            mistakesUsed = state.game.mistakesUsed,
+            hintsUsed = state.game.hintsUsed,
             solved = state.game.status == BalanceGameStatus.SOLVED,
             completion = controller.dailyCompletionState,
             onRetry = controller::retry,
@@ -1192,6 +1195,9 @@ private fun PlayingBalanceContent(
         )
         WebOrdinaryCatalogTerminalDialog(
             visible = state.game.status.isTerminal,
+            difficulty = state.source.difficulty,
+            mistakesUsed = state.game.mistakesUsed,
+            hintsUsed = state.game.hintsUsed,
             levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
             solved = state.game.status == BalanceGameStatus.SOLVED,
             completion = controller.completionState,
@@ -1252,6 +1258,9 @@ private fun PlayingCrownsContent(
     if (state.source.isDaily) {
         WebDailyOrdinaryTerminalDialog(
             visible = state.game.status.isTerminal,
+            difficulty = state.source.difficulty,
+            mistakesUsed = state.game.mistakesUsed,
+            hintsUsed = state.game.hintsUsed,
             solved = state.game.status == CrownsGameStatus.SOLVED,
             completion = controller.dailyCompletionState,
             onRetry = controller::retry,
@@ -1265,6 +1274,9 @@ private fun PlayingCrownsContent(
         )
         WebOrdinaryCatalogTerminalDialog(
             visible = state.game.status.isTerminal,
+            difficulty = state.source.difficulty,
+            mistakesUsed = state.game.mistakesUsed,
+            hintsUsed = state.game.hintsUsed,
             levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
             solved = state.game.status == CrownsGameStatus.SOLVED,
             completion = controller.completionState,
@@ -1314,6 +1326,7 @@ private fun PlayingWordContent(
     if (state.source.isDaily) {
         WebDailyOrdinaryTerminalDialog(
             visible = state.isTerminalRevealReady,
+            difficulty = state.source.difficulty,
             solved = state.game.status == WordGameStatus.SOLVED,
             // Spoiler-free: the Daily dialog never reveals the answer, unlike the Catalog one.
             scoreDetail = "Отгадано за ${state.game.attempts.size} попыток.",
@@ -1329,6 +1342,7 @@ private fun PlayingWordContent(
         )
         WebOrdinaryCatalogTerminalDialog(
             visible = state.isTerminalRevealReady,
+            difficulty = state.source.difficulty,
             levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
             solved = state.game.status == WordGameStatus.SOLVED,
             completion = controller.completionState,
@@ -1402,6 +1416,9 @@ private fun PlayingSudokuContent(
     if (state.source.isDaily) {
         WebDailyOrdinaryTerminalDialog(
             visible = state.game.status.isTerminal,
+            difficulty = state.source.difficulty,
+            mistakesUsed = state.game.mistakesUsed,
+            hintsUsed = state.game.hintsUsed,
             solved = state.game.status == SudokuGameStatus.SOLVED,
             completion = controller.dailyCompletionState,
             onRetry = controller::retry,
@@ -1415,6 +1432,9 @@ private fun PlayingSudokuContent(
         )
         WebOrdinaryCatalogTerminalDialog(
             visible = state.game.status.isTerminal,
+            difficulty = state.source.difficulty,
+            mistakesUsed = state.game.mistakesUsed,
+            hintsUsed = state.game.hintsUsed,
             levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
             solved = state.game.status == SudokuGameStatus.SOLVED,
             completion = controller.completionState,
@@ -1472,6 +1492,7 @@ private fun PlayingGame2048Content(
     if (state.source.isDaily) {
         WebDailyOrdinaryTerminalDialog(
             visible = state.game.status.isTerminal && state.motionTrace == null,
+            difficulty = state.source.difficulty,
             solved = state.game.goalReached,
             scoreDetail = "Итоговый счёт: ${formatGame2048Number(state.game.score)}.",
             completion = controller.dailyCompletionState,
@@ -1482,6 +1503,7 @@ private fun PlayingGame2048Content(
     } else {
         Web2048CatalogTerminalDialog(
             visible = state.game.status.isTerminal && state.motionTrace == null,
+            difficulty = state.source.difficulty,
             levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
             goalReached = state.game.goalReached,
             score = formatGame2048Number(state.game.score),
