@@ -31,7 +31,10 @@ import com.stanisryz.logica.shared.ui.generated.resources.difficulty_expert
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_hard
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_medium
 import com.stanisryz.logica.ui.components.BoardInfoHeader
+import com.stanisryz.logica.ui.components.CellGameSounds
 import com.stanisryz.logica.ui.components.CenteredBoardLayout
+import com.stanisryz.logica.ui.components.GameSound
+import com.stanisryz.logica.ui.components.LocalGameSounds
 import com.stanisryz.logica.ui.components.LocalRoomyGameplayControls
 import com.stanisryz.logica.ui.components.isRoomyPortrait
 import com.stanisryz.logica.ui.components.isWideGameplayLayout
@@ -61,6 +64,13 @@ fun SudokuGameContent(
     hintCount: Int? = null,
     hostStatusContent: @Composable ColumnScope.() -> Unit = {},
 ) {
+    CellGameSounds(
+        correctCells = game.cells.count { it.status == SudokuCellStatus.CORRECT },
+        mistakesUsed = game.mistakesUsed,
+        hintsUsed = game.hintsUsed,
+        solved = game.status == SudokuGameStatus.SOLVED,
+        failed = game.status == SudokuGameStatus.FAILED,
+    )
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val compact = maxHeight < COMPACT_HEIGHT_THRESHOLD
         val wideLayout = isWideGameplayLayout(maxWidth, maxHeight)
@@ -76,7 +86,14 @@ fun SudokuGameContent(
         // The keypad stays live for the whole attempt; a digit simply does nothing without a cell to
         // fill, instead of the whole pad greying out after every hint or tap on a clue.
         val keypadEnabled = gameplayEnabled && game.status == SudokuGameStatus.IN_PROGRESS
-        val guardedDigit: (Int) -> Unit = { digit -> if (inputEnabled) onDigit(digit) }
+        val sounds = LocalGameSounds.current
+        val guardedDigit: (Int) -> Unit = { digit ->
+            if (inputEnabled) {
+                onDigit(digit)
+                // A pencil note has no verdict to sound, so it just taps.
+                if (isPencilMode) sounds.play(GameSound.TAP)
+            }
+        }
         val confirmedCounts = IntArray(DIGIT_SLOTS)
         game.cells.forEach { cell ->
             if (cell.status == SudokuCellStatus.GIVEN || cell.status == SudokuCellStatus.CORRECT) confirmedCounts[cell.value]++

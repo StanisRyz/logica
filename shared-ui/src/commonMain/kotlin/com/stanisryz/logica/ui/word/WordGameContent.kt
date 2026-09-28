@@ -65,6 +65,8 @@ import com.stanisryz.logica.shared.ui.generated.resources.word_rejection_invalid
 import com.stanisryz.logica.shared.ui.generated.resources.word_rejection_unknown_word
 import com.stanisryz.logica.ui.components.BoardTitle
 import com.stanisryz.logica.ui.components.GameKey
+import com.stanisryz.logica.ui.components.GameSound
+import com.stanisryz.logica.ui.components.LocalGameSounds
 import com.stanisryz.logica.ui.components.isWideGameplayLayout
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import kotlinx.coroutines.delay
@@ -115,8 +117,21 @@ fun WordGameContent(
     val currentOnRejectionPresented by rememberUpdatedState(onRejectionPresented)
     val currentOnAcceptedAttemptRevealed by rememberUpdatedState(onAcceptedAttemptRevealed)
 
+    val sounds = LocalGameSounds.current
+    // Each revealed guess sounds once: a win, a loss, or a plain step on.
+    LaunchedEffect(revealedAttemptRevision) {
+        if (revealedAttemptRevision == 0) return@LaunchedEffect
+        sounds.play(
+            when (game.status) {
+                WordGameStatus.SOLVED -> GameSound.WIN
+                WordGameStatus.FAILED -> GameSound.FAIL
+                else -> GameSound.CORRECT
+            },
+        )
+    }
     LaunchedEffect(rejectionRevision) {
         if (rejectionRevision == 0 || rejection == null) return@LaunchedEffect
+        sounds.play(GameSound.MISTAKE)
         if (rejection == WordGuessRejection.INCOMPLETE_INPUT) {
             game.currentDraft.firstEmptyIndex()?.let { selectedCellIndex = it }
         }
@@ -160,6 +175,7 @@ fun WordGameContent(
                     currentOnDismissRejection()
                     val editedPosition = selectedCellIndex
                     currentOnLetter(editedPosition, letter)
+                    sounds.play(GameSound.TAP)
                     selectedCellIndex = nextWordSelection(draft, editedPosition)
                 }
                 GameKey.Backspace, GameKey.Delete -> {
@@ -250,6 +266,7 @@ fun WordGameContent(
                         onDismissRejection()
                         val editedPosition = selectedCellIndex
                         onLetter(editedPosition, letter)
+                        sounds.play(GameSound.TAP)
                         selectedCellIndex = nextWordSelection(game.currentDraft, editedPosition)
                     },
                     onBackspace = {
@@ -329,6 +346,7 @@ fun WordGameContent(
                             onDismissRejection()
                             val editedPosition = selectedCellIndex
                             onLetter(editedPosition, letter)
+                            sounds.play(GameSound.TAP)
                             selectedCellIndex = nextWordSelection(game.currentDraft, editedPosition)
                         },
                         onBackspace = {

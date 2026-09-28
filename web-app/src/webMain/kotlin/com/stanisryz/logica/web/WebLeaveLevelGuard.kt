@@ -19,6 +19,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +42,7 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameState
 import com.stanisryz.logica.puzzle.core.word.WordGameState
+import com.stanisryz.logica.ui.components.LocalGameSounds
 import com.stanisryz.logica.ui.components.catalogTitleResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -91,6 +93,9 @@ internal fun WebTopBar(
     onBack: () -> Unit,
     title: String,
 ) {
+    // Reaching a game screen means the player has tapped: a good moment to load the sounds.
+    val sounds = LocalGameSounds.current
+    LaunchedEffect(sounds) { (sounds as? WebGameSoundPlayer)?.preload() }
     Box(
         modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
         contentAlignment = Alignment.Center,

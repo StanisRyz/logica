@@ -25,7 +25,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
@@ -51,6 +54,8 @@ import com.stanisryz.logica.shared.ui.generated.resources.game_2048_undo
 import com.stanisryz.logica.shared.ui.generated.resources.tool_caption_undo
 import com.stanisryz.logica.ui.components.BoardTitle
 import com.stanisryz.logica.ui.components.CenteredBoardLayout
+import com.stanisryz.logica.ui.components.GameSound
+import com.stanisryz.logica.ui.components.LocalGameSounds
 import com.stanisryz.logica.ui.components.LocalRoomyGameplayControls
 import com.stanisryz.logica.ui.components.PuzzleTool
 import com.stanisryz.logica.ui.components.PuzzleToolBar
@@ -80,6 +85,21 @@ fun Game2048Content(
     hostStatusContent: @Composable ColumnScope.() -> Unit = {},
 ) {
     require(game.puzzleId.difficulty == difficulty) { "2048 difficulty must match the game identity." }
+    val sounds = LocalGameSounds.current
+    // A merge pops, a plain slide taps; reaching the target rings once and a lost board sighs.
+    LaunchedEffect(motionRevision) {
+        val trace = motionTrace ?: return@LaunchedEffect
+        sounds.play(if (trace.merges.isNotEmpty()) GameSound.MERGE else GameSound.TAP)
+    }
+    val reached = game.goalReached || levelCleared
+    val wasReached = remember { mutableStateOf(reached) }
+    val wasTerminal = remember { mutableStateOf(game.status.isTerminal) }
+    LaunchedEffect(reached, game.status) {
+        if (reached && !wasReached.value) sounds.play(GameSound.WIN)
+        if (game.status.isTerminal && !wasTerminal.value && !reached) sounds.play(GameSound.FAIL)
+        wasReached.value = reached
+        wasTerminal.value = game.status.isTerminal
+    }
     val difficultyLabel = stringResource(difficulty.labelResource())
     val header: @Composable () -> Unit = {
         Column(

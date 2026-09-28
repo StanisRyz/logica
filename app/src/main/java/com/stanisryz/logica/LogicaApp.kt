@@ -1,8 +1,12 @@
 package com.stanisryz.logica
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -14,8 +18,10 @@ import com.stanisryz.logica.economy.EconomyViewModel
 import com.stanisryz.logica.economy.EconomyViewModelFactory
 import com.stanisryz.logica.navigation.LogicaNavigation
 import com.stanisryz.logica.platform.android.AndroidAdDisplayHost
+import com.stanisryz.logica.platform.android.AndroidGameSoundPlayer
 import com.stanisryz.logica.settings.SettingsViewModel
 import com.stanisryz.logica.settings.SettingsViewModelFactory
+import com.stanisryz.logica.ui.components.LocalGameSounds
 import com.stanisryz.logica.ui.theme.LogicaTheme
 
 @Composable
@@ -59,39 +65,48 @@ fun LogicaApp() {
     val interstitialController: InterstitialAdController = viewModel(factory = interstitialControllerFactory)
     val interstitialOpportunity by interstitialController.pendingOpportunity.collectAsStateWithLifecycle()
 
+    val context = LocalContext.current
+    val soundScope = rememberCoroutineScope()
+    val currentSettings by rememberUpdatedState(settings)
+    val soundPlayer =
+        remember(context) { AndroidGameSoundPlayer(context, soundScope) { currentSettings.soundEnabled } }
+    DisposableEffect(soundPlayer) { onDispose { soundPlayer.release() } }
+
     LogicaTheme(themeMode = settings.themeMode) {
-        LogicaNavigation(
-            settings = settings,
-            settingsRepository = settingsRepository,
-            catalogLevelRepository = catalogLevelRepository,
-            gameCompletionRepository = gameCompletionRepository,
-            dailyChallengeRepository = dailyChallengeRepository,
-            statisticsRepository = statisticsRepository,
-            dailyResultRepository = dailyResultRepository,
-            economyRepository = economyRepository,
-            economy = economy,
-            rewardedState = rewardedState,
-            interstitialOpportunity = interstitialOpportunity,
-            storeGateway = platformServices.store,
-            storeProducts = platform.gemPackProducts,
-            onRestoreLife = economyViewModel::refillLife,
-            onPreloadRewardedAd = rewardedController::preload,
-            onReleaseRewardedAd = rewardedController::release,
-            onWatchRewardedAd = { rewardedController.show(AndroidAdDisplayHost(it)) },
-            onRetryRewardedAd = rewardedController::retry,
-            onGameplayStarted = interstitialController::onGameplayStarted,
-            onGameplayStopped = interstitialController::onGameplayStopped,
-            onShowInterstitialForTerminalAction = { opportunity, activity, onFinished ->
-                interstitialController.showForTerminalAction(
-                    opportunity,
-                    activity?.let(::AndroidAdDisplayHost),
-                    onFinished,
-                )
-            },
-            onThemeModeChanged = settingsViewModel::setThemeMode,
-            onSoundEnabledChanged = settingsViewModel::setSoundEnabled,
-            onHapticsEnabledChanged = settingsViewModel::setHapticsEnabled,
-            onTutorialSeen = settingsViewModel::markTutorialSeen,
-        )
+        CompositionLocalProvider(LocalGameSounds provides soundPlayer) {
+            LogicaNavigation(
+                settings = settings,
+                settingsRepository = settingsRepository,
+                catalogLevelRepository = catalogLevelRepository,
+                gameCompletionRepository = gameCompletionRepository,
+                dailyChallengeRepository = dailyChallengeRepository,
+                statisticsRepository = statisticsRepository,
+                dailyResultRepository = dailyResultRepository,
+                economyRepository = economyRepository,
+                economy = economy,
+                rewardedState = rewardedState,
+                interstitialOpportunity = interstitialOpportunity,
+                storeGateway = platformServices.store,
+                storeProducts = platform.gemPackProducts,
+                onRestoreLife = economyViewModel::refillLife,
+                onPreloadRewardedAd = rewardedController::preload,
+                onReleaseRewardedAd = rewardedController::release,
+                onWatchRewardedAd = { rewardedController.show(AndroidAdDisplayHost(it)) },
+                onRetryRewardedAd = rewardedController::retry,
+                onGameplayStarted = interstitialController::onGameplayStarted,
+                onGameplayStopped = interstitialController::onGameplayStopped,
+                onShowInterstitialForTerminalAction = { opportunity, activity, onFinished ->
+                    interstitialController.showForTerminalAction(
+                        opportunity,
+                        activity?.let(::AndroidAdDisplayHost),
+                        onFinished,
+                    )
+                },
+                onThemeModeChanged = settingsViewModel::setThemeMode,
+                onSoundEnabledChanged = settingsViewModel::setSoundEnabled,
+                onHapticsEnabledChanged = settingsViewModel::setHapticsEnabled,
+                onTutorialSeen = settingsViewModel::markTutorialSeen,
+            )
+        }
     }
 }

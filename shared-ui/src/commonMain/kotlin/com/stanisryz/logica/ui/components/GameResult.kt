@@ -24,6 +24,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,6 +60,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.result_to_difficulty
 import com.stanisryz.logica.shared.ui.generated.resources.result_to_games
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 
 /** Where the durable result of a finished attempt stands; hosts map their own completion states. */
@@ -121,6 +123,15 @@ fun GameResultCard(
             else -> stringResource(if (solved) Res.string.result_solved else Res.string.result_failed)
         }
     val bodyLine = if (saveError) saveErrorDetail else detail
+    val sounds = LocalGameSounds.current
+    // The coin rings once the reward has actually landed, a beat after the win sound.
+    val rewardLanded = saveState == GameResultSaveState.SAVED && (economy?.gemsEarned ?: 0) > 0
+    LaunchedEffect(rewardLanded) {
+        if (rewardLanded) {
+            delay(REWARD_SOUND_DELAY_MILLIS)
+            sounds.play(GameSound.REWARD)
+        }
+    }
     Surface(
         modifier = modifier.widthIn(max = CARD_MAX_WIDTH).semantics { liveRegion = LiveRegionMode.Polite },
         shape = MaterialTheme.shapes.extraLarge,
@@ -322,6 +333,7 @@ private class ResultTile(
     val tint: Color,
 )
 
+private const val REWARD_SOUND_DELAY_MILLIS = 450L
 private val CARD_MAX_WIDTH = 400.dp
 private val CARD_PADDING = 24.dp
 private val MARK_SIZE = 56.dp

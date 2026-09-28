@@ -33,6 +33,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.tool_on
 import com.stanisryz.logica.shared.ui.generated.resources.tool_pencil
 import com.stanisryz.logica.shared.ui.generated.resources.tool_selected
 import com.stanisryz.logica.ui.components.BoardInfoHeader
+import com.stanisryz.logica.ui.components.CellGameSounds
 import com.stanisryz.logica.ui.components.GameHeaderBadges
 import com.stanisryz.logica.ui.components.MistakeIndicator
 import com.stanisryz.logica.ui.components.PuzzleTool
@@ -65,6 +66,13 @@ fun BalanceGameContent(
     hintCount: Int? = null,
     hostStatusContent: @Composable ColumnScope.() -> Unit = {},
 ) {
+    CellGameSounds(
+        correctCells = game.cellStatuses.count { it.value == BalanceCellStatus.CORRECT },
+        mistakesUsed = game.mistakesUsed,
+        hintsUsed = game.hintsUsed,
+        solved = game.status == BalanceGameStatus.SOLVED,
+        failed = game.status == BalanceGameStatus.FAILED,
+    )
     SquareGameLayout(
         modifier = modifier,
         metadataContent = { wideLayout ->

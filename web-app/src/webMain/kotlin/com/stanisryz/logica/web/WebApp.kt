@@ -16,10 +16,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.PersonOutline
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -68,6 +70,7 @@ import com.stanisryz.logica.ui.components.DifficultySelector
 import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
 import com.stanisryz.logica.ui.components.GameHubContent
 import com.stanisryz.logica.ui.components.GameKey
+import com.stanisryz.logica.ui.components.LocalGameSounds
 import com.stanisryz.logica.ui.components.catalogTitleResource
 import com.stanisryz.logica.ui.crowns.CrownsGameContent
 import com.stanisryz.logica.ui.daily.DailyHubResultRow
@@ -168,56 +171,67 @@ internal fun WebApp(
     stickyBannerController: WebStickyBannerController,
 ) {
     val lifecycleState by lifecycle.state.collectAsState()
+    val soundPlayer = remember(lifecycle) { WebGameSoundPlayer(lifecycle.state) }
+    LaunchedEffect(soundPlayer, lifecycleState) { soundPlayer.onLifecycle(lifecycleState) }
 
-    // Like Android's default, the Web follows the device's light/dark preference.
-    LogicaTheme(darkTheme = isSystemInDarkTheme()) {
-        LaunchedEffect(controller) {
-            withFrameNanos { }
-            controller.onComposeRootRendered()
+    // Like Android's default, the Web follows the device's light/dark preference unless the player
+    // picked a theme in the Web settings.
+    val darkTheme =
+        when (WebSettings.themeMode) {
+            WebThemeMode.SYSTEM -> isSystemInDarkTheme()
+            WebThemeMode.LIGHT -> false
+            WebThemeMode.DARK -> true
         }
-        DisposableEffect(
-            controller,
-            balanceController,
-            crownsController,
-            wordController,
-            sudokuController,
-            game2048Controller,
-            playerSession,
-        ) {
-            onDispose {
-                controller.setGameplayActive(false)
-                balanceController.dispose()
-                crownsController.dispose()
-                wordController.dispose()
-                sudokuController.dispose()
-                game2048Controller.dispose()
-                playerSession.dispose()
+    LogicaTheme(darkTheme = darkTheme) {
+        CompositionLocalProvider(LocalGameSounds provides soundPlayer) {
+            LaunchedEffect(controller) {
+                withFrameNanos { }
+                controller.onComposeRootRendered()
             }
-        }
+            DisposableEffect(
+                controller,
+                balanceController,
+                crownsController,
+                wordController,
+                sudokuController,
+                game2048Controller,
+                playerSession,
+            ) {
+                onDispose {
+                    controller.setGameplayActive(false)
+                    balanceController.dispose()
+                    crownsController.dispose()
+                    wordController.dispose()
+                    sudokuController.dispose()
+                    game2048Controller.dispose()
+                    playerSession.dispose()
+                }
+            }
 
-        PortraitHostSurface {
-            when (val state = controller.state) {
-                WebBootstrapState.Loading -> LoadingContent()
-                is WebBootstrapState.Ready ->
-                    ReadyContent(
-                        mode = state.mode,
-                        lifecycleState = lifecycleState,
-                        controller = controller,
-                        balanceController = balanceController,
-                        crownsController = crownsController,
-                        wordController = wordController,
-                        sudokuController = sudokuController,
-                        game2048Controller = game2048Controller,
-                        playerSession = playerSession,
-                        dailyCoordinator = dailyCoordinator,
-                        storeProcessor = storeProcessor,
-                        rewardedHintsController = rewardedHintsController,
-                        interstitialController = interstitialController,
-                        stickyBannerController = stickyBannerController,
-                        paymentsCoordinator = paymentsCoordinator,
-                        onRendered = controller::onInitialHostUiReady,
-                    )
-                is WebBootstrapState.FatalError -> FatalContent(state.message)
+            PortraitHostSurface {
+                when (val state = controller.state) {
+                    WebBootstrapState.Loading -> LoadingContent()
+                    is WebBootstrapState.Ready ->
+                        ReadyContent(
+                            mode = state.mode,
+                            lifecycleState = lifecycleState,
+                            controller = controller,
+                            balanceController = balanceController,
+                            crownsController = crownsController,
+                            wordController = wordController,
+                            sudokuController = sudokuController,
+                            game2048Controller = game2048Controller,
+                            playerSession = playerSession,
+                            dailyCoordinator = dailyCoordinator,
+                            storeProcessor = storeProcessor,
+                            rewardedHintsController = rewardedHintsController,
+                            interstitialController = interstitialController,
+                            stickyBannerController = stickyBannerController,
+                            paymentsCoordinator = paymentsCoordinator,
+                            onRendered = controller::onInitialHostUiReady,
+                        )
+                    is WebBootstrapState.FatalError -> FatalContent(state.message)
+                }
             }
         }
     }
@@ -621,6 +635,11 @@ private fun PrimaryDestinationShell(
                 fontWeight = FontWeight.SemiBold,
             )
             if (selected != WebRoute.Store) WebGameplayWallet()
+            var settingsOpen by remember { mutableStateOf(false) }
+            IconButton(onClick = { settingsOpen = true }) {
+                Icon(Icons.Outlined.Settings, contentDescription = "Настройки")
+            }
+            if (settingsOpen) WebSettingsDialog(onDismiss = { settingsOpen = false })
         }
         Box(Modifier.weight(1f)) { content() }
         NavigationBar(modifier = Modifier.fillMaxWidth().height(PRIMARY_NAVIGATION_HEIGHT)) {
