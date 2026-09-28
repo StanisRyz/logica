@@ -20,6 +20,7 @@ import com.stanisryz.logica.ui.profile.ProfileContent
 @Composable
 internal fun ProfileRoute(
     repository: StatisticsRepository,
+    onOpenGames: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val factory = remember(repository) { StatisticsViewModelFactory(repository) }
@@ -40,5 +41,6 @@ internal fun ProfileRoute(
         uiState = statisticsState.toProfileUiState(),
         onRetry = statisticsViewModel::refresh,
         modifier = modifier,
+        onOpenGames = onOpenGames,
     )
 }

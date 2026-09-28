@@ -1,8 +1,8 @@
 package com.stanisryz.logica.web
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -57,22 +57,11 @@ internal fun WebGameplayHeader(
     onExit: () -> Unit,
 ) {
     var confirmingExit by remember { mutableStateOf(false) }
-    Row(
-        modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        TextButton(onClick = { if (hasMeaningfulProgress) confirmingExit = true else onExit() }) {
-            Text(if (isDaily) "К играм" else "К сложности")
-        }
-        Spacer(Modifier.weight(1f))
-        Text(
-            text = stringResource(puzzleType.catalogTitleResource()),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(Modifier.weight(1f))
-        WebGameplayWallet()
-    }
+    WebTopBar(
+        backLabel = if (isDaily) "К играм" else "К сложности",
+        onBack = { if (hasMeaningfulProgress) confirmingExit = true else onExit() },
+        title = stringResource(puzzleType.catalogTitleResource()),
+    )
     if (confirmingExit && hasMeaningfulProgress) {
         PauseGameKeysWhileShown()
         AlertDialog(
@@ -89,6 +78,31 @@ internal fun WebGameplayHeader(
             },
             dismissButton = { TextButton(onClick = { confirmingExit = false }) { Text("Остаться") } },
         )
+    }
+}
+
+/**
+ * The Web game/difficulty bar: the way back on the left, the game title truly centred whatever
+ * the sides measure, and the wallet (which opens the Store sheet) on the right.
+ */
+@Composable
+internal fun WebTopBar(
+    backLabel: String,
+    onBack: () -> Unit,
+    title: String,
+) {
+    Box(
+        modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        TextButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) { Text(backLabel) }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
+        Box(Modifier.align(Alignment.CenterEnd)) { WebGameplayWallet() }
     }
 }
 
@@ -146,7 +160,7 @@ internal val GAME_HEADER_HEIGHT = 52.dp
 
 /** Lives and gems stay in sight during play, like Android's game bar; tapping opens the Store sheet. */
 @Composable
-private fun WebGameplayWallet() {
+internal fun WebGameplayWallet() {
     val wallet = LocalWebLives.current.state ?: return
     val openStore = LocalWebOpenStore.current
     Row(horizontalArrangement = Arrangement.spacedBy(WALLET_CHIP_GAP), verticalAlignment = Alignment.CenterVertically) {

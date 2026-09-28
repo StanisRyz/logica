@@ -403,7 +403,11 @@ internal fun LogicaNavigation(
                                                             storeGateway = storeGateway,
                                                             storeProducts = storeProducts,
                                                         )
-                                                    PrimaryTab.PROFILE -> ProfileRoute(statisticsRepository)
+                                                    PrimaryTab.PROFILE ->
+                                                        ProfileRoute(statisticsRepository, onOpenGames = {
+                                                            selectedTab =
+                                                                PrimaryTab.GAME
+                                                        })
                                                 }
                                             }
                                         }

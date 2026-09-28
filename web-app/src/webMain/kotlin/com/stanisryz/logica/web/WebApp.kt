@@ -26,7 +26,6 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -504,6 +503,7 @@ private fun ReadyContent(
                         binding = playerSession.statisticsBinding.collectAsState().value,
                         currentDate = dailyDate,
                         onRetry = playerSession::retryCurrentContext,
+                        onOpenGames = { route = WebRoute.GameHub },
                     )
                 }
             WebRoute.Store ->
@@ -598,6 +598,30 @@ private fun PrimaryDestinationShell(
     content: @Composable () -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
+        // Every tab opens with its name and, except in the Store that shows the full balance, the wallet.
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(GAME_HEADER_HEIGHT)
+                    .padding(start = LogicaSpacing.screenHorizontal, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text =
+                    stringResource(
+                        when (selected) {
+                            WebRoute.Profile -> Res.string.primary_profile
+                            WebRoute.Store -> Res.string.primary_store
+                            else -> Res.string.primary_games
+                        },
+                    ),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            if (selected != WebRoute.Store) WebGameplayWallet()
+        }
         Box(Modifier.weight(1f)) { content() }
         NavigationBar(modifier = Modifier.fillMaxWidth().height(PRIMARY_NAVIGATION_HEIGHT)) {
             NavigationBarItem(
@@ -711,6 +735,7 @@ private fun WebProfileRoute(
     binding: WebStatisticsBinding,
     currentDate: DailyDate,
     onRetry: () -> Unit,
+    onOpenGames: () -> Unit,
 ) {
     when (binding) {
         WebStatisticsBinding.Loading ->
@@ -747,6 +772,7 @@ private fun WebProfileRoute(
                             .copy(dailyMetrics = dailyMetrics, economy = economyMetrics)
                             .toUiState(),
                     onRetry = onRetry,
+                    onOpenGames = onOpenGames,
                 )
             }
     }
@@ -1075,57 +1101,52 @@ private fun DifficultyContent(
             onDismiss = { offeredDifficulty = null },
         )
     }
-    BoxWithConstraints(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(
-                    horizontal = LogicaSpacing.screenHorizontal,
-                    vertical = LogicaSpacing.screenVertical,
-                ),
-    ) {
-        val livesState = lives.state
-        val livesHeight = if (livesState != null) LIVES_STATUS_HEIGHT + LogicaSpacing.section else 0.dp
-        val cardHeight =
-            (
+    Column(Modifier.fillMaxSize()) {
+        // The same bar as gameplay: the way back, the game in the middle, and the wallet.
+        WebTopBar(backLabel = "К играм", onBack = onBack, title = stringResource(puzzleType.catalogTitleResource()))
+        BoxWithConstraints(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(
+                        horizontal = LogicaSpacing.screenHorizontal,
+                        vertical = LogicaSpacing.screenVertical,
+                    ),
+        ) {
+            // The wallet chip in the header already shows the lives; the line only adds the countdown.
+            val livesState = lives.state?.takeIf { it.nextLifeRestoreAtEpochMs != null }
+            val livesHeight = if (livesState != null) LIVES_STATUS_HEIGHT + LogicaSpacing.section else 0.dp
+            val cardHeight =
                 (
-                    maxHeight - DIFFICULTY_HEADER_HEIGHT - TUTORIAL_ACTION_HEIGHT - livesHeight -
-                        LogicaSpacing.section * 2 - LogicaSpacing.item * 3
-                ) / 4
-            ).coerceIn(MIN_DIFFICULTY_CARD_HEIGHT, MAX_DIFFICULTY_CARD_HEIGHT)
-        Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.section)) {
-            Row(
-                modifier = Modifier.fillMaxWidth().height(DIFFICULTY_HEADER_HEIGHT),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = onBack) { Text("Назад") }
-                Text(
-                    text = "${stringResource(puzzleType.catalogTitleResource())} · выберите сложность",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    (
+                        maxHeight - TUTORIAL_ACTION_HEIGHT - livesHeight -
+                            LogicaSpacing.section - LogicaSpacing.item * 3
+                    ) / 4
+                ).coerceIn(MIN_DIFFICULTY_CARD_HEIGHT, MAX_DIFFICULTY_CARD_HEIGHT)
+            Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.section)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(TUTORIAL_ACTION_HEIGHT),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedButton(onClick = openTutorial) { Text(stringResource(Res.string.how_to_play)) }
+                }
+                if (livesState != null) {
+                    WebLivesStatus(livesState, Modifier.height(LIVES_STATUS_HEIGHT))
+                }
+                DifficultySelector(
+                    onStart = { difficulty ->
+                        if (WebTutorialOffers.isPending(puzzleType)) {
+                            offeredDifficulty = difficulty
+                        } else {
+                            lives.guard { onStart(difficulty) }
+                        }
+                    },
+                    enabled = true,
+                    cardHeight = cardHeight,
                 )
             }
-            Row(
-                modifier = Modifier.fillMaxWidth().height(TUTORIAL_ACTION_HEIGHT),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                OutlinedButton(onClick = openTutorial) { Text(stringResource(Res.string.how_to_play)) }
-            }
-            if (livesState != null) {
-                WebLivesStatus(livesState, Modifier.height(LIVES_STATUS_HEIGHT))
-            }
-            DifficultySelector(
-                onStart = { difficulty ->
-                    if (WebTutorialOffers.isPending(puzzleType)) {
-                        offeredDifficulty = difficulty
-                    } else {
-                        lives.guard { onStart(difficulty) }
-                    }
-                },
-                enabled = true,
-                cardHeight = cardHeight,
-            )
         }
     }
 }
@@ -1558,7 +1579,6 @@ private fun Difficulty.webLabel(): String =
         Difficulty.EXPERT -> "Эксперт"
     }
 
-private val DIFFICULTY_HEADER_HEIGHT = 48.dp
 private val LIVES_STATUS_HEIGHT = 24.dp
 private val TUTORIAL_ACTION_HEIGHT = 40.dp
 private val PRIMARY_NAVIGATION_HEIGHT = 64.dp

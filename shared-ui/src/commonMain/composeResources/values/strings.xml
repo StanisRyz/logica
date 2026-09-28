@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="game_catalog_section_title">Игры</string>
+    <string name="game_catalog_section_title">Все игры</string>
     <string name="game_catalog_play_label">Играть в %1$s</string>
     <string name="game_catalog_action">Играть</string>
 
@@ -65,7 +65,7 @@
     <string name="word_solved_count">Отгадано</string>
     <string name="word_failed_count">Не отгадано</string>
     <string name="word_win_rate">Доля побед</string>
-    <string name="word_percent_value">%1$d %%</string>
+    <string name="word_percent_value">%1$d %</string>
     <string name="word_attempt_distribution">Отгадано за N попыток</string>
     <string name="word_attempt_bar_description">Отгадано за %1$d попыток: %2$d</string>
     <string name="catalog_level">Уровень %1$d</string>
@@ -266,4 +266,14 @@
     <string name="result_saving">Сохраняем…</string>
     <string name="result_to_games">К играм</string>
     <string name="result_to_difficulty">К сложности</string>
+    <string name="profile_recent_days">Задача дня</string>
+    <string name="profile_games">Игры</string>
+    <string name="profile_solved_short">Решено</string>
+    <string name="profile_streak">Серия</string>
+    <string name="profile_best_streak">лучшая: %1$d</string>
+    <string name="profile_daily_short">Задач дня</string>
+    <string name="profile_solved_count">решено %1$d</string>
+    <string name="profile_not_played">Ещё не играли</string>
+    <string name="profile_hints_short">Подсказки</string>
+    <string name="profile_to_games">К играм</string>
 </resources>
