@@ -57,6 +57,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.hint_target_suffix
 import com.stanisryz.logica.shared.ui.generated.resources.incorrect_cell
 import com.stanisryz.logica.shared.ui.generated.resources.pencil_marks_suffix
 import com.stanisryz.logica.ui.components.cellFeedbackMotion
+import com.stanisryz.logica.ui.theme.LightBoardTheme
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -81,45 +82,49 @@ fun CrownsBoard(
         }
     val hint = game.currentHint
 
-    BoxWithConstraints(
-        modifier = modifier.fillMaxWidth(),
-        contentAlignment = Alignment.Center,
-    ) {
-        val boardSide = minOf(maxWidth, maxHeight, MAX_BOARD_SIZE)
-        val pencilSize =
-            (boardSide / puzzle.size * PENCIL_RATIO).coerceIn(MIN_PENCIL_SIZE, MAX_PENCIL_SIZE)
-        Column(Modifier.size(boardSide)) {
-            repeat(puzzle.size) { row ->
-                Row(Modifier.fillMaxWidth().weight(1f)) {
-                    repeat(puzzle.size) { column ->
-                        val position = CrownsPosition(row, column)
-                        val region = puzzle.regionAt(position)
-                        CrownsCellView(
-                            position = position,
-                            regionNumber = checkNotNull(regionNumbers[region]),
-                            cell = game.cellAt(position),
-                            status = game.statusAt(position),
-                            pencil = game.pencilAt(position),
-                            pencilSize = pencilSize,
-                            isConflict = position in conflictPositions,
-                            isHintTarget = position in (hint?.targetPositions ?: emptySet()),
-                            isHintEvidence = position in (hint?.evidencePositions ?: emptySet()),
-                            isHintConflict = position in (hint?.conflictPositions ?: emptySet()),
-                            isGuided = position in guidedPositions,
-                            regionColorIndex = checkNotNull(regionNumbers[region]) - 1,
-                            topBoundary = row == 0 || puzzle.regionAt(CrownsPosition(row - 1, column)) != region,
-                            leftBoundary = column == 0 || puzzle.regionAt(CrownsPosition(row, column - 1)) != region,
-                            bottomBoundary =
-                                row == puzzle.size - 1 || puzzle.regionAt(CrownsPosition(row + 1, column)) != region,
-                            rightBoundary =
-                                column == puzzle.size - 1 || puzzle.regionAt(CrownsPosition(row, column + 1)) != region,
-                            enabled =
-                                enabled &&
-                                    game.status == CrownsGameStatus.IN_PROGRESS &&
-                                    !game.isLocked(position),
-                            onClick = { onCellTapped(position) },
-                            modifier = Modifier.weight(1f).fillMaxHeight(),
-                        )
+    // The board is always drawn in the light scheme, so regions, lines, and every cell state look
+    // the same in both themes.
+    LightBoardTheme {
+        BoxWithConstraints(
+            modifier = modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center,
+        ) {
+            val boardSide = minOf(maxWidth, maxHeight, MAX_BOARD_SIZE)
+            val pencilSize =
+                (boardSide / puzzle.size * PENCIL_RATIO).coerceIn(MIN_PENCIL_SIZE, MAX_PENCIL_SIZE)
+            Column(Modifier.size(boardSide)) {
+                repeat(puzzle.size) { row ->
+                    Row(Modifier.fillMaxWidth().weight(1f)) {
+                        repeat(puzzle.size) { column ->
+                            val position = CrownsPosition(row, column)
+                            val region = puzzle.regionAt(position)
+                            CrownsCellView(
+                                position = position,
+                                regionNumber = checkNotNull(regionNumbers[region]),
+                                cell = game.cellAt(position),
+                                status = game.statusAt(position),
+                                pencil = game.pencilAt(position),
+                                pencilSize = pencilSize,
+                                isConflict = position in conflictPositions,
+                                isHintTarget = position in (hint?.targetPositions ?: emptySet()),
+                                isHintEvidence = position in (hint?.evidencePositions ?: emptySet()),
+                                isHintConflict = position in (hint?.conflictPositions ?: emptySet()),
+                                isGuided = position in guidedPositions,
+                                regionColorIndex = checkNotNull(regionNumbers[region]) - 1,
+                                topBoundary = row == 0 || puzzle.regionAt(CrownsPosition(row - 1, column)) != region,
+                                leftBoundary = column == 0 || puzzle.regionAt(CrownsPosition(row, column - 1)) != region,
+                                bottomBoundary =
+                                    row == puzzle.size - 1 || puzzle.regionAt(CrownsPosition(row + 1, column)) != region,
+                                rightBoundary =
+                                    column == puzzle.size - 1 || puzzle.regionAt(CrownsPosition(row, column + 1)) != region,
+                                enabled =
+                                    enabled &&
+                                        game.status == CrownsGameStatus.IN_PROGRESS &&
+                                        !game.isLocked(position),
+                                onClick = { onCellTapped(position) },
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                            )
+                        }
                     }
                 }
             }

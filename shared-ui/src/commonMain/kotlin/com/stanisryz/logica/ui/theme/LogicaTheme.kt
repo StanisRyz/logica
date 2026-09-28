@@ -159,3 +159,19 @@ fun LogicaTheme(
         )
     }
 }
+
+/**
+ * Draws [content] with the light scheme and palette in either theme, keeping the current type and
+ * shapes: for a game board whose colours stay the same in the dark theme (Crowns).
+ */
+@Composable
+internal fun LightBoardTheme(content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalLogicaPalette provides LightLogicaPalette) {
+        MaterialTheme(
+            colorScheme = LightColorScheme,
+            typography = MaterialTheme.typography,
+            shapes = MaterialTheme.shapes,
+            content = content,
+        )
+    }
+}

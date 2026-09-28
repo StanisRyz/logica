@@ -21,6 +21,22 @@ data class LogicaPalette(
     val game2048Tiles: List<Pair<Color, Color>> = LightGame2048Tiles,
 )
 
+/**
+ * Eight soft but clearly different hues at a similar lightness, so no region reads as "more
+ * important" and neighbouring regions never blend together. Both themes use them.
+ */
+private val CrownsRegions =
+    listOf(
+        Color(0xFFC9DCF2), // sky
+        Color(0xFFD2E6C2), // leaf
+        Color(0xFFF6D3B8), // apricot
+        Color(0xFFDDD1F1), // lavender
+        Color(0xFFF2CBD3), // rose
+        Color(0xFFBFE2DA), // mint
+        Color(0xFFF2E2A8), // butter
+        Color(0xFFDDD6CB), // stone
+    )
+
 private val LightGame2048Tiles =
     listOf(
         Color(0xFFFFFFFF) to Color(0xFF45403A),
@@ -59,19 +75,7 @@ internal val LightLogicaPalette =
         onSuccess = Color(0xFFFFFFFF),
         successContainer = Color(0xFFD9E9D9),
         onSuccessContainer = Color(0xFF1B3824),
-        // Eight soft but clearly different hues at a similar lightness, so no region reads as
-        // "more important" and neighbouring regions never blend together.
-        crownsRegions =
-            listOf(
-                Color(0xFFC9DCF2), // sky
-                Color(0xFFD2E6C2), // leaf
-                Color(0xFFF6D3B8), // apricot
-                Color(0xFFDDD1F1), // lavender
-                Color(0xFFF2CBD3), // rose
-                Color(0xFFBFE2DA), // mint
-                Color(0xFFF2E2A8), // butter
-                Color(0xFFDDD6CB), // stone
-            ),
+        crownsRegions = CrownsRegions,
         onCrownsRegion = Color(0xFF191C1E),
     )
 
@@ -81,18 +85,9 @@ internal val DarkLogicaPalette =
         onSuccess = Color(0xFF183B24),
         successContainer = Color(0xFF304C35),
         onSuccessContainer = Color(0xFFD0E8D0),
-        crownsRegions =
-            listOf(
-                Color(0xFF2F5275), // sky
-                Color(0xFF3E6336), // leaf
-                Color(0xFF8A5434), // apricot
-                Color(0xFF52457A), // lavender
-                Color(0xFF763F52), // rose
-                Color(0xFF2B645A), // mint
-                Color(0xFF7D6520), // butter
-                Color(0xFF4D4A45), // stone
-            ),
-        onCrownsRegion = Color(0xFFE1E3E5),
+        // The board keeps its light regions and dark ink in the dark theme too.
+        crownsRegions = CrownsRegions,
+        onCrownsRegion = Color(0xFF191C1E),
         game2048Tiles = DarkGame2048Tiles,
     )
 
