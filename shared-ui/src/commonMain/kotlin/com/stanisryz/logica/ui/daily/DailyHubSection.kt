@@ -363,7 +363,7 @@ private fun DailyEntryCard(
                 when {
                     completed -> MaterialTheme.colorScheme.tertiaryContainer
                     !gameplayAllowed -> MaterialTheme.colorScheme.surfaceContainerLow
-                    else -> MaterialTheme.colorScheme.surfaceContainerLowest
+                    else -> MaterialTheme.colorScheme.surfaceBright
                 },
             animationSpec = tween(DAILY_STATE_ANIMATION_MILLIS),
             label = "daily-entry-card-color",

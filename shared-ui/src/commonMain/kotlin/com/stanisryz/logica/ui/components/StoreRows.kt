@@ -144,7 +144,7 @@ fun StoreItemRow(
                     Modifier
                         .size(ICON_BOX)
                         .clip(CircleShape)
-                        .background(if (highlighted) colors.surface else colors.surfaceContainerHigh),
+                        .background(if (highlighted) colors.surfaceBright else colors.surfaceContainerHigh),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(icon, contentDescription = null, tint = colors.primary, modifier = Modifier.size(22.dp))
