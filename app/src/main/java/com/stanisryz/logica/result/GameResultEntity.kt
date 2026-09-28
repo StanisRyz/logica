@@ -38,4 +38,7 @@ internal data class GameResultEntity(
     val catalogLevelNumber: Int? = null,
     @ColumnInfo(name = "catalog_level_pack_version")
     val catalogLevelPackVersion: Int? = null,
+    /** Stars a solved attempt earned; null for failures, 2048, and results recorded before Room v10. */
+    @ColumnInfo(name = "stars")
+    val stars: Int? = null,
 )

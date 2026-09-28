@@ -19,6 +19,7 @@ import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
 import com.stanisryz.logica.puzzle.core.balance.BalanceGeneratorV1
 import com.stanisryz.logica.puzzle.core.balance.BalancePosition
 import com.stanisryz.logica.puzzle.core.balance.BalancePuzzle
+import com.stanisryz.logica.puzzle.core.model.PuzzleStars
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
@@ -245,6 +246,7 @@ internal class BalanceGameViewModel(
             current.completion(
                 outcome = if (game.status == BalanceGameStatus.SOLVED) GameOutcome.SOLVED else GameOutcome.FAILED,
                 hintsUsed = game.hintsUsed,
+                stars = if (game.status == BalanceGameStatus.SOLVED) PuzzleStars.forMistakes(game.mistakesUsed) else null,
             )
         completionJob =
             viewModelScope.launch {

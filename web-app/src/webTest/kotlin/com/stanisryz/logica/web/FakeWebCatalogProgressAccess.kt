@@ -34,7 +34,13 @@ internal class FakeWebCatalogProgressAccess(
 
     override fun isCurrent(attempt: WebCatalogAttempt): Boolean = attempt.playerContextToken == token
 
-    override fun advanceSolved(attempt: WebCatalogAttempt): WebCatalogCompletionResult {
+    val recordedStars = mutableListOf<Pair<WebCatalogAttempt, Int>>()
+
+    override fun advanceSolved(
+        attempt: WebCatalogAttempt,
+        stars: Int?,
+    ): WebCatalogCompletionResult {
+        if (isCurrent(attempt)) stars?.let { recordedStars += attempt to it }
         if (!isCurrent(attempt)) return WebCatalogCompletionResult.ContextChanged
         val id = attempt.levelId
         val key = Triple(id.puzzleType, id.difficulty, id.packVersion)

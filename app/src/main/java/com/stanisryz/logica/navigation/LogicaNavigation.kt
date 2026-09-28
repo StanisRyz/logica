@@ -63,6 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
@@ -112,6 +113,7 @@ import com.stanisryz.logica.ui.screens.WordGameRoute
 import com.stanisryz.logica.ui.screens.WordTutorialRoute
 import com.stanisryz.logica.ui.theme.LogicaMotion
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 @Composable
 internal fun LogicaNavigation(
@@ -451,6 +453,7 @@ internal fun LogicaNavigation(
                         entry<AppDestination.BalanceStart> {
                             PuzzleStartScreen(
                                 puzzleType = PuzzleType.BALANCE,
+                                stars = difficultyStars(statisticsRepository, PuzzleType.BALANCE),
                                 economy = economy,
                                 tutorialPending = !settings.tutorialCompleted(PuzzleType.BALANCE),
                                 onTutorialOffered = { onTutorialSeen(PuzzleType.BALANCE) },
@@ -465,6 +468,7 @@ internal fun LogicaNavigation(
                         entry<AppDestination.CrownsStart> {
                             PuzzleStartScreen(
                                 puzzleType = PuzzleType.CROWNS,
+                                stars = difficultyStars(statisticsRepository, PuzzleType.CROWNS),
                                 economy = economy,
                                 tutorialPending = !settings.tutorialCompleted(PuzzleType.CROWNS),
                                 onTutorialOffered = { onTutorialSeen(PuzzleType.CROWNS) },
@@ -483,6 +487,7 @@ internal fun LogicaNavigation(
                         entry<AppDestination.WordStart> {
                             PuzzleStartScreen(
                                 puzzleType = PuzzleType.WORD,
+                                stars = difficultyStars(statisticsRepository, PuzzleType.WORD),
                                 economy = economy,
                                 tutorialPending = !settings.tutorialCompleted(PuzzleType.WORD),
                                 onTutorialOffered = { onTutorialSeen(PuzzleType.WORD) },
@@ -497,6 +502,7 @@ internal fun LogicaNavigation(
                         entry<AppDestination.SudokuStart> {
                             PuzzleStartScreen(
                                 puzzleType = PuzzleType.SUDOKU,
+                                stars = difficultyStars(statisticsRepository, PuzzleType.SUDOKU),
                                 economy = economy,
                                 tutorialPending = !settings.tutorialCompleted(PuzzleType.SUDOKU),
                                 onTutorialOffered = { onTutorialSeen(PuzzleType.SUDOKU) },
@@ -514,6 +520,7 @@ internal fun LogicaNavigation(
                         entry<AppDestination.Game2048Start> {
                             PuzzleStartScreen(
                                 puzzleType = PuzzleType.GAME_2048,
+                                stars = difficultyStars(statisticsRepository, PuzzleType.GAME_2048),
                                 economy = economy,
                                 tutorialPending = !settings.tutorialCompleted(PuzzleType.GAME_2048),
                                 onTutorialOffered = { onTutorialSeen(PuzzleType.GAME_2048) },
@@ -840,3 +847,22 @@ private fun destinationTitle(
             AppDestination.Game2048Tutorial -> R.string.game_2048_tutorial_title
         },
     )
+
+/** Best stars per difficulty for one game's start screen, read from durable results. */
+@Composable
+private fun difficultyStars(
+    statisticsRepository: StatisticsRepository,
+    puzzleType: PuzzleType,
+): Map<Difficulty, Long> {
+    val flow = remember(statisticsRepository) { statisticsRepository.observe(LocalDate.now()) }
+    val snapshot by flow.collectAsStateWithLifecycle(initialValue = null)
+    return remember(snapshot, puzzleType) {
+        snapshot
+            ?.statistics
+            ?.levelStars
+            ?.filter { it.puzzleType == puzzleType }
+            ?.groupBy { it.difficulty }
+            ?.mapValues { (_, levels) -> levels.sumOf { it.stars.toLong() } }
+            .orEmpty()
+    }
+}

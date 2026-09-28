@@ -12,6 +12,7 @@ import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.GameplayHints
 import com.stanisryz.logica.economy.HintOffer
 import com.stanisryz.logica.economy.PlayerEconomy
+import com.stanisryz.logica.puzzle.core.model.PuzzleStars
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.sudoku.BinarySudokuDataset
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuCatalogProvider
@@ -297,6 +298,7 @@ internal class SudokuGameViewModel(
             current.completion(
                 outcome = if (game.status == SudokuGameStatus.SOLVED) GameOutcome.SOLVED else GameOutcome.FAILED,
                 hintsUsed = game.hintsUsed,
+                stars = if (game.status == SudokuGameStatus.SOLVED) PuzzleStars.forMistakes(game.mistakesUsed) else null,
             )
         completionJob =
             viewModelScope.launch {

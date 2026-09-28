@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.stanisryz.logica.puzzle.core.model.PuzzleMistakes
+import com.stanisryz.logica.puzzle.core.model.PuzzleStars
 import com.stanisryz.logica.shared.ui.generated.resources.Res
 import com.stanisryz.logica.shared.ui.generated.resources.result_daily_failed
 import com.stanisryz.logica.shared.ui.generated.resources.result_daily_solved
@@ -286,15 +287,10 @@ private class ConfettiPiece(
  * Stars earned by a solved attempt: three with no mistakes, two with one, one with more. A failed
  * attempt earns none, so hosts pass null for it.
  */
-fun starsForMistakes(mistakesUsed: Int): Int = (MAX_STARS - mistakesUsed).coerceIn(1, MAX_STARS)
+fun starsForMistakes(mistakesUsed: Int): Int = PuzzleStars.forMistakes(mistakesUsed)
 
 /** Word's stars follow the guesses used: one or two earn three, three or four earn two. */
-fun starsForWordAttempts(attemptsUsed: Int): Int =
-    when {
-        attemptsUsed <= 2 -> 3
-        attemptsUsed <= 4 -> 2
-        else -> 1
-    }
+fun starsForWordAttempts(attemptsUsed: Int): Int = PuzzleStars.forWordAttempts(attemptsUsed)
 
 /** The earned stars pop in one after another; the rest stay as quiet outlines. */
 @Composable
@@ -450,7 +446,7 @@ private class ResultTile(
 )
 
 private const val REWARD_SOUND_DELAY_MILLIS = 450L
-private const val MAX_STARS = 3
+private const val MAX_STARS = PuzzleStars.MAX_STARS
 private const val CONFETTI_MILLIS = 1800
 private const val CONFETTI_COUNT = 44
 private const val CONFETTI_GRAVITY = 0.9f

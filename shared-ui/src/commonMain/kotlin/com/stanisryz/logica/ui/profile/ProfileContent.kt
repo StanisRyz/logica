@@ -35,6 +35,7 @@ import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Lightbulb
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -68,6 +69,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.difficulty_easy
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_expert
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_hard
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_medium
+import com.stanisryz.logica.shared.ui.generated.resources.difficulty_stars
 import com.stanisryz.logica.shared.ui.generated.resources.profile_best_streak
 import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_completed
 import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_day
@@ -86,6 +88,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.profile_not_played
 import com.stanisryz.logica.shared.ui.generated.resources.profile_recent_days
 import com.stanisryz.logica.shared.ui.generated.resources.profile_solved_count
 import com.stanisryz.logica.shared.ui.generated.resources.profile_solved_short
+import com.stanisryz.logica.shared.ui.generated.resources.profile_stars
 import com.stanisryz.logica.shared.ui.generated.resources.profile_streak
 import com.stanisryz.logica.shared.ui.generated.resources.profile_to_games
 import com.stanisryz.logica.shared.ui.generated.resources.retry
@@ -199,6 +202,15 @@ private fun SummaryCard(statistics: ProfileStatistics) {
                 label = stringResource(Res.string.profile_solved_short),
                 modifier = Modifier.weight(1f),
             )
+            statistics.stars?.let { stars ->
+                SummaryMetric(
+                    value = stars.total.toString(),
+                    label = stringResource(Res.string.profile_stars),
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Rounded.Star,
+                    iconTint = LocalLogicaPalette.current.star,
+                )
+            }
             if (daily != null) {
                 SummaryMetric(
                     value = daily.currentStreak.toString(),
@@ -248,6 +260,7 @@ private fun SummaryMetric(
     modifier: Modifier = Modifier,
     caption: String? = null,
     icon: ImageVector? = null,
+    iconTint: Color = MaterialTheme.colorScheme.primary,
 ) {
     Column(
         modifier = modifier.semantics(mergeDescendants = true) {},
@@ -255,7 +268,7 @@ private fun SummaryMetric(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             icon?.let {
-                Icon(it, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                Icon(it, contentDescription = null, tint = iconTint, modifier = Modifier.size(22.dp))
             }
             Text(value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
         }
@@ -446,14 +459,30 @@ private class ProfileGame(
     val byDifficulty: ProfileDifficultyCounts,
     val hintsUsed: Long? = null,
     val word: WordProfileStatistics? = null,
+    val stars: Long = 0L,
 ) {
     val isPlayed: Boolean get() = (played ?: headline) > 0L
 }
 
-private fun profileGames(statistics: ProfileStatistics): List<ProfileGame> =
-    listOf(
-        ProfileGame(PuzzleType.BALANCE, statistics.balance.totalSolved, null, null, statistics.balance.solvedByDifficulty),
-        ProfileGame(PuzzleType.CROWNS, statistics.crowns.totalSolved, null, null, statistics.crowns.solvedByDifficulty),
+private fun profileGames(statistics: ProfileStatistics): List<ProfileGame> {
+    val stars = statistics.stars ?: ProfileStarSummary.EMPTY
+    return listOf(
+        ProfileGame(
+            PuzzleType.BALANCE,
+            statistics.balance.totalSolved,
+            null,
+            null,
+            statistics.balance.solvedByDifficulty,
+            stars = stars.forGame(PuzzleType.BALANCE),
+        ),
+        ProfileGame(
+            PuzzleType.CROWNS,
+            statistics.crowns.totalSolved,
+            null,
+            null,
+            statistics.crowns.solvedByDifficulty,
+            stars = stars.forGame(PuzzleType.CROWNS),
+        ),
         ProfileGame(
             PuzzleType.SUDOKU,
             statistics.sudoku.solved,
@@ -461,6 +490,7 @@ private fun profileGames(statistics: ProfileStatistics): List<ProfileGame> =
             statistics.sudoku.failed,
             statistics.sudoku.solvedByDifficulty,
             hintsUsed = statistics.sudoku.hintsUsed,
+            stars = stars.forGame(PuzzleType.SUDOKU),
         ),
         ProfileGame(
             PuzzleType.WORD,
@@ -469,6 +499,7 @@ private fun profileGames(statistics: ProfileStatistics): List<ProfileGame> =
             statistics.word.failed,
             ProfileDifficultyCounts(0, 0, 0, 0),
             word = statistics.word,
+            stars = stars.forGame(PuzzleType.WORD),
         ),
         ProfileGame(
             PuzzleType.GAME_2048,
@@ -478,6 +509,7 @@ private fun profileGames(statistics: ProfileStatistics): List<ProfileGame> =
             statistics.game2048.solvedByDifficulty,
         ),
     )
+}
 
 /** A game line that opens to its details; a game never finished stays one quiet line. */
 @Composable
@@ -563,6 +595,12 @@ private fun GameDetails(game: ProfileGame) {
         } else if (game.word.solved > 0L) {
             SupportingText(stringResource(Res.string.word_attempt_distribution))
             AttemptDistributionBars(game.word.solvedAttemptDistribution)
+        }
+        if (game.stars > 0L) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Rounded.Star, contentDescription = null, tint = LocalLogicaPalette.current.star, modifier = Modifier.size(18.dp))
+                Text(stringResource(Res.string.difficulty_stars, game.stars), style = MaterialTheme.typography.bodyMedium)
+            }
         }
     }
 }

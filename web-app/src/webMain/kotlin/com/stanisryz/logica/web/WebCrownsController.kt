@@ -18,6 +18,7 @@ import com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPosition
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPuzzle
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleStars
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.web.WebPuzzleData
 import kotlinx.coroutines.CancellationException
@@ -301,7 +302,7 @@ internal class WebCrownsController(
         val playing = state as? WebCrownsState.Playing ?: return
         val source = playing.source as? WebGameplaySource.CatalogLevel ?: return
         if (playing.game.status != CrownsGameStatus.SOLVED) return
-        completion.saveSolved(source.attempt)
+        completion.saveSolved(source.attempt, PuzzleStars.forMistakes(playing.game.mistakesUsed))
     }
 
     fun showDifficultySelector() {
@@ -352,7 +353,11 @@ internal class WebCrownsController(
             when (val source = playing.source) {
                 is WebGameplaySource.CatalogLevel -> {
                     // Daily never advances Catalog progression; Catalog completion stays here only.
-                    if (updated.status == CrownsGameStatus.SOLVED) completion.saveSolved(source.attempt)
+                    if (updated.status ==
+                        CrownsGameStatus.SOLVED
+                    ) {
+                        completion.saveSolved(source.attempt, PuzzleStars.forMistakes(updated.mistakesUsed))
+                    }
                     // Catalog terminals feed the wallet; Daily is intentionally absent here.
                     economy.recordCatalogTerminalResult(
                         PuzzleType.CROWNS,

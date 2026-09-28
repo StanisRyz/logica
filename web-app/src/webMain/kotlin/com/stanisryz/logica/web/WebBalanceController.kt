@@ -18,6 +18,7 @@ import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPack
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackResult
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleStars
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.web.WebPuzzleData
 import kotlinx.coroutines.CancellationException
@@ -304,7 +305,7 @@ internal class WebBalanceController(
         val playing = state as? WebBalanceState.Playing ?: return
         val source = playing.source as? WebGameplaySource.CatalogLevel ?: return
         if (playing.game.status != BalanceGameStatus.SOLVED) return
-        completion.saveSolved(source.attempt)
+        completion.saveSolved(source.attempt, PuzzleStars.forMistakes(playing.game.mistakesUsed))
     }
 
     fun showDifficultySelector() {
@@ -355,7 +356,11 @@ internal class WebBalanceController(
             when (val source = playing.source) {
                 is WebGameplaySource.CatalogLevel -> {
                     // Daily never advances Catalog progression; Catalog completion stays here only.
-                    if (updated.status == BalanceGameStatus.SOLVED) completion.saveSolved(source.attempt)
+                    if (updated.status ==
+                        BalanceGameStatus.SOLVED
+                    ) {
+                        completion.saveSolved(source.attempt, PuzzleStars.forMistakes(updated.mistakesUsed))
+                    }
                     // Catalog terminals feed the wallet; Daily is intentionally absent here.
                     economy.recordCatalogTerminalResult(
                         PuzzleType.BALANCE,

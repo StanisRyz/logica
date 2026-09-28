@@ -1,6 +1,8 @@
 package com.stanisryz.logica.ui.profile
 
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleStars
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordRules
 
 /** Platform-neutral state consumed by the shared Profile presentation. */
@@ -28,12 +30,52 @@ data class ProfileStatistics(
     val word: WordProfileStatistics,
     val dailyMetrics: DailyProfileMetrics?,
     val economy: ProfileEconomyMetrics? = null,
+    /** Best stars per Catalog level; null when the host keeps no star history. */
+    val stars: ProfileStarSummary? = null,
 ) {
     init {
         require(totalSolved >= 0L && totalHintsUsed >= 0L && completedTerminalResults >= 0L)
     }
 
     fun toUiState(): ProfileUiState = if (completedTerminalResults == 0L) ProfileUiState.Empty else ProfileUiState.Ready(this)
+}
+
+/** The best stars one Catalog level has earned, as each host stores them. */
+data class LevelStarRecord(
+    val puzzleType: PuzzleType,
+    val difficulty: Difficulty,
+    val stars: Int,
+)
+
+/**
+ * Stars summed over Catalog levels, each level counting its best attempt once: per game and
+ * difficulty, and how many levels earned all three.
+ */
+data class ProfileStarSummary(
+    val byGame: Map<PuzzleType, ProfileDifficultyCounts>,
+    val perfectLevels: Long,
+) {
+    val total: Long get() = byGame.values.sumOf { counts -> Difficulty.entries.sumOf { counts[it] } }
+
+    fun forGame(puzzleType: PuzzleType): Long = byGame[puzzleType]?.let { counts -> Difficulty.entries.sumOf { counts[it] } } ?: 0L
+
+    companion object {
+        val EMPTY = ProfileStarSummary(emptyMap(), 0L)
+
+        fun from(levels: Iterable<LevelStarRecord>): ProfileStarSummary {
+            val sums = mutableMapOf<PuzzleType, MutableMap<Difficulty, Long>>()
+            var perfect = 0L
+            levels.forEach { level ->
+                val byDifficulty = sums.getOrPut(level.puzzleType) { mutableMapOf() }
+                byDifficulty[level.difficulty] = (byDifficulty[level.difficulty] ?: 0L) + level.stars
+                if (level.stars >= PuzzleStars.MAX_STARS) perfect++
+            }
+            return ProfileStarSummary(
+                byGame = sums.mapValues { (_, counts) -> ProfileDifficultyCounts.from(counts) },
+                perfectLevels = perfect,
+            )
+        }
+    }
 }
 
 /** Compact wallet display for the Profile; restore text is a pre-localized host string. */

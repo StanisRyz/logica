@@ -109,6 +109,7 @@ internal data class GameAttempt(
         outcome: GameOutcome,
         hintsUsed: Int = 0,
         attemptsUsed: Int? = null,
+        stars: Int? = null,
     ): GameCompletion {
         val daily = context as? GameAttemptContext.Daily
         return GameCompletion(
@@ -124,6 +125,7 @@ internal data class GameAttempt(
             challengeDate = daily?.challengeDate,
             dailyPolicyVersion = daily?.policyVersion,
             catalogLevel = levelId,
+            stars = stars,
         )
     }
 }

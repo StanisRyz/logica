@@ -95,6 +95,7 @@ import com.stanisryz.logica.ui.game2048.formatGame2048Number
 import com.stanisryz.logica.ui.profile.DailyProfileMetrics
 import com.stanisryz.logica.ui.profile.ProfileContent
 import com.stanisryz.logica.ui.profile.ProfileEconomyMetrics
+import com.stanisryz.logica.ui.profile.ProfileStarSummary
 import com.stanisryz.logica.ui.profile.ProfileUiState
 import com.stanisryz.logica.ui.sudoku.SudokuGameContent
 import com.stanisryz.logica.ui.theme.LogicaSpacing
@@ -479,7 +480,13 @@ private fun ReadyContent(
         }
     }
 
+    // The bound Player's best stars per level, for the difficulty cards.
+    val progressRepository = (playerSession.progressBinding.collectAsState().value as? WebCatalogProgressBinding.Ready)?.repository
+    val catalogStars =
+        progressRepository?.let { repository -> key(repository) { repository.stars.collectAsState().value } }
+            ?: WebCatalogStarsSnapshot.EMPTY
     CompositionLocalProvider(
+        LocalWebCatalogStars provides catalogStars,
         LocalWebLives provides livesUi,
         LocalWebOpenStore provides openStore,
         LocalWebKeyboard provides keyboard,
@@ -919,8 +926,11 @@ private fun WebProfileRoute(
                         WebStatisticsAggregator
                             .aggregate(snapshot)
                             .toProfileStatistics()
-                            .copy(dailyMetrics = dailyMetrics, economy = economyMetrics)
-                            .toUiState(),
+                            .copy(
+                                dailyMetrics = dailyMetrics,
+                                economy = economyMetrics,
+                                stars = ProfileStarSummary.from(LocalWebCatalogStars.current.levelRecords()),
+                            ).toUiState(),
                     onRetry = onRetry,
                     onOpenGames = onOpenGames,
                     footer = if (leaderboard.isSupported) ({ WebLeaderboardCard(leaderboard) }) else null,
@@ -1306,6 +1316,7 @@ private fun DifficultyContent(
                     enabled = true,
                     cardHeight = cardHeight,
                     columns = columns,
+                    stars = LocalWebCatalogStars.current.starsByDifficulty(puzzleType),
                 )
             }
         }

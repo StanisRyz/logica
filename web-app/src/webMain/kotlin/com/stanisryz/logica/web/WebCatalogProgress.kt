@@ -235,14 +235,47 @@ internal sealed interface WebCatalogMergeResult {
 internal class WebCatalogProgressRepository(
     val scope: WebCatalogProgressScope,
     private val localStore: WebCatalogProgressStore,
+    private val starsStore: WebCatalogStarsStore = WebCatalogStarsStore.InMemory(),
 ) {
     private val mutableSnapshot = MutableStateFlow(WebCatalogProgressSnapshot.EMPTY)
     val snapshot: StateFlow<WebCatalogProgressSnapshot> = mutableSnapshot.asStateFlow()
 
+    private val mutableStars = MutableStateFlow(WebCatalogStarsSnapshot.EMPTY)
+
+    /** Best stars per level in this Player scope; lives beside progress and never gates it. */
+    val stars: StateFlow<WebCatalogStarsSnapshot> = mutableStars.asStateFlow()
+
     /** Invoked after every successful durable local mutation; never after a cloud merge. */
     var onDurableChange: (() -> Unit)? = null
 
-    fun loadLocal(): WebCatalogProgressSnapshot = localStore.load().also { mutableSnapshot.value = it }
+    fun loadLocal(): WebCatalogProgressSnapshot {
+        mutableStars.value = runCatching { starsStore.load() }.getOrDefault(WebCatalogStarsSnapshot.EMPTY)
+        return localStore.load().also { mutableSnapshot.value = it }
+    }
+
+    /**
+     * Keeps [stars] for [levelId] when they beat the level's best. Stars are best-effort: a
+     * failed browser write leaves them unchanged and never affects the level's completion.
+     */
+    fun recordStars(
+        levelId: CatalogLevelId,
+        stars: Int,
+    ): Boolean {
+        val updated = mutableStars.value.withBest(levelId.toProgressBucket(), levelId.levelNumber.value, stars)
+        if (updated == mutableStars.value) return false
+        if (runCatching { starsStore.save(updated) }.isFailure) return false
+        mutableStars.value = updated
+        onDurableChange?.invoke()
+        return true
+    }
+
+    /** Per-level maximum with the cloud copy; true when the cloud lacks something local. */
+    fun mergeCloudStars(cloud: WebCatalogStarsSnapshot): Boolean {
+        val local = mutableStars.value
+        val merged = local.mergedWith(cloud)
+        if (merged != local && runCatching { starsStore.save(merged) }.isSuccess) mutableStars.value = merged
+        return merged != cloud
+    }
 
     fun currentLevel(bucket: WebCatalogProgressBucket): CatalogLevelNumber = mutableSnapshot.value.currentLevel(bucket)
 

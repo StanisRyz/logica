@@ -57,7 +57,11 @@ internal interface WebCatalogProgressAccess {
 
     fun isCurrent(attempt: WebCatalogAttempt): Boolean
 
-    fun advanceSolved(attempt: WebCatalogAttempt): WebCatalogCompletionResult
+    /** Advances a solved level and keeps its [stars] when they beat the level's best. */
+    fun advanceSolved(
+        attempt: WebCatalogAttempt,
+        stars: Int? = null,
+    ): WebCatalogCompletionResult
 
     fun retryContextBinding()
 }
@@ -103,13 +107,20 @@ internal class WebCatalogProgressCoordinator(
         (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.token ==
             attempt.playerContextToken
 
-    override fun advanceSolved(attempt: WebCatalogAttempt): WebCatalogCompletionResult {
+    override fun advanceSolved(
+        attempt: WebCatalogAttempt,
+        stars: Int?,
+    ): WebCatalogCompletionResult {
         val binding =
             playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready
                 ?: return WebCatalogCompletionResult.ContextChanged
         if (binding.token != attempt.playerContextToken) return WebCatalogCompletionResult.ContextChanged
 
         val result = binding.repository.advanceSolved(attempt.levelId)
+        // A first solve or a replay of a solved level may both earn better stars.
+        if (result is WebCatalogAdvanceResult.Advanced || result == WebCatalogAdvanceResult.Idempotent) {
+            stars?.let { binding.repository.recordStars(attempt.levelId, it) }
+        }
         return when (result) {
             is WebCatalogAdvanceResult.Advanced -> {
                 val nextLevel = attempt.levelId.copy(levelNumber = result.currentLevel)
@@ -169,12 +180,15 @@ internal class WebCatalogCompletionController(
         state = WebCatalogCompletionState.Idle
     }
 
-    fun saveSolved(attempt: WebCatalogAttempt) {
+    fun saveSolved(
+        attempt: WebCatalogAttempt,
+        stars: Int? = null,
+    ) {
         if (this.attempt != attempt) return
         if (state != WebCatalogCompletionState.Idle && state !is WebCatalogCompletionState.SaveError) return
         state = WebCatalogCompletionState.Saving
         state =
-            when (val result = progression.advanceSolved(attempt)) {
+            when (val result = progression.advanceSolved(attempt, stars)) {
                 is WebCatalogCompletionResult.Saved -> WebCatalogCompletionState.Saved(result.nextLevel)
                 is WebCatalogCompletionResult.PersistenceFailed ->
                     WebCatalogCompletionState.SaveError(result.detail)

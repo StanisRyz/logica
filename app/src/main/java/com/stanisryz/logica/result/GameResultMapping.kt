@@ -7,6 +7,7 @@ import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
+import com.stanisryz.logica.puzzle.core.model.PuzzleStars
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import java.time.Instant
 import java.time.LocalDate
@@ -27,6 +28,7 @@ internal fun GameCompletion.toEntity(completedAtEpochMillis: Long): GameResultEn
         dailyPolicyVersion = dailyPolicyVersion?.value,
         catalogLevelNumber = catalogLevel?.levelNumber?.value,
         catalogLevelPackVersion = catalogLevel?.packVersion?.value,
+        stars = stars,
     )
 
 internal fun GameResultEntity.toGameResultOrNull(): GameResult? =
@@ -64,6 +66,8 @@ internal fun GameResultEntity.toGameResultOrNull(): GameResult? =
                             }.getOrNull()
                         }
                     },
+            // Stars are presentation metadata too: an out-of-range value is dropped, not fatal.
+            stars = stars?.takeIf { outcome == GameOutcome.SOLVED.name && it in 1..PuzzleStars.MAX_STARS },
         ).also { result ->
             require(
                 (scope == GameResultScope.DAILY) ==

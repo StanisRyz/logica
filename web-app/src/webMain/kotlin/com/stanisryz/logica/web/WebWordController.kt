@@ -12,6 +12,7 @@ import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackResult
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
+import com.stanisryz.logica.puzzle.core.model.PuzzleStars
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.web.WebPuzzleData
 import com.stanisryz.logica.puzzle.core.word.WordGameEngine
@@ -273,7 +274,12 @@ internal class WebWordController(
                             when (val source = playing.source) {
                                 is WebGameplaySource.CatalogLevel -> {
                                     // Daily never advances Catalog progression; Catalog completion stays here only.
-                                    if (solved) completion.saveSolved(source.attempt)
+                                    if (solved) {
+                                        completion.saveSolved(
+                                            source.attempt,
+                                            PuzzleStars.forWordAttempts(updated.game.attempts.size),
+                                        )
+                                    }
                                     // Catalog terminals feed the wallet; Daily is intentionally absent here.
                                     economy.recordCatalogTerminalResult(
                                         PuzzleType.WORD,
@@ -331,7 +337,7 @@ internal class WebWordController(
         val playing = state as? WebWordState.Playing ?: return
         val source = playing.source as? WebGameplaySource.CatalogLevel ?: return
         if (playing.game.status != WordGameStatus.SOLVED) return
-        completion.saveSolved(source.attempt)
+        completion.saveSolved(source.attempt, PuzzleStars.forWordAttempts(playing.game.attempts.size))
     }
 
     fun showDifficultySelector() {

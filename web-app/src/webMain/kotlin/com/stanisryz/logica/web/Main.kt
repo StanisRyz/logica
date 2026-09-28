@@ -25,6 +25,7 @@ fun main() {
             WebCatalogProgressRepository(
                 scope = scope,
                 localStore = WebCatalogProgressLocalStore(scope),
+                starsStore = WebCatalogStarsLocalStore(scope),
             )
         }
     val installationIdProvider = WebInstallationIdProvider()

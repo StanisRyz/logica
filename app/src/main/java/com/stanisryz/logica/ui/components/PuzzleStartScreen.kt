@@ -41,6 +41,7 @@ internal fun PuzzleStartScreen(
     onStart: (Difficulty) -> Unit,
     onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
+    stars: Map<Difficulty, Long> = emptyMap(),
 ) {
     var offeredDifficulty by remember { mutableStateOf<Difficulty?>(null) }
     val openTutorial = {
@@ -81,6 +82,7 @@ internal fun PuzzleStartScreen(
                 onStart = start,
                 enabled = true,
                 modifier = Modifier.fillMaxSize(),
+                stars = stars,
             )
         }
     } else {
@@ -93,6 +95,7 @@ internal fun PuzzleStartScreen(
                 onStart = start,
                 enabled = false,
                 modifier = Modifier,
+                stars = stars,
             )
         }
     }
@@ -105,6 +108,7 @@ private fun StartDifficultyContent(
     onStart: (Difficulty) -> Unit,
     enabled: Boolean,
     modifier: Modifier,
+    stars: Map<Difficulty, Long> = emptyMap(),
 ) {
     Column(
         modifier = modifier,
@@ -122,6 +126,7 @@ private fun StartDifficultyContent(
             onStart = onStart,
             enabled = enabled,
             cardHeight = cardHeight,
+            stars = stars,
         )
     }
 }

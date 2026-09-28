@@ -10,6 +10,7 @@ import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
+import com.stanisryz.logica.puzzle.core.model.PuzzleStars
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordGameEngine
 import com.stanisryz.logica.puzzle.core.word.WordGameState
@@ -190,6 +191,7 @@ internal class WordGameViewModel(
             current.completion(
                 outcome = if (game.status == WordGameStatus.SOLVED) GameOutcome.SOLVED else GameOutcome.FAILED,
                 attemptsUsed = game.attempts.size,
+                stars = if (game.status == WordGameStatus.SOLVED) PuzzleStars.forWordAttempts(game.attempts.size) else null,
             )
         completionJob =
             viewModelScope.launch {

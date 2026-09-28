@@ -31,7 +31,7 @@ import kotlinx.coroutines.Dispatchers
         EconomyEventEntity::class,
         CatalogLevelProgressEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = true,
 )
 internal abstract class LogicaDatabase : RoomDatabase() {
@@ -67,6 +67,7 @@ internal abstract class LogicaDatabase : RoomDatabase() {
                     MIGRATION_6_7,
                     MIGRATION_7_8,
                     MIGRATION_8_9,
+                    MIGRATION_9_10,
                 ).build()
         }
 
@@ -308,6 +309,17 @@ internal abstract class LogicaDatabase : RoomDatabase() {
                             "DEFAULT ${EconomyRules.STARTING_HINTS}",
                     )
                     connection.execute("ALTER TABLE `economy_events` ADD COLUMN `hint_delta` INTEGER NOT NULL DEFAULT 0")
+                }
+            }
+
+        /**
+         * Adds the stars a solved attempt earned. Historical results keep a null star count: they
+         * were recorded without one, and nothing is inferred for them.
+         */
+        internal val MIGRATION_9_10 =
+            object : Migration(9, 10) {
+                override suspend fun migrate(connection: SQLiteConnection) {
+                    connection.execute("ALTER TABLE `game_results` ADD COLUMN `stars` INTEGER")
                 }
             }
 

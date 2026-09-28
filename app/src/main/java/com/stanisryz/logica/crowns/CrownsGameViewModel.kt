@@ -18,6 +18,7 @@ import com.stanisryz.logica.puzzle.core.crowns.CrownsGeneratorV1
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPosition
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPuzzle
+import com.stanisryz.logica.puzzle.core.model.PuzzleStars
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
@@ -236,6 +237,7 @@ internal class CrownsGameViewModel(
             current.completion(
                 outcome = if (game.status == CrownsGameStatus.SOLVED) GameOutcome.SOLVED else GameOutcome.FAILED,
                 hintsUsed = game.hintsUsed,
+                stars = if (game.status == CrownsGameStatus.SOLVED) PuzzleStars.forMistakes(game.mistakesUsed) else null,
             )
         completionJob =
             viewModelScope.launch {

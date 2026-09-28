@@ -274,6 +274,7 @@ internal object WebSaveSectionIds {
     const val ECONOMY = "economy"
     const val STORE = "store"
     const val PAYMENTS = "payments"
+    const val STARS = "stars"
 }
 
 /**
@@ -295,6 +296,7 @@ internal class WebSaveSections(
             economySection(),
             storeSection(),
             paymentsSection(),
+            starsSection(),
         )
 
     private fun catalogSection(): WebSaveSection =
@@ -313,6 +315,27 @@ internal class WebSaveSections(
                     (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository ?: return
                 val cloud = WebCatalogProgressCodec.decode(payload) ?: return
                 repository.mergeCloud(cloud)
+            }
+        }
+
+    /** Best stars per Catalog level, beside progress in the same binding; merges by maximum. */
+    private fun starsSection(): WebSaveSection =
+        object : WebSaveSection {
+            override val id = WebSaveSectionIds.STARS
+
+            override fun export(): ByteArray? =
+                (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)
+                    ?.repository
+                    ?.stars
+                    ?.value
+                    ?.takeIf { it.levels.isNotEmpty() }
+                    ?.let { WebCatalogStarsCodec.encode(it) }
+
+            override fun apply(payload: ByteArray) {
+                val repository =
+                    (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository ?: return
+                val cloud = WebCatalogStarsCodec.decode(payload) ?: return
+                repository.mergeCloudStars(cloud)
             }
         }
 

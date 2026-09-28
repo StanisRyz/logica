@@ -7,6 +7,7 @@ import com.stanisryz.logica.ui.profile.DailyProfileMetrics
 import com.stanisryz.logica.ui.profile.Game2048ProfileStatistics
 import com.stanisryz.logica.ui.profile.ProfileAttemptDistribution
 import com.stanisryz.logica.ui.profile.ProfileDifficultyCounts
+import com.stanisryz.logica.ui.profile.ProfileStarSummary
 import com.stanisryz.logica.ui.profile.ProfileStatistics
 import com.stanisryz.logica.ui.profile.ProfileUiState
 import com.stanisryz.logica.ui.profile.SolvedPuzzleProfileStatistics
@@ -46,6 +47,7 @@ internal fun GameStatistics.toProfileStatistics(): ProfileStatistics {
                 bestStreak = bestDailyStreak.toLong(),
                 calendar = dailyMonth?.toCalendarMonth(),
             ),
+        stars = ProfileStarSummary.from(levelStars),
     )
 }
 

@@ -291,6 +291,8 @@
     <string name="profile_to_games">К играм</string>
     <string name="continue_title">Продолжить</string>
     <string name="continue_level">%1$s · уровень %2$d</string>
+    <string name="profile_stars">Звёзды</string>
+    <string name="difficulty_stars">Звёзды: %1$d</string>
     <string name="result_stars">Звёзд: %1$d из %2$d</string>
     <string name="rules_title">Как играть · %1$s</string>
     <string name="rules_done">Понятно</string>

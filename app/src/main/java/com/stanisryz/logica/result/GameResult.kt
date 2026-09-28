@@ -5,6 +5,7 @@ import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
+import com.stanisryz.logica.puzzle.core.model.PuzzleStars
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordRules
 import java.time.Instant
@@ -40,6 +41,15 @@ private fun requireOutcomeMetadata(
     }
 }
 
+private fun requireStars(
+    outcome: GameOutcome,
+    stars: Int?,
+) {
+    require(stars == null || (outcome == GameOutcome.SOLVED && stars in 1..PuzzleStars.MAX_STARS)) {
+        "Only a solved result may carry 1..${PuzzleStars.MAX_STARS} stars."
+    }
+}
+
 internal data class GameCompletion(
     val resultId: String,
     val puzzleType: PuzzleType,
@@ -57,10 +67,13 @@ internal data class GameCompletion(
      * result stays a Daily result and never pretends to be a Catalog level.
      */
     val catalogLevel: CatalogLevelId? = null,
+    /** Stars the solved attempt earned (`PuzzleStars`); null for failures and for 2048. */
+    val stars: Int? = null,
 ) {
     init {
         require(resultId.isNotBlank()) { "Result ID must not be blank." }
         require(hintsUsed >= 0) { "Hints used must not be negative." }
+        requireStars(outcome, stars)
         require(
             (resultScope == GameResultScope.DAILY) ==
                 (challengeDate != null && dailyPolicyVersion != null),
@@ -90,10 +103,13 @@ internal data class GameResult(
     val dailyPolicyVersion: DailyPolicyVersion? = null,
     /** Null for Daily results and for Catalog results recorded before the frozen level system. */
     val catalogLevel: CatalogLevelId? = null,
+    /** Stars the solved attempt earned; null for failures, 2048, and results recorded before stars. */
+    val stars: Int? = null,
 ) {
     init {
         require(resultId.isNotBlank()) { "Result ID must not be blank." }
         require(hintsUsed >= 0) { "Hints used must not be negative." }
+        requireStars(outcome, stars)
         require(
             (resultScope == GameResultScope.DAILY) ==
                 (challengeDate != null && dailyPolicyVersion != null),

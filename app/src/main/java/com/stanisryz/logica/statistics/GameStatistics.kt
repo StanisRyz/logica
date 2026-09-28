@@ -8,6 +8,7 @@ import com.stanisryz.logica.puzzle.core.word.WordRules
 import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.result.GameResult
 import com.stanisryz.logica.result.GameResultScope
+import com.stanisryz.logica.ui.profile.LevelStarRecord
 import java.time.LocalDate
 
 internal data class GameStatistics(
@@ -21,6 +22,8 @@ internal data class GameStatistics(
     val sudoku: SudokuStatistics = SudokuStatistics.EMPTY,
     val game2048: Game2048Statistics = Game2048Statistics.EMPTY,
     val dailyMonth: DailyMonthHistory? = null,
+    /** The best stars of every Catalog level solved with a star count, one record per level. */
+    val levelStars: List<LevelStarRecord> = emptyList(),
 )
 
 /** The current month's Daily dates for the Profile calendar: full runs and partly solved days. */
@@ -150,6 +153,7 @@ internal object StatisticsAggregator {
                     sudoku = sudokuStatistics(results),
                     game2048 = game2048Statistics(results),
                     dailyMonth = dailyMonth,
+                    levelStars = bestLevelStars(solvedResults),
                 ),
             dailyHintsUsedByDate = dailyHints,
         )
@@ -198,3 +202,12 @@ internal object StatisticsAggregator {
         )
     }
 }
+
+/** Each Catalog level counts its best solved attempt once; results without stars count nothing. */
+private fun bestLevelStars(solvedResults: List<GameResult>): List<LevelStarRecord> =
+    solvedResults
+        .filter { it.catalogLevel != null && it.stars != null }
+        .groupBy { checkNotNull(it.catalogLevel) }
+        .map { (level, results) ->
+            LevelStarRecord(level.puzzleType, level.difficulty, results.maxOf { checkNotNull(it.stars) })
+        }
