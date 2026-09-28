@@ -1,5 +1,6 @@
 package com.stanisryz.logica.settings
 
+import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 
 data class UserSettings(
@@ -11,6 +12,9 @@ data class UserSettings(
     val wordTutorialCompleted: Boolean = false,
     val sudokuTutorialCompleted: Boolean = false,
     val game2048TutorialCompleted: Boolean = false,
+    /** The last Catalog game and difficulty the player started, for the hub's Continue card. */
+    val lastPlayedPuzzle: PuzzleType? = null,
+    val lastPlayedDifficulty: Difficulty? = null,
 )
 
 /** Whether this game's tutorial was already completed, opened, or declined once. */

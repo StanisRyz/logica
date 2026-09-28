@@ -24,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.platform.PlatformLifecycleState
+import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.ui.components.GameSound
 import com.stanisryz.logica.ui.components.GameSoundPlayer
 import com.stanisryz.logica.ui.components.gameSoundUri
@@ -236,3 +238,37 @@ private fun webAudioSuspend() {
 private fun webAudioResume() {
     js("(function () { var a = globalThis.__logicaAudio; if (a && a.ctx && a.ctx.state === 'suspended') a.ctx.resume(); })()")
 }
+
+/**
+ * The last Catalog game and difficulty this browser started, for the hub's Continue card. It is a
+ * browser-local convenience (`logica_last_played_v1`), never Player-scoped or synced; the level it
+ * shows is always read from the bound Player's own Catalog progress.
+ */
+internal object WebLastPlayed {
+    var value by mutableStateOf(read())
+        private set
+
+    fun record(
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+    ) {
+        val next = puzzleType to difficulty
+        if (value == next) return
+        value = next
+        runCatching { settingsStorageSet(LAST_PLAYED_KEY, "${puzzleType.name}:${difficulty.name}") }
+    }
+
+    private fun read(): Pair<PuzzleType, Difficulty>? {
+        val stored = runCatching { settingsStorageGet(LAST_PLAYED_KEY) }.getOrNull() ?: return null
+        val (type, difficulty) = stored.split(':').takeIf { it.size == 2 } ?: return null
+        val puzzleType =
+            PuzzleType.entries
+                .firstOrNull { it.name == type } ?: return null
+        val level =
+            Difficulty.entries
+                .firstOrNull { it.name == difficulty } ?: return null
+        return puzzleType to level
+    }
+}
+
+private const val LAST_PLAYED_KEY = "logica_last_played_v1"

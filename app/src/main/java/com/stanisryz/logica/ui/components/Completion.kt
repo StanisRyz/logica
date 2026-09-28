@@ -47,6 +47,7 @@ internal fun PuzzleTerminalDialog(
         maxMistakes = maxMistakes,
         hintsUsed = hintsUsed,
         retryAllowed = isRetryAllowed,
+        stars = if (isSolved) starsForMistakes(mistakesUsed) else null,
     )
 }
 

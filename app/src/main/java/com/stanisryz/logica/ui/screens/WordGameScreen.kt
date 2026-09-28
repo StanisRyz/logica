@@ -31,6 +31,7 @@ import com.stanisryz.logica.ui.components.RetryableErrorState
 import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.components.resultEconomy
 import com.stanisryz.logica.ui.components.russianLabel
+import com.stanisryz.logica.ui.components.starsForWordAttempts
 import com.stanisryz.logica.ui.components.toResultSaveState
 import com.stanisryz.logica.ui.word.WordGameContent
 import com.stanisryz.logica.word.WordGameError
@@ -251,5 +252,6 @@ private fun WordTerminalCard(
         saveErrorDetail = stringResource(R.string.completion_save_error_body),
         economy = resultEconomy(isSolved, difficulty),
         retryAllowed = economy.isGameplayAllowed,
+        stars = if (isSolved) starsForWordAttempts(game.attempts.size) else null,
     )
 }

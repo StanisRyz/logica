@@ -106,6 +106,7 @@ fun LogicaApp() {
                 onSoundEnabledChanged = settingsViewModel::setSoundEnabled,
                 onHapticsEnabledChanged = settingsViewModel::setHapticsEnabled,
                 onTutorialSeen = settingsViewModel::markTutorialSeen,
+                onLastPlayed = settingsViewModel::setLastPlayed,
             )
         }
     }

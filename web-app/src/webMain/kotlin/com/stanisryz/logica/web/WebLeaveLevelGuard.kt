@@ -9,11 +9,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.HeartBroken
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -42,6 +44,7 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameState
 import com.stanisryz.logica.puzzle.core.word.WordGameState
+import com.stanisryz.logica.ui.components.GameRulesSheet
 import com.stanisryz.logica.ui.components.LocalGameSounds
 import com.stanisryz.logica.ui.components.catalogTitleResource
 import org.jetbrains.compose.resources.stringResource
@@ -63,6 +66,7 @@ internal fun WebGameplayHeader(
         backLabel = if (isDaily) "К играм" else "К сложности",
         onBack = { if (hasMeaningfulProgress) confirmingExit = true else onExit() },
         title = stringResource(puzzleType.catalogTitleResource()),
+        helpFor = puzzleType,
     )
     if (confirmingExit && hasMeaningfulProgress) {
         PauseGameKeysWhileShown()
@@ -92,7 +96,13 @@ internal fun WebTopBar(
     backLabel: String,
     onBack: () -> Unit,
     title: String,
+    helpFor: PuzzleType? = null,
 ) {
+    var rulesOpen by remember { mutableStateOf(false) }
+    if (rulesOpen && helpFor != null) {
+        PauseGameKeysWhileShown()
+        GameRulesSheet(helpFor, onDismiss = { rulesOpen = false })
+    }
     // Reaching a game screen means the player has tapped: a good moment to load the sounds.
     val sounds = LocalGameSounds.current
     LaunchedEffect(sounds) { (sounds as? WebGameSoundPlayer)?.preload() }
@@ -101,12 +111,24 @@ internal fun WebTopBar(
         contentAlignment = Alignment.Center,
     ) {
         TextButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) { Text(backLabel) }
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+            if (helpFor != null) {
+                IconButton(onClick = { rulesOpen = true }, modifier = Modifier.size(HELP_BUTTON_SIZE)) {
+                    Icon(
+                        Icons.AutoMirrored.Outlined.HelpOutline,
+                        contentDescription = "Правила",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(HELP_ICON_SIZE),
+                    )
+                }
+            }
+        }
         Box(Modifier.align(Alignment.CenterEnd)) { WebGameplayWallet() }
     }
 }
@@ -162,6 +184,8 @@ internal fun Game2048State.hasMeaningfulProgress(
 private const val GAME_2048_INITIAL_SPAWN_COUNT = 2L
 
 internal val GAME_HEADER_HEIGHT = 52.dp
+private val HELP_BUTTON_SIZE = 36.dp
+private val HELP_ICON_SIZE = 20.dp
 
 /** Lives and gems stay in sight during play, like Android's game bar; tapping opens the Store sheet. */
 @Composable

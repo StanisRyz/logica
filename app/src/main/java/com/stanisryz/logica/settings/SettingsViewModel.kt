@@ -3,6 +3,7 @@ package com.stanisryz.logica.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +19,13 @@ class SettingsViewModel(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = UserSettings(),
         )
+
+    fun setLastPlayed(
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+    ) {
+        viewModelScope.launch { repository.setLastPlayed(puzzleType, difficulty) }
+    }
 
     fun setThemeMode(themeMode: ThemeMode) {
         viewModelScope.launch {

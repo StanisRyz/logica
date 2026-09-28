@@ -12,6 +12,8 @@ data class LogicaPalette(
     val onSuccessContainer: Color,
     val crownsRegions: List<Color>,
     val onCrownsRegion: Color,
+    /** The earned-star gold of the result card; Material has no role for it. */
+    val star: Color = Color(0xFFE0A526),
 )
 
 internal val LightLogicaPalette =

@@ -276,4 +276,24 @@
     <string name="profile_not_played">Ещё не играли</string>
     <string name="profile_hints_short">Подсказки</string>
     <string name="profile_to_games">К играм</string>
+    <string name="continue_title">Продолжить</string>
+    <string name="continue_level">%1$s · уровень %2$d</string>
+    <string name="result_stars">Звёзд: %1$d из %2$d</string>
+    <string name="rules_title">Как играть · %1$s</string>
+    <string name="rules_done">Понятно</string>
+    <string name="rules_mistakes">Три ошибки — уровень не пройден. Подсказка открывает верную клетку.</string>
+    <string name="rules_balance_1">В каждой строке и каждом столбце чёрных и белых фишек поровну.</string>
+    <string name="rules_balance_2">Три одинаковые фишки подряд ставить нельзя.</string>
+    <string name="rules_balance_3">Заполненные строки не повторяют друг друга, и столбцы тоже.</string>
+    <string name="rules_crowns_1">В каждой строке, каждом столбце и каждой цветной области — ровно одна корона.</string>
+    <string name="rules_crowns_2">Короны не касаются друг друга, даже по диагонали.</string>
+    <string name="rules_crowns_3">Метка × — ваша заметка, что здесь короны точно нет.</string>
+    <string name="rules_sudoku_1">Заполните поле цифрами от 1 до 9.</string>
+    <string name="rules_sudoku_2">В каждой строке, каждом столбце и каждом блоке 3×3 цифра встречается один раз.</string>
+    <string name="rules_word_1">Отгадайте слово за шесть попыток.</string>
+    <string name="rules_word_2">Заливка — буква на своём месте, рамка — буква есть, но в другом месте.</string>
+    <string name="rules_word_3">Погасшей буквы в слове нет.</string>
+    <string name="rules_2048_1">Смахивайте или нажимайте стрелки: все плитки сдвигаются в эту сторону.</string>
+    <string name="rules_2048_2">Две равные плитки сливаются в одну и приносят очки.</string>
+    <string name="rules_2048_3">Наберите цель уровня, пока на поле остаются ходы.</string>
 </resources>

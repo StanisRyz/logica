@@ -1,5 +1,8 @@
 package com.stanisryz.logica.ui.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +19,8 @@ import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.HeartBroken
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -25,9 +30,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -56,6 +63,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.result_reward
 import com.stanisryz.logica.shared.ui.generated.resources.result_save_error
 import com.stanisryz.logica.shared.ui.generated.resources.result_saving
 import com.stanisryz.logica.shared.ui.generated.resources.result_solved
+import com.stanisryz.logica.shared.ui.generated.resources.result_stars
 import com.stanisryz.logica.shared.ui.generated.resources.result_to_difficulty
 import com.stanisryz.logica.shared.ui.generated.resources.result_to_games
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
@@ -109,6 +117,7 @@ fun GameResultCard(
     retryAllowed: Boolean = true,
     exitToDifficulty: Boolean = false,
     title: String? = null,
+    stars: Int? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val palette = LocalLogicaPalette.current
@@ -143,20 +152,24 @@ fun GameResultCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
         ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(MARK_SIZE)
-                        .clip(CircleShape)
-                        .background(if (positive) palette.successContainer else colors.errorContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = if (positive) Icons.Filled.TaskAlt else Icons.Filled.ErrorOutline,
-                    contentDescription = null,
-                    tint = if (positive) palette.onSuccessContainer else colors.onErrorContainer,
-                    modifier = Modifier.size(MARK_ICON_SIZE),
-                )
+            if (positive && stars != null) {
+                ResultStars(stars)
+            } else {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(MARK_SIZE)
+                            .clip(CircleShape)
+                            .background(if (positive) palette.successContainer else colors.errorContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = if (positive) Icons.Filled.TaskAlt else Icons.Filled.ErrorOutline,
+                        contentDescription = null,
+                        tint = if (positive) palette.onSuccessContainer else colors.onErrorContainer,
+                        modifier = Modifier.size(MARK_ICON_SIZE),
+                    )
+                }
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
@@ -216,6 +229,54 @@ fun GameResultCard(
     }
 }
 
+/**
+ * Stars earned by a solved attempt: three with no mistakes, two with one, one with more. A failed
+ * attempt earns none, so hosts pass null for it.
+ */
+fun starsForMistakes(mistakesUsed: Int): Int = (MAX_STARS - mistakesUsed).coerceIn(1, MAX_STARS)
+
+/** Word's stars follow the guesses used: one or two earn three, three or four earn two. */
+fun starsForWordAttempts(attemptsUsed: Int): Int =
+    when {
+        attemptsUsed <= 2 -> 3
+        attemptsUsed <= 4 -> 2
+        else -> 1
+    }
+
+/** The earned stars pop in one after another; the rest stay as quiet outlines. */
+@Composable
+private fun ResultStars(stars: Int) {
+    val palette = LocalLogicaPalette.current
+    val colors = MaterialTheme.colorScheme
+    val description = stringResource(Res.string.result_stars, stars, MAX_STARS)
+    Row(
+        modifier = Modifier.clearAndSetSemantics { contentDescription = description },
+        horizontalArrangement = Arrangement.spacedBy(STAR_SPACING),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        repeat(MAX_STARS) { index ->
+            val earned = index < stars
+            val scale = remember { Animatable(if (earned) 0f else 1f) }
+            LaunchedEffect(earned) {
+                if (earned) {
+                    delay(STAR_STAGGER_MILLIS * index)
+                    scale.animateTo(1f, spring(dampingRatio = STAR_SPRING_DAMPING, stiffness = Spring.StiffnessMediumLow))
+                }
+            }
+            Icon(
+                imageVector = if (earned) Icons.Filled.Star else Icons.Filled.StarOutline,
+                contentDescription = null,
+                tint = if (earned) palette.star else colors.outlineVariant,
+                modifier =
+                    Modifier
+                        // The middle star stands a little taller, like a podium.
+                        .size(if (index == 1) STAR_SIZE_MIDDLE else STAR_SIZE)
+                        .scale(scale.value),
+            )
+        }
+    }
+}
+
 /** [GameResultCard] over the finished board; only its actions close it. */
 @Composable
 fun GameResultDialog(
@@ -237,6 +298,7 @@ fun GameResultDialog(
     retryAllowed: Boolean = true,
     exitToDifficulty: Boolean = false,
     title: String? = null,
+    stars: Int? = null,
 ) {
     Dialog(
         onDismissRequest = {},
@@ -261,6 +323,7 @@ fun GameResultDialog(
             retryAllowed = retryAllowed,
             exitToDifficulty = exitToDifficulty,
             title = title,
+            stars = stars,
         )
     }
 }
@@ -334,6 +397,12 @@ private class ResultTile(
 )
 
 private const val REWARD_SOUND_DELAY_MILLIS = 450L
+private const val MAX_STARS = 3
+private const val STAR_STAGGER_MILLIS = 160L
+private const val STAR_SPRING_DAMPING = 0.45f
+private val STAR_SIZE = 44.dp
+private val STAR_SIZE_MIDDLE = 56.dp
+private val STAR_SPACING = 6.dp
 private val CARD_MAX_WIDTH = 400.dp
 private val CARD_PADDING = 24.dp
 private val MARK_SIZE = 56.dp

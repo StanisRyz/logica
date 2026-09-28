@@ -1,5 +1,7 @@
 package com.stanisryz.logica.settings
 
+import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import kotlinx.coroutines.flow.Flow
 
 interface SettingsRepository {
@@ -20,4 +22,9 @@ interface SettingsRepository {
     suspend fun setSudokuTutorialCompleted(completed: Boolean)
 
     suspend fun setGame2048TutorialCompleted(completed: Boolean)
+
+    suspend fun setLastPlayed(
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+    )
 }

@@ -21,6 +21,7 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.ui.components.GameResultDialog
 import com.stanisryz.logica.ui.components.GameResultEconomy
 import com.stanisryz.logica.ui.components.GameResultSaveState
+import com.stanisryz.logica.ui.components.starsForMistakes
 
 @Composable
 internal fun WebCatalogLoadingContent(
@@ -88,6 +89,7 @@ internal fun WebOrdinaryCatalogTerminalDialog(
     failedDetail: String? = null,
     mistakesUsed: Int? = null,
     hintsUsed: Int? = null,
+    stars: Int? = null,
     onNextLevel: () -> Unit,
     onRetry: () -> Unit,
     onRetrySave: () -> Unit,
@@ -125,6 +127,7 @@ internal fun WebOrdinaryCatalogTerminalDialog(
         mistakesUsed = mistakesUsed,
         hintsUsed = hintsUsed,
         exitToDifficulty = true,
+        stars = if (solved) stars ?: mistakesUsed?.let(::starsForMistakes) else null,
     )
 }
 
@@ -137,6 +140,7 @@ internal fun WebDailyOrdinaryTerminalDialog(
     scoreDetail: String? = null,
     mistakesUsed: Int? = null,
     hintsUsed: Int? = null,
+    stars: Int? = null,
     onRetry: () -> Unit,
     onRetrySave: () -> Unit,
     onExit: () -> Unit,
@@ -166,6 +170,7 @@ internal fun WebDailyOrdinaryTerminalDialog(
             },
         mistakesUsed = mistakesUsed,
         hintsUsed = hintsUsed,
+        stars = if (solved) stars ?: mistakesUsed?.let(::starsForMistakes) else null,
     )
 }
 

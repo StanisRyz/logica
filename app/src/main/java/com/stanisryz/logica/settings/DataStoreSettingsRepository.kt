@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -36,8 +38,24 @@ class DataStoreSettingsRepository(
                     wordTutorialCompleted = preferences[WORD_TUTORIAL_COMPLETED] ?: false,
                     sudokuTutorialCompleted = preferences[SUDOKU_TUTORIAL_COMPLETED] ?: false,
                     game2048TutorialCompleted = preferences[GAME_2048_TUTORIAL_COMPLETED] ?: false,
+                    lastPlayedPuzzle =
+                        preferences[LAST_PLAYED_PUZZLE]?.let { stored ->
+                            PuzzleType.entries.firstOrNull { it.name == stored }
+                        },
+                    lastPlayedDifficulty =
+                        preferences[LAST_PLAYED_DIFFICULTY]?.let { stored -> Difficulty.entries.firstOrNull { it.name == stored } },
                 )
             }
+
+    override suspend fun setLastPlayed(
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+    ) {
+        dataStore.edit { preferences ->
+            preferences[LAST_PLAYED_PUZZLE] = puzzleType.name
+            preferences[LAST_PLAYED_DIFFICULTY] = difficulty.name
+        }
+    }
 
     override suspend fun setThemeMode(themeMode: ThemeMode) {
         dataStore.edit { preferences ->
@@ -89,6 +107,8 @@ class DataStoreSettingsRepository(
 
     private companion object {
         val THEME_MODE = stringPreferencesKey("theme_mode")
+        val LAST_PLAYED_PUZZLE = stringPreferencesKey("last_played_puzzle")
+        val LAST_PLAYED_DIFFICULTY = stringPreferencesKey("last_played_difficulty")
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         val BALANCE_TUTORIAL_COMPLETED = booleanPreferencesKey("balance_tutorial_completed")

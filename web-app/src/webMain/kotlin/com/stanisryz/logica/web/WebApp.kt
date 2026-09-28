@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.platform.PlatformLifecycleState
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
 import com.stanisryz.logica.puzzle.core.daily.DailyDate
@@ -67,17 +68,23 @@ import com.stanisryz.logica.puzzle.core.word.WordGameStatus
 import com.stanisryz.logica.shared.ui.generated.resources.Res
 import com.stanisryz.logica.shared.ui.generated.resources.daily_marker
 import com.stanisryz.logica.shared.ui.generated.resources.daily_start_error
+import com.stanisryz.logica.shared.ui.generated.resources.difficulty_easy
+import com.stanisryz.logica.shared.ui.generated.resources.difficulty_expert
+import com.stanisryz.logica.shared.ui.generated.resources.difficulty_hard
+import com.stanisryz.logica.shared.ui.generated.resources.difficulty_medium
 import com.stanisryz.logica.shared.ui.generated.resources.how_to_play
 import com.stanisryz.logica.shared.ui.generated.resources.primary_games
 import com.stanisryz.logica.shared.ui.generated.resources.primary_profile
 import com.stanisryz.logica.shared.ui.generated.resources.primary_store
 import com.stanisryz.logica.ui.balance.BalanceGameContent
+import com.stanisryz.logica.ui.components.ContinueGameCard
 import com.stanisryz.logica.ui.components.DifficultySelector
 import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
 import com.stanisryz.logica.ui.components.GameHubContent
 import com.stanisryz.logica.ui.components.GameKey
 import com.stanisryz.logica.ui.components.LocalGameSounds
 import com.stanisryz.logica.ui.components.catalogTitleResource
+import com.stanisryz.logica.ui.components.starsForWordAttempts
 import com.stanisryz.logica.ui.crowns.CrownsGameContent
 import com.stanisryz.logica.ui.daily.DailyHubResultRow
 import com.stanisryz.logica.ui.daily.DailyHubSection
@@ -96,6 +103,7 @@ import com.stanisryz.logica.ui.tutorial.FirstPlayTutorialDialog
 import com.stanisryz.logica.ui.word.WordGameContent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 private val PRIMARY_ROUTES = setOf<WebRoute>(WebRoute.GameHub, WebRoute.Profile, WebRoute.Store)
@@ -505,6 +513,64 @@ private fun ReadyContent(
                                     else -> error("$puzzleType has no Web game flow.")
                                 }
                         },
+                        continueContent =
+                            WebLastPlayed.value?.let { (puzzleType, difficulty) ->
+                                {
+                                    val progress by playerSession.progressBinding.collectAsState()
+                                    val ready = progress as? WebCatalogProgressBinding.Ready
+                                    val snapshot =
+                                        ready
+                                            ?.repository
+                                            ?.snapshot
+                                            ?.collectAsState()
+                                            ?.value
+                                    val level =
+                                        snapshot
+                                            ?.currentLevel(
+                                                WebCatalogProgressBucket(puzzleType, difficulty, CatalogLevelPackVersion.V1),
+                                            )?.value
+                                    ContinueGameCard(
+                                        puzzleType = puzzleType,
+                                        difficultyLabel = stringResource(difficulty.hubLabelResource()),
+                                        levelNumber = level,
+                                        enabled = ready != null,
+                                        onContinue = {
+                                            livesUi.guard {
+                                                route =
+                                                    when (puzzleType) {
+                                                        PuzzleType.BALANCE ->
+                                                            WebRoute.Balance.also {
+                                                                balanceController.selectDifficulty(
+                                                                    difficulty,
+                                                                )
+                                                            }
+                                                        PuzzleType.CROWNS ->
+                                                            WebRoute.Crowns.also {
+                                                                crownsController.selectDifficulty(
+                                                                    difficulty,
+                                                                )
+                                                            }
+                                                        PuzzleType.WORD ->
+                                                            WebRoute.Word.also {
+                                                                wordController.selectDifficulty(
+                                                                    difficulty,
+                                                                )
+                                                            }
+                                                        PuzzleType.SUDOKU ->
+                                                            WebRoute.Sudoku.also {
+                                                                sudokuController.selectDifficulty(
+                                                                    difficulty,
+                                                                )
+                                                            }
+                                                        PuzzleType.GAME_2048 ->
+                                                            WebRoute.Game2048.also { game2048Controller.selectDifficulty(difficulty) }
+                                                        else -> error("$puzzleType has no Web game flow.")
+                                                    }
+                                            }
+                                        },
+                                    )
+                                }
+                            },
                         headerContent = {
                             WebDailyHubRoute(
                                 playerSession = playerSession,
@@ -1165,7 +1231,10 @@ private fun DifficultyContent(
             onPlay = {
                 offeredDifficulty = null
                 WebTutorialOffers.markOffered(puzzleType)
-                lives.guard { onStart(difficulty) }
+                lives.guard {
+                    WebLastPlayed.record(puzzleType, difficulty)
+                    onStart(difficulty)
+                }
             },
             onDismiss = { offeredDifficulty = null },
         )
@@ -1212,7 +1281,10 @@ private fun DifficultyContent(
                         if (WebTutorialOffers.isPending(puzzleType)) {
                             offeredDifficulty = difficulty
                         } else {
-                            lives.guard { onStart(difficulty) }
+                            lives.guard {
+                                WebLastPlayed.record(puzzleType, difficulty)
+                                onStart(difficulty)
+                            }
                         }
                     },
                     enabled = true,
@@ -1424,6 +1496,7 @@ private fun PlayingWordContent(
             solved = state.game.status == WordGameStatus.SOLVED,
             // Spoiler-free: the Daily dialog never reveals the answer, unlike the Catalog one.
             scoreDetail = "Отгадано за ${state.game.attempts.size} попыток.",
+            stars = starsForWordAttempts(state.game.attempts.size),
             completion = controller.dailyCompletionState,
             onRetry = controller::retry,
             onRetrySave = controller::retryDailySave,
@@ -1441,6 +1514,7 @@ private fun PlayingWordContent(
             solved = state.game.status == WordGameStatus.SOLVED,
             completion = controller.completionState,
             solvedDetail = "Уровень пройден за ${state.game.attempts.size} попыток.",
+            stars = starsForWordAttempts(state.game.attempts.size),
             failedDetail = "Загаданное слово: ${state.puzzle.answer.uppercase()}",
             onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },
             onRetry = { livesGuard(controller::retry) },
@@ -1656,6 +1730,15 @@ private val LIVES_STATUS_HEIGHT = 24.dp
 private val TUTORIAL_ACTION_HEIGHT = 40.dp
 private val PRIMARY_NAVIGATION_HEIGHT = 64.dp
 private val WIDE_HOST_MIN_WIDTH = 720.dp
+
+private fun Difficulty.hubLabelResource(): StringResource =
+    when (this) {
+        Difficulty.EASY -> Res.string.difficulty_easy
+        Difficulty.MEDIUM -> Res.string.difficulty_medium
+        Difficulty.HARD -> Res.string.difficulty_hard
+        Difficulty.EXPERT -> Res.string.difficulty_expert
+    }
+
 private val WIDE_PROFILE_MAX_WIDTH = 720.dp
 private val WIDE_STORE_MAX_WIDTH = 640.dp
 private val WIDE_TUTORIAL_MAX_WIDTH = 560.dp

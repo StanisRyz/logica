@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
@@ -89,6 +91,7 @@ import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.store.GemPackProductMapping
 import com.stanisryz.logica.ui.components.EconomyBar
 import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
+import com.stanisryz.logica.ui.components.GameRulesSheet
 import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.LivesDialog
 import com.stanisryz.logica.ui.components.PuzzleStartScreen
@@ -137,6 +140,7 @@ internal fun LogicaNavigation(
     onSoundEnabledChanged: (Boolean) -> Unit,
     onHapticsEnabledChanged: (Boolean) -> Unit,
     onTutorialSeen: (PuzzleType) -> Unit,
+    onLastPlayed: (PuzzleType, Difficulty) -> Unit,
 ) {
     val backStack = remember { mutableStateListOf<AppDestination>(AppDestination.Home) }
     /*
@@ -159,6 +163,8 @@ internal fun LogicaNavigation(
     val goBack = { exitGuard.requestBack { backStack.removeLastOrNull() } }
     val currentDestination = backStack.last()
     var showLivesDialog by rememberSaveable { mutableStateOf(false) }
+    var rulesFor by remember { mutableStateOf<PuzzleType?>(null) }
+    rulesFor?.let { puzzleType -> GameRulesSheet(puzzleType, onDismiss = { rulesFor = null }) }
     val density = LocalDensity.current
     var primaryNavigationBarSize by
         remember(density) {
@@ -256,6 +262,7 @@ internal fun LogicaNavigation(
     val openLevel: (PuzzleType, Difficulty) -> Unit = { puzzleType, difficulty ->
         if (!resolvingCatalogLevel) {
             resolvingCatalogLevel = true
+            onLastPlayed(puzzleType, difficulty)
             navigationScope.launch {
                 val levelId =
                     runCatching { catalogLevelRepository.currentLevelId(puzzleType, difficulty) }
@@ -308,6 +315,7 @@ internal fun LogicaNavigation(
             if (currentDestination.isGameplay()) {
                 GameTopBar(
                     title = destinationTitle(currentDestination, selectedTab),
+                    onHelp = { rulesFor = currentDestination.gameplayPuzzleType() },
                     economy = economy,
                     onBack = goBack,
                     onOpenSettings = { backStack.add(AppDestination.Settings) },
@@ -396,6 +404,19 @@ internal fun LogicaNavigation(
                                                             onGameSelected = onGameSelected,
                                                             onOpenDaily = openDaily,
                                                             onRestoreLife = onRestoreLife,
+                                                            continueGame =
+                                                                settings.lastPlayedPuzzle?.let { puzzle ->
+                                                                    settings.lastPlayedDifficulty?.let { puzzle to it }
+                                                                },
+                                                            catalogLevelRepository = catalogLevelRepository,
+                                                            onContinue = { puzzle, difficulty ->
+                                                                if (economy.isGameplayAllowed) {
+                                                                    openLevel(puzzle, difficulty)
+                                                                } else {
+                                                                    showLivesDialog =
+                                                                        true
+                                                                }
+                                                            },
                                                         )
                                                     PrimaryTab.STORE ->
                                                         StoreRoute(
@@ -741,6 +762,7 @@ private fun AppBottomBar(
 @Composable
 private fun GameTopBar(
     title: String,
+    onHelp: () -> Unit,
     economy: PlayerEconomy,
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -763,11 +785,19 @@ private fun GameTopBar(
         }
         Text(
             text = title,
-            modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.titleMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        IconButton(onClick = onHelp, modifier = Modifier.size(HELP_BUTTON_SIZE)) {
+            Icon(
+                Icons.AutoMirrored.Outlined.HelpOutline,
+                contentDescription = stringResource(R.string.game_rules),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(HELP_ICON_SIZE),
+            )
+        }
+        Spacer(Modifier.weight(1f))
         EconomyBar(
             economy = economy,
             onOpenLives = onOpenLives,
@@ -780,6 +810,8 @@ private fun GameTopBar(
     }
 }
 
+private val HELP_BUTTON_SIZE = 36.dp
+private val HELP_ICON_SIZE = 20.dp
 private val GAME_TOP_BAR_HEIGHT = 48.dp
 private val GAME_TOP_BAR_HORIZONTAL_PADDING = 4.dp
 private val GAME_TOP_BAR_CONTENT_GAP = 4.dp

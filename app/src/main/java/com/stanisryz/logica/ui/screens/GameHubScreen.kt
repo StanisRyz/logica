@@ -10,7 +10,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -18,6 +21,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.stanisryz.logica.catalog.CatalogLevelRepository
 import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.DailyGameLaunch
 import com.stanisryz.logica.daily.DailyResultRepository
@@ -26,10 +30,13 @@ import com.stanisryz.logica.daily.TodayViewModel
 import com.stanisryz.logica.daily.TodayViewModelFactory
 import com.stanisryz.logica.daily.toDailyHubUiState
 import com.stanisryz.logica.economy.PlayerEconomy
+import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.statistics.StatisticsRepository
+import com.stanisryz.logica.ui.components.ContinueGameCard
 import com.stanisryz.logica.ui.components.GameHubContent
 import com.stanisryz.logica.ui.components.ZeroLivesCard
+import com.stanisryz.logica.ui.components.russianLabel
 import com.stanisryz.logica.ui.daily.DailyHubSection
 import com.stanisryz.logica.ui.theme.LogicaMotion
 import kotlinx.coroutines.delay
@@ -53,8 +60,20 @@ internal fun GameHubRoute(
     onGameSelected: (PuzzleType) -> Unit,
     onOpenDaily: (DailyGameLaunch) -> Unit,
     onRestoreLife: () -> Unit,
+    continueGame: Pair<PuzzleType, Difficulty>?,
+    catalogLevelRepository: CatalogLevelRepository,
+    onContinue: (PuzzleType, Difficulty) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var resumes by remember { mutableIntStateOf(0) }
+    var continueLevel by remember(continueGame) { mutableStateOf<Int?>(null) }
+    // The Continue card reads the authoritative current level whenever the hub comes back.
+    LaunchedEffect(continueGame, resumes) {
+        continueLevel =
+            continueGame?.let { (puzzle, difficulty) ->
+                runCatching { catalogLevelRepository.currentLevelId(puzzle, difficulty).levelNumber.value }.getOrNull()
+            }
+    }
     val factory =
         remember(dailyChallengeRepository, statisticsRepository, dailyResultRepository) {
             TodayViewModelFactory(
@@ -79,7 +98,10 @@ internal fun GameHubRoute(
     DisposableEffect(lifecycleOwner, todayViewModel) {
         val observer =
             LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME) todayViewModel.refresh()
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    todayViewModel.refresh()
+                    resumes++
+                }
             }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -104,6 +126,18 @@ internal fun GameHubRoute(
         onRestoreLife = onRestoreLife,
         onGameSelected = onGameSelected,
         modifier = modifier,
+        continueContent =
+            continueGame?.let { (puzzle, difficulty) ->
+                {
+                    ContinueGameCard(
+                        puzzleType = puzzle,
+                        difficultyLabel = difficulty.russianLabel(),
+                        levelNumber = continueLevel,
+                        enabled = true,
+                        onContinue = { onContinue(puzzle, difficulty) },
+                    )
+                }
+            },
     )
 }
 
@@ -122,12 +156,14 @@ private fun GameHubScreen(
     onRestoreLife: () -> Unit,
     onGameSelected: (PuzzleType) -> Unit,
     modifier: Modifier = Modifier,
+    continueContent: (@Composable () -> Unit)? = null,
 ) {
     GameHubContent(
         puzzleTypes = catalog,
         catalogEnabled = economy.isGameplayAllowed,
         onGameSelected = onGameSelected,
         modifier = modifier,
+        continueContent = continueContent,
         headerContent = {
             DailyHubSection(
                 uiState = dailyState.toDailyHubUiState(),

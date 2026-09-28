@@ -2,6 +2,7 @@ package com.stanisryz.logica.navigation
 
 import com.stanisryz.logica.R
 import com.stanisryz.logica.catalog.GameAttemptLaunch
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 
 /**
  * The three primary sections of the application. Everything the player can reach is either one of
@@ -126,6 +127,17 @@ internal fun AppDestination.isGameplay(): Boolean =
         is AppDestination.Game2048Game,
         -> true
         else -> false
+    }
+
+/** The game a gameplay destination plays, for its rules sheet; null anywhere else. */
+internal fun AppDestination.gameplayPuzzleType(): PuzzleType? =
+    when (this) {
+        is AppDestination.BalanceGame -> PuzzleType.BALANCE
+        is AppDestination.CrownsGame -> PuzzleType.CROWNS
+        is AppDestination.WordGame -> PuzzleType.WORD
+        is AppDestination.SudokuGame -> PuzzleType.SUDOKU
+        is AppDestination.Game2048Game -> PuzzleType.GAME_2048
+        else -> null
     }
 
 /**

@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -45,6 +46,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.continue_level
+import com.stanisryz.logica.shared.ui.generated.resources.continue_title
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048
 import com.stanisryz.logica.shared.ui.generated.resources.game_balance
 import com.stanisryz.logica.shared.ui.generated.resources.game_catalog_action
@@ -83,6 +86,7 @@ fun GameHubContent(
     modifier: Modifier = Modifier,
     headerContent: (@Composable () -> Unit)? = null,
     statusContent: (@Composable () -> Unit)? = null,
+    continueContent: (@Composable () -> Unit)? = null,
 ) {
     BoxWithConstraints(modifier.fillMaxSize()) {
         // Wide windows (a desktop, a tablet) lay the game cards out in a grid instead of one tall list.
@@ -102,6 +106,7 @@ fun GameHubContent(
                 ),
             verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
         ) {
+            continueContent?.let { content -> item(key = "host-continue") { content() } }
             headerContent?.let { content -> item(key = "host-header") { content() } }
             statusContent?.let { content -> item(key = "host-status") { content() } }
             item(key = "games-title") {
@@ -131,6 +136,77 @@ fun GameHubContent(
 
 private val TWO_COLUMN_WIDTH = 640.dp
 private val THREE_COLUMN_WIDTH = 1000.dp
+
+/**
+ * One tap back into the last Catalog game the player started: its artwork, the game, and the
+ * difficulty with the level the player is on, opening that level directly.
+ */
+@Composable
+fun ContinueGameCard(
+    puzzleType: PuzzleType,
+    difficultyLabel: String,
+    levelNumber: Int?,
+    enabled: Boolean,
+    onContinue: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    val title = stringResource(puzzleType.catalogTitleResource())
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLow, contentColor = colors.onSurface),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = enabled, role = Role.Button, onClick = onContinue)
+                    .padding(CONTINUE_PADDING),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
+        ) {
+            Image(
+                painter = painterResource(puzzleType.catalogArtworkResource()),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(CONTINUE_ARTWORK_SIZE).clip(MaterialTheme.shapes.medium),
+            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(Res.string.continue_title),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.primary,
+                )
+                Text(text = title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text =
+                        levelNumber?.let { stringResource(Res.string.continue_level, difficultyLabel, it) }
+                            ?: difficultyLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant,
+                )
+            }
+            Box(
+                modifier =
+                    Modifier
+                        .size(CONTINUE_PLAY_SIZE)
+                        .clip(CircleShape)
+                        .background(if (enabled) colors.primary else colors.surfaceContainerHighest),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.PlayArrow,
+                    contentDescription = null,
+                    tint = if (enabled) colors.onPrimary else colors.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+private val CONTINUE_PADDING = 12.dp
+private val CONTINUE_ARTWORK_SIZE = 56.dp
+private val CONTINUE_PLAY_SIZE = 44.dp
 
 /** A full-width Catalog artwork card shared by Android and Web. */
 @Composable
