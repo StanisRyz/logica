@@ -139,7 +139,6 @@ internal fun LogicaNavigation(
     onThemeModeChanged: (ThemeMode) -> Unit,
     onSoundEnabledChanged: (Boolean) -> Unit,
     onHapticsEnabledChanged: (Boolean) -> Unit,
-    onRegionPatternsChanged: (Boolean) -> Unit,
     onTutorialSeen: (PuzzleType) -> Unit,
     onLastPlayed: (PuzzleType, Difficulty) -> Unit,
 ) {
@@ -447,13 +446,7 @@ internal fun LogicaNavigation(
                             }
                         }
                         entry<AppDestination.Settings> {
-                            SettingsScreen(
-                                settings,
-                                onThemeModeChanged,
-                                onSoundEnabledChanged,
-                                onHapticsEnabledChanged,
-                                onRegionPatternsChanged,
-                            )
+                            SettingsScreen(settings, onThemeModeChanged, onSoundEnabledChanged, onHapticsEnabledChanged)
                         }
                         entry<AppDestination.BalanceStart> {
                             PuzzleStartScreen(

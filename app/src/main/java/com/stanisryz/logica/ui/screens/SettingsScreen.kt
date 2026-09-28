@@ -32,7 +32,6 @@ internal fun SettingsScreen(
     onThemeModeChanged: (ThemeMode) -> Unit,
     onSoundEnabledChanged: (Boolean) -> Unit,
     onHapticsEnabledChanged: (Boolean) -> Unit,
-    onRegionPatternsChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     ScreenColumn(modifier) {
@@ -62,12 +61,6 @@ internal fun SettingsScreen(
                     label = stringResource(R.string.settings_haptics),
                     checked = settings.hapticsEnabled,
                     onCheckedChange = onHapticsEnabledChanged,
-                )
-                SettingsSwitch(
-                    label = stringResource(R.string.settings_region_patterns),
-                    supporting = stringResource(R.string.settings_region_patterns_body),
-                    checked = settings.regionPatterns,
-                    onCheckedChange = onRegionPatternsChanged,
                 )
             }
         }
@@ -99,7 +92,6 @@ private fun SettingsSwitch(
     label: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    supporting: String? = null,
 ) {
     Row(
         modifier =
@@ -110,12 +102,7 @@ private fun SettingsSwitch(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.action),
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.bodyLarge)
-            supporting?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = null)
     }
 }

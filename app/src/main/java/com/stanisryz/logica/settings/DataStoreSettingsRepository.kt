@@ -33,7 +33,6 @@ class DataStoreSettingsRepository(
                             } ?: ThemeMode.SYSTEM,
                     soundEnabled = preferences[SOUND_ENABLED] ?: true,
                     hapticsEnabled = preferences[HAPTICS_ENABLED] ?: true,
-                    regionPatterns = preferences[REGION_PATTERNS] ?: false,
                     balanceTutorialCompleted = preferences[BALANCE_TUTORIAL_COMPLETED] ?: false,
                     crownsTutorialCompleted = preferences[CROWNS_TUTORIAL_COMPLETED] ?: false,
                     wordTutorialCompleted = preferences[WORD_TUTORIAL_COMPLETED] ?: false,
@@ -67,12 +66,6 @@ class DataStoreSettingsRepository(
     override suspend fun setSoundEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[SOUND_ENABLED] = enabled
-        }
-    }
-
-    override suspend fun setRegionPatterns(enabled: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[REGION_PATTERNS] = enabled
         }
     }
 
@@ -117,7 +110,6 @@ class DataStoreSettingsRepository(
         val LAST_PLAYED_PUZZLE = stringPreferencesKey("last_played_puzzle")
         val LAST_PLAYED_DIFFICULTY = stringPreferencesKey("last_played_difficulty")
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
-        val REGION_PATTERNS = booleanPreferencesKey("region_patterns")
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         val BALANCE_TUTORIAL_COMPLETED = booleanPreferencesKey("balance_tutorial_completed")
         val CROWNS_TUTORIAL_COMPLETED = booleanPreferencesKey("crowns_tutorial_completed")

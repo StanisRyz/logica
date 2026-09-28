@@ -7,8 +7,6 @@ data class UserSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val soundEnabled: Boolean = true,
     val hapticsEnabled: Boolean = true,
-    /** Crowns regions also carry a pattern, so they stay apart without relying on colour. */
-    val regionPatterns: Boolean = false,
     val balanceTutorialCompleted: Boolean = false,
     val crownsTutorialCompleted: Boolean = false,
     val wordTutorialCompleted: Boolean = false,

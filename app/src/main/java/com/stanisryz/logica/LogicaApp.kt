@@ -22,7 +22,6 @@ import com.stanisryz.logica.platform.android.AndroidGameSoundPlayer
 import com.stanisryz.logica.settings.SettingsViewModel
 import com.stanisryz.logica.settings.SettingsViewModelFactory
 import com.stanisryz.logica.ui.components.LocalGameSounds
-import com.stanisryz.logica.ui.crowns.LocalCrownsRegionPatterns
 import com.stanisryz.logica.ui.theme.LogicaTheme
 
 @Composable
@@ -74,10 +73,7 @@ fun LogicaApp() {
     DisposableEffect(soundPlayer) { onDispose { soundPlayer.release() } }
 
     LogicaTheme(themeMode = settings.themeMode) {
-        CompositionLocalProvider(
-            LocalGameSounds provides soundPlayer,
-            LocalCrownsRegionPatterns provides settings.regionPatterns,
-        ) {
+        CompositionLocalProvider(LocalGameSounds provides soundPlayer) {
             LogicaNavigation(
                 settings = settings,
                 settingsRepository = settingsRepository,
@@ -109,7 +105,6 @@ fun LogicaApp() {
                 onThemeModeChanged = settingsViewModel::setThemeMode,
                 onSoundEnabledChanged = settingsViewModel::setSoundEnabled,
                 onHapticsEnabledChanged = settingsViewModel::setHapticsEnabled,
-                onRegionPatternsChanged = settingsViewModel::setRegionPatterns,
                 onTutorialSeen = settingsViewModel::markTutorialSeen,
                 onLastPlayed = settingsViewModel::setLastPlayed,
             )

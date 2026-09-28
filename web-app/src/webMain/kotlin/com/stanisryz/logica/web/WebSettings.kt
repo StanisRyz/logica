@@ -38,16 +38,14 @@ internal enum class WebThemeMode {
 }
 
 /**
- * The Web player's own preferences: theme, sound, and colour-blind region patterns. Like the
- * tutorial offers they belong to this browser only (one `logica_settings_v1` key), are never
- * Player-scoped or synced, and fall back to the defaults when storage is unavailable.
+ * The Web player's own preferences: theme and sound. Like the tutorial offers they belong to this
+ * browser only (one `logica_settings_v1` key), are never Player-scoped or synced, and fall back to
+ * the defaults when storage is unavailable.
  */
 internal object WebSettings {
     var themeMode by mutableStateOf(WebThemeMode.SYSTEM)
         private set
     var soundEnabled by mutableStateOf(true)
-        private set
-    var regionPatterns by mutableStateOf(false)
         private set
 
     init {
@@ -64,24 +62,18 @@ internal object WebSettings {
         persist()
     }
 
-    fun updateRegionPatterns(enabled: Boolean) {
-        regionPatterns = enabled
-        persist()
-    }
-
     private fun decode(stored: String) {
         stored.split(';').forEach { entry ->
             val (key, value) = entry.split('=', limit = 2).takeIf { it.size == 2 } ?: return@forEach
             when (key) {
                 "theme" -> WebThemeMode.entries.firstOrNull { it.name == value }?.let { themeMode = it }
                 "sound" -> soundEnabled = value == "1"
-                "patterns" -> regionPatterns = value == "1"
             }
         }
     }
 
     private fun persist() {
-        val encoded = "theme=${themeMode.name};sound=${if (soundEnabled) 1 else 0};patterns=${if (regionPatterns) 1 else 0}"
+        val encoded = "theme=${themeMode.name};sound=${if (soundEnabled) 1 else 0}"
         runCatching { settingsStorageSet(SETTINGS_KEY, encoded) }
     }
 }
@@ -150,12 +142,6 @@ internal fun WebSettingsDialog(onDismiss: () -> Unit) {
                     }
                 }
                 SettingSwitch("Звук", WebSettings.soundEnabled, WebSettings::updateSoundEnabled)
-                SettingSwitch(
-                    "Узоры регионов в «Коронах»",
-                    WebSettings.regionPatterns,
-                    WebSettings::updateRegionPatterns,
-                    supporting = "Помогают различать регионы без цвета",
-                )
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Готово") } },
@@ -167,7 +153,6 @@ private fun SettingSwitch(
     label: String,
     checked: Boolean,
     onChange: (Boolean) -> Unit,
-    supporting: String? = null,
 ) {
     Row(
         modifier =
@@ -177,12 +162,7 @@ private fun SettingSwitch(
                 .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(label)
-            supporting?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
+        Text(label, modifier = Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = null)
     }
 }

@@ -86,7 +86,6 @@ import com.stanisryz.logica.ui.components.LocalGameSounds
 import com.stanisryz.logica.ui.components.catalogTitleResource
 import com.stanisryz.logica.ui.components.starsForWordAttempts
 import com.stanisryz.logica.ui.crowns.CrownsGameContent
-import com.stanisryz.logica.ui.crowns.LocalCrownsRegionPatterns
 import com.stanisryz.logica.ui.daily.DailyHubResultRow
 import com.stanisryz.logica.ui.daily.DailyHubSection
 import com.stanisryz.logica.ui.daily.DailyHubUiState
@@ -199,10 +198,7 @@ internal fun WebApp(
             WebThemeMode.DARK -> true
         }
     LogicaTheme(darkTheme = darkTheme) {
-        CompositionLocalProvider(
-            LocalGameSounds provides soundPlayer,
-            LocalCrownsRegionPatterns provides WebSettings.regionPatterns,
-        ) {
+        CompositionLocalProvider(LocalGameSounds provides soundPlayer) {
             LaunchedEffect(controller) {
                 withFrameNanos { }
                 controller.onComposeRootRendered()
