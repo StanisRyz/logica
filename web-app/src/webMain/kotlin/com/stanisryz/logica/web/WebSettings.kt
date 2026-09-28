@@ -150,6 +150,12 @@ internal fun WebSettingsDialog(onDismiss: () -> Unit) {
                     }
                 }
                 SettingSwitch("Звук", WebSettings.soundEnabled, WebSettings::updateSoundEnabled)
+                SettingSwitch(
+                    "Узоры регионов в «Коронах»",
+                    WebSettings.regionPatterns,
+                    WebSettings::updateRegionPatterns,
+                    supporting = "Помогают различать регионы без цвета",
+                )
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Готово") } },
@@ -161,6 +167,7 @@ private fun SettingSwitch(
     label: String,
     checked: Boolean,
     onChange: (Boolean) -> Unit,
+    supporting: String? = null,
 ) {
     Row(
         modifier =
@@ -170,7 +177,12 @@ private fun SettingSwitch(
                 .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, modifier = Modifier.weight(1f))
+        Column(Modifier.weight(1f)) {
+            Text(label)
+            supporting?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         Switch(checked = checked, onCheckedChange = null)
     }
 }

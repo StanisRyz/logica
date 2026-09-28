@@ -19,15 +19,20 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -187,6 +192,7 @@ private fun CrownsCellView(
             if (isConflict) stringResource(Res.string.conflict_suffix) else "",
             hintSuffix,
         )
+    val patterns = LocalCrownsRegionPatterns.current
     val boundaryColor = colors.outline
     val internalColor = colors.outlineVariant
     val strongWidth = 2.dp
@@ -196,7 +202,14 @@ private fun CrownsCellView(
         modifier =
             modifier
                 .background(background)
-                .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
+                .then(
+                    if (patterns) {
+                        val ink = palette.onCrownsRegion.copy(alpha = REGION_PATTERN_ALPHA)
+                        Modifier.drawBehind { clipRect { drawRegionPattern(regionColorIndex, ink) } }
+                    } else {
+                        Modifier
+                    },
+                ).then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
                 .semantics {
                     contentDescription = description
                     role = Role.Button
@@ -351,3 +364,74 @@ private const val CONFIRMED_RING_ALPHA = 0.4f
 
 private const val RING_WIDTH_FACTOR = 1.5f
 private const val GUIDED_FILL_ALPHA = 0.16f
+
+/**
+ * Whether Crowns regions also carry a pattern, so they stay apart without relying on colour. A
+ * player setting on each host (Android Settings, the Web settings dialog); presentation only.
+ */
+val LocalCrownsRegionPatterns = compositionLocalOf { false }
+
+/**
+ * One of eight light patterns per region colour. Spacing is a fraction of the cell, so the
+ * pattern continues seamlessly across the cells of one region.
+ */
+private fun DrawScope.drawRegionPattern(
+    regionColorIndex: Int,
+    ink: Color,
+) {
+    val step = size.width / PATTERN_DIVISIONS
+    val stroke = 1.dp.toPx()
+    val w = size.width
+    val h = size.height
+
+    fun lines(
+        from: (Float) -> Offset,
+        to: (Float) -> Offset,
+        count: Int,
+    ) {
+        for (i in 0 until count) drawLine(ink, from(i * step), to(i * step), stroke)
+    }
+    when (regionColorIndex % REGION_PATTERN_COUNT) {
+        0 -> // dots
+            for (row in 0 until PATTERN_DIVISIONS) {
+                for (column in 0 until PATTERN_DIVISIONS) {
+                    drawCircle(ink, radius = stroke * 1.4f, center = Offset((column + 0.5f) * step, (row + 0.5f) * step))
+                }
+            }
+        1 -> lines({ Offset(it, 0f) }, { Offset(0f, it) }, PATTERN_DIVISIONS * 2 + 1) // rising diagonals
+        2 -> { // falling diagonals
+            lines({ Offset(w - it, 0f) }, { Offset(w, it) }, PATTERN_DIVISIONS + 1)
+            lines({ Offset(0f, it) }, { Offset(w - it, h) }, PATTERN_DIVISIONS)
+        }
+        3 -> lines({ Offset(0f, it + step / 2) }, { Offset(w, it + step / 2) }, PATTERN_DIVISIONS) // horizontal
+        4 -> lines({ Offset(it + step / 2, 0f) }, { Offset(it + step / 2, h) }, PATTERN_DIVISIONS) // vertical
+        5 -> { // grid
+            lines({ Offset(0f, it + step / 2) }, { Offset(w, it + step / 2) }, PATTERN_DIVISIONS)
+            lines({ Offset(it + step / 2, 0f) }, { Offset(it + step / 2, h) }, PATTERN_DIVISIONS)
+        }
+        6 -> // rings
+            for (row in 0 until PATTERN_DIVISIONS / 2) {
+                for (column in 0 until PATTERN_DIVISIONS / 2) {
+                    drawCircle(
+                        ink,
+                        radius = step * 0.55f,
+                        center = Offset((column * 2 + 1) * step, (row * 2 + 1) * step),
+                        style = Stroke(stroke),
+                    )
+                }
+            }
+        else -> // small crosses
+            for (row in 0 until PATTERN_DIVISIONS / 2) {
+                for (column in 0 until PATTERN_DIVISIONS / 2) {
+                    val c = Offset((column * 2 + 1) * step, (row * 2 + 1) * step)
+                    val arm = step * 0.45f
+                    drawLine(ink, Offset(c.x - arm, c.y - arm), Offset(c.x + arm, c.y + arm), stroke)
+                    drawLine(ink, Offset(c.x - arm, c.y + arm), Offset(c.x + arm, c.y - arm), stroke)
+                }
+            }
+    }
+}
+
+private const val PATTERN_DIVISIONS = 4
+private const val REGION_PATTERN_COUNT = 8
+private const val REGION_PATTERN_ALPHA = 0.22f

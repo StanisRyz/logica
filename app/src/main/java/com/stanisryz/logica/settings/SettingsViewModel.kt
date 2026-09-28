@@ -39,6 +39,12 @@ class SettingsViewModel(
         }
     }
 
+    fun setRegionPatterns(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setRegionPatterns(enabled)
+        }
+    }
+
     fun setHapticsEnabled(enabled: Boolean) {
         viewModelScope.launch {
             repository.setHapticsEnabled(enabled)

@@ -97,6 +97,8 @@
     <string name="settings_theme_light">Светлая</string>
     <string name="settings_theme_dark">Тёмная</string>
     <string name="settings_sound">Звук</string>
+    <string name="settings_region_patterns">Узоры регионов в «Коронах»</string>
+    <string name="settings_region_patterns_body">Помогают различать регионы без цвета</string>
     <string name="settings_haptics">Вибрация</string>
     <string name="crowns">Короны</string>
     <string name="crowns_catalog_description">Расставьте короны: по одной в каждой строке, столбце и цветной области. Короны не должны соприкасаться по диагонали.</string>
