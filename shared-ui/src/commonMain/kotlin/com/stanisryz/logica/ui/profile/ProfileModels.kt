@@ -63,11 +63,54 @@ data class DailyRecentDay(
     }
 }
 
+/** How far one calendar date got: nothing, at least one solved entry, or the full Daily. */
+enum class DailyCalendarDayState {
+    NONE,
+    PARTIAL,
+    COMPLETED,
+}
+
+/**
+ * One month of spoiler-free Daily history for the Profile calendar. [title] is host-formatted
+ * ("Сентябрь 2026"); the grid itself is plain calendar arithmetic, Monday first.
+ */
+data class DailyCalendarMonth(
+    val title: String,
+    val year: Int,
+    val month: Int,
+    val today: Int?,
+    val days: Map<Int, DailyCalendarDayState>,
+) {
+    init {
+        require(month in 1..12)
+    }
+
+    val daysInMonth: Int
+        get() =
+            when (month) {
+                2 -> if ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0) 29 else 28
+                4, 6, 9, 11 -> 30
+                else -> 31
+            }
+
+    /** Blank cells before day 1 in a Monday-first week (0 for Monday .. 6 for Sunday). */
+    val leadingBlankDays: Int
+        get() {
+            // Sakamoto's day-of-week (0 = Sunday), shifted so Monday is 0.
+            val offsets = intArrayOf(0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4)
+            val y = if (month < 3) year - 1 else year
+            val sunday = (y + y / 4 - y / 100 + y / 400 + offsets[month - 1] + 1) % 7
+            return (sunday + 6) % 7
+        }
+}
+
 data class DailyProfileMetrics(
     val completedCount: Long,
     val currentStreak: Long,
     val bestStreak: Long,
     val recentDays: List<DailyRecentDay> = emptyList(),
+    /** The current month of Daily history; when present it replaces the recent-days row. */
+    val calendar: DailyCalendarMonth? = null,
 ) {
     init {
         require(completedCount >= 0L && currentStreak >= 0L && bestStreak >= 0L)

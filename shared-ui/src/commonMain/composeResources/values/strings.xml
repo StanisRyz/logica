@@ -267,6 +267,19 @@
     <string name="result_to_games">К играм</string>
     <string name="result_to_difficulty">К сложности</string>
     <string name="profile_recent_days">Задача дня</string>
+    <string name="profile_calendar_completed">Все задачи</string>
+    <string name="profile_calendar_partial">Часть задач</string>
+    <string name="profile_calendar_day">%1$d: %2$s</string>
+    <string name="profile_calendar_none">нет решений</string>
+    <string-array name="profile_calendar_weekdays">
+        <item>Пн</item>
+        <item>Вт</item>
+        <item>Ср</item>
+        <item>Чт</item>
+        <item>Пт</item>
+        <item>Сб</item>
+        <item>Вс</item>
+    </string-array>
     <string name="profile_games">Игры</string>
     <string name="profile_solved_short">Решено</string>
     <string name="profile_streak">Серия</string>

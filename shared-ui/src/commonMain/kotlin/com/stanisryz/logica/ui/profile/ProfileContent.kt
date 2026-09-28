@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -67,6 +69,11 @@ import com.stanisryz.logica.shared.ui.generated.resources.difficulty_expert
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_hard
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_medium
 import com.stanisryz.logica.shared.ui.generated.resources.profile_best_streak
+import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_completed
+import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_day
+import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_none
+import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_partial
+import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_weekdays
 import com.stanisryz.logica.shared.ui.generated.resources.profile_daily_short
 import com.stanisryz.logica.shared.ui.generated.resources.profile_empty_body
 import com.stanisryz.logica.shared.ui.generated.resources.profile_empty_title
@@ -93,6 +100,7 @@ import com.stanisryz.logica.ui.components.catalogTitleResource
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringArrayResource
 import org.jetbrains.compose.resources.stringResource
 
 /** Shared scrolling Profile presentation used by both platform hosts. */
@@ -149,8 +157,13 @@ private fun ReadyProfileContent(
         verticalArrangement = Arrangement.spacedBy(LogicaSpacing.section),
     ) {
         SummaryCard(statistics)
-        statistics.dailyMetrics?.recentDays?.takeIf { it.isNotEmpty() }?.let { days ->
-            ProfileSection(stringResource(Res.string.profile_recent_days)) { RecentDaysRow(days) }
+        val calendar = statistics.dailyMetrics?.calendar
+        if (calendar != null) {
+            ProfileSection(stringResource(Res.string.profile_recent_days)) { DailyCalendarCard(calendar) }
+        } else {
+            statistics.dailyMetrics?.recentDays?.takeIf { it.isNotEmpty() }?.let { days ->
+                ProfileSection(stringResource(Res.string.profile_recent_days)) { RecentDaysRow(days) }
+            }
         }
         ProfileSection(stringResource(Res.string.profile_games)) {
             ProfileCard(verticalSpacing = 0.dp) {
@@ -263,6 +276,127 @@ private fun InlineMetric(
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
         Text(value, style = MaterialTheme.typography.titleMedium)
     }
+}
+
+/**
+ * The current month of Daily history: a full Daily fills its date, a partly solved one rings it,
+ * and today carries an outline. Every state also has a text description, never colour alone.
+ */
+@Composable
+private fun DailyCalendarCard(month: DailyCalendarMonth) {
+    val colors = MaterialTheme.colorScheme
+    val palette = LocalLogicaPalette.current
+    val weekdays = stringArrayResource(Res.array.profile_calendar_weekdays)
+    val completedLabel = stringResource(Res.string.profile_calendar_completed)
+    val partialLabel = stringResource(Res.string.profile_calendar_partial)
+    val noneLabel = stringResource(Res.string.profile_calendar_none)
+    ProfileCard(verticalSpacing = LogicaSpacing.text) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(month.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            CalendarLegendDot(filled = true)
+            Text(completedLabel, style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)
+            Spacer(Modifier.width(LogicaSpacing.item))
+            CalendarLegendDot(filled = false)
+            Text(partialLabel, style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)
+        }
+        Row(Modifier.fillMaxWidth().clearAndSetSemantics {}) {
+            repeat(DAYS_IN_WEEK) { index ->
+                Text(
+                    weekdays.getOrNull(index).orEmpty(),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+        val cells = month.leadingBlankDays + month.daysInMonth
+        val weeks = (cells + DAYS_IN_WEEK - 1) / DAYS_IN_WEEK
+        for (week in 0 until weeks) {
+            Row(Modifier.fillMaxWidth()) {
+                for (weekday in 0 until DAYS_IN_WEEK) {
+                    val day = week * DAYS_IN_WEEK + weekday - month.leadingBlankDays + 1
+                    Box(Modifier.weight(1f).height(CALENDAR_CELL_HEIGHT), contentAlignment = Alignment.Center) {
+                        if (day in 1..month.daysInMonth) {
+                            val state = month.days[day] ?: DailyCalendarDayState.NONE
+                            val isToday = month.today == day
+                            val isFuture = month.today != null && day > month.today
+                            val description =
+                                stringResource(
+                                    Res.string.profile_calendar_day,
+                                    day,
+                                    when (state) {
+                                        DailyCalendarDayState.COMPLETED -> completedLabel
+                                        DailyCalendarDayState.PARTIAL -> partialLabel
+                                        DailyCalendarDayState.NONE -> noneLabel
+                                    },
+                                )
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .size(CALENDAR_DAY_SIZE)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (state == DailyCalendarDayState.COMPLETED) palette.successContainer else Color.Transparent,
+                                        ).border(
+                                            width = if (state == DailyCalendarDayState.PARTIAL) 2.dp else 0.dp,
+                                            color = if (state == DailyCalendarDayState.PARTIAL) palette.success else Color.Transparent,
+                                            shape = CircleShape,
+                                        ).clearAndSetSemantics { contentDescription = description },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    day.toString(),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = if (state != DailyCalendarDayState.NONE || isToday) FontWeight.SemiBold else null,
+                                    color =
+                                        when {
+                                            state == DailyCalendarDayState.COMPLETED -> palette.onSuccessContainer
+                                            isToday -> colors.primary
+                                            isFuture -> colors.onSurfaceVariant.copy(alpha = FUTURE_DAY_ALPHA)
+                                            state == DailyCalendarDayState.NONE -> colors.onSurfaceVariant
+                                            else -> colors.onSurface
+                                        },
+                                )
+                                // Today is marked by a small dot under its number, apart from the result rings.
+                                if (isToday) {
+                                    Box(
+                                        Modifier
+                                            .align(Alignment.BottomCenter)
+                                            .padding(bottom = 3.dp)
+                                            .size(4.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                if (state ==
+                                                    DailyCalendarDayState.COMPLETED
+                                                ) {
+                                                    palette.onSuccessContainer
+                                                } else {
+                                                    colors.primary
+                                                },
+                                            ),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CalendarLegendDot(filled: Boolean) {
+    val palette = LocalLogicaPalette.current
+    Box(
+        Modifier
+            .padding(end = 4.dp)
+            .size(10.dp)
+            .clip(CircleShape)
+            .background(if (filled) palette.successContainer else Color.Transparent)
+            .border(if (filled) 0.dp else 2.dp, if (filled) Color.Transparent else palette.success, CircleShape),
+    )
 }
 
 /** The last few Daily days side by side: the host date label over the solved count. */
@@ -640,3 +774,8 @@ private val GAME_ROW_VERTICAL_PADDING = 14.dp
 private val EMPTY_MARK_SIZE = 72.dp
 private val EMPTY_ICON_SIZE = 36.dp
 private const val DIVIDER_ALPHA = 0.6f
+
+private const val DAYS_IN_WEEK = 7
+private val CALENDAR_CELL_HEIGHT = 40.dp
+private val CALENDAR_DAY_SIZE = 36.dp
+private const val FUTURE_DAY_ALPHA = 0.45f

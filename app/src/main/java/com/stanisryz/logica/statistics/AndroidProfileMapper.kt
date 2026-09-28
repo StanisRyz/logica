@@ -1,6 +1,8 @@
 package com.stanisryz.logica.statistics
 
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.ui.profile.DailyCalendarDayState
+import com.stanisryz.logica.ui.profile.DailyCalendarMonth
 import com.stanisryz.logica.ui.profile.DailyProfileMetrics
 import com.stanisryz.logica.ui.profile.Game2048ProfileStatistics
 import com.stanisryz.logica.ui.profile.ProfileAttemptDistribution
@@ -10,6 +12,8 @@ import com.stanisryz.logica.ui.profile.ProfileUiState
 import com.stanisryz.logica.ui.profile.SolvedPuzzleProfileStatistics
 import com.stanisryz.logica.ui.profile.SudokuProfileStatistics
 import com.stanisryz.logica.ui.profile.WordProfileStatistics
+import java.time.format.TextStyle
+import java.util.Locale
 
 internal fun StatisticsUiState.toProfileUiState(): ProfileUiState =
     when (this) {
@@ -40,9 +44,28 @@ internal fun GameStatistics.toProfileStatistics(): ProfileStatistics {
                 completedCount = completedDailyCount.toLong(),
                 currentStreak = currentDailyStreak.toLong(),
                 bestStreak = bestDailyStreak.toLong(),
+                calendar = dailyMonth?.toCalendarMonth(),
             ),
     )
 }
+
+private fun DailyMonthHistory.toCalendarMonth(): DailyCalendarMonth {
+    val monthName =
+        currentDate.month
+            .getDisplayName(TextStyle.FULL_STANDALONE, RUSSIAN)
+            .replaceFirstChar { it.titlecase(RUSSIAN) }
+    return DailyCalendarMonth(
+        title = "$monthName ${currentDate.year}",
+        year = currentDate.year,
+        month = currentDate.monthValue,
+        today = currentDate.dayOfMonth,
+        days =
+            completedDays.associateWith { DailyCalendarDayState.COMPLETED } +
+                partialDays.associateWith { DailyCalendarDayState.PARTIAL },
+    )
+}
+
+private val RUSSIAN: Locale = Locale.forLanguageTag("ru")
 
 private fun PuzzleStatistics.toProfileStatistics(): SolvedPuzzleProfileStatistics =
     SolvedPuzzleProfileStatistics(

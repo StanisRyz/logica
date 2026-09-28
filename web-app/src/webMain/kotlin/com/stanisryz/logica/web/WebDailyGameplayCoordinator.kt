@@ -17,6 +17,8 @@ import com.stanisryz.logica.ui.daily.DailyHubStreak
 import com.stanisryz.logica.ui.daily.DailyHubUiState
 import com.stanisryz.logica.ui.daily.DailyShareEntry
 import com.stanisryz.logica.ui.daily.DailySharePayload
+import com.stanisryz.logica.ui.profile.DailyCalendarDayState
+import com.stanisryz.logica.ui.profile.DailyCalendarMonth
 import com.stanisryz.logica.ui.profile.DailyProfileMetrics
 import com.stanisryz.logica.ui.profile.DailyRecentDay
 
@@ -203,8 +205,52 @@ internal fun WebDailySnapshotV1.dailyProfileMetrics(currentDate: DailyDate): Dai
         currentStreak = streak.current.toLong(),
         bestStreak = streak.best.toLong(),
         recentDays = recentDailyDays(relevant),
+        calendar = dailyCalendarMonth(currentDate, relevant),
     )
 }
+
+/** The current month of durable Daily history for the Profile calendar. */
+private fun dailyCalendarMonth(
+    currentDate: DailyDate,
+    relevant: List<WebDailyDayRecord>,
+): DailyCalendarMonth {
+    val year = currentDate.getYear()
+    val month = currentDate.getMonthValue()
+    val days =
+        relevant
+            .filter { it.date.getYear() == year && it.date.getMonthValue() == month }
+            .associate { record ->
+                record.date.getDayOfMonth() to
+                    when {
+                        record.fullyCompleted -> DailyCalendarDayState.COMPLETED
+                        record.completedEntryCount > 0 -> DailyCalendarDayState.PARTIAL
+                        else -> DailyCalendarDayState.NONE
+                    }
+            }
+    return DailyCalendarMonth(
+        title = "${russianNominativeMonth(month)} $year",
+        year = year,
+        month = month,
+        today = currentDate.getDayOfMonth(),
+        days = days,
+    )
+}
+
+private fun russianNominativeMonth(month: Int): String =
+    listOf(
+        "Январь",
+        "Февраль",
+        "Март",
+        "Апрель",
+        "Май",
+        "Июнь",
+        "Июль",
+        "Август",
+        "Сентябрь",
+        "Октябрь",
+        "Ноябрь",
+        "Декабрь",
+    )[month - 1]
 
 private fun WebDailySnapshotV1.recentDailyDays(relevant: List<WebDailyDayRecord>): List<DailyRecentDay> =
     relevant

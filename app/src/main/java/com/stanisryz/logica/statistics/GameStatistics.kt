@@ -20,6 +20,14 @@ internal data class GameStatistics(
     val word: WordStatistics,
     val sudoku: SudokuStatistics = SudokuStatistics.EMPTY,
     val game2048: Game2048Statistics = Game2048Statistics.EMPTY,
+    val dailyMonth: DailyMonthHistory? = null,
+)
+
+/** The current month's Daily dates for the Profile calendar: full runs and partly solved days. */
+internal data class DailyMonthHistory(
+    val currentDate: LocalDate,
+    val completedDays: Set<Int>,
+    val partialDays: Set<Int>,
 )
 
 internal data class PuzzleStatistics(
@@ -112,6 +120,23 @@ internal object StatisticsAggregator {
                 .mapNotNull { result -> result.challengeDate?.let { it to result.hintsUsed } }
                 .groupBy({ it.first }, { it.second })
                 .mapValues { (_, hints) -> hints.sum() }
+        val solvedDailyDates =
+            solvedResults
+                .filter { it.resultScope == GameResultScope.DAILY }
+                .mapNotNullTo(mutableSetOf()) { it.challengeDate }
+
+        fun LocalDate.inCurrentMonth() = year == currentDate.year && month == currentDate.month && !isAfter(currentDate)
+        val completedDays = fullyCompletedDailyDates.filter { it.inCurrentMonth() }.mapTo(mutableSetOf()) { it.dayOfMonth }
+        val dailyMonth =
+            DailyMonthHistory(
+                currentDate = currentDate,
+                completedDays = completedDays,
+                partialDays =
+                    solvedDailyDates
+                        .filter { it.inCurrentMonth() }
+                        .mapTo(mutableSetOf()) { it.dayOfMonth }
+                        .minus(completedDays),
+            )
         return StatisticsSnapshot(
             statistics =
                 GameStatistics(
@@ -124,6 +149,7 @@ internal object StatisticsAggregator {
                     word = wordStatistics(results),
                     sudoku = sudokuStatistics(results),
                     game2048 = game2048Statistics(results),
+                    dailyMonth = dailyMonth,
                 ),
             dailyHintsUsedByDate = dailyHints,
         )
