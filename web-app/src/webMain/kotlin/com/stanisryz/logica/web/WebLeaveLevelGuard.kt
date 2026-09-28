@@ -66,10 +66,13 @@ import com.stanisryz.logica.web.generated.resources.Res as WebRes
  */
 internal val LocalWebTransitionAd = staticCompositionLocalOf<(() -> Unit) -> Unit> { { transition -> transition() } }
 
+/** Costs the life of an unfinished attempt the player confirmed leaving; the default does nothing. */
+internal val LocalWebAbandonAttempt = staticCompositionLocalOf<() -> Unit> { {} }
+
 /**
  * Gameplay header with the Web counterpart of Android's `LeaveLevelGuard`: leaving a non-terminal
  * attempt that already has real progress asks for confirmation first, because unfinished
- * attempts are never persisted. Everything else leaves immediately.
+ * attempts are never persisted, and confirming costs a life. Everything else leaves immediately.
  */
 @Composable
 internal fun WebGameplayHeader(
@@ -80,6 +83,7 @@ internal fun WebGameplayHeader(
 ) {
     var confirmingExit by remember { mutableStateOf(false) }
     val transitionAd = LocalWebTransitionAd.current
+    val abandonAttempt = LocalWebAbandonAttempt.current
     WebTopBar(
         backLabel = stringResource(if (isDaily) WebRes.string.web_to_games else WebRes.string.web_to_difficulty),
         onBack = { if (hasMeaningfulProgress) confirmingExit = true else transitionAd(onExit) },
@@ -96,6 +100,8 @@ internal fun WebGameplayHeader(
                 TextButton(
                     onClick = {
                         confirmingExit = false
+                        // Leaving an attempt with real progress costs a life, like losing it.
+                        abandonAttempt()
                         transitionAd(onExit)
                     },
                 ) { Text(stringResource(WebRes.string.web_leave_confirm)) }

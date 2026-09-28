@@ -16,7 +16,7 @@
     <string name="web_rules">Rules</string>
     <string name="web_how_to_play_title">How to play: %1$s</string>
     <string name="web_leave_title">Leave the level?</string>
-    <string name="web_leave_body">An unfinished level is not saved: this attempt\'s progress will be lost.</string>
+    <string name="web_leave_body">An unfinished level is not saved: this attempt\'s progress will be lost, and leaving costs one life.</string>
     <string name="web_leave_confirm">Leave</string>
     <string name="web_leave_stay">Stay</string>
     <string name="web_wallet_lives">Lives: %1$d of %2$d</string>
@@ -37,7 +37,7 @@
     <string name="web_lives_next"> · next in %1$s</string>
     <string name="web_no_lives_title">Out of lives</string>
     <string name="web_no_lives_next">A new life arrives in %1$s. </string>
-    <string name="web_no_lives_body">Get a life for watching an ad or restore one in the store. The daily puzzle is playable without lives.</string>
+    <string name="web_no_lives_body">Get a life for watching an ad or restore one in the store.</string>
     <string name="web_life_ad_button">+1 life for an ad</string>
     <string name="web_ad_showing">Ad playing…</string>
     <string name="web_life_ad_granted">Ad watched: +1 life.</string>
@@ -45,8 +45,8 @@
     <string name="web_got_it">Got it</string>
     <string name="web_store_next_life">Next life in %1$s</string>
     <string name="web_wallet_unavailable">Wallet unavailable</string>
-    <string name="web_store_hints_ad_title">+3 hints</string>
-    <string name="web_store_hints_ad_granted">Ad watched: +3 hints.</string>
+    <string name="web_store_gem_ad_title">+1 gem</string>
+    <string name="web_store_gem_ad_granted">Ad watched: +1 gem.</string>
     <string name="web_store_life_ad_title">+1 life</string>
     <string name="web_store_section_gems">Gems</string>
     <string name="web_store_section_for_gems">For gems</string>
@@ -54,7 +54,7 @@
     <string name="web_paid_purchasing">Opening payment…</string>
     <string name="web_paid_fulfilling">Adding gems…</string>
     <string name="web_paid_saving">Saving the purchase…</string>
-    <string name="web_paid_success">Purchase complete: +100 gems.</string>
+    <string name="web_paid_success">Purchase complete: the gems are in your wallet.</string>
     <string name="web_paid_cancelled">Payment cancelled.</string>
     <string name="web_paid_unavailable">Payments are unavailable right now.</string>
     <string name="web_paid_pending">The purchase is saved and will finish automatically.</string>
@@ -72,7 +72,7 @@
     <string name="web_item_hint_pack">Hint pack</string>
     <string name="web_item_life">Life refill</string>
     <string name="web_no_hints_title">Out of hints</string>
-    <string name="web_no_hints_body">Buy hints with gems in the store or get them free by watching an ad. The store opens over the game, so your game stays as it is.</string>
+    <string name="web_no_hints_body">Buy hints with gems in the store. The store opens over the game, so your game stays as it is.</string>
     <string name="web_not_now">Not now</string>
     <string name="web_back_to_game">Back to the game</string>
     <string name="web_leaderboard_title">Leaderboard: puzzles solved</string>

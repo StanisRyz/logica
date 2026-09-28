@@ -28,8 +28,8 @@ internal class AndroidPlatformComposition(
         GemPackProductMapping(
             mapOf(
                 GemPack.GEMS_50 to "gems_50",
-                GemPack.GEMS_250 to "gems_250",
-                GemPack.GEMS_600 to "gems_600",
+                GemPack.GEMS_150 to "gems_150",
+                GemPack.GEMS_500 to "gems_500",
             ),
         )
 

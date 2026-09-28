@@ -17,6 +17,7 @@ import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.catalog.levelNumberOrNull
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordGameState
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
 import com.stanisryz.logica.puzzle.core.word.WordGuessRejection
@@ -250,7 +251,7 @@ private fun WordTerminalCard(
                 stringResource(R.string.word_answer_was, puzzle.answer.uppercase())
             },
         saveErrorDetail = stringResource(R.string.completion_save_error_body),
-        economy = resultEconomy(isSolved, difficulty),
+        economy = resultEconomy(isSolved, PuzzleType.WORD, difficulty),
         retryAllowed = economy.isGameplayAllowed,
         stars = if (isSolved) starsForWordAttempts(game.attempts.size) else null,
     )

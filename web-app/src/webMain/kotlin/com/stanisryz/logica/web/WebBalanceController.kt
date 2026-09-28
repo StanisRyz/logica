@@ -361,15 +361,22 @@ internal class WebBalanceController(
                     ) {
                         completion.saveSolved(source.attempt, PuzzleStars.forMistakes(updated.mistakesUsed))
                     }
-                    // Catalog terminals feed the wallet; Daily is intentionally absent here.
-                    economy.recordCatalogTerminalResult(
+                    // Catalog terminals feed the wallet.
+                    economy.recordTerminalResult(
                         PuzzleType.BALANCE,
                         source.attempt.levelId.difficulty,
                         solved = updated.status == BalanceGameStatus.SOLVED,
                     )
                 }
-                is WebGameplaySource.DailyChallenge ->
+                is WebGameplaySource.DailyChallenge -> {
                     dailyCompletion.saveTerminal(source.attempt, outcome)
+                    // A Daily result feeds the wallet like a Catalog one: a failure costs a life.
+                    economy.recordTerminalResult(
+                        PuzzleType.BALANCE,
+                        source.difficulty,
+                        solved = outcome == WebStatisticsTerminalOutcome.SOLVED,
+                    )
+                }
             }
         }
     }

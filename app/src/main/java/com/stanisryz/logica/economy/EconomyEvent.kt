@@ -1,15 +1,22 @@
 package com.stanisryz.logica.economy
 
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 
 /** Why the wallet changed. The ledger and the wallet do not change shape for a new source. */
 internal enum class EconomyEventType {
     SOLVED_REWARD,
     FAILED_PENALTY,
+
+    /** An unfinished attempt with real progress the player chose to leave. */
+    ABANDONED_PENALTY,
     GEM_LIFE_REFILL,
 
-    /** One rewarded ad the player chose to watch at zero lives, credited once. */
+    /** One rewarded ad the player chose to watch for a life, credited once. */
     REWARDED_AD_LIFE,
+
+    /** One rewarded ad the player chose to watch in the Store for a gem, credited once. */
+    REWARDED_AD_GEM,
 
     /** Persisted legacy name for one confirmed store gem purchase, credited once. */
     RUSTORE_GEM_PURCHASE,
@@ -51,6 +58,11 @@ internal data class EconomyEvent(
          */
         fun rewardedAdEventId(actionId: String): String = "rewarded_ad:$actionId"
 
+        fun rewardedGemEventId(actionId: String): String = "rewarded_gem:$actionId"
+
+        /** One confirmed exit gets one action ID, so a repeated request cannot spend twice. */
+        fun abandonEventId(actionId: String): String = "abandon:$actionId"
+
         /**
          * The store adapter qualifies its transaction ID with the provider, so reconciliation and
          * callbacks share a key while different providers cannot collide.
@@ -70,13 +82,14 @@ internal data class EconomyEffect(
     val event: EconomyEvent,
 )
 
-/** The gem reward is derived from the completed difficulty, never from the puzzle type or scope. */
+/** The gem reward is derived from the completed game and difficulty, never from the scope. */
 internal fun PlayerEconomy.solvedReward(
     resultId: String,
+    puzzleType: PuzzleType,
     difficulty: Difficulty,
 ): EconomyEffect =
     effect(
-        updated = withGemsGranted(EconomyRules.solvedGemReward(difficulty)),
+        updated = withGemsGranted(EconomyRules.solvedGemReward(puzzleType, difficulty)),
         eventId = EconomyEvent.resultEventId(resultId),
         type = EconomyEventType.SOLVED_REWARD,
         sourceId = resultId,
@@ -91,6 +104,18 @@ internal fun PlayerEconomy.failedPenalty(
         eventId = EconomyEvent.resultEventId(resultId),
         type = EconomyEventType.FAILED_PENALTY,
         sourceId = resultId,
+    )
+
+/** Leaving an attempt with real progress costs a life exactly like losing it. */
+internal fun PlayerEconomy.abandonedPenalty(
+    actionId: String,
+    nowEpochMillis: Long,
+): EconomyEffect =
+    effect(
+        updated = withLifeSpent(nowEpochMillis),
+        eventId = EconomyEvent.abandonEventId(actionId),
+        type = EconomyEventType.ABANDONED_PENALTY,
+        sourceId = actionId,
     )
 
 internal fun PlayerEconomy.gemLifeRefill(actionId: String): EconomyEffect =
@@ -110,6 +135,15 @@ internal fun PlayerEconomy.rewardedAdLife(actionId: String): EconomyEffect =
         updated = withLifeRestored(),
         eventId = EconomyEvent.rewardedAdEventId(actionId),
         type = EconomyEventType.REWARDED_AD_LIFE,
+        sourceId = actionId,
+    )
+
+/** One watched Store rewarded ad: a gem, keyed by its show so a repeated callback adds nothing. */
+internal fun PlayerEconomy.rewardedAdGem(actionId: String): EconomyEffect =
+    effect(
+        updated = withGemsGranted(EconomyRules.REWARDED_AD_GEMS),
+        eventId = EconomyEvent.rewardedGemEventId(actionId),
+        type = EconomyEventType.REWARDED_AD_GEM,
         sourceId = actionId,
     )
 

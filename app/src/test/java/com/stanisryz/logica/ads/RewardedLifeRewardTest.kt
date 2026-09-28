@@ -109,6 +109,10 @@ private class FakeEconomyRepository(
         offer: HintOffer,
     ): EconomyHintPurchase = dao.buyHintsWithGems(actionId, offer, NOW)
 
+    override suspend fun spendLifeForAbandonedAttempt(actionId: String) = Unit
+
+    override suspend fun grantRewardedGem(actionId: String): Boolean = dao.grantRewardedGem(actionId, NOW)
+
     override suspend fun grantRewardedLife(actionId: String): EconomyRewardedLife {
         if (failingGrants > 0) {
             failingGrants--

@@ -1,6 +1,8 @@
 package com.stanisryz.logica.economy
 
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleGemReward
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import java.time.Duration
 
 /**
@@ -16,21 +18,21 @@ internal object EconomyRules {
     const val MAX_LIVES = 5
 
     /**
-     * What one durable SOLVED attempt is worth. The reward depends only on the difficulty that was
-     * completed: it is the same for every puzzle type and the same in Catalog and in Daily.
+     * What one durable SOLVED attempt is worth: the shared [PuzzleGemReward] table by game and
+     * difficulty, the same in Catalog and in Daily.
      */
-    fun solvedGemReward(difficulty: Difficulty): Int =
-        when (difficulty) {
-            Difficulty.EASY -> 1
-            Difficulty.MEDIUM -> 2
-            Difficulty.HARD -> 3
-            Difficulty.EXPERT -> 4
-        }
+    fun solvedGemReward(
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+    ): Int = PuzzleGemReward.forSolved(puzzleType, difficulty)
 
     /** One durable FAILED attempt costs exactly this many lives, bounded at zero, at any difficulty. */
     const val FAILED_LIFE_PENALTY = 1
 
     const val LIFE_REFILL_GEM_COST = 10
+
+    /** What one watched Store rewarded ad is worth. */
+    const val REWARDED_AD_GEMS = 1
 
     /** Hints are a consumable inventory item; a brand-new or migrated player starts with this many. */
     const val STARTING_HINTS = 3

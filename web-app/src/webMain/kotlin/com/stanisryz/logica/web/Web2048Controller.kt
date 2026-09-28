@@ -281,7 +281,7 @@ internal class Web2048Controller(
                     }
                     completion.saveSolved(source.attempt)
                     // The first V2 target crossing is the Catalog result; it also feeds the wallet.
-                    economy.recordCatalogTerminalResult(
+                    economy.recordTerminalResult(
                         PuzzleType.GAME_2048,
                         source.attempt.levelId.difficulty,
                         solved = true,
@@ -291,7 +291,7 @@ internal class Web2048Controller(
                         statistics.recordTerminalResult(it, WebStatisticsTerminalOutcome.FAILED)
                     }
                     // A pre-target game over is the normal Catalog failure and costs one life.
-                    economy.recordCatalogTerminalResult(
+                    economy.recordTerminalResult(
                         PuzzleType.GAME_2048,
                         source.attempt.levelId.difficulty,
                         solved = false,
@@ -310,6 +310,12 @@ internal class Web2048Controller(
                         }
                     statisticsAttempt?.let { statistics.recordTerminalResult(it, outcome) }
                     dailyCompletion.saveTerminal(source.attempt, outcome)
+                    // A Daily result feeds the wallet like a Catalog one: a failure costs a life.
+                    economy.recordTerminalResult(
+                        PuzzleType.GAME_2048,
+                        source.difficulty,
+                        solved = outcome == WebStatisticsTerminalOutcome.SOLVED,
+                    )
                 }
             }
         }

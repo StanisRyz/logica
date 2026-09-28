@@ -30,10 +30,11 @@ class EconomyResultCompletionTest {
             val dao = FakeGameCompletionDao(definition)
             val rewards =
                 mapOf(
-                    PuzzleType.BALANCE to Difficulty.EASY,
-                    PuzzleType.CROWNS to Difficulty.MEDIUM,
-                    PuzzleType.WORD to Difficulty.HARD,
-                    PuzzleType.SUDOKU to Difficulty.EXPERT,
+                    PuzzleType.BALANCE to Difficulty.EXPERT,
+                    PuzzleType.CROWNS to Difficulty.EXPERT,
+                    PuzzleType.WORD to Difficulty.EXPERT,
+                    PuzzleType.SUDOKU to Difficulty.HARD,
+                    PuzzleType.GAME_2048 to Difficulty.EXPERT,
                 )
 
             rewards.forEach { (puzzleType, difficulty) ->
@@ -43,18 +44,18 @@ class EconomyResultCompletionTest {
                 dao.complete(solved)
                 val event = dao.economyEvents.getValue(EconomyEvent.resultEventId(solved.resultId))
                 assertEquals(EconomyEventType.SOLVED_REWARD.name, event.eventType)
-                assertEquals(EconomyRules.solvedGemReward(difficulty), event.gemDelta)
+                assertEquals(EconomyRules.solvedGemReward(puzzleType, difficulty), event.gemDelta)
                 assertEquals(0, event.lifeDelta)
             }
 
-            // 1 + 2 + 3 + 4, and repeating each completion three times changed nothing.
-            assertEquals(10, dao.wallet(NOW).gems)
+            // Balance 0 + Crowns 1 + Word 0 + Sudoku 1 + 2048 2, and repeating each completion three times changed nothing.
+            assertEquals(4, dao.wallet(NOW).gems)
             assertEquals(EconomyRules.STARTING_LIVES, dao.wallet(NOW).lives)
             assertEquals(rewards.size, dao.results.size)
             assertEquals(rewards.size, dao.economyEvents.size)
         }
 
-    /** The reward depends on difficulty alone: 2048 in Catalog and a Daily entry pay the same. */
+    /** The reward depends on the game and difficulty alone: a Daily entry pays what the Catalog pays. */
     @Test
     fun theDailyScopeUsesTheSameDifficultyRewardAsTheCatalog() =
         runBlocking {
@@ -74,13 +75,13 @@ class EconomyResultCompletionTest {
                 ).toEntity(NOW)
             val catalog =
                 dao
-                    .catalogCompletion(PuzzleType.GAME_2048, difficulty = entry.difficulty)
+                    .catalogCompletion(entry.puzzleType, difficulty = entry.difficulty)
                     .toEntity(NOW)
 
             dao.complete(daily)
             dao.complete(catalog)
 
-            val expected = EconomyRules.solvedGemReward(entry.difficulty)
+            val expected = EconomyRules.solvedGemReward(entry.puzzleType, entry.difficulty)
             assertEquals(expected, dao.economyEvents.getValue(EconomyEvent.resultEventId("daily-0")).gemDelta)
             assertEquals(
                 expected,

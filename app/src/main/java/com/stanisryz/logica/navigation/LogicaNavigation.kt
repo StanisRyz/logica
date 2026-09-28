@@ -70,6 +70,7 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.stanisryz.logica.R
 import com.stanisryz.logica.ads.InterstitialOpportunity
+import com.stanisryz.logica.ads.RewardedAdKind
 import com.stanisryz.logica.ads.RewardedAdState
 import com.stanisryz.logica.ads.TerminalActionCoordinator
 import com.stanisryz.logica.catalog.CatalogLevelRepository
@@ -105,6 +106,7 @@ import com.stanisryz.logica.ui.screens.Game2048TutorialRoute
 import com.stanisryz.logica.ui.screens.GameHubRoute
 import com.stanisryz.logica.ui.screens.ProfileRoute
 import com.stanisryz.logica.ui.screens.SettingsScreen
+import com.stanisryz.logica.ui.screens.StoreRewardedOffers
 import com.stanisryz.logica.ui.screens.StoreRoute
 import com.stanisryz.logica.ui.screens.StoreSheet
 import com.stanisryz.logica.ui.screens.SudokuGameRoute
@@ -114,6 +116,7 @@ import com.stanisryz.logica.ui.screens.WordTutorialRoute
 import com.stanisryz.logica.ui.theme.LogicaMotion
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.util.UUID
 
 @Composable
 internal fun LogicaNavigation(
@@ -133,7 +136,7 @@ internal fun LogicaNavigation(
     onRestoreLife: () -> Unit,
     onPreloadRewardedAd: () -> Unit,
     onReleaseRewardedAd: () -> Unit,
-    onWatchRewardedAd: (Activity) -> Unit,
+    onWatchRewardedAd: (Activity, RewardedAdKind) -> Unit,
     onRetryRewardedAd: () -> Unit,
     onGameplayStarted: () -> Unit,
     onGameplayStopped: () -> Unit,
@@ -161,7 +164,15 @@ internal fun LogicaNavigation(
      * Unfinished attempts are no longer saved, so both ways back out of gameplay — the header Back
      * button and system/predictive back — ask the active gameplay screen first.
      */
-    val exitGuard = remember { GameplayExitGuard() }
+    val abandonScope = rememberCoroutineScope()
+    val exitGuard =
+        remember(economyRepository) {
+            GameplayExitGuard(
+                onAbandon = {
+                    abandonScope.launch { economyRepository.spendLifeForAbandonedAttempt(UUID.randomUUID().toString()) }
+                },
+            )
+        }
     val goBack = { exitGuard.requestBack { backStack.removeLastOrNull() } }
     val currentDestination = backStack.last()
     var showLivesDialog by rememberSaveable { mutableStateOf(false) }
@@ -202,16 +213,23 @@ internal fun LogicaNavigation(
     }
 
     /*
-     * The rewarded ad is loaded only where it can actually be offered: the player is out of lives
-     * and either the Lives dialog with the offer in it is open, or they are standing on a screen a
-     * game can be started or played from. The Store and Profile tabs carry the same wallet without
-     * ever causing a load, and tutorials and Settings never trigger one either. A wallet with lives
-     * in it releases whatever was loaded instead of rotating ads in the background, and a failed
-     * load stays failed until the player asks for a retry.
+     * The rewarded ad is loaded only where it can actually be offered: the Store (its +1 gem offer,
+     * and +1 life while one is missing), the Lives dialog while a life is missing, or a screen a game
+     * can be started or played from while the player is out of lives. Profile, tutorials, and
+     * Settings never trigger a load. Leaving those places releases whatever was loaded instead of
+     * rotating ads in the background, and a failed load stays failed until the player asks for a retry.
      */
+    val storeVisible = showStoreSheet || (currentDestination == AppDestination.Home && selectedTab == PrimaryTab.STORE)
     val rewardedOfferVisible =
-        !economy.isGameplayAllowed &&
-            (showLivesDialog || currentDestination.allowsRewardedOffer(selectedTab))
+        storeVisible ||
+            (!economy.isFull && showLivesDialog) ||
+            (!economy.isGameplayAllowed && currentDestination.allowsRewardedOffer(selectedTab))
+    val storeRewardedOffers =
+        StoreRewardedOffers(
+            state = rewardedState,
+            onWatch = { kind -> activity?.let { onWatchRewardedAd(it, kind) } },
+            onRetry = onRetryRewardedAd,
+        )
     LaunchedEffect(rewardedOfferVisible, rewardedState) {
         when {
             rewardedOfferVisible && rewardedState == RewardedAdState.IDLE -> onPreloadRewardedAd()
@@ -426,6 +444,7 @@ internal fun LogicaNavigation(
                                                             economyRepository = economyRepository,
                                                             storeGateway = storeGateway,
                                                             storeProducts = storeProducts,
+                                                            rewarded = storeRewardedOffers,
                                                         )
                                                     PrimaryTab.PROFILE ->
                                                         ProfileRoute(statisticsRepository, onOpenGames = {
@@ -625,6 +644,7 @@ internal fun LogicaNavigation(
             storeGateway = storeGateway,
             storeProducts = storeProducts,
             onDismiss = { showStoreSheet = false },
+            rewarded = storeRewardedOffers,
         )
     }
 
@@ -633,7 +653,7 @@ internal fun LogicaNavigation(
             economy = economy,
             rewardedState = rewardedState,
             onRestoreLife = onRestoreLife,
-            onWatchRewardedAd = { activity?.let(onWatchRewardedAd) },
+            onWatchRewardedAd = { activity?.let { onWatchRewardedAd(it, RewardedAdKind.LIFE) } },
             onRetryRewardedAd = onRetryRewardedAd,
             onOpenGemStore = openStore,
             onDismiss = { showLivesDialog = false },

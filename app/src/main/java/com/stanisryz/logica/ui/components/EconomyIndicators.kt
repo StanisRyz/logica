@@ -103,8 +103,7 @@ internal fun EconomyBar(
  * The lives detail: how many are left, when the next one comes back, and what a gem refill costs.
  * Deliberately a small dialog rather than a store screen.
  *
- * At zero lives it also carries the one advertising offer in the product: an optional rewarded ad
- * worth `+1` life. The offer is the last thing added and the first thing that may fail, so the
+ * While a life is missing it also carries an optional rewarded ad worth `+1` life. The offer is the last thing added and the first thing that may fail, so the
  * countdown and the gem refill above it stay readable and usable whether or not an ad exists.
  */
 @Composable
@@ -149,8 +148,8 @@ internal fun LivesDialog(
                         },
                     style = MaterialTheme.typography.bodyMedium,
                 )
-                // Only at zero lives: the offer exists to unblock gameplay, never to top a wallet up.
-                if (!economy.isGameplayAllowed) {
+                // Whenever a life is missing, like on Web: the ad is always worth one life.
+                if (!economy.isFull) {
                     RewardedLifeOffer(rewardedState, onWatchRewardedAd, onRetryRewardedAd)
                 }
                 // A way to the store, offered only when the refill above is the thing out of reach.

@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 
 internal typealias RewardedAdState = PlatformAdState
 
-/** Rewarded-life policy; the platform gateway only loads and presents inventory. */
+/** Rewarded-ad policy for the life and Store gem offers; the platform gateway only loads and presents inventory. */
 internal class RewardedLifeController(
     private val ads: RewardedAdsGateway,
     private val reward: RewardedLifeReward,
@@ -35,12 +35,15 @@ internal class RewardedLifeController(
         preload()
     }
 
-    fun show(host: AdDisplayHost) {
+    fun show(
+        host: AdDisplayHost,
+        kind: RewardedAdKind,
+    ) {
         if (state.value != RewardedAdState.READY) return
         ads.show(
             host = host,
             // Allocated after the platform acquired its fullscreen slot but before the SDK call.
-            onWillShow = reward::beginShow,
+            onWillShow = { reward.beginShow(kind) },
             onEvent = { event ->
                 when (event) {
                     RewardedAdEvent.Rewarded -> viewModelScope.launch { reward.onRewarded() }

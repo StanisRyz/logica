@@ -512,6 +512,8 @@ private fun ReadyContent(
         progressRepository?.let { repository -> key(repository) { repository.stars.collectAsState().value } }
             ?: WebCatalogStarsSnapshot.EMPTY
     val achievementAnnouncer = remember { AchievementAnnouncer() }
+    val abandonEconomy = remember(playerSession) { WebGameplayEconomyCoordinator(playerSession) }
+    val abandonAttempt: () -> Unit = remember(abandonEconomy) { { abandonEconomy.recordAbandonedAttempt() } }
     CompositionLocalProvider(
         LocalAchievementAnnouncer provides achievementAnnouncer,
         LocalWebCatalogStars provides catalogStars,
@@ -519,6 +521,7 @@ private fun ReadyContent(
         LocalWebOpenStore provides openStore,
         LocalWebKeyboard provides keyboard,
         LocalWebTransitionAd provides runTransitionAd,
+        LocalWebAbandonAttempt provides abandonAttempt,
         LocalOpenTutorial provides { puzzleType -> tutorialFor = puzzleType },
     ) {
         tutorialFor?.let { puzzleType ->
@@ -626,34 +629,37 @@ private fun ReadyContent(
                                 coordinator = dailyCoordinator,
                                 currentDate = dailyDate,
                                 onStartDaily = { puzzleType ->
-                                    when (val started = dailyCoordinator.start(puzzleType)) {
-                                        is WebDailyStartResult.Started -> {
-                                            route =
-                                                when (puzzleType) {
-                                                    PuzzleType.BALANCE -> {
-                                                        balanceController.startDaily(started.attempt)
-                                                        WebRoute.Balance
+                                    // A Daily attempt costs a life when lost, so it needs one to start, like the Catalog.
+                                    livesUi.guard {
+                                        when (val started = dailyCoordinator.start(puzzleType)) {
+                                            is WebDailyStartResult.Started -> {
+                                                route =
+                                                    when (puzzleType) {
+                                                        PuzzleType.BALANCE -> {
+                                                            balanceController.startDaily(started.attempt)
+                                                            WebRoute.Balance
+                                                        }
+                                                        PuzzleType.CROWNS -> {
+                                                            crownsController.startDaily(started.attempt)
+                                                            WebRoute.Crowns
+                                                        }
+                                                        PuzzleType.WORD -> {
+                                                            wordController.startDaily(started.attempt)
+                                                            WebRoute.Word
+                                                        }
+                                                        PuzzleType.SUDOKU -> {
+                                                            sudokuController.startDaily(started.attempt)
+                                                            WebRoute.Sudoku
+                                                        }
+                                                        PuzzleType.GAME_2048 -> {
+                                                            game2048Controller.startDaily(started.attempt)
+                                                            WebRoute.Game2048
+                                                        }
+                                                        else -> error("$puzzleType has no Daily gameplay.")
                                                     }
-                                                    PuzzleType.CROWNS -> {
-                                                        crownsController.startDaily(started.attempt)
-                                                        WebRoute.Crowns
-                                                    }
-                                                    PuzzleType.WORD -> {
-                                                        wordController.startDaily(started.attempt)
-                                                        WebRoute.Word
-                                                    }
-                                                    PuzzleType.SUDOKU -> {
-                                                        sudokuController.startDaily(started.attempt)
-                                                        WebRoute.Sudoku
-                                                    }
-                                                    PuzzleType.GAME_2048 -> {
-                                                        game2048Controller.startDaily(started.attempt)
-                                                        WebRoute.Game2048
-                                                    }
-                                                    else -> error("$puzzleType has no Daily gameplay.")
-                                                }
+                                            }
+                                            else -> Unit // surfaced as a start error by the shared hub section
                                         }
-                                        else -> Unit // surfaced as a start error by the shared hub section
                                     }
                                 },
                             )
@@ -1440,13 +1446,14 @@ private fun PlayingBalanceContent(
 
     if (state.source.isDaily) {
         WebDailyOrdinaryTerminalDialog(
+            puzzleType = PuzzleType.BALANCE,
             visible = state.game.status.isTerminal,
             difficulty = state.source.difficulty,
             mistakesUsed = state.game.mistakesUsed,
             hintsUsed = state.game.hintsUsed,
             solved = state.game.status == BalanceGameStatus.SOLVED,
             completion = controller.dailyCompletionState,
-            onRetry = { transitionAd(controller::retry) },
+            onRetry = { livesGuard { transitionAd(controller::retry) } },
             onRetrySave = controller::retryDailySave,
             onExit = { transitionAd(onExitBalance) },
         )
@@ -1456,6 +1463,7 @@ private fun PlayingBalanceContent(
             onRetrySave = controller::retrySave,
         )
         WebOrdinaryCatalogTerminalDialog(
+            puzzleType = PuzzleType.BALANCE,
             visible = state.game.status.isTerminal,
             difficulty = state.source.difficulty,
             mistakesUsed = state.game.mistakesUsed,
@@ -1520,13 +1528,14 @@ private fun PlayingCrownsContent(
 
     if (state.source.isDaily) {
         WebDailyOrdinaryTerminalDialog(
+            puzzleType = PuzzleType.CROWNS,
             visible = state.game.status.isTerminal,
             difficulty = state.source.difficulty,
             mistakesUsed = state.game.mistakesUsed,
             hintsUsed = state.game.hintsUsed,
             solved = state.game.status == CrownsGameStatus.SOLVED,
             completion = controller.dailyCompletionState,
-            onRetry = { transitionAd(controller::retry) },
+            onRetry = { livesGuard { transitionAd(controller::retry) } },
             onRetrySave = controller::retryDailySave,
             onExit = { transitionAd(onExitCrowns) },
         )
@@ -1536,6 +1545,7 @@ private fun PlayingCrownsContent(
             onRetrySave = controller::retrySave,
         )
         WebOrdinaryCatalogTerminalDialog(
+            puzzleType = PuzzleType.CROWNS,
             visible = state.game.status.isTerminal,
             difficulty = state.source.difficulty,
             mistakesUsed = state.game.mistakesUsed,
@@ -1589,6 +1599,7 @@ private fun PlayingWordContent(
 
     if (state.source.isDaily) {
         WebDailyOrdinaryTerminalDialog(
+            puzzleType = PuzzleType.WORD,
             visible = state.isTerminalRevealReady,
             difficulty = state.source.difficulty,
             solved = state.game.status == WordGameStatus.SOLVED,
@@ -1596,7 +1607,7 @@ private fun PlayingWordContent(
             scoreDetail = pluralStringResource(WebRes.plurals.web_word_guessed, state.game.attempts.size, state.game.attempts.size),
             stars = starsForWordAttempts(state.game.attempts.size),
             completion = controller.dailyCompletionState,
-            onRetry = { transitionAd(controller::retry) },
+            onRetry = { livesGuard { transitionAd(controller::retry) } },
             onRetrySave = controller::retryDailySave,
             onExit = { transitionAd(onExitWord) },
         )
@@ -1606,6 +1617,7 @@ private fun PlayingWordContent(
             onRetrySave = controller::retrySave,
         )
         WebOrdinaryCatalogTerminalDialog(
+            puzzleType = PuzzleType.WORD,
             visible = state.isTerminalRevealReady,
             difficulty = state.source.difficulty,
             levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
@@ -1682,13 +1694,14 @@ private fun PlayingSudokuContent(
 
     if (state.source.isDaily) {
         WebDailyOrdinaryTerminalDialog(
+            puzzleType = PuzzleType.SUDOKU,
             visible = state.game.status.isTerminal,
             difficulty = state.source.difficulty,
             mistakesUsed = state.game.mistakesUsed,
             hintsUsed = state.game.hintsUsed,
             solved = state.game.status == SudokuGameStatus.SOLVED,
             completion = controller.dailyCompletionState,
-            onRetry = { transitionAd(controller::retry) },
+            onRetry = { livesGuard { transitionAd(controller::retry) } },
             onRetrySave = controller::retryDailySave,
             onExit = { transitionAd(onExitSudoku) },
         )
@@ -1698,6 +1711,7 @@ private fun PlayingSudokuContent(
             onRetrySave = controller::retrySave,
         )
         WebOrdinaryCatalogTerminalDialog(
+            puzzleType = PuzzleType.SUDOKU,
             visible = state.game.status.isTerminal,
             difficulty = state.source.difficulty,
             mistakesUsed = state.game.mistakesUsed,
@@ -1759,12 +1773,13 @@ private fun PlayingGame2048Content(
 
     if (state.source.isDaily) {
         WebDailyOrdinaryTerminalDialog(
+            puzzleType = PuzzleType.GAME_2048,
             visible = state.game.status.isTerminal && state.motionTrace == null,
             difficulty = state.source.difficulty,
             solved = state.game.goalReached,
             scoreDetail = stringResource(WebRes.string.web_score_final, formatGame2048Number(state.game.score)),
             completion = controller.dailyCompletionState,
-            onRetry = { transitionAd(controller::retry) },
+            onRetry = { livesGuard { transitionAd(controller::retry) } },
             onRetrySave = controller::retryDailySave,
             onExit = { transitionAd(onExitGame2048) },
         )

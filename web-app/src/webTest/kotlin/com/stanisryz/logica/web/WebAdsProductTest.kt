@@ -1,6 +1,8 @@
 package com.stanisryz.logica.web
 
+import com.stanisryz.logica.platform.AdRewardDefinition
 import com.stanisryz.logica.platform.AdShowResult
+import com.stanisryz.logica.platform.StoreRewardType
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -108,7 +110,7 @@ class WebAdsProductTest {
         currentTimeMs: () -> Long = { 1_000L },
     ): WebRewardedPlacementController =
         WebRewardedPlacementController(
-            reward = WebRewardedPlacementController.HINT_REWARD,
+            reward = AdRewardDefinition(StoreRewardType.HINTS, 3),
             provider = provider,
             policy = policy,
             rewardService =

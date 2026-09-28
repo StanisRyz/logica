@@ -61,7 +61,7 @@ class AtomicCatalogCompletionTest {
             dao.complete(solved)
 
             assertEquals(1, dao.results.size)
-            assertEquals(EconomyRules.solvedGemReward(Difficulty.MEDIUM), dao.wallet(1_000).gems)
+            assertEquals(EconomyRules.solvedGemReward(PuzzleType.BALANCE, Difficulty.MEDIUM), dao.wallet(1_000).gems)
             assertEquals(EconomyRules.STARTING_LIVES, dao.wallet(1_000).lives)
             assertEquals(42, dao.currentLevel(PuzzleType.BALANCE, Difficulty.MEDIUM))
             assertEquals(

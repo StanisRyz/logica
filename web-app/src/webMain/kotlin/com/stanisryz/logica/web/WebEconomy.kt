@@ -9,6 +9,7 @@ import com.stanisryz.logica.platform.EconomyRewardType
 import com.stanisryz.logica.platform.EconomyState
 import com.stanisryz.logica.platform.PlayerIdentity
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleGemReward
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -216,36 +217,47 @@ internal interface WebEconomySessionAccess {
 }
 
 /**
- * Catalog-only gameplay economy seam. Daily challenges never consume lives and never grant
- * Catalog rewards, so no Daily path exists on this interface by design.
+ * Gameplay economy seam, the same for Catalog and Daily: a solved attempt pays its game and
+ * difficulty reward, a failed one costs a life, and leaving an attempt with real progress costs a
+ * life as well.
  */
 internal interface WebGameplayEconomy {
-    fun recordCatalogTerminalResult(
+    fun recordTerminalResult(
         puzzleType: PuzzleType,
         difficulty: Difficulty,
         solved: Boolean,
     )
+
+    /** The player left an unfinished attempt that already had real progress. */
+    fun recordAbandonedAttempt()
 }
 
 internal object DisabledWebGameplayEconomy : WebGameplayEconomy {
-    override fun recordCatalogTerminalResult(
+    override fun recordTerminalResult(
         puzzleType: PuzzleType,
         difficulty: Difficulty,
         solved: Boolean,
     ) = Unit
+
+    override fun recordAbandonedAttempt() = Unit
 }
 
-/** Dynamically applies Catalog economy effects to the repository bound to the current Player. */
+/** Dynamically applies gameplay economy effects to the repository bound to the current Player. */
 internal class WebGameplayEconomyCoordinator(
     private val playerSession: WebEconomySessionAccess,
 ) : WebGameplayEconomy {
-    override fun recordCatalogTerminalResult(
+    override fun recordTerminalResult(
         puzzleType: PuzzleType,
         difficulty: Difficulty,
         solved: Boolean,
     ) {
         val binding = playerSession.economyBinding.value as? WebEconomyBinding.Ready ?: return
-        binding.repository.applyCatalogTerminalResult(puzzleType, difficulty, solved)
+        binding.repository.applyTerminalResult(puzzleType, difficulty, solved)
+    }
+
+    override fun recordAbandonedAttempt() {
+        val binding = playerSession.economyBinding.value as? WebEconomyBinding.Ready ?: return
+        binding.repository.applyAbandonedAttempt()
     }
 }
 
@@ -277,30 +289,48 @@ internal class WebGameplayStoreCoordinator(
  * mutates wallet values directly; every change flows through here.
  */
 internal object WebEconomyProcessor {
-    /** Mirrors the established solved-gem rewards by difficulty (1/2/3/4 for Easy..Expert). */
-    fun gemRewardFor(difficulty: Difficulty): Int =
-        when (difficulty) {
-            Difficulty.EASY -> 1
-            Difficulty.MEDIUM -> 2
-            Difficulty.HARD -> 3
-            Difficulty.EXPERT -> 4
-        }
+    /** The shared per-game table ([PuzzleGemReward]), the same as on Android. */
+    fun gemRewardFor(
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+    ): Int = PuzzleGemReward.forSolved(puzzleType, difficulty)
 
-    fun onCatalogTerminalResult(
+    fun onTerminalResult(
         state: EconomyState,
+        puzzleType: PuzzleType,
         difficulty: Difficulty,
         solved: Boolean,
         nowEpochMs: Long,
     ): Pair<EconomyState, List<EconomyEvent>> =
         if (solved) {
-            val reward = gemRewardFor(difficulty)
-            EconomyState(state.gems + reward, state.lives, state.nextLifeRestoreAtEpochMs) to
-                listOf(EconomyEvent.GameCompleted, EconomyEvent.RewardGranted(EconomyRewardType.GEMS, reward))
+            val reward = gemRewardFor(puzzleType, difficulty)
+            if (reward == 0) {
+                state to listOf(EconomyEvent.GameCompleted)
+            } else {
+                EconomyState(state.gems + reward, state.lives, state.nextLifeRestoreAtEpochMs) to
+                    listOf(EconomyEvent.GameCompleted, EconomyEvent.RewardGranted(EconomyRewardType.GEMS, reward))
+            }
         } else {
-            val consumed = minOf(EconomyPolicy.FAILED_ATTEMPT_LIFE_COST, state.lives)
-            withLivesSpent(state, consumed, nowEpochMs) to
-                listOf(EconomyEvent.GameFailed, EconomyEvent.ResourceConsumed(EconomyConsumptionType.LIFE, consumed))
+            onLifeLost(state, EconomyEvent.GameFailed, nowEpochMs)
         }
+
+    /** Leaving an attempt with real progress costs a life, exactly like losing it. */
+    fun onAbandonedAttempt(
+        state: EconomyState,
+        nowEpochMs: Long,
+    ): Pair<EconomyState, List<EconomyEvent>> = onLifeLost(state, null, nowEpochMs)
+
+    private fun onLifeLost(
+        state: EconomyState,
+        cause: EconomyEvent?,
+        nowEpochMs: Long,
+    ): Pair<EconomyState, List<EconomyEvent>> {
+        val consumed = minOf(EconomyPolicy.FAILED_ATTEMPT_LIFE_COST, state.lives)
+        val events =
+            listOfNotNull(cause) +
+                if (consumed > 0) listOf(EconomyEvent.ResourceConsumed(EconomyConsumptionType.LIFE, consumed)) else emptyList()
+        return withLivesSpent(state, consumed, nowEpochMs) to events
+    }
 
     /** Spends lives; an already running countdown keeps its remaining time instead of restarting. */
     fun withLivesSpent(
@@ -383,12 +413,15 @@ internal class WebPlayerEconomyRepository(
         mutableState.value = loaded.toState()
     }
 
-    /** Solved Catalog puzzle: grants the difficulty's gem reward through the processor. */
-    fun applyCatalogTerminalResult(
+    /** A finished attempt, Catalog or Daily: the game's reward when solved, one life when failed. */
+    fun applyTerminalResult(
         puzzleType: PuzzleType,
         difficulty: Difficulty,
         solved: Boolean,
-    ): List<EconomyEvent> = mutate { state, now -> WebEconomyProcessor.onCatalogTerminalResult(state, difficulty, solved, now) }
+    ): List<EconomyEvent> = mutate { state, now -> WebEconomyProcessor.onTerminalResult(state, puzzleType, difficulty, solved, now) }
+
+    /** An unfinished attempt with real progress was left: one life. */
+    fun applyAbandonedAttempt(): List<EconomyEvent> = mutate { state, now -> WebEconomyProcessor.onAbandonedAttempt(state, now) }
 
     /**
      * Persists whatever life regeneration is already due. Every mutation regenerates first as well,
@@ -455,6 +488,13 @@ internal class WebPlayerEconomyRepository(
             }
         }
         return granted
+    }
+
+    /** Gems from a rewarded advertisement: one ordinary durable wallet mutation. */
+    fun grantGems(amount: Int): Boolean {
+        if (amount <= 0) return false
+        mutate { state, _ -> state.copy(gems = state.gems + amount) to emptyList() }
+        return true
     }
 
     /**

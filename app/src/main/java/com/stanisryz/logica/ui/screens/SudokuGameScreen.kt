@@ -19,6 +19,7 @@ import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.catalog.levelNumberOrNull
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetVersion
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDifficulty
@@ -243,6 +244,7 @@ private fun SudokuReadyState(
 
     if (game.status.isTerminal) {
         PuzzleTerminalDialog(
+            puzzleType = PuzzleType.SUDOKU,
             isSolved = game.status == SudokuGameStatus.SOLVED,
             completionPersistence = uiState.completionPersistence,
             levelNumber = levelNumber,

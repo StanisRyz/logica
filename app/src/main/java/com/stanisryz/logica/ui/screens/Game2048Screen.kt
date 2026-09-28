@@ -31,6 +31,7 @@ import com.stanisryz.logica.puzzle.core.game2048.Game2048State
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Status
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.settings.ThemeMode
@@ -278,7 +279,7 @@ private fun Game2048TerminalDialog(
         onExit = onGameHub,
         detail = stringResource(R.string.game_2048_final_score, formatGame2048Number(game.score)),
         saveErrorDetail = stringResource(R.string.completion_save_error_body),
-        economy = resultEconomy(solved, difficulty),
+        economy = resultEconomy(solved, PuzzleType.GAME_2048, difficulty),
         retryAllowed = economy.isGameplayAllowed,
         // The board simply ran out of moves before the target: say that instead of a bare failure.
         title = if (solved) null else stringResource(R.string.game_2048_failed_title),

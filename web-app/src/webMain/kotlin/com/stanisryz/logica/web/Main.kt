@@ -116,7 +116,7 @@ fun main() {
         )
     val rewardedAds =
         WebRewardedAds(
-            hints = rewardedController(WebRewardedPlacementController.HINT_REWARD),
+            gems = rewardedController(WebRewardedPlacementController.GEM_REWARD),
             life = rewardedController(WebRewardedPlacementController.LIFE_REWARD),
         )
     val leaderboard = WebLeaderboardController(bridge, rememberMainScope())

@@ -196,6 +196,31 @@ internal interface EconomyDao {
         return EconomyRewardedLife.Granted(effect.economy, lifeGranted = effect.event.lifeDelta > 0)
     }
 
+    /** Spends one life for one confirmed exit from an unfinished attempt; a repeat spends nothing. */
+    @Transaction
+    suspend fun spendLifeForAbandonedAttempt(
+        actionId: String,
+        nowEpochMillis: Long,
+    ) {
+        val current = find().toPlayerEconomy(nowEpochMillis).regenerated(nowEpochMillis)
+        val effect = current.abandonedPenalty(actionId, nowEpochMillis)
+        if (insertEvent(effect.event.toEntity(nowEpochMillis)) == -1L) return
+        upsert(effect.economy.toEntity(nowEpochMillis))
+    }
+
+    /** Credits one watched Store rewarded ad; the ledger row keyed by [actionId] pays it once. */
+    @Transaction
+    suspend fun grantRewardedGem(
+        actionId: String,
+        nowEpochMillis: Long,
+    ): Boolean {
+        val current = find().toPlayerEconomy(nowEpochMillis).regenerated(nowEpochMillis)
+        val effect = current.rewardedAdGem(actionId)
+        if (insertEvent(effect.event.toEntity(nowEpochMillis)) == -1L) return false
+        upsert(effect.economy.toEntity(nowEpochMillis))
+        return true
+    }
+
     /**
      * Spends one hint for one gameplay hint request. The stock is re-read here, and the ledger row
      * keyed by [actionId] makes a repeated request for the same tap spend nothing more.

@@ -88,8 +88,8 @@ import com.stanisryz.logica.web.generated.resources.web_purchase_done_hints
 import com.stanisryz.logica.web.generated.resources.web_purchase_done_lives
 import com.stanisryz.logica.web.generated.resources.web_purchase_failed
 import com.stanisryz.logica.web.generated.resources.web_purchase_insufficient
-import com.stanisryz.logica.web.generated.resources.web_store_hints_ad_granted
-import com.stanisryz.logica.web.generated.resources.web_store_hints_ad_title
+import com.stanisryz.logica.web.generated.resources.web_store_gem_ad_granted
+import com.stanisryz.logica.web.generated.resources.web_store_gem_ad_title
 import com.stanisryz.logica.web.generated.resources.web_store_life_ad_title
 import com.stanisryz.logica.web.generated.resources.web_store_next_life
 import com.stanisryz.logica.web.generated.resources.web_store_section_for_gems
@@ -121,6 +121,7 @@ internal fun WebStoreScreen(
     LaunchedEffect(paymentsCoordinator) { paymentsCoordinator.refreshCatalog() }
     val paidCatalog by paymentsCoordinator.catalogState.collectAsState()
     val purchaseState by paymentsCoordinator.purchaseState.collectAsState()
+    val purchasingProduct by paymentsCoordinator.purchasingProduct.collectAsState()
 
     Column(
         modifier =
@@ -162,10 +163,11 @@ internal fun WebStoreScreen(
         }
 
         RewardedAdRow(
-            controller = rewardedAds.hints,
-            title = stringResource(WebRes.string.web_store_hints_ad_title),
-            grantedText = stringResource(WebRes.string.web_store_hints_ad_granted),
-            enabled = storeBinding is WebStoreBinding.Ready,
+            controller = rewardedAds.gems,
+            title = stringResource(WebRes.string.web_store_gem_ad_title),
+            grantedText = stringResource(WebRes.string.web_store_gem_ad_granted),
+            enabled = economyBinding is WebEconomyBinding.Ready,
+            icon = Icons.Rounded.Diamond,
         )
         // The life placement exists only while a life is actually missing.
         val walletLives =
@@ -189,7 +191,9 @@ internal fun WebStoreScreen(
         if (paidCatalog is WebPaidCatalogState.Ready) {
             val entries = (paidCatalog as WebPaidCatalogState.Ready).entries
             StoreSectionTitle(stringResource(WebRes.string.web_store_section_gems))
-            entries.forEach { entry -> PaidGemTopUpCard(entry, purchaseState, paymentsCoordinator) }
+            entries.forEach { entry ->
+                PaidGemTopUpCard(entry, purchaseState, rowReportsState = purchasingProduct == entry.product, paymentsCoordinator)
+            }
         }
 
         StoreSectionTitle(stringResource(WebRes.string.web_store_section_for_gems))
@@ -216,18 +220,26 @@ internal fun WebStoreScreen(
 private fun PaidGemTopUpCard(
     entry: WebPaidCatalogEntry,
     state: WebPaidPurchaseState,
+    rowReportsState: Boolean,
     coordinator: WebPaymentsCoordinator,
 ) {
-    val message = paidPurchaseMessage(state)
+    // One payment runs at a time: every pack waits for it, and only the one being bought says why.
+    val message = if (rowReportsState) paidPurchaseMessage(state) else null
     StoreItemRow(
         icon = Icons.Rounded.Diamond,
         title = pluralStringResource(WebRes.plurals.web_gems_plus, entry.product.gemReward, entry.product.gemReward),
         subtitle = message ?: entry.details.description ?: stringResource(WebRes.string.web_store_topup),
         subtitleColor =
-            if (state == WebPaidPurchaseState.Success) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            if (rowReportsState &&
+                state == WebPaidPurchaseState.Success
+            ) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
     ) {
         // Portal-supplied price + currency only; never a locally manufactured amount.
-        Button(onClick = coordinator::purchaseGemsSmall, enabled = !state.isBusy) {
+        Button(onClick = { coordinator.purchase(entry.product) }, enabled = !state.isBusy) {
             PaidPriceLabel(entry.details)
         }
     }
@@ -377,6 +389,8 @@ private fun WebStoreFeedback.text(): String =
                     pluralStringResource(WebRes.plurals.web_purchase_done_hints, outcome.grantedAmount, outcome.grantedAmount)
                 StoreRewardType.LIFE_RESTORE ->
                     pluralStringResource(WebRes.plurals.web_purchase_done_lives, outcome.grantedAmount, outcome.grantedAmount)
+                StoreRewardType.GEMS ->
+                    pluralStringResource(WebRes.plurals.web_gems_plus, outcome.grantedAmount, outcome.grantedAmount)
             }
         is PurchaseResult.Failure ->
             when (outcome.status) {
@@ -400,6 +414,7 @@ private fun StoreItem.webDescription(): String =
     when (reward.type) {
         StoreRewardType.HINTS -> pluralStringResource(WebRes.plurals.web_hints_plus, reward.amount, reward.amount)
         StoreRewardType.LIFE_RESTORE -> pluralStringResource(WebRes.plurals.web_lives_plus, reward.amount, reward.amount)
+        StoreRewardType.GEMS -> pluralStringResource(WebRes.plurals.web_gems_plus, reward.amount, reward.amount)
     }
 
 /** Shown when a hint is requested with an empty hint inventory. */

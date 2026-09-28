@@ -114,8 +114,8 @@ private val TEST_PRODUCTS =
     GemPackProductMapping(
         mapOf(
             GemPack.GEMS_50 to "gems_50",
-            GemPack.GEMS_250 to "gems_250",
-            GemPack.GEMS_600 to "gems_600",
+            GemPack.GEMS_150 to "gems_150",
+            GemPack.GEMS_500 to "gems_500",
         ),
     )
 
@@ -160,6 +160,10 @@ private object UnusedEconomyRepository : EconomyRepository {
         actionId: String,
         offer: HintOffer,
     ): EconomyHintPurchase = error("the store test never touches the wallet")
+
+    override suspend fun spendLifeForAbandonedAttempt(actionId: String) = Unit
+
+    override suspend fun grantRewardedGem(actionId: String): Boolean = error("the store test never touches the wallet")
 
     override suspend fun grantRewardedLife(actionId: String): EconomyRewardedLife = error("the store test never touches the wallet")
 

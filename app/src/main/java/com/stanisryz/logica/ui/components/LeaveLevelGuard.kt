@@ -17,9 +17,15 @@ import com.stanisryz.logica.R
 /**
  * The single seam between the shell's Back handling and gameplay. Unfinished attempts are no longer
  * saved, so leaving one throws its board away — the shell asks the active gameplay screen first
- * instead of every screen intercepting Back on its own.
+ * instead of every screen intercepting Back on its own. Confirming that exit is what costs the
+ * abandoned attempt its life ([onAbandon]).
  */
-internal class GameplayExitGuard {
+internal class GameplayExitGuard(
+    private val onAbandon: () -> Unit = {},
+) {
+    /** The player confirmed leaving an attempt that already had real progress. */
+    internal fun abandon() = onAbandon()
+
     /** Returns true when gameplay took over the request and will decide what happens next. */
     private var interceptor: ((() -> Unit) -> Boolean)? = null
 
@@ -87,6 +93,7 @@ internal fun LeaveLevelGuard(
                 TextButton(
                     onClick = {
                         pendingLeave = null
+                        guard.abandon()
                         proceed()
                     },
                 ) { Text(stringResource(R.string.leave_level_confirm)) }

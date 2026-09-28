@@ -23,6 +23,12 @@ internal interface EconomyRepository {
      */
     suspend fun grantRewardedLife(actionId: String): EconomyRewardedLife
 
+    /** Credits one watched Store rewarded ad with a gem; `false` when that show already paid. */
+    suspend fun grantRewardedGem(actionId: String): Boolean
+
+    /** One confirmed exit from an unfinished attempt with real progress costs a life. */
+    suspend fun spendLifeForAbandonedAttempt(actionId: String)
+
     /**
      * Credits one confirmed store purchase. Both arguments are plain identifiers on purpose: the
      * economy never sees a billing SDK type, and the provider-qualified transaction ID makes the
@@ -57,6 +63,10 @@ internal class RoomEconomyRepository(
     override suspend fun refillLifeWithGems(actionId: String): EconomyRefill = dao.refillLifeWithGems(actionId, clock.nowEpochMillis())
 
     override suspend fun grantRewardedLife(actionId: String): EconomyRewardedLife = dao.grantRewardedLife(actionId, clock.nowEpochMillis())
+
+    override suspend fun grantRewardedGem(actionId: String): Boolean = dao.grantRewardedGem(actionId, clock.nowEpochMillis())
+
+    override suspend fun spendLifeForAbandonedAttempt(actionId: String) = dao.spendLifeForAbandonedAttempt(actionId, clock.nowEpochMillis())
 
     override suspend fun grantPurchasedGems(
         purchaseId: String,

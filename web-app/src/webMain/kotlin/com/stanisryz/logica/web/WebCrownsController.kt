@@ -358,15 +358,22 @@ internal class WebCrownsController(
                     ) {
                         completion.saveSolved(source.attempt, PuzzleStars.forMistakes(updated.mistakesUsed))
                     }
-                    // Catalog terminals feed the wallet; Daily is intentionally absent here.
-                    economy.recordCatalogTerminalResult(
+                    // Catalog terminals feed the wallet.
+                    economy.recordTerminalResult(
                         PuzzleType.CROWNS,
                         source.attempt.levelId.difficulty,
                         solved = updated.status == CrownsGameStatus.SOLVED,
                     )
                 }
-                is WebGameplaySource.DailyChallenge ->
+                is WebGameplaySource.DailyChallenge -> {
                     dailyCompletion.saveTerminal(source.attempt, outcome)
+                    // A Daily result feeds the wallet like a Catalog one: a failure costs a life.
+                    economy.recordTerminalResult(
+                        PuzzleType.CROWNS,
+                        source.difficulty,
+                        solved = outcome == WebStatisticsTerminalOutcome.SOLVED,
+                    )
+                }
             }
         }
     }

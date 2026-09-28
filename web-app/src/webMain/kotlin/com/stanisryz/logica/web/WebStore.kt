@@ -442,6 +442,11 @@ internal class WebStoreProcessor(
                     granted = restored
                     currentEconomy.lives + restored
                 }
+                StoreRewardType.GEMS -> {
+                    // Gems are never sold for gems.
+                    recordAttempt(store, item, PurchaseStatus.FAILED, playerId)
+                    return PurchaseResult.Failure(PurchaseStatus.FAILED, item, item.priceGems, currentEconomy.gems)
+                }
             }
 
         // One shared transaction revision for both sides of this single logical purchase.

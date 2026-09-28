@@ -13,7 +13,7 @@ import kotlin.test.assertTrue
 
 /**
  * Stage 45.15: paid consumable fulfillment is keyed by the opaque Yandex purchaseToken,
- * grants exactly +100 gems exactly once, survives interrupted local fulfillment through its
+ * grants exactly +150 gems exactly once, survives interrupted local fulfillment through its
  * durable journal, and converges cloud-flush/consume retries without ever paying twice.
  */
 class WebPaymentsTest {
@@ -116,7 +116,7 @@ class WebPaymentsTest {
             scope = CoroutineScope(EmptyCoroutineContext),
         )
 
-    // Test 1: one token grants exactly +100 gems exactly once.
+    // Test 1: one token grants exactly +150 gems exactly once.
     @Test
     fun samePurchaseTokenNeverGrantsTwice() =
         runTest {
@@ -128,16 +128,16 @@ class WebPaymentsTest {
             val coordinator =
                 coordinator(economy, payments, FakeJournalStore(), revisions, FakeUnifiedSaveAccess(), FakePaymentsProvider())
 
-            val outcome = coordinator.fulfillPurchase(PaymentPurchaseSnapshot("tok-1", "gems_small"))
+            val outcome = coordinator.fulfillPurchase(PaymentPurchaseSnapshot("tok-1", "gems_150"))
             assertEquals(WebPaymentOutcome.Fulfilled, outcome)
-            assertEquals(100, economy.currentSnapshot.gems)
+            assertEquals(150, economy.currentSnapshot.gems)
             assertTrue(payments.isFulfilled("tok-1"))
 
             // Presenting the SAME token again must never pay a second time.
             val repeatOutcome =
-                coordinator.fulfillPurchase(PaymentPurchaseSnapshot("tok-1", "gems_small"))
+                coordinator.fulfillPurchase(PaymentPurchaseSnapshot("tok-1", "gems_150"))
             assertEquals(WebPaymentOutcome.AlreadyFulfilled, repeatOutcome)
-            assertEquals(100, economy.currentSnapshot.gems)
+            assertEquals(150, economy.currentSnapshot.gems)
             assertEquals(1, payments.snapshot.value.fulfilledTokens.size)
         }
 
@@ -156,7 +156,7 @@ class WebPaymentsTest {
             // in-memory repositories never saw anything (fresh process), payments never applied.
             val targetEconomy =
                 WebEconomySnapshot(
-                    gems = 100,
+                    gems = 150,
                     lives = 5,
                     nextLifeRestoreAtEpochMs = null,
                     revision = 3L,
@@ -165,10 +165,10 @@ class WebPaymentsTest {
                 WebPendingPaymentFulfillment(
                     id = "pay-1",
                     purchaseToken = "tok-9",
-                    productId = "gems_small",
+                    productId = "gems_150",
                     targetEconomy = targetEconomy,
                     targetPayments =
-                        WebPaymentsSnapshot(fulfilledTokens = mapOf("tok-9" to "gems_small")),
+                        WebPaymentsSnapshot(fulfilledTokens = mapOf("tok-9" to "gems_150")),
                 )
             journal.save(fulfillment)
             economyFake.snapshot = targetEconomy
@@ -178,19 +178,19 @@ class WebPaymentsTest {
             val payments = paymentsRepository(paymentsFake)
             val coordinator = coordinator(economy, payments, journal, revisions, unified, provider)
             assertTrue(coordinator.recoverPendingFulfillment())
-            assertEquals(100, economy.currentSnapshot.gems)
+            assertEquals(150, economy.currentSnapshot.gems)
             assertTrue(payments.isFulfilled("tok-9"))
             assertNull(journal.stored) // committed: the journal cleared
 
             // A repeated recovery attempt is an idempotent no-op — no double grant.
             assertFalse(coordinator.recoverPendingFulfillment())
-            assertEquals(100, economy.currentSnapshot.gems)
+            assertEquals(150, economy.currentSnapshot.gems)
             assertEquals(1, payments.snapshot.value.fulfilledTokens.size)
 
             // The same token can never pay again through normal fulfillment either.
-            val replayOutcome = coordinator.fulfillPurchase(PaymentPurchaseSnapshot("tok-9", "gems_small"))
+            val replayOutcome = coordinator.fulfillPurchase(PaymentPurchaseSnapshot("tok-9", "gems_150"))
             assertEquals(WebPaymentOutcome.AlreadyFulfilled, replayOutcome)
-            assertEquals(100, economy.currentSnapshot.gems)
+            assertEquals(150, economy.currentSnapshot.gems)
         }
 
     // Test 3: cloud flush gates consumption; failed consume retries through reconcile without
@@ -209,21 +209,21 @@ class WebPaymentsTest {
             val coordinator = coordinator(economy, payments, journal, revisions, unified, provider)
 
             // Local fulfillment succeeds durably (no consume attempt happens here)...
-            assertEquals(WebPaymentOutcome.Fulfilled, coordinator.fulfillPurchase(PaymentPurchaseSnapshot("tok-5", "gems_small")))
-            assertEquals(100, economy.currentSnapshot.gems)
+            assertEquals(WebPaymentOutcome.Fulfilled, coordinator.fulfillPurchase(PaymentPurchaseSnapshot("tok-5", "gems_150")))
+            assertEquals(150, economy.currentSnapshot.gems)
             assertNull(journal.stored)
 
             // ...but the post-bind reconcile's consumption fails while cloud flush works.
-            provider.pending = listOf(PaymentPurchaseSnapshot("tok-5", "gems_small"))
+            provider.pending = listOf(PaymentPurchaseSnapshot("tok-5", "gems_150"))
             coordinator.reconcilePendingPurchases()
             assertEquals(0, provider.consumedTokens.size) // never consumed while failing
-            assertEquals(100, economy.currentSnapshot.gems) // and never granted twice
+            assertEquals(150, economy.currentSnapshot.gems) // and never granted twice
 
             // Later reconcile: consume now succeeds exactly once for this token.
             provider.consumeSucceeds = true
             coordinator.reconcilePendingPurchases()
             assertEquals(listOf("tok-5"), provider.consumedTokens.toList())
-            assertEquals(100, economy.currentSnapshot.gems)
+            assertEquals(150, economy.currentSnapshot.gems)
 
             // A failed canonical flush gates consumption entirely: no consume call at all.
             val failingFlush =
@@ -235,7 +235,7 @@ class WebPaymentsTest {
                     FakeUnifiedSaveAccess().apply { flushSucceeds = false },
                     provider,
                 )
-            provider.pending = listOf(PaymentPurchaseSnapshot("tok-6", "gems_small"))
+            provider.pending = listOf(PaymentPurchaseSnapshot("tok-6", "gems_150"))
             failingFlush.reconcilePendingPurchases()
             assertFalse(provider.consumedTokens.contains("tok-6"))
         }

@@ -133,7 +133,7 @@ fun LogicaApp() {
                     onRestoreLife = economyViewModel::refillLife,
                     onPreloadRewardedAd = rewardedController::preload,
                     onReleaseRewardedAd = rewardedController::release,
-                    onWatchRewardedAd = { rewardedController.show(AndroidAdDisplayHost(it)) },
+                    onWatchRewardedAd = { activity, kind -> rewardedController.show(AndroidAdDisplayHost(activity), kind) },
                     onRetryRewardedAd = rewardedController::retry,
                     onGameplayStarted = interstitialController::onGameplayStarted,
                     onGameplayStopped = interstitialController::onGameplayStopped,

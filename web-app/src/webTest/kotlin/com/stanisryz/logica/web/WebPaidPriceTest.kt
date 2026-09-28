@@ -9,7 +9,7 @@ class WebPaidPriceTest {
         price: String?,
         priceValue: String?,
         code: String?,
-    ) = PaymentProductSnapshot("gems_small", null, null, price, priceValue, code, null)
+    ) = PaymentProductSnapshot("gems_150", null, null, price, priceValue, code, null)
 
     @Test
     fun catalogPriceAlreadyNamesItsCurrencyAndIsShownAsIs() {

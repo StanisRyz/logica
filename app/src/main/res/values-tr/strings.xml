@@ -27,7 +27,7 @@
     <string name="next_level">Sonraki seviye</string>
     <string name="level_content_error">Seviye içeriği kullanılamıyor.</string>
     <string name="leave_level_title">Seviyeden çıkılsın mı?</string>
-    <string name="leave_level_body">Bitmemiş seviye kaydedilmez: bu denemedeki ilerleme kaybolur.</string>
+    <string name="leave_level_body">Bitmemiş seviye kaydedilmez: bu denemedeki ilerleme kaybolur ve çıkmak bir cana mal olur.</string>
     <string name="leave_level_confirm">Çık</string>
     <string name="leave_level_stay">Kal</string>
     <string name="creating_puzzle">Bulmaca oluşturuluyor…</string>
@@ -211,4 +211,9 @@
         <item quantity="one">%1$d elmas daha gerekli</item>
         <item quantity="other">%1$d elmas daha gerekli</item>
     </plurals>
+    <string name="store_rewarded_gem_title">+1 elmas</string>
+    <string name="store_rewarded_life_title">+1 can</string>
+    <string name="store_rewarded_offer">Kısa bir reklam izleyerek</string>
+    <string name="store_rewarded_watch">İzle</string>
+    <string name="store_rewarded_unavailable">Reklam şu anda kullanılamıyor.</string>
 </resources>

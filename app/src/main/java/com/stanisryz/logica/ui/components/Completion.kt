@@ -5,6 +5,7 @@ import androidx.compose.ui.res.stringResource
 import com.stanisryz.logica.R
 import com.stanisryz.logica.economy.EconomyRules
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 
 /**
@@ -17,6 +18,7 @@ import com.stanisryz.logica.result.CompletionPersistence
  */
 @Composable
 internal fun PuzzleTerminalDialog(
+    puzzleType: PuzzleType,
     isSolved: Boolean,
     completionPersistence: CompletionPersistence,
     levelNumber: Int?,
@@ -42,7 +44,7 @@ internal fun PuzzleTerminalDialog(
         onRetrySave = onRetryCompletion,
         onExit = onGameHub,
         saveErrorDetail = stringResource(R.string.completion_save_error_body),
-        economy = resultEconomy(isSolved, difficulty),
+        economy = resultEconomy(isSolved, puzzleType, difficulty),
         mistakesUsed = mistakesUsed,
         maxMistakes = maxMistakes,
         hintsUsed = hintsUsed,
@@ -61,13 +63,14 @@ internal fun CompletionPersistence.toResultSaveState(): GameResultSaveState =
         -> GameResultSaveState.SAVING
     }
 
-/** A solved attempt pays its difficulty reward, a failed one costs one life (`EconomyRules`). */
+/** A solved attempt pays its game and difficulty reward, a failed one costs one life (`EconomyRules`). */
 internal fun resultEconomy(
     isSolved: Boolean,
+    puzzleType: PuzzleType,
     difficulty: Difficulty,
 ): GameResultEconomy =
     if (isSolved) {
-        GameResultEconomy(gemsEarned = EconomyRules.solvedGemReward(difficulty))
+        GameResultEconomy(gemsEarned = EconomyRules.solvedGemReward(puzzleType, difficulty))
     } else {
         GameResultEconomy(livesLost = EconomyRules.FAILED_LIFE_PENALTY)
     }

@@ -29,7 +29,7 @@
     <string name="next_level">Следующий уровень</string>
     <string name="level_content_error">Содержимое уровня недоступно.</string>
     <string name="leave_level_title">Выйти из уровня?</string>
-    <string name="leave_level_body">Незавершённый уровень не сохраняется: прогресс этой попытки будет потерян.</string>
+    <string name="leave_level_body">Незавершённый уровень не сохраняется: прогресс этой попытки пропадёт, а выход стоит одну жизнь.</string>
     <string name="leave_level_confirm">Выйти</string>
     <string name="leave_level_stay">Остаться</string>
     <string name="creating_puzzle">Создаём головоломку…</string>
@@ -221,4 +221,9 @@
         <item quantity="other">Не хватает %1$d кристалла</item>
     </plurals>
     <string name="hints_store_balance">Подсказок сейчас: %1$d</string>
+    <string name="store_rewarded_gem_title">+1 кристалл</string>
+    <string name="store_rewarded_life_title">+1 жизнь</string>
+    <string name="store_rewarded_offer">За просмотр короткой рекламы</string>
+    <string name="store_rewarded_watch">Смотреть</string>
+    <string name="store_rewarded_unavailable">Реклама сейчас недоступна.</string>
 </resources>

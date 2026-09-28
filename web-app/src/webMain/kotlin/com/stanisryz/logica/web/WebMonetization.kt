@@ -78,7 +78,7 @@ internal class WebAdPolicy(
 
 /**
  * Applies completed advertisement rewards through the existing systems only: hints go to Store
- * inventory, life restores go to the Economy wallet. The service knows nothing about UI or any
+ * inventory, life restores and gems go to the Economy wallet. The service knows nothing about UI or any
  * individual puzzle, and it never touches Daily state.
  */
 internal class WebRewardService(
@@ -94,6 +94,10 @@ internal class WebRewardService(
             StoreRewardType.LIFE_RESTORE -> {
                 val economy = economyRepository() ?: return false
                 economy.restoreLives(reward.amount)
+            }
+            StoreRewardType.GEMS -> {
+                val economy = economyRepository() ?: return false
+                economy.grantGems(reward.amount)
             }
         }
 }

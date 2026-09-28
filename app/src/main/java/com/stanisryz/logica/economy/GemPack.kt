@@ -12,8 +12,8 @@ internal enum class GemPack(
     val gems: Int,
 ) {
     GEMS_50("gems_50", 50),
-    GEMS_250("gems_250", 250),
-    GEMS_600("gems_600", 600),
+    GEMS_150("gems_150", 150),
+    GEMS_500("gems_500", 500),
     ;
 
     companion object {

@@ -4,6 +4,9 @@ package com.stanisryz.logica.platform
 enum class StoreRewardType {
     HINTS,
     LIFE_RESTORE,
+
+    /** Gems themselves, granted only by a rewarded advertisement, never sold for gems. */
+    GEMS,
 }
 
 /** A positive grant attached to a Store item. */

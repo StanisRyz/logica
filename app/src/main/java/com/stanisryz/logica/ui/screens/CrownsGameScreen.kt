@@ -29,6 +29,7 @@ import com.stanisryz.logica.puzzle.core.crowns.CrownsPosition
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPuzzle
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleMistakes
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.ui.components.GameplayExitGuard
@@ -233,6 +234,7 @@ private fun CrownsReadyState(
 
     if (game.status.isTerminal) {
         PuzzleTerminalDialog(
+            puzzleType = PuzzleType.CROWNS,
             isSolved = game.status == CrownsGameStatus.SOLVED,
             completionPersistence = completionPersistence,
             levelNumber = levelNumber,

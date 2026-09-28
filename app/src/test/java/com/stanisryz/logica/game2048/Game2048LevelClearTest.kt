@@ -256,6 +256,10 @@ class Game2048LevelClearTest {
             offer: HintOffer,
         ): EconomyHintPurchase = error("Unused")
 
+        override suspend fun spendLifeForAbandonedAttempt(actionId: String) = Unit
+
+        override suspend fun grantRewardedGem(actionId: String): Boolean = error("Unused")
+
         override suspend fun grantRewardedLife(actionId: String): EconomyRewardedLife = error("Unused")
 
         override suspend fun grantPurchasedGems(

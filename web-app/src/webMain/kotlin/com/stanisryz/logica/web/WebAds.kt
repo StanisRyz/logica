@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /** Stable production placement identities for the internal monetization analytics. */
 internal object WebAdPlacements {
-    const val STORE_HINT_REWARDED = "store_hint_rewarded"
+    const val STORE_GEM_REWARDED = "store_gem_rewarded"
     const val CATALOG_NEXT_LEVEL_INTERSTITIAL = "catalog_next_level_interstitial"
     const val GAMEPLAY_TRANSITION_INTERSTITIAL = "gameplay_transition_interstitial"
 }
@@ -39,7 +39,7 @@ internal enum class WebRewardedAdState {
 
 /**
  * One rewarded placement: UI -> controller -> Yandex rewarded provider -> [WebRewardService] ->
- * existing Store inventory ([HINT_REWARD]) or Economy wallet ([LIFE_REWARD]) -> normal
+ * Economy wallet ([GEM_REWARD], [LIFE_REWARD]) -> normal
  * durable-change unified save flow. Each placement owns its own controller instance.
  *
  * Hardening (45.14a): every invocation owns a runtime-only session id; callbacks may mutate
@@ -136,14 +136,14 @@ internal class WebRewardedPlacementController(
 
     companion object {
         /** The explicit, always-disclosed exchanges of the two placements. */
-        val HINT_REWARD = AdRewardDefinition(rewardType = StoreRewardType.HINTS, amount = 3)
+        val GEM_REWARD = AdRewardDefinition(rewardType = StoreRewardType.GEMS, amount = 1)
         val LIFE_REWARD = AdRewardDefinition(rewardType = StoreRewardType.LIFE_RESTORE, amount = 1)
     }
 }
 
-/** The two rewarded placements: +3 hints in the Store, +1 life in the Store and the no-lives dialog. */
+/** The two rewarded placements: +1 gem in the Store, +1 life in the Store and the no-lives dialog. */
 internal class WebRewardedAds(
-    val hints: WebRewardedPlacementController,
+    val gems: WebRewardedPlacementController,
     val life: WebRewardedPlacementController,
 )
 

@@ -16,10 +16,10 @@ class GemPurchaseEconomyTest {
         runBlocking {
             val dao = FakeEconomyDao(PlayerEconomy(gems = 7, lives = 3, nextLifeAtEpochMillis = NOW + INTERVAL))
 
-            val granted = dao.grantPurchasedGems("rustore:XYZ", "gems_250", NOW) as EconomyGemPurchase.Granted
+            val granted = dao.grantPurchasedGems("rustore:XYZ", "gems_150", NOW) as EconomyGemPurchase.Granted
 
-            assertEquals(GemPack.GEMS_250, granted.pack)
-            assertEquals(7 + 250, granted.economy.gems)
+            assertEquals(GemPack.GEMS_150, granted.pack)
+            assertEquals(7 + 150, granted.economy.gems)
             // A purchase buys gems and only gems: lives and the running countdown are untouched.
             assertEquals(3, granted.economy.lives)
             assertEquals(NOW + INTERVAL, granted.economy.nextLifeAtEpochMillis)
@@ -28,10 +28,10 @@ class GemPurchaseEconomyTest {
             assertEquals(0, dao.events.getValue("rustore:XYZ").lifeDelta)
 
             // The same payment again adds nothing, whatever brought it back.
-            val repeated = dao.grantPurchasedGems("rustore:XYZ", "gems_250", NOW)
+            val repeated = dao.grantPurchasedGems("rustore:XYZ", "gems_150", NOW)
 
             assertTrue(repeated is EconomyGemPurchase.AlreadyGranted)
-            assertEquals(7 + 250, dao.wallet(NOW).gems)
+            assertEquals(7 + 150, dao.wallet(NOW).gems)
             assertEquals(1, dao.events.size)
 
             // A product this build has no reward for is worth exactly nothing; nothing is inferred
@@ -40,7 +40,7 @@ class GemPurchaseEconomyTest {
                 dao.grantPurchasedGems("rustore:ABC", "gems_9000", NOW) as EconomyGemPurchase.UnsupportedProduct
 
             assertEquals("gems_9000", unknown.productId)
-            assertEquals(7 + 250, dao.wallet(NOW).gems)
+            assertEquals(7 + 150, dao.wallet(NOW).gems)
             assertEquals(3, dao.wallet(NOW).lives)
             assertEquals(1, dao.events.size)
         }

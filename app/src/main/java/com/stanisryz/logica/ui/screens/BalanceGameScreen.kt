@@ -29,6 +29,7 @@ import com.stanisryz.logica.puzzle.core.balance.BalancePosition
 import com.stanisryz.logica.puzzle.core.balance.BalancePuzzle
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleMistakes
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.ui.balance.BalanceGameContent
@@ -229,6 +230,7 @@ private fun ReadyState(
     )
     if (game.status.isTerminal) {
         PuzzleTerminalDialog(
+            puzzleType = PuzzleType.BALANCE,
             isSolved = game.status == BalanceGameStatus.SOLVED,
             completionPersistence = completionPersistence,
             levelNumber = levelNumber,

@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.ui.components.GameResultDialog
 import com.stanisryz.logica.ui.components.GameResultEconomy
 import com.stanisryz.logica.ui.components.GameResultSaveState
@@ -101,6 +102,7 @@ internal fun WebCatalogLevelErrorContent(
 
 @Composable
 internal fun WebOrdinaryCatalogTerminalDialog(
+    puzzleType: PuzzleType,
     visible: Boolean,
     levelNumber: Int,
     difficulty: Difficulty,
@@ -141,7 +143,7 @@ internal fun WebOrdinaryCatalogTerminalDialog(
         saveErrorDetail = saveError?.let { stringResource(WebRes.string.web_save_error_catalog, it.detail) },
         economy =
             if (solved) {
-                GameResultEconomy(gemsEarned = WebEconomyProcessor.gemRewardFor(difficulty))
+                GameResultEconomy(gemsEarned = WebEconomyProcessor.gemRewardFor(puzzleType, difficulty))
             } else {
                 GameResultEconomy(livesLost = 1)
             },
@@ -154,6 +156,7 @@ internal fun WebOrdinaryCatalogTerminalDialog(
 
 @Composable
 internal fun WebDailyOrdinaryTerminalDialog(
+    puzzleType: PuzzleType,
     visible: Boolean,
     difficulty: Difficulty,
     solved: Boolean,
@@ -185,6 +188,12 @@ internal fun WebDailyOrdinaryTerminalDialog(
         onRetrySave = onRetrySave,
         onExit = onExit,
         detail = scoreDetail,
+        economy =
+            if (solved) {
+                GameResultEconomy(gemsEarned = WebEconomyProcessor.gemRewardFor(puzzleType, difficulty))
+            } else {
+                GameResultEconomy(livesLost = 1)
+            },
         saveErrorDetail =
             (completion as? WebDailyCompletionState.SaveError)?.let {
                 stringResource(WebRes.string.web_save_error_daily, it.detail)
@@ -232,6 +241,7 @@ internal fun Web2048CatalogTerminalDialog(
 ) {
     if (!visible) return
     WebOrdinaryCatalogTerminalDialog(
+        puzzleType = PuzzleType.GAME_2048,
         visible = true,
         levelNumber = levelNumber,
         difficulty = difficulty,

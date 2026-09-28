@@ -280,15 +280,18 @@ internal class WebWordController(
                                             PuzzleStars.forWordAttempts(updated.game.attempts.size),
                                         )
                                     }
-                                    // Catalog terminals feed the wallet; Daily is intentionally absent here.
-                                    economy.recordCatalogTerminalResult(
+                                    // Catalog terminals feed the wallet.
+                                    economy.recordTerminalResult(
                                         PuzzleType.WORD,
                                         source.attempt.levelId.difficulty,
                                         solved = solved,
                                     )
                                 }
-                                is WebGameplaySource.DailyChallenge ->
+                                is WebGameplaySource.DailyChallenge -> {
                                     dailyCompletion.saveTerminal(source.attempt, outcome, wordAttemptsUsed)
+                                    // A Daily result feeds the wallet like a Catalog one: a failure costs a life.
+                                    economy.recordTerminalResult(PuzzleType.WORD, source.difficulty, solved = solved)
+                                }
                             }
                         }
                     }

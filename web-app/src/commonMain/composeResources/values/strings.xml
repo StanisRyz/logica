@@ -16,7 +16,7 @@
     <string name="web_rules">Правила</string>
     <string name="web_how_to_play_title">Как играть: %1$s</string>
     <string name="web_leave_title">Выйти из уровня?</string>
-    <string name="web_leave_body">Незавершённый уровень не сохраняется: прогресс этой попытки будет потерян.</string>
+    <string name="web_leave_body">Незавершённый уровень не сохраняется: прогресс этой попытки пропадёт, а выход стоит одну жизнь.</string>
     <string name="web_leave_confirm">Выйти</string>
     <string name="web_leave_stay">Остаться</string>
     <string name="web_wallet_lives">Жизни: %1$d из %2$d</string>
@@ -37,7 +37,7 @@
     <string name="web_lives_next"> · новая через %1$s</string>
     <string name="web_no_lives_title">Жизни закончились</string>
     <string name="web_no_lives_next">Новая жизнь появится через %1$s. </string>
-    <string name="web_no_lives_body">Жизнь можно получить за рекламу или восстановить в магазине. Задача дня доступна и без жизней.</string>
+    <string name="web_no_lives_body">Жизнь можно получить за рекламу или восстановить в магазине.</string>
     <string name="web_life_ad_button">+1 жизнь за рекламу</string>
     <string name="web_ad_showing">Идёт реклама…</string>
     <string name="web_life_ad_granted">Реклама просмотрена: +1 жизнь.</string>
@@ -45,8 +45,8 @@
     <string name="web_got_it">Понятно</string>
     <string name="web_store_next_life">Новая жизнь через %1$s</string>
     <string name="web_wallet_unavailable">Кошелёк недоступен</string>
-    <string name="web_store_hints_ad_title">+3 подсказки</string>
-    <string name="web_store_hints_ad_granted">Реклама просмотрена: +3 подсказки.</string>
+    <string name="web_store_gem_ad_title">+1 кристалл</string>
+    <string name="web_store_gem_ad_granted">Реклама просмотрена: +1 кристалл.</string>
     <string name="web_store_life_ad_title">+1 жизнь</string>
     <string name="web_store_section_gems">Кристаллы</string>
     <string name="web_store_section_for_gems">За кристаллы</string>
@@ -54,7 +54,7 @@
     <string name="web_paid_purchasing">Открывается оплата…</string>
     <string name="web_paid_fulfilling">Начисляем кристаллы…</string>
     <string name="web_paid_saving">Сохраняем покупку…</string>
-    <string name="web_paid_success">Покупка завершена: +100 кристаллов.</string>
+    <string name="web_paid_success">Покупка завершена: кристаллы начислены.</string>
     <string name="web_paid_cancelled">Оплата отменена.</string>
     <string name="web_paid_unavailable">Оплата сейчас недоступна.</string>
     <string name="web_paid_pending">Покупка сохранена и будет завершена автоматически.</string>
@@ -72,7 +72,7 @@
     <string name="web_item_hint_pack">Набор подсказок</string>
     <string name="web_item_life">Восстановление жизни</string>
     <string name="web_no_hints_title">Подсказки закончились</string>
-    <string name="web_no_hints_body">Подсказки можно купить в магазине за кристаллы или получить бесплатно за просмотр рекламы. Магазин откроется поверх игры — партия останется на месте.</string>
+    <string name="web_no_hints_body">Подсказки можно купить в магазине за кристаллы. Магазин откроется поверх игры — партия останется на месте.</string>
     <string name="web_not_now">Не сейчас</string>
     <string name="web_back_to_game">Вернуться к игре</string>
     <string name="web_leaderboard_title">Рейтинг: решено головоломок</string>

@@ -34,9 +34,9 @@ class GemPurchaseProcessorTest {
             val gateway = FakeStoreGateway()
             val processor = GemPurchaseProcessor(gateway, TEST_PRODUCTS, FakeEconomyRepository(dao))
 
-            gateway.nextResult = confirmed("p-1", TEST_PRODUCTS.productId(GemPack.GEMS_250))
-            assertEquals(GemPurchaseOutcome.Granted(GemPack.GEMS_250), processor.buy(GemPack.GEMS_250))
-            assertEquals(250, dao.wallet(NOW).gems)
+            gateway.nextResult = confirmed("p-1", TEST_PRODUCTS.productId(GemPack.GEMS_150))
+            assertEquals(GemPurchaseOutcome.Granted(GemPack.GEMS_150), processor.buy(GemPack.GEMS_150))
+            assertEquals(150, dao.wallet(NOW).gems)
             assertEquals(listOf("p-1"), gateway.finalized)
 
             // Everything that is not a confirmed payment leaves the wallet exactly where it was.
@@ -47,15 +47,15 @@ class GemPurchaseProcessorTest {
             gateway.nextResult = PlatformPurchaseResult.Failed(IllegalStateException("network"))
             assertEquals(GemPurchaseOutcome.Failed, processor.buy(GemPack.GEMS_50))
 
-            assertEquals(250, dao.wallet(NOW).gems)
+            assertEquals(150, dao.wallet(NOW).gems)
             assertEquals(1, dao.events.size)
 
             // A confirmed purchase of a product this build does not know grants nothing and is left
             // open rather than acknowledged, so a later build could still honour it.
             gateway.nextResult = confirmed("p-2", "gems_9000")
-            assertEquals(GemPurchaseOutcome.Failed, processor.buy(GemPack.GEMS_600))
+            assertEquals(GemPurchaseOutcome.Failed, processor.buy(GemPack.GEMS_500))
 
-            assertEquals(250, dao.wallet(NOW).gems)
+            assertEquals(150, dao.wallet(NOW).gems)
             assertEquals(1, dao.events.size)
             assertEquals(listOf("p-1"), gateway.finalized)
         }
@@ -68,17 +68,17 @@ class GemPurchaseProcessorTest {
             val processor = GemPurchaseProcessor(gateway, TEST_PRODUCTS, FakeEconomyRepository(dao))
 
             // The gems land, then the process effectively dies before RuStore is told about it.
-            gateway.nextResult = confirmed("p-1", TEST_PRODUCTS.productId(GemPack.GEMS_250))
-            assertEquals(GemPurchaseOutcome.Granted(GemPack.GEMS_250), processor.buy(GemPack.GEMS_250))
-            assertEquals(250, dao.wallet(NOW).gems)
+            gateway.nextResult = confirmed("p-1", TEST_PRODUCTS.productId(GemPack.GEMS_150))
+            assertEquals(GemPurchaseOutcome.Granted(GemPack.GEMS_150), processor.buy(GemPack.GEMS_150))
+            assertEquals(150, dao.wallet(NOW).gems)
             assertEquals(emptyList<String>(), gateway.finalized)
 
             // RuStore therefore still considers it undelivered and hands it back.
-            gateway.unfinalized = listOf(platformPurchase("p-1", TEST_PRODUCTS.productId(GemPack.GEMS_250)))
+            gateway.unfinalized = listOf(platformPurchase("p-1", TEST_PRODUCTS.productId(GemPack.GEMS_150)))
             val reconciled = processor.reconcile()
 
             assertTrue(reconciled.single() is EconomyGemPurchase.AlreadyGranted)
-            assertEquals(250, dao.wallet(NOW).gems)
+            assertEquals(150, dao.wallet(NOW).gems)
             assertEquals(1, dao.events.size)
             // Only the finalization was retried, and this time it stuck.
             assertEquals(listOf("p-1"), gateway.finalized)
@@ -107,8 +107,8 @@ private val TEST_PRODUCTS =
     GemPackProductMapping(
         mapOf(
             GemPack.GEMS_50 to "provider-small",
-            GemPack.GEMS_250 to "provider-medium",
-            GemPack.GEMS_600 to "provider-large",
+            GemPack.GEMS_150 to "provider-medium",
+            GemPack.GEMS_500 to "provider-large",
         ),
     )
 
@@ -152,6 +152,10 @@ private class FakeEconomyRepository(
         actionId: String,
         offer: HintOffer,
     ): EconomyHintPurchase = dao.buyHintsWithGems(actionId, offer, NOW)
+
+    override suspend fun spendLifeForAbandonedAttempt(actionId: String) = Unit
+
+    override suspend fun grantRewardedGem(actionId: String): Boolean = dao.grantRewardedGem(actionId, NOW)
 
     override suspend fun grantRewardedLife(actionId: String): EconomyRewardedLife = dao.grantRewardedLife(actionId, NOW)
 

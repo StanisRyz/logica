@@ -17,6 +17,7 @@ import com.stanisryz.logica.economy.solvedReward
 import com.stanisryz.logica.economy.toEntity
 import com.stanisryz.logica.economy.toPlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 
 @Dao
 internal interface GameCompletionDao {
@@ -230,7 +231,11 @@ internal interface GameCompletionDao {
         val effect: EconomyEffect =
             when (result.outcome) {
                 GameOutcome.SOLVED.name ->
-                    current.solvedReward(result.resultId, Difficulty.valueOf(result.difficulty))
+                    current.solvedReward(
+                        result.resultId,
+                        PuzzleType.valueOf(result.puzzleType),
+                        Difficulty.valueOf(result.difficulty),
+                    )
                 GameOutcome.FAILED.name -> current.failedPenalty(result.resultId, now)
                 else -> return
             }

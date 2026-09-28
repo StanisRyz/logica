@@ -17,7 +17,11 @@ plugins {
 /** Private build configuration from `local.properties`, which Gradle itself never reads. */
 val localProperties =
     Properties().apply {
-        rootProject.file("local.properties").takeIf { it.isFile }?.reader()?.use { load(it) }
+        rootProject
+            .file("local.properties")
+            .takeIf { it.isFile }
+            ?.reader()
+            ?.use { load(it) }
     }
 
 /** A private `logica.*` setting: a Gradle property wins, then `local.properties`. */

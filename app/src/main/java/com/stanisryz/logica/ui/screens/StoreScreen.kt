@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Diamond
+import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stanisryz.logica.R
+import com.stanisryz.logica.ads.RewardedAdKind
+import com.stanisryz.logica.ads.RewardedAdState
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.EconomyRules
 import com.stanisryz.logica.economy.GameplayHints
@@ -74,6 +77,7 @@ internal fun StoreRoute(
     storeGateway: StoreGateway,
     storeProducts: GemPackProductMapping,
     modifier: Modifier = Modifier,
+    rewarded: StoreRewardedOffers? = null,
 ) {
     val factory =
         remember(economyRepository, storeGateway, storeProducts) {
@@ -93,8 +97,16 @@ internal fun StoreRoute(
         onDismissOutcome = storeViewModel::dismissOutcome,
         onBuyHints = { offer -> scope.launch { hints.buy(offer) } },
         modifier = modifier,
+        rewarded = rewarded,
     )
 }
+
+/** The Store's rewarded offers: +1 gem always, +1 life while a life is missing. */
+internal data class StoreRewardedOffers(
+    val state: RewardedAdState,
+    val onWatch: (RewardedAdKind) -> Unit,
+    val onRetry: () -> Unit,
+)
 
 /**
  * The same Store, opened over a running game. The game destination stays on the back stack
@@ -108,6 +120,7 @@ internal fun StoreSheet(
     storeGateway: StoreGateway,
     storeProducts: GemPackProductMapping,
     onDismiss: () -> Unit,
+    rewarded: StoreRewardedOffers? = null,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -118,6 +131,7 @@ internal fun StoreSheet(
             economyRepository = economyRepository,
             storeGateway = storeGateway,
             storeProducts = storeProducts,
+            rewarded = rewarded,
         )
     }
 }
@@ -140,6 +154,7 @@ internal fun StoreScreen(
     onDismissOutcome: () -> Unit,
     modifier: Modifier = Modifier,
     onBuyHints: (HintOffer) -> Unit = {},
+    rewarded: StoreRewardedOffers? = null,
 ) {
     // Opening the store is what reconciles anything paid for but not yet credited, and what loads
     // the prices. Leaving the tab clears the last purchase message rather than keeping it forever.
@@ -154,6 +169,11 @@ internal fun StoreScreen(
             maximumLives = EconomyRules.MAX_LIVES,
             hints = economy.hints,
         )
+        rewarded?.let { offers ->
+            RewardedStoreRow(offers, RewardedAdKind.GEM)
+            // The life offer exists only while a life is actually missing.
+            if (!economy.isFull) RewardedStoreRow(offers, RewardedAdKind.LIFE)
+        }
         StoreSectionTitle(stringResource(R.string.gem_store_section))
         AnimatedContent(
             targetState = state,
@@ -187,6 +207,39 @@ internal fun StoreScreen(
                 subtitleColor = MaterialTheme.colorScheme.error,
             ) {
                 GemPriceButton(price = offer.gemCost, enabled = missing == 0, onClick = { onBuyHints(offer) })
+            }
+        }
+    }
+}
+
+/** One rewarded offer; the exchange is always disclosed and a failed load is retried only on request. */
+@Composable
+private fun RewardedStoreRow(
+    offers: StoreRewardedOffers,
+    kind: RewardedAdKind,
+) {
+    val state = offers.state
+    StoreItemRow(
+        icon = if (kind == RewardedAdKind.GEM) Icons.Rounded.Diamond else Icons.Rounded.Favorite,
+        title =
+            stringResource(
+                if (kind == RewardedAdKind.GEM) R.string.store_rewarded_gem_title else R.string.store_rewarded_life_title,
+            ),
+        subtitle =
+            stringResource(
+                when (state) {
+                    RewardedAdState.UNAVAILABLE -> R.string.store_rewarded_unavailable
+                    RewardedAdState.SHOWING -> R.string.economy_rewarded_ad_showing
+                    RewardedAdState.READY -> R.string.store_rewarded_offer
+                    RewardedAdState.IDLE, RewardedAdState.LOADING -> R.string.economy_rewarded_ad_loading
+                },
+            ),
+    ) {
+        if (state == RewardedAdState.UNAVAILABLE) {
+            TextButton(onClick = offers.onRetry) { Text(stringResource(R.string.economy_rewarded_ad_retry)) }
+        } else {
+            Button(onClick = { offers.onWatch(kind) }, enabled = state == RewardedAdState.READY) {
+                Text(stringResource(R.string.store_rewarded_watch))
             }
         }
     }

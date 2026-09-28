@@ -16,7 +16,7 @@
     <string name="web_rules">Kurallar</string>
     <string name="web_how_to_play_title">Nasıl oynanır: %1$s</string>
     <string name="web_leave_title">Seviyeden çıkılsın mı?</string>
-    <string name="web_leave_body">Bitmemiş seviye kaydedilmez: bu denemedeki ilerleme kaybolur.</string>
+    <string name="web_leave_body">Bitmemiş seviye kaydedilmez: bu denemedeki ilerleme kaybolur ve çıkmak bir cana mal olur.</string>
     <string name="web_leave_confirm">Çık</string>
     <string name="web_leave_stay">Kal</string>
     <string name="web_wallet_lives">Can: %1$d / %2$d</string>
@@ -37,7 +37,7 @@
     <string name="web_lives_next"> · yenisi %1$s sonra</string>
     <string name="web_no_lives_title">Canın kalmadı</string>
     <string name="web_no_lives_next">Yeni can %1$s sonra gelecek. </string>
-    <string name="web_no_lives_body">Reklam izleyerek can kazanabilir ya da mağazadan yenileyebilirsin. Günün bulmacası can olmadan da oynanır.</string>
+    <string name="web_no_lives_body">Reklam izleyerek can kazanabilir ya da mağazadan yenileyebilirsin.</string>
     <string name="web_life_ad_button">Reklamla +1 can</string>
     <string name="web_ad_showing">Reklam oynatılıyor…</string>
     <string name="web_life_ad_granted">Reklam izlendi: +1 can.</string>
@@ -45,8 +45,8 @@
     <string name="web_got_it">Anladım</string>
     <string name="web_store_next_life">Yeni can %1$s sonra</string>
     <string name="web_wallet_unavailable">Cüzdan kullanılamıyor</string>
-    <string name="web_store_hints_ad_title">+3 ipucu</string>
-    <string name="web_store_hints_ad_granted">Reklam izlendi: +3 ipucu.</string>
+    <string name="web_store_gem_ad_title">+1 elmas</string>
+    <string name="web_store_gem_ad_granted">Reklam izlendi: +1 elmas.</string>
     <string name="web_store_life_ad_title">+1 can</string>
     <string name="web_store_section_gems">Elmaslar</string>
     <string name="web_store_section_for_gems">Elmasla</string>
@@ -54,7 +54,7 @@
     <string name="web_paid_purchasing">Ödeme açılıyor…</string>
     <string name="web_paid_fulfilling">Elmaslar ekleniyor…</string>
     <string name="web_paid_saving">Satın alma kaydediliyor…</string>
-    <string name="web_paid_success">Satın alma tamamlandı: +100 elmas.</string>
+    <string name="web_paid_success">Satın alma tamamlandı: elmaslar hesabına eklendi.</string>
     <string name="web_paid_cancelled">Ödeme iptal edildi.</string>
     <string name="web_paid_unavailable">Ödeme şu anda kullanılamıyor.</string>
     <string name="web_paid_pending">Satın alma kaydedildi ve otomatik olarak tamamlanacak.</string>
@@ -72,7 +72,7 @@
     <string name="web_item_hint_pack">İpucu paketi</string>
     <string name="web_item_life">Can yenileme</string>
     <string name="web_no_hints_title">İpucun kalmadı</string>
-    <string name="web_no_hints_body">İpuçlarını mağazadan elmasla alabilir ya da reklam izleyerek ücretsiz kazanabilirsin. Mağaza oyunun üzerinde açılır, oyunun olduğu gibi kalır.</string>
+    <string name="web_no_hints_body">İpuçlarını mağazadan elmasla alabilirsin. Mağaza oyunun üzerinde açılır, oyunun olduğu gibi kalır.</string>
     <string name="web_not_now">Şimdi değil</string>
     <string name="web_back_to_game">Oyuna dön</string>
     <string name="web_leaderboard_title">Sıralama: çözülen bulmacalar</string>

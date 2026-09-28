@@ -42,8 +42,8 @@ import org.jetbrains.compose.resources.stringResource
 import com.stanisryz.logica.web.generated.resources.Res as WebRes
 
 /**
- * Host-side view of the bound Player's lives. [guard] runs a Catalog attempt start only while at
- * least one life is left; Daily challenges never consume lives on Web and are never gated.
+ * Host-side view of the bound Player's lives. [guard] runs a Catalog or Daily attempt start only
+ * while at least one life is left, exactly like on Android.
  */
 internal class WebLivesUi(
     val state: EconomyState?,

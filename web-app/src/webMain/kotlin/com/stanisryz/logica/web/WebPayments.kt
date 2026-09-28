@@ -9,12 +9,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/** The single application-owned paid product; the gameplay reward never depends on Yandex data. */
+/** The application-owned paid products, the same packs as on Android; the reward never depends on Yandex data. */
 internal enum class WebPaidProduct(
     val yandexProductId: String,
     val gemReward: Int,
 ) {
-    GEMS_SMALL("gems_small", 100),
+    GEMS_50("gems_50", 50),
+    GEMS_150("gems_150", 150),
+    GEMS_500("gems_500", 500),
 }
 
 internal fun paidProductFor(yandexProductId: String): WebPaidProduct? =
@@ -505,6 +507,10 @@ internal class WebPaymentsCoordinator(
     private val mutablePurchaseState = MutableStateFlow(WebPaidPurchaseState.Idle)
     val purchaseState: StateFlow<WebPaidPurchaseState> = mutablePurchaseState.asStateFlow()
 
+    /** The pack the latest interactive purchase was for, so only its row reports the state. */
+    private val mutablePurchasingProduct = MutableStateFlow<WebPaidProduct?>(null)
+    val purchasingProduct: StateFlow<WebPaidProduct?> = mutablePurchasingProduct.asStateFlow()
+
     private val mutableCatalog = MutableStateFlow<WebPaidCatalogState>(WebPaidCatalogState.Loading)
     val catalogState: StateFlow<WebPaidCatalogState> = mutableCatalog.asStateFlow()
 
@@ -527,23 +533,25 @@ internal class WebPaymentsCoordinator(
                     WebPaidCatalogState.Unavailable
                 } else {
                     val entries =
-                        catalog.mapNotNull { details ->
-                            paidProductFor(details.productId)?.let { WebPaidCatalogEntry(it, details) }
-                        }
+                        catalog
+                            .mapNotNull { details ->
+                                paidProductFor(details.productId)?.let { WebPaidCatalogEntry(it, details) }
+                            }.sortedBy { it.product.ordinal }
                     WebPaidCatalogState.Ready(entries)
                 }
         }
     }
 
-    /** User-initiated purchase of the single supported paid product. */
-    fun purchaseGemsSmall() {
+    /** User-initiated purchase of one paid pack. */
+    fun purchase(product: WebPaidProduct) {
         if (activePaymentSession != null) return // one payment session at a time
         val session = ++nextPaymentSessionId
         activePaymentSession = session
         val capturedContext = currentPlayerContext()
+        mutablePurchasingProduct.value = product
         mutablePurchaseState.value = WebPaidPurchaseState.Purchasing
         scope.launch {
-            val result = provider.purchase(WebPaidProduct.GEMS_SMALL.yandexProductId)
+            val result = provider.purchase(product.yandexProductId)
             onInteractiveResult(session, capturedContext, result)
         }
     }
