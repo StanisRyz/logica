@@ -166,7 +166,6 @@
     <string name="game_2048_target_reached">%1$s</string>
     <string name="game_2048_level_cleared">Уровень %1$d пройден</string>
     <string name="game_2048_goal_reached">Цель достигнута</string>
-    <string name="game_2048_level_cleared_hint">Цель достигнута — можно продолжать игру</string>
 
     <string name="sudoku_cell_description">Строка %1$d, столбец %2$d. Значение: %3$s. %4$s%5$s</string>
     <string name="sudoku_selected_suffix"> Клетка выбрана.</string>

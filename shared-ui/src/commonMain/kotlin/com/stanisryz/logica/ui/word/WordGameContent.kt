@@ -63,7 +63,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.word_rejection_finishe
 import com.stanisryz.logica.shared.ui.generated.resources.word_rejection_incomplete
 import com.stanisryz.logica.shared.ui.generated.resources.word_rejection_invalid_letters
 import com.stanisryz.logica.shared.ui.generated.resources.word_rejection_unknown_word
-import com.stanisryz.logica.ui.components.GameHeaderBadges
+import com.stanisryz.logica.ui.components.BoardTitle
 import com.stanisryz.logica.ui.components.GameKey
 import com.stanisryz.logica.ui.components.isWideGameplayLayout
 import com.stanisryz.logica.ui.theme.LogicaSpacing
@@ -355,16 +355,12 @@ private fun WordGameHeader(
     contextBadgeLabel: String?,
     rejectionMessage: String?,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.action, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        GameHeaderBadges(
-            stringResource(puzzle.id.difficulty.labelResource()),
-            levelNumber,
-            modifier = Modifier.weight(1f),
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        BoardTitle(
+            difficultyLabel = stringResource(puzzle.id.difficulty.labelResource()),
+            levelNumber = levelNumber,
             contextLabel = contextBadgeLabel,
+            compact = true,
         )
         if (rejectionMessage != null) {
             Box(
@@ -456,7 +452,7 @@ private const val KEY_HEIGHT_RATIO = 0.068f
 private val MIN_KEY_HEIGHT = 36.dp
 private val MIN_LANDSCAPE_KEY_HEIGHT = 32.dp
 private val MAX_KEY_HEIGHT = 48.dp
-private val HEADER_HEIGHT_BUDGET = 56.dp
+private val HEADER_HEIGHT_BUDGET = 64.dp
 private val MIN_BOARD_HEIGHT = 180.dp
 private val WORD_LANDSCAPE_PANEL_MAX_WIDTH = 280.dp
 private val COMPACT_LANDSCAPE_HEIGHT = 360.dp

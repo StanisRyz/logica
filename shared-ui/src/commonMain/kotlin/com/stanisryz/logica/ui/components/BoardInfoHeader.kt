@@ -68,23 +68,7 @@ fun BoardInfoHeader(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         if (showTitle) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                if (placeLabel.isNotEmpty()) {
-                    Text(
-                        text = placeLabel,
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = colors.onSurface,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                    )
-                }
-                Text(
-                    text = difficultyLabel,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.onSurfaceVariant,
-                    maxLines = 1,
-                )
-            }
+            BoardTitle(difficultyLabel, levelNumber, contextLabel)
             MistakeMarks(mistakesUsed, maxMistakes)
         } else {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -125,6 +109,38 @@ fun BoardInfoHeader(
             strokeCap = StrokeCap.Round,
             gapSize = 0.dp,
             drawStopIndicator = {},
+        )
+    }
+}
+
+/**
+ * The level (or the Daily label) as a title with the difficulty under it: the shared top of every
+ * gameplay screen. [compact] uses a smaller title where the board needs the height (Word).
+ */
+@Composable
+fun BoardTitle(
+    difficultyLabel: String,
+    levelNumber: Int?,
+    contextLabel: String?,
+    modifier: Modifier = Modifier,
+    compact: Boolean = false,
+) {
+    val placeLabel = contextLabel ?: levelNumber?.let { stringResource(Res.string.catalog_level, it) }.orEmpty()
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        if (placeLabel.isNotEmpty()) {
+            Text(
+                text = placeLabel,
+                style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+            )
+        }
+        Text(
+            text = difficultyLabel,
+            style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
         )
     }
 }
