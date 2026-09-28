@@ -436,6 +436,14 @@ private fun ReadyContent(
             continuation,
         )
     }
+    // Every other tapped way out of a game (leaving it, Retry, To difficulty, To games) shares
+    // the same interstitial controller, cooldown, and exactly-once continuation.
+    val runTransitionAd: (() -> Unit) -> Unit = { continuation ->
+        interstitialController.runWithInterstitial(
+            WebAdPlacements.GAMEPLAY_TRANSITION_INTERSTITIAL,
+            continuation,
+        )
+    }
 
     // Lives regenerate while the app is active; a Catalog attempt needs at least one life to start.
     val economyBinding by playerSession.economyBinding.collectAsState()
@@ -510,6 +518,7 @@ private fun ReadyContent(
         LocalWebLives provides livesUi,
         LocalWebOpenStore provides openStore,
         LocalWebKeyboard provides keyboard,
+        LocalWebTransitionAd provides runTransitionAd,
         LocalOpenTutorial provides { puzzleType -> tutorialFor = puzzleType },
     ) {
         tutorialFor?.let { puzzleType ->
@@ -1392,6 +1401,7 @@ private fun PlayingBalanceContent(
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
     val livesGuard = LocalWebLives.current.guard
+    val transitionAd = LocalWebTransitionAd.current
     Column(Modifier.fillMaxSize()) {
         WebGameplayHeader(
             puzzleType = PuzzleType.BALANCE,
@@ -1436,9 +1446,9 @@ private fun PlayingBalanceContent(
             hintsUsed = state.game.hintsUsed,
             solved = state.game.status == BalanceGameStatus.SOLVED,
             completion = controller.dailyCompletionState,
-            onRetry = controller::retry,
+            onRetry = { transitionAd(controller::retry) },
             onRetrySave = controller::retryDailySave,
-            onExit = onExitBalance,
+            onExit = { transitionAd(onExitBalance) },
         )
     } else {
         WebCatalogSaveErrorBanner(
@@ -1454,9 +1464,9 @@ private fun PlayingBalanceContent(
             solved = state.game.status == BalanceGameStatus.SOLVED,
             completion = controller.completionState,
             onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },
-            onRetry = { livesGuard(controller::retry) },
+            onRetry = { livesGuard { transitionAd(controller::retry) } },
             onRetrySave = controller::retrySave,
-            onBack = controller::showDifficultySelector,
+            onBack = { transitionAd(controller::showDifficultySelector) },
         )
     }
 }
@@ -1471,6 +1481,7 @@ private fun PlayingCrownsContent(
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
     val livesGuard = LocalWebLives.current.guard
+    val transitionAd = LocalWebTransitionAd.current
     Column(Modifier.fillMaxSize()) {
         WebGameplayHeader(
             puzzleType = PuzzleType.CROWNS,
@@ -1515,9 +1526,9 @@ private fun PlayingCrownsContent(
             hintsUsed = state.game.hintsUsed,
             solved = state.game.status == CrownsGameStatus.SOLVED,
             completion = controller.dailyCompletionState,
-            onRetry = controller::retry,
+            onRetry = { transitionAd(controller::retry) },
             onRetrySave = controller::retryDailySave,
-            onExit = onExitCrowns,
+            onExit = { transitionAd(onExitCrowns) },
         )
     } else {
         WebCatalogSaveErrorBanner(
@@ -1533,9 +1544,9 @@ private fun PlayingCrownsContent(
             solved = state.game.status == CrownsGameStatus.SOLVED,
             completion = controller.completionState,
             onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },
-            onRetry = { livesGuard(controller::retry) },
+            onRetry = { livesGuard { transitionAd(controller::retry) } },
             onRetrySave = controller::retrySave,
-            onBack = controller::showDifficultySelector,
+            onBack = { transitionAd(controller::showDifficultySelector) },
         )
     }
 }
@@ -1549,6 +1560,7 @@ private fun PlayingWordContent(
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
     val livesGuard = LocalWebLives.current.guard
+    val transitionAd = LocalWebTransitionAd.current
     Column(Modifier.fillMaxSize()) {
         WebGameplayHeader(
             puzzleType = PuzzleType.WORD,
@@ -1584,9 +1596,9 @@ private fun PlayingWordContent(
             scoreDetail = pluralStringResource(WebRes.plurals.web_word_guessed, state.game.attempts.size, state.game.attempts.size),
             stars = starsForWordAttempts(state.game.attempts.size),
             completion = controller.dailyCompletionState,
-            onRetry = controller::retry,
+            onRetry = { transitionAd(controller::retry) },
             onRetrySave = controller::retryDailySave,
-            onExit = onExitWord,
+            onExit = { transitionAd(onExitWord) },
         )
     } else {
         WebCatalogSaveErrorBanner(
@@ -1603,9 +1615,9 @@ private fun PlayingWordContent(
             stars = starsForWordAttempts(state.game.attempts.size),
             failedDetail = stringResource(WebRes.string.web_word_answer, state.puzzle.answer.uppercase()),
             onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },
-            onRetry = { livesGuard(controller::retry) },
+            onRetry = { livesGuard { transitionAd(controller::retry) } },
             onRetrySave = controller::retrySave,
-            onBack = controller::showDifficultySelector,
+            onBack = { transitionAd(controller::showDifficultySelector) },
         )
     }
 }
@@ -1620,6 +1632,7 @@ private fun PlayingSudokuContent(
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
     val livesGuard = LocalWebLives.current.guard
+    val transitionAd = LocalWebTransitionAd.current
     Column(Modifier.fillMaxSize()) {
         WebGameplayHeader(
             puzzleType = PuzzleType.SUDOKU,
@@ -1675,9 +1688,9 @@ private fun PlayingSudokuContent(
             hintsUsed = state.game.hintsUsed,
             solved = state.game.status == SudokuGameStatus.SOLVED,
             completion = controller.dailyCompletionState,
-            onRetry = controller::retry,
+            onRetry = { transitionAd(controller::retry) },
             onRetrySave = controller::retryDailySave,
-            onExit = onExitSudoku,
+            onExit = { transitionAd(onExitSudoku) },
         )
     } else {
         WebCatalogSaveErrorBanner(
@@ -1693,9 +1706,9 @@ private fun PlayingSudokuContent(
             solved = state.game.status == SudokuGameStatus.SOLVED,
             completion = controller.completionState,
             onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },
-            onRetry = { livesGuard(controller::retry) },
+            onRetry = { livesGuard { transitionAd(controller::retry) } },
             onRetrySave = controller::retrySave,
-            onBack = controller::showDifficultySelector,
+            onBack = { transitionAd(controller::showDifficultySelector) },
         )
     }
 }
@@ -1708,6 +1721,7 @@ private fun PlayingGame2048Content(
     onSolvedNextLevel: (() -> Unit) -> Unit,
 ) {
     val livesGuard = LocalWebLives.current.guard
+    val transitionAd = LocalWebTransitionAd.current
     Column(Modifier.fillMaxSize()) {
         WebGameplayHeader(
             puzzleType = PuzzleType.GAME_2048,
@@ -1750,9 +1764,9 @@ private fun PlayingGame2048Content(
             solved = state.game.goalReached,
             scoreDetail = stringResource(WebRes.string.web_score_final, formatGame2048Number(state.game.score)),
             completion = controller.dailyCompletionState,
-            onRetry = controller::retry,
+            onRetry = { transitionAd(controller::retry) },
             onRetrySave = controller::retryDailySave,
-            onExit = onExitGame2048,
+            onExit = { transitionAd(onExitGame2048) },
         )
     } else {
         Web2048CatalogTerminalDialog(
@@ -1763,9 +1777,9 @@ private fun PlayingGame2048Content(
             score = formatGame2048Number(state.game.score),
             completion = controller.completionState,
             onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },
-            onRetry = { livesGuard(controller::retry) },
+            onRetry = { livesGuard { transitionAd(controller::retry) } },
             onRetrySave = controller::retrySave,
-            onBack = controller::showDifficultySelector,
+            onBack = { transitionAd(controller::showDifficultySelector) },
         )
     }
 }

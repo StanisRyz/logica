@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 internal object WebAdPlacements {
     const val STORE_HINT_REWARDED = "store_hint_rewarded"
     const val CATALOG_NEXT_LEVEL_INTERSTITIAL = "catalog_next_level_interstitial"
+    const val GAMEPLAY_TRANSITION_INTERSTITIAL = "gameplay_transition_interstitial"
 }
 
 /**

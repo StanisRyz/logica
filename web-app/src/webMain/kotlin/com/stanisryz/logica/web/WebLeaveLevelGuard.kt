@@ -60,6 +60,13 @@ import org.jetbrains.compose.resources.stringResource
 import com.stanisryz.logica.web.generated.resources.Res as WebRes
 
 /**
+ * Runs a player-tapped transition out of gameplay (leaving a level, Retry, To difficulty, To
+ * games) behind a possible interstitial; the transition runs exactly once whether or not an ad
+ * appears. The default runs it at once.
+ */
+internal val LocalWebTransitionAd = staticCompositionLocalOf<(() -> Unit) -> Unit> { { transition -> transition() } }
+
+/**
  * Gameplay header with the Web counterpart of Android's `LeaveLevelGuard`: leaving a non-terminal
  * attempt that already has real progress asks for confirmation first, because unfinished
  * attempts are never persisted. Everything else leaves immediately.
@@ -72,9 +79,10 @@ internal fun WebGameplayHeader(
     onExit: () -> Unit,
 ) {
     var confirmingExit by remember { mutableStateOf(false) }
+    val transitionAd = LocalWebTransitionAd.current
     WebTopBar(
         backLabel = stringResource(if (isDaily) WebRes.string.web_to_games else WebRes.string.web_to_difficulty),
-        onBack = { if (hasMeaningfulProgress) confirmingExit = true else onExit() },
+        onBack = { if (hasMeaningfulProgress) confirmingExit = true else transitionAd(onExit) },
         title = stringResource(puzzleType.catalogTitleResource()),
         helpFor = puzzleType,
     )
@@ -88,7 +96,7 @@ internal fun WebGameplayHeader(
                 TextButton(
                     onClick = {
                         confirmingExit = false
-                        onExit()
+                        transitionAd(onExit)
                     },
                 ) { Text(stringResource(WebRes.string.web_leave_confirm)) }
             },

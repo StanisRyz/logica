@@ -5,18 +5,21 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.verticalScroll
@@ -225,7 +228,7 @@ private fun PaidGemTopUpCard(
     ) {
         // Portal-supplied price + currency only; never a locally manufactured amount.
         Button(onClick = coordinator::purchaseGemsSmall, enabled = !state.isBusy) {
-            Text(paidPriceLabel(entry.details))
+            PaidPriceLabel(entry.details)
         }
     }
 }
@@ -236,15 +239,27 @@ private val WebPaidPurchaseState.isBusy: Boolean
             this == WebPaidPurchaseState.Fulfilling ||
             this == WebPaidPurchaseState.Saving
 
-/** Price exactly as the Yandex catalog supplies it; currency icon rendering stays host-side. */
-private fun paidPriceLabel(details: PaymentProductSnapshot): String =
-    buildString {
-        append(details.price ?: details.priceValue ?: "")
-        details.priceCurrencyCode?.let { code ->
-            if (isNotEmpty()) append(' ')
-            append(code)
+/**
+ * Price exactly as the Yandex catalog supplies it: the amount with the portal currency icon, or,
+ * while the icon is unavailable, the catalog's own price text, which already names the currency.
+ */
+@Composable
+private fun PaidPriceLabel(details: PaymentProductSnapshot) {
+    val icon = rememberCurrencyIcon(details.priceCurrencyImageUrl)
+    val amount = details.priceValue
+    if (icon != null && amount != null) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(amount)
+            Image(bitmap = icon, contentDescription = details.priceCurrencyCode, modifier = Modifier.size(18.dp))
         }
-    }.ifEmpty { "—" }
+    } else {
+        Text(paidPriceText(details))
+    }
+}
+
+internal fun paidPriceText(details: PaymentProductSnapshot): String =
+    details.price?.takeIf { it.isNotBlank() }
+        ?: listOfNotNull(details.priceValue, details.priceCurrencyCode).joinToString(" ").ifEmpty { "—" }
 
 @Composable
 private fun paidPurchaseMessage(state: WebPaidPurchaseState): String? =

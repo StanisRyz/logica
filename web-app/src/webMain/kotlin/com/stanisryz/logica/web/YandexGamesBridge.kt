@@ -280,7 +280,8 @@ internal class YandexGamesBridge :
                         price = stringPropertyOrNull(entry, PRICE_KEY),
                         priceValue = stringPropertyOrNull(entry, PRICE_VALUE_KEY),
                         priceCurrencyCode = stringPropertyOrNull(entry, PRICE_CURRENCY_CODE_KEY),
-                        priceCurrencyImageUrl = stringPropertyOrNull(entry, PRICE_CURRENCY_IMAGE_URL_KEY),
+                        priceCurrencyImageUrl =
+                            productCurrencyImageOrNull(entry) ?: stringPropertyOrNull(entry, PRICE_CURRENCY_IMAGE_URL_KEY),
                     )
             }
             result
@@ -717,6 +718,12 @@ private fun stringPropertyOrNull(
     data: JsAny,
     key: String,
 ): String? = js("typeof data[key] === 'string' ? data[key] : null")
+
+/** The portal currency icon comes from the product's `getPriceCurrencyImage(size)` method, not a field. */
+private fun productCurrencyImageOrNull(product: JsAny): String? =
+    js(
+        "(function () { try { var u = typeof product.getPriceCurrencyImage === 'function' ? product.getPriceCurrencyImage('medium') : null; return typeof u === 'string' && u.length > 0 ? u : null; } catch (e) { return null; } })()",
+    )
 
 private fun sdkSupportsPayments(sdk: YandexSdk): Boolean = js("typeof sdk.getPayments === 'function'")
 

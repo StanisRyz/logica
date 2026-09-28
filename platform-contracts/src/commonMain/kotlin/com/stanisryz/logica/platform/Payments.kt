@@ -14,7 +14,7 @@ data class PaymentProductSnapshot(
     val productId: String,
     val title: String?,
     val description: String?,
-    /** Human-readable price string exactly as supplied by the platform (e.g. "59.00"). */
+    /** Human-readable price exactly as supplied by the platform, currency included (Yandex: "20 YAN"). */
     val price: String?,
     /** Raw numeric price value string supplied by the platform, when available. */
     val priceValue: String?,
