@@ -175,6 +175,7 @@
     <string name="sudoku_digits_left">Осталось поставить: %1$d</string>
     <string name="sudoku_pencil_on_short">ВКЛ</string>
     <string name="sudoku_pencil_off_short">ВЫКЛ</string>
+    <string name="board_progress_description">Прогресс: %1$d из %2$d</string>
     <string name="sudoku_mistakes_short">Ошибки %1$d/%2$d</string>
     <string name="game_2048_undo">Отменить ход</string>
     <string name="sudoku_hint_naked_single">В клетке %1$d:%2$d подходит только число %3$d.</string>

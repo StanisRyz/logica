@@ -97,9 +97,10 @@ private val WIDE_PANEL_MAX_WIDTH = 232.dp
 private const val WIDE_PANEL_WIDTH_FRACTION = 0.42f
 
 /**
- * Portrait board scene: the header on top, the square board centred in the whole area, and the
- * controls directly under the board. The board only moves off centre, and only shrinks, when the
- * header or the controls would otherwise not fit.
+ * Portrait board scene: the header sits right on top of the square board and the controls right
+ * under it, and that whole group is centred in the free height, so spare room splits evenly above
+ * and below instead of opening a gap between the header and the board. The board is as wide as
+ * the area allows and shrinks only when the height runs out.
  */
 @Composable
 internal fun CenteredBoardLayout(
@@ -121,11 +122,11 @@ internal fun CenteredBoardLayout(
         val controlsHeight = controlsPlaced.sumOf { it.height } + gap * (controlsPlaced.size - 1).coerceAtLeast(0)
         val side = minOf(width, height - headerHeight - controlsHeight - gap * 2).coerceAtLeast(0)
         val boards = boardParts.map { it.measure(Constraints.fixed(side, side)) }
-        val minTop = headerHeight + gap
-        val maxTop = height - controlsHeight - gap - side
-        val boardTop = ((height - side) / 2).coerceAtMost(maxTop).coerceAtLeast(minTop)
+        val groupHeight = headerHeight + gap + side + gap + controlsHeight
+        val groupTop = ((height - groupHeight) / 2).coerceAtLeast(0)
+        val boardTop = groupTop + headerHeight + gap
         layout(width, height) {
-            var y = 0
+            var y = groupTop
             headers.forEach { placeable ->
                 placeable.placeRelative((width - placeable.width) / 2, y)
                 y += placeable.height + gap

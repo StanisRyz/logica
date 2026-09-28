@@ -13,14 +13,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
@@ -30,13 +25,11 @@ import com.stanisryz.logica.puzzle.core.sudoku.SudokuPosition
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuPuzzle
 import com.stanisryz.logica.puzzle.core.sudoku.toPlatformDifficulty
 import com.stanisryz.logica.shared.ui.generated.resources.Res
-import com.stanisryz.logica.shared.ui.generated.resources.catalog_level
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_easy
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_expert
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_hard
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_medium
-import com.stanisryz.logica.shared.ui.generated.resources.mistakes_description
-import com.stanisryz.logica.shared.ui.generated.resources.sudoku_mistakes_short
+import com.stanisryz.logica.ui.components.BoardInfoHeader
 import com.stanisryz.logica.ui.components.CenteredBoardLayout
 import com.stanisryz.logica.ui.components.isWideGameplayLayout
 import com.stanisryz.logica.ui.theme.LogicaSpacing
@@ -120,7 +113,16 @@ fun SudokuGameContent(
                     verticalArrangement = Arrangement.spacedBy(sectionSpacing),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    SudokuInfoRow(difficultyLabel, game.mistakesUsed, levelNumber, contextBadgeLabel)
+                    BoardInfoHeader(
+                        difficultyLabel = difficultyLabel,
+                        mistakesUsed = game.mistakesUsed,
+                        maxMistakes = SudokuGameState.MAX_MISTAKES,
+                        levelNumber = levelNumber,
+                        contextLabel = contextBadgeLabel,
+                        solvedCells = game.cells.count { it.status == SudokuCellStatus.CORRECT },
+                        totalCells = game.cells.count { it.status != SudokuCellStatus.GIVEN },
+                        showTitle = false,
+                    )
                     hostStatusContent()
                     Spacer(Modifier.weight(1f))
                     SudokuToolBar(
@@ -158,7 +160,16 @@ fun SudokuGameContent(
                         verticalArrangement = Arrangement.spacedBy(sectionSpacing),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        SudokuInfoRow(difficultyLabel, game.mistakesUsed, levelNumber, contextBadgeLabel)
+                        BoardInfoHeader(
+                            difficultyLabel = difficultyLabel,
+                            mistakesUsed = game.mistakesUsed,
+                            maxMistakes = SudokuGameState.MAX_MISTAKES,
+                            levelNumber = levelNumber,
+                            contextLabel = contextBadgeLabel,
+                            solvedCells = game.cells.count { it.status == SudokuCellStatus.CORRECT },
+                            totalCells = game.cells.count { it.status != SudokuCellStatus.GIVEN },
+                            showTitle = false,
+                        )
                         hostStatusContent()
                     }
                 },
@@ -223,44 +234,3 @@ private val COMPACT_WIDE_PANEL_WIDTH = 256.dp
 
 /** Nine places per digit; index 0 is the empty value and stays unused. */
 private const val DIGIT_SLOTS = 10
-
-/** One quiet line above the board: difficulty, mistakes, and the level (or the Daily label). */
-@Composable
-private fun SudokuInfoRow(
-    difficultyLabel: String,
-    mistakesUsed: Int,
-    levelNumber: Int?,
-    contextLabel: String?,
-) {
-    val colors = MaterialTheme.colorScheme
-    val mistakesDescription = stringResource(Res.string.mistakes_description, mistakesUsed, SudokuGameState.MAX_MISTAKES)
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = INFO_ROW_HORIZONTAL_PADDING),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = difficultyLabel,
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyLarge,
-            color = colors.onSurfaceVariant,
-            maxLines = 1,
-        )
-        Text(
-            text = stringResource(Res.string.sudoku_mistakes_short, mistakesUsed, SudokuGameState.MAX_MISTAKES),
-            modifier = Modifier.clearAndSetSemantics { contentDescription = mistakesDescription },
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (mistakesUsed == 0) colors.onSurfaceVariant else colors.error,
-            maxLines = 1,
-        )
-        Text(
-            text = contextLabel ?: levelNumber?.let { stringResource(Res.string.catalog_level, it) }.orEmpty(),
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyLarge,
-            color = colors.onSurfaceVariant,
-            textAlign = TextAlign.End,
-            maxLines = 1,
-        )
-    }
-}
-
-private val INFO_ROW_HORIZONTAL_PADDING = 4.dp

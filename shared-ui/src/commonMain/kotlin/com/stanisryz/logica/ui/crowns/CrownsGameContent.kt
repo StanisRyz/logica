@@ -1,10 +1,7 @@
 package com.stanisryz.logica.ui.crowns
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
@@ -12,9 +9,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.stanisryz.logica.puzzle.core.crowns.CrownsCellStatus
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameState
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell
@@ -35,6 +32,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.tool_off
 import com.stanisryz.logica.shared.ui.generated.resources.tool_on
 import com.stanisryz.logica.shared.ui.generated.resources.tool_pencil
 import com.stanisryz.logica.shared.ui.generated.resources.tool_selected
+import com.stanisryz.logica.ui.components.BoardInfoHeader
 import com.stanisryz.logica.ui.components.GameHeaderBadges
 import com.stanisryz.logica.ui.components.MistakeIndicator
 import com.stanisryz.logica.ui.components.PuzzleTool
@@ -71,19 +69,15 @@ fun CrownsGameContent(
                 GameHeaderBadges(stringResource(difficulty.labelResource()), levelNumber, contextLabel = contextBadgeLabel)
                 MistakeIndicator(game.mistakesUsed, PuzzleMistakes.MAX_MISTAKES)
             } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    GameHeaderBadges(
-                        stringResource(difficulty.labelResource()),
-                        levelNumber,
-                        modifier = Modifier.weight(1f),
-                        contextLabel = contextBadgeLabel,
-                    )
-                    MistakeIndicator(game.mistakesUsed, PuzzleMistakes.MAX_MISTAKES)
-                }
+                BoardInfoHeader(
+                    difficultyLabel = stringResource(difficulty.labelResource()),
+                    mistakesUsed = game.mistakesUsed,
+                    maxMistakes = PuzzleMistakes.MAX_MISTAKES,
+                    levelNumber = levelNumber,
+                    contextLabel = contextBadgeLabel,
+                    solvedCells = game.board.crowns.count { game.statusAt(it) == CrownsCellStatus.CORRECT },
+                    totalCells = puzzle.size,
+                )
             }
         },
         hostStatusContent = hostStatusContent,
