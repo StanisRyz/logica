@@ -26,6 +26,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -55,6 +56,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.difficulty_medium
 import com.stanisryz.logica.shared.ui.generated.resources.gallery_close
 import com.stanisryz.logica.shared.ui.generated.resources.gallery_count
 import com.stanisryz.logica.shared.ui.generated.resources.gallery_empty
+import com.stanisryz.logica.shared.ui.generated.resources.gallery_replay
 import com.stanisryz.logica.shared.ui.generated.resources.gallery_title
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
@@ -73,6 +75,7 @@ fun NonogramGallerySheet(
     loadPicture: suspend (Difficulty, Int) -> NonogramPuzzle?,
     starsOf: (Difficulty, Int) -> Int,
     onDismiss: () -> Unit,
+    onReplay: ((Difficulty, Int) -> Unit)? = null,
 ) {
     var difficulty by remember {
         mutableStateOf(Difficulty.entries.firstOrNull { (clearedLevels[it] ?: 0) > 0 } ?: Difficulty.EASY)
@@ -141,7 +144,14 @@ fun NonogramGallerySheet(
         }
     }
     opened?.let { level ->
-        PictureDialog(difficulty, level, starsOf(difficulty, level), load, onDismiss = { opened = null })
+        PictureDialog(
+            difficulty,
+            level,
+            starsOf(difficulty, level),
+            load,
+            onDismiss = { opened = null },
+            onReplay = onReplay?.let { replay -> { replay(difficulty, level) } },
+        )
     }
 }
 
@@ -177,6 +187,7 @@ private fun PictureDialog(
     stars: Int,
     load: suspend (Difficulty, Int) -> NonogramPuzzle?,
     onDismiss: () -> Unit,
+    onReplay: (() -> Unit)?,
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
@@ -193,7 +204,13 @@ private fun PictureDialog(
                 )
                 LoadedPicture(difficulty, level, load, Modifier.size(LARGE_PICTURE_SIZE))
                 StarMarks(stars, 22.dp)
-                Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                // Playing a picture again is a replay: it can raise its stars and pays no gems.
+                onReplay?.let { replay ->
+                    Button(onClick = replay, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(Res.string.gallery_replay))
+                    }
+                }
+                OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(Res.string.gallery_close))
                 }
             }

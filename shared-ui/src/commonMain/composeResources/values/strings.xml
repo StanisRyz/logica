@@ -391,4 +391,11 @@
     <string name="achievements_section_unlocked">Получены</string>
     <string name="achievements_section_locked">Впереди</string>
     <string name="achievement_done">Получено</string>
+    <string name="levels_action">Уровни</string>
+    <string name="levels_title">Уровни</string>
+    <string name="levels_cleared">Пройдено: %1$s</string>
+    <string name="levels_current">Текущий</string>
+    <string name="levels_hint">Сыграйте пройденный уровень ещё раз, чтобы собрать больше звёзд. Повтор не даёт кристаллов и не меняет прогресс.</string>
+    <string name="gallery_replay">Сыграть снова</string>
+    <string name="levels_empty">Пройдите первый уровень — и его можно будет переиграть отсюда.</string>
 </resources>

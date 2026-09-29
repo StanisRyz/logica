@@ -146,16 +146,27 @@ internal interface GameCompletionDao {
                 findCatalogCurrentLevel(result.puzzleType, result.difficulty, packVersion)
                     ?.takeIf { it >= FIRST_CATALOG_LEVEL }
                     ?: FIRST_CATALOG_LEVEL
-            require(levelNumber == authoritativeLevel) {
-                "Catalog completion level $levelNumber is not the current level $authoritativeLevel."
+            // The current level, or a replay of one already cleared from the level map.
+            require(levelNumber <= authoritativeLevel) {
+                "Catalog completion level $levelNumber is beyond the current level $authoritativeLevel."
             }
         }
+        val replay =
+            result.resultScope == GameResultScope.CATALOG.name &&
+                result.catalogLevelNumber != null &&
+                result.catalogLevelPackVersion != null &&
+                result.catalogLevelNumber <
+                (
+                    findCatalogCurrentLevel(result.puzzleType, result.difficulty, result.catalogLevelPackVersion)
+                        ?: FIRST_CATALOG_LEVEL
+                )
 
         require(insertResult(result) != -1L) { "The completed result could not be inserted." }
 
         // The wallet moves in the very same transaction as the result, keyed by that result, so a
         // crash, a retried save, or a repeated callback can never pay or charge the attempt twice.
-        applyResultEconomy(result)
+        // A solved replay only improves stars: it pays nothing, while a failed one still costs a life.
+        if (!(replay && result.outcome == GameOutcome.SOLVED.name)) applyResultEconomy(result)
 
         // Progression is part of the same transaction and is monotonic per bucket: advancing to
         // level+1 only when the stored level is still behind makes a repeated completion a no-op.

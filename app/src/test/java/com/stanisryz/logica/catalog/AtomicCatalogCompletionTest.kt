@@ -21,19 +21,10 @@ class AtomicCatalogCompletionTest {
     private val definition = DailyChallengePolicyV5.definitionFor(LocalDate.of(2026, 8, 12))
 
     @Test
-    fun staleAndFutureLevelsAreRejectedWhileTheCurrentLevelCompletesIdempotently() =
+    fun futureLevelsAreRejectedWhileTheCurrentLevelCompletesIdempotently() =
         runBlocking {
             val dao = FakeGameCompletionDao(definition)
             dao.setCurrentLevel(PuzzleType.BALANCE, Difficulty.MEDIUM, 41)
-            val stale =
-                dao
-                    .catalogCompletion(
-                        PuzzleType.BALANCE,
-                        outcome = GameOutcome.FAILED,
-                        difficulty = Difficulty.MEDIUM,
-                        levelNumber = 1,
-                        attemptId = "stale",
-                    ).toEntity(500)
             val future =
                 dao
                     .catalogCompletion(
@@ -43,12 +34,9 @@ class AtomicCatalogCompletionTest {
                         attemptId = "future",
                     ).toEntity(600)
 
-            assertThrows(IllegalArgumentException::class.java) { runBlocking { dao.complete(stale) } }
             assertThrows(IllegalArgumentException::class.java) { runBlocking { dao.complete(future) } }
             assertEquals(0, dao.results.size)
             assertEquals(0, dao.economyEvents.size)
-            assertEquals(EconomyRules.STARTING_GEMS, dao.wallet(600).gems)
-            assertEquals(EconomyRules.STARTING_LIVES, dao.wallet(600).lives)
             assertEquals(41, dao.currentLevel(PuzzleType.BALANCE, Difficulty.MEDIUM))
 
             val solved =
@@ -67,15 +55,38 @@ class AtomicCatalogCompletionTest {
             )
             assertEquals(EconomyRules.STARTING_LIVES, dao.wallet(1_000).lives)
             assertEquals(42, dao.currentLevel(PuzzleType.BALANCE, Difficulty.MEDIUM))
-            assertEquals(
-                41,
-                dao.results.values
-                    .single()
-                    .catalogLevelNumber,
-            )
             // Progression is per game and per difficulty: nothing else moved.
             assertEquals(null, dao.currentLevel(PuzzleType.BALANCE, Difficulty.EASY))
             assertEquals(null, dao.currentLevel(PuzzleType.CROWNS, Difficulty.MEDIUM))
+        }
+
+    @Test
+    fun aReplayOfAClearedLevelPaysNothingKeepsProgressionAndStillCostsALifeWhenFailed() =
+        runBlocking {
+            val dao = FakeGameCompletionDao(definition)
+            dao.setCurrentLevel(PuzzleType.SUDOKU, Difficulty.EXPERT, 8)
+            val solvedReplay =
+                dao
+                    .catalogCompletion(PuzzleType.SUDOKU, difficulty = Difficulty.EXPERT, levelNumber = 3, attemptId = "replay")
+                    .toEntity(500)
+            val failedReplay =
+                dao
+                    .catalogCompletion(
+                        PuzzleType.SUDOKU,
+                        outcome = GameOutcome.FAILED,
+                        difficulty = Difficulty.EXPERT,
+                        levelNumber = 2,
+                        attemptId = "replay-failed",
+                    ).toEntity(600)
+
+            dao.complete(solvedReplay)
+            dao.complete(failedReplay)
+
+            assertEquals(2, dao.results.size)
+            // Expert Sudoku would pay gems, but a replay only improves stars.
+            assertEquals(EconomyRules.STARTING_GEMS, dao.wallet(600).gems)
+            assertEquals(EconomyRules.STARTING_LIVES - EconomyRules.FAILED_LIFE_PENALTY, dao.wallet(600).lives)
+            assertEquals(8, dao.currentLevel(PuzzleType.SUDOKU, Difficulty.EXPERT))
         }
 
     @Test

@@ -43,10 +43,14 @@ internal fun PuzzleStartScreen(
     modifier: Modifier = Modifier,
     stars: Map<Difficulty, Long> = emptyMap(),
     gallery: (@Composable (onDismiss: () -> Unit) -> Unit)? = null,
+    levelMap: (@Composable (onDismiss: () -> Unit) -> Unit)? = null,
 ) {
     var offeredDifficulty by remember { mutableStateOf<Difficulty?>(null) }
     var ratingOpen by remember { mutableStateOf(false) }
     var galleryOpen by remember { mutableStateOf(false) }
+    var levelsOpen by remember { mutableStateOf(false) }
+    if (levelsOpen) levelMap?.invoke { levelsOpen = false }
+    val onLevels: (() -> Unit)? = levelMap?.let { { levelsOpen = true } }
     // Android has no shared table of players, so its rating is the player's own points.
     if (ratingOpen) GameRatingSheet(puzzleType, rating, onDismiss = { ratingOpen = false })
     if (galleryOpen) gallery?.invoke { galleryOpen = false }
@@ -88,6 +92,7 @@ internal fun PuzzleStartScreen(
                 onOpenTutorial = openTutorial,
                 onRating = { ratingOpen = true },
                 onGallery = onGallery,
+                onLevels = onLevels,
                 onStart = start,
                 enabled = true,
                 modifier = Modifier.fillMaxSize(),
@@ -104,6 +109,7 @@ internal fun PuzzleStartScreen(
                 onOpenTutorial = openTutorial,
                 onRating = { ratingOpen = true },
                 onGallery = onGallery,
+                onLevels = onLevels,
                 onStart = start,
                 enabled = false,
                 modifier = Modifier,
@@ -120,6 +126,7 @@ private fun StartDifficultyContent(
     onOpenTutorial: () -> Unit,
     onRating: () -> Unit,
     onGallery: (() -> Unit)?,
+    onLevels: (() -> Unit)?,
     onStart: (Difficulty) -> Unit,
     enabled: Boolean,
     modifier: Modifier,
@@ -135,6 +142,7 @@ private fun StartDifficultyContent(
             onHowToPlay = onOpenTutorial,
             onRating = onRating,
             onGallery = onGallery,
+            onLevels = onLevels,
         )
         // The Word game says up front that its words are Russian in every language.
         if (showsWordNotice) WordLanguageNotice()

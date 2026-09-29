@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
@@ -19,6 +20,8 @@ internal value class WebPlayerContextToken(
 internal data class WebCatalogAttempt(
     val levelId: CatalogLevelId,
     val playerContextToken: WebPlayerContextToken,
+    /** A cleared level played again from the level map: it can raise its stars, never pays gems. */
+    val replay: Boolean = false,
 )
 
 internal sealed interface WebCatalogLevelResolution {
@@ -54,6 +57,13 @@ internal interface WebCatalogProgressAccess {
         difficulty: Difficulty,
         packVersion: CatalogLevelPackVersion = CatalogLevelPackVersion.V1,
     ): WebCatalogLevelResolution
+
+    /** A cleared [level] again; a level that is not below the current one resolves as the current one. */
+    suspend fun resolveReplayLevel(
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+        level: Int,
+    ): WebCatalogLevelResolution = resolveCurrentLevel(puzzleType, difficulty)
 
     fun isCurrent(attempt: WebCatalogAttempt): Boolean
 
@@ -115,6 +125,26 @@ internal class WebCatalogProgressCoordinator(
             }
             is WebCatalogProgressBinding.Unavailable -> WebCatalogLevelResolution.Unavailable(binding.detail)
             WebCatalogProgressBinding.Loading -> error("A loading binding cannot complete level resolution.")
+        }
+
+    override suspend fun resolveReplayLevel(
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+        level: Int,
+    ): WebCatalogLevelResolution =
+        when (val current = resolveCurrentLevel(puzzleType, difficulty)) {
+            is WebCatalogLevelResolution.Resolved ->
+                if (level in 1 until current.attempt.levelId.levelNumber.value) {
+                    WebCatalogLevelResolution.Resolved(
+                        current.attempt.copy(
+                            levelId = current.attempt.levelId.copy(levelNumber = CatalogLevelNumber(level)),
+                            replay = true,
+                        ),
+                    )
+                } else {
+                    current
+                }
+            is WebCatalogLevelResolution.Unavailable -> current
         }
 
     override fun isCurrent(attempt: WebCatalogAttempt): Boolean =

@@ -41,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -76,6 +77,7 @@ import com.stanisryz.logica.ads.TerminalActionCoordinator
 import com.stanisryz.logica.catalog.CatalogLevelRepository
 import com.stanisryz.logica.catalog.GameAttemptFactory
 import com.stanisryz.logica.catalog.GameAttemptLaunch
+import com.stanisryz.logica.catalog.isReplay
 import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.DailyGameLaunch
 import com.stanisryz.logica.daily.DailyResultRepository
@@ -99,7 +101,9 @@ import com.stanisryz.logica.ui.components.EconomyBar
 import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
 import com.stanisryz.logica.ui.components.GameRulesSheet
 import com.stanisryz.logica.ui.components.GameplayExitGuard
+import com.stanisryz.logica.ui.components.LevelMapSheet
 import com.stanisryz.logica.ui.components.LivesDialog
+import com.stanisryz.logica.ui.components.LocalLevelReplay
 import com.stanisryz.logica.ui.components.PuzzleStartScreen
 import com.stanisryz.logica.ui.nonogram.NonogramGallerySheet
 import com.stanisryz.logica.ui.rating.GameRating
@@ -309,6 +313,16 @@ internal fun LogicaNavigation(
         }
     }
 
+    /** A cleared level again, from the level map or the gallery; it needs a life like any start. */
+    val replayLevel: (PuzzleType, Difficulty, Int) -> Unit = { puzzleType, difficulty, level ->
+        if (economy.isGameplayAllowed) {
+            val levelId = CatalogLevelId(puzzleType, difficulty, CatalogLevelNumber(level))
+            backStack.add(puzzleType.gameDestination(GameAttemptLaunch.Level(levelId, replay = true)))
+        } else {
+            onRestoreLife()
+        }
+    }
+
     /** Re-read progression for Next as well, so every Catalog launch has authoritative identity. */
     val openNextLevel: (PuzzleType, GameAttemptLaunch) -> Unit = { puzzleType, launch ->
         val level = launch as? GameAttemptLaunch.Level
@@ -490,6 +504,16 @@ internal fun LogicaNavigation(
                                 puzzleType = PuzzleType.BALANCE,
                                 stars = difficultyStars(statisticsRepository, PuzzleType.BALANCE),
                                 rating = levelRating(catalogLevelRepository, PuzzleType.BALANCE),
+                                levelMap = { onDismiss ->
+                                    LevelMap(
+                                        catalogLevelRepository,
+                                        statisticsRepository,
+                                        PuzzleType.BALANCE,
+                                        onDismiss,
+                                        openLevel,
+                                        replayLevel,
+                                    )
+                                },
                                 economy = economy,
                                 tutorialPending = !settings.tutorialCompleted(PuzzleType.BALANCE),
                                 onTutorialOffered = { onTutorialSeen(PuzzleType.BALANCE) },
@@ -506,6 +530,16 @@ internal fun LogicaNavigation(
                                 puzzleType = PuzzleType.CROWNS,
                                 stars = difficultyStars(statisticsRepository, PuzzleType.CROWNS),
                                 rating = levelRating(catalogLevelRepository, PuzzleType.CROWNS),
+                                levelMap = { onDismiss ->
+                                    LevelMap(
+                                        catalogLevelRepository,
+                                        statisticsRepository,
+                                        PuzzleType.CROWNS,
+                                        onDismiss,
+                                        openLevel,
+                                        replayLevel,
+                                    )
+                                },
                                 economy = economy,
                                 tutorialPending = !settings.tutorialCompleted(PuzzleType.CROWNS),
                                 onTutorialOffered = { onTutorialSeen(PuzzleType.CROWNS) },
@@ -542,6 +576,16 @@ internal fun LogicaNavigation(
                                 puzzleType = PuzzleType.SUDOKU,
                                 stars = difficultyStars(statisticsRepository, PuzzleType.SUDOKU),
                                 rating = levelRating(catalogLevelRepository, PuzzleType.SUDOKU),
+                                levelMap = { onDismiss ->
+                                    LevelMap(
+                                        catalogLevelRepository,
+                                        statisticsRepository,
+                                        PuzzleType.SUDOKU,
+                                        onDismiss,
+                                        openLevel,
+                                        replayLevel,
+                                    )
+                                },
                                 economy = economy,
                                 tutorialPending = !settings.tutorialCompleted(PuzzleType.SUDOKU),
                                 onTutorialOffered = { onTutorialSeen(PuzzleType.SUDOKU) },
@@ -580,7 +624,12 @@ internal fun LogicaNavigation(
                                 puzzleType = PuzzleType.NONOGRAM,
                                 stars = difficultyStars(statisticsRepository, PuzzleType.NONOGRAM),
                                 rating = levelRating(catalogLevelRepository, PuzzleType.NONOGRAM),
-                                gallery = { onDismiss -> NonogramGallery(catalogLevelRepository, statisticsRepository, onDismiss) },
+                                gallery = { onDismiss ->
+                                    NonogramGallery(catalogLevelRepository, statisticsRepository, onDismiss) { difficulty, level ->
+                                        onDismiss()
+                                        replayLevel(PuzzleType.NONOGRAM, difficulty, level)
+                                    }
+                                },
                                 economy = economy,
                                 tutorialPending = !settings.tutorialCompleted(PuzzleType.NONOGRAM),
                                 onTutorialOffered = { onTutorialSeen(PuzzleType.NONOGRAM) },
@@ -596,36 +645,42 @@ internal fun LogicaNavigation(
                             )
                         }
                         entry<AppDestination.BalanceGame> { destination ->
-                            BalanceGameRoute(
-                                launch = destination.launch,
-                                attemptFactory = attemptFactory,
-                                completionRepository = gameCompletionRepository,
-                                economyRepository = economyRepository,
-                                exitGuard = exitGuard,
-                                hapticsEnabled = settings.hapticsEnabled,
-                                onBack = goBack,
-                                onNextLevel = { openNextLevel(PuzzleType.BALANCE, destination.launch) },
-                                onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                                onTerminalAction = onTerminalAction,
-                                onRestoreLife = onRestoreLife,
-                                onOpenStore = openStore,
-                            )
+                            // A replayed level pays no gems; its result card says so.
+                            CompositionLocalProvider(LocalLevelReplay provides destination.launch.isReplay) {
+                                BalanceGameRoute(
+                                    launch = destination.launch,
+                                    attemptFactory = attemptFactory,
+                                    completionRepository = gameCompletionRepository,
+                                    economyRepository = economyRepository,
+                                    exitGuard = exitGuard,
+                                    hapticsEnabled = settings.hapticsEnabled,
+                                    onBack = goBack,
+                                    onNextLevel = { openNextLevel(PuzzleType.BALANCE, destination.launch) },
+                                    onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                                    onTerminalAction = onTerminalAction,
+                                    onRestoreLife = onRestoreLife,
+                                    onOpenStore = openStore,
+                                )
+                            }
                         }
                         entry<AppDestination.CrownsGame> { destination ->
-                            CrownsGameRoute(
-                                launch = destination.launch,
-                                attemptFactory = attemptFactory,
-                                completionRepository = gameCompletionRepository,
-                                economyRepository = economyRepository,
-                                exitGuard = exitGuard,
-                                hapticsEnabled = settings.hapticsEnabled,
-                                onBack = goBack,
-                                onNextLevel = { openNextLevel(PuzzleType.CROWNS, destination.launch) },
-                                onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                                onTerminalAction = onTerminalAction,
-                                onRestoreLife = onRestoreLife,
-                                onOpenStore = openStore,
-                            )
+                            // A replayed level pays no gems; its result card says so.
+                            CompositionLocalProvider(LocalLevelReplay provides destination.launch.isReplay) {
+                                CrownsGameRoute(
+                                    launch = destination.launch,
+                                    attemptFactory = attemptFactory,
+                                    completionRepository = gameCompletionRepository,
+                                    economyRepository = economyRepository,
+                                    exitGuard = exitGuard,
+                                    hapticsEnabled = settings.hapticsEnabled,
+                                    onBack = goBack,
+                                    onNextLevel = { openNextLevel(PuzzleType.CROWNS, destination.launch) },
+                                    onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                                    onTerminalAction = onTerminalAction,
+                                    onRestoreLife = onRestoreLife,
+                                    onOpenStore = openStore,
+                                )
+                            }
                         }
                         entry<AppDestination.WordGame> { destination ->
                             WordGameRoute(
@@ -643,20 +698,23 @@ internal fun LogicaNavigation(
                             )
                         }
                         entry<AppDestination.SudokuGame> { destination ->
-                            SudokuGameRoute(
-                                launch = destination.launch,
-                                attemptFactory = attemptFactory,
-                                completionRepository = gameCompletionRepository,
-                                economyRepository = economyRepository,
-                                exitGuard = exitGuard,
-                                hapticsEnabled = settings.hapticsEnabled,
-                                onBack = goBack,
-                                onNextLevel = { openNextLevel(PuzzleType.SUDOKU, destination.launch) },
-                                onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                                onTerminalAction = onTerminalAction,
-                                onRestoreLife = onRestoreLife,
-                                onOpenStore = openStore,
-                            )
+                            // A replayed level pays no gems; its result card says so.
+                            CompositionLocalProvider(LocalLevelReplay provides destination.launch.isReplay) {
+                                SudokuGameRoute(
+                                    launch = destination.launch,
+                                    attemptFactory = attemptFactory,
+                                    completionRepository = gameCompletionRepository,
+                                    economyRepository = economyRepository,
+                                    exitGuard = exitGuard,
+                                    hapticsEnabled = settings.hapticsEnabled,
+                                    onBack = goBack,
+                                    onNextLevel = { openNextLevel(PuzzleType.SUDOKU, destination.launch) },
+                                    onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                                    onTerminalAction = onTerminalAction,
+                                    onRestoreLife = onRestoreLife,
+                                    onOpenStore = openStore,
+                                )
+                            }
                         }
                         entry<AppDestination.Game2048Game> { destination ->
                             Game2048Route(
@@ -675,20 +733,23 @@ internal fun LogicaNavigation(
                             )
                         }
                         entry<AppDestination.NonogramGame> { destination ->
-                            NonogramGameRoute(
-                                launch = destination.launch,
-                                attemptFactory = attemptFactory,
-                                completionRepository = gameCompletionRepository,
-                                economyRepository = economyRepository,
-                                exitGuard = exitGuard,
-                                hapticsEnabled = settings.hapticsEnabled,
-                                onBack = goBack,
-                                onNextLevel = { openNextLevel(PuzzleType.NONOGRAM, destination.launch) },
-                                onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                                onTerminalAction = onTerminalAction,
-                                onRestoreLife = onRestoreLife,
-                                onOpenStore = openStore,
-                            )
+                            // A replayed level pays no gems; its result card says so.
+                            CompositionLocalProvider(LocalLevelReplay provides destination.launch.isReplay) {
+                                NonogramGameRoute(
+                                    launch = destination.launch,
+                                    attemptFactory = attemptFactory,
+                                    completionRepository = gameCompletionRepository,
+                                    economyRepository = economyRepository,
+                                    exitGuard = exitGuard,
+                                    hapticsEnabled = settings.hapticsEnabled,
+                                    onBack = goBack,
+                                    onNextLevel = { openNextLevel(PuzzleType.NONOGRAM, destination.launch) },
+                                    onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                                    onTerminalAction = onTerminalAction,
+                                    onRestoreLife = onRestoreLife,
+                                    onOpenStore = openStore,
+                                )
+                            }
                         }
                     },
             )
@@ -976,6 +1037,7 @@ private fun NonogramGallery(
     catalogLevelRepository: CatalogLevelRepository,
     statisticsRepository: StatisticsRepository,
     onDismiss: () -> Unit,
+    onReplay: (Difficulty, Int) -> Unit,
 ) {
     val levelsFlow = remember(catalogLevelRepository) { catalogLevelRepository.observeCurrentLevels(PuzzleType.NONOGRAM) }
     val levels by levelsFlow.collectAsStateWithLifecycle(initialValue = emptyMap())
@@ -1003,6 +1065,45 @@ private fun NonogramGallery(
             }
         },
         starsOf = { difficulty, level -> stars[difficulty to level] ?: 0 },
+        onDismiss = onDismiss,
+        onReplay = onReplay,
+    )
+}
+
+/** One game's level map over its progression and the best stars of each cleared level. */
+@Composable
+private fun LevelMap(
+    catalogLevelRepository: CatalogLevelRepository,
+    statisticsRepository: StatisticsRepository,
+    puzzleType: PuzzleType,
+    onDismiss: () -> Unit,
+    onPlay: (PuzzleType, Difficulty) -> Unit,
+    onReplay: (PuzzleType, Difficulty, Int) -> Unit,
+) {
+    val levelsFlow = remember(catalogLevelRepository, puzzleType) { catalogLevelRepository.observeCurrentLevels(puzzleType) }
+    val levels by levelsFlow.collectAsStateWithLifecycle(initialValue = emptyMap())
+    val statisticsFlow = remember(statisticsRepository) { statisticsRepository.observe(LocalDate.now()) }
+    val statistics by statisticsFlow.collectAsStateWithLifecycle(initialValue = null)
+    val stars =
+        remember(statistics, puzzleType) {
+            statistics
+                ?.statistics
+                ?.levelStars
+                ?.filter { it.puzzleType == puzzleType }
+                ?.associate { (it.difficulty to it.level) to it.stars }
+                .orEmpty()
+        }
+    LevelMapSheet(
+        currentLevels = levels.mapValues { it.value.value },
+        starsOf = { difficulty, level -> stars[difficulty to level] ?: 0 },
+        onPlayCurrent = { difficulty ->
+            onDismiss()
+            onPlay(puzzleType, difficulty)
+        },
+        onReplay = { difficulty, level ->
+            onDismiss()
+            onReplay(puzzleType, difficulty, level)
+        },
         onDismiss = onDismiss,
     )
 }

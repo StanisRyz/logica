@@ -105,7 +105,18 @@ internal class WebSudokuController(
             undoHistory.isNotEmpty() &&
                 (state as? WebSudokuState.Playing)?.game?.status == SudokuGameStatus.IN_PROGRESS
 
-    fun selectDifficulty(difficulty: Difficulty) {
+    fun selectDifficulty(difficulty: Difficulty) = launchCatalog(difficulty, replayLevel = null)
+
+    /** A cleared [level] again from the level map; it can raise its stars and pays no gems. */
+    fun replayLevel(
+        difficulty: Difficulty,
+        level: Int,
+    ) = launchCatalog(difficulty, replayLevel = level)
+
+    private fun launchCatalog(
+        difficulty: Difficulty,
+        replayLevel: Int?,
+    ) {
         operation?.cancel()
         statisticsAttempt = null
         undoHistory.clear()
@@ -123,10 +134,13 @@ internal class WebSudokuController(
                     val attempt =
                         when (
                             val resolved =
-                                progression.resolveCurrentLevel(
-                                    PuzzleType.SUDOKU,
-                                    difficulty,
-                                    CatalogLevelPackVersion.V1,
+                                (
+                                    replayLevel?.let { progression.resolveReplayLevel(PuzzleType.SUDOKU, difficulty, it) }
+                                        ?: progression.resolveCurrentLevel(
+                                            PuzzleType.SUDOKU,
+                                            difficulty,
+                                            CatalogLevelPackVersion.V1,
+                                        )
                                 )
                         ) {
                             is WebCatalogLevelResolution.Resolved -> resolved.attempt
@@ -453,11 +467,14 @@ internal class WebSudokuController(
                         completion.saveSolved(source.attempt, PuzzleStars.forMistakes(updated.mistakesUsed))
                     }
                     // Catalog terminals feed the wallet.
-                    economy.recordTerminalResult(
-                        PuzzleType.SUDOKU,
-                        source.attempt.levelId.difficulty,
-                        solved = updated.status == SudokuGameStatus.SOLVED,
-                    )
+                    // A solved replay only raises stars and pays nothing; a failed one still costs a life.
+                    if (!(source.attempt.replay && updated.status == SudokuGameStatus.SOLVED)) {
+                        economy.recordTerminalResult(
+                            PuzzleType.SUDOKU,
+                            source.attempt.levelId.difficulty,
+                            solved = updated.status == SudokuGameStatus.SOLVED,
+                        )
+                    }
                 }
                 is WebGameplaySource.DailyChallenge -> {
                     dailyCompletion.saveTerminal(source.attempt, outcome)

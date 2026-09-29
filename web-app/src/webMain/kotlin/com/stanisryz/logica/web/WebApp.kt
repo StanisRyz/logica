@@ -83,6 +83,7 @@ import com.stanisryz.logica.ui.components.DifficultySelector
 import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
 import com.stanisryz.logica.ui.components.GameHubContent
 import com.stanisryz.logica.ui.components.GameKey
+import com.stanisryz.logica.ui.components.LevelMapSheet
 import com.stanisryz.logica.ui.components.LocalGameSounds
 import com.stanisryz.logica.ui.components.WordLanguageNotice
 import com.stanisryz.logica.ui.components.catalogTitleResource
@@ -1155,6 +1156,7 @@ private fun NonogramFlow(
                 onStart = controller::selectDifficulty,
                 gallery = { onDismiss ->
                     val stars = LocalWebCatalogStars.current
+                    val lives = LocalWebLives.current
                     NonogramGallerySheet(
                         clearedLevels = LocalWebRating.current.progress.clearedLevels(PuzzleType.NONOGRAM),
                         loadPicture = controller::galleryPicture,
@@ -1162,6 +1164,10 @@ private fun NonogramFlow(
                             stars.starsOf(WebCatalogProgressBucket(PuzzleType.NONOGRAM, difficulty, CatalogLevelPackVersion.V1), level)
                         },
                         onDismiss = onDismiss,
+                        onReplay = { difficulty, level ->
+                            onDismiss()
+                            lives.guard { controller.replayLevel(difficulty, level) }
+                        },
                     )
                 },
             )
@@ -1224,6 +1230,7 @@ private fun NonogramFlow(
                 mistakesUsed = state.game.mistakesUsed,
                 hintsUsed = state.game.hintsUsed,
                 levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
+                replay = (state.source as? WebGameplaySource.CatalogLevel)?.attempt?.replay == true,
                 solved = state.game.status == NonogramGameStatus.SOLVED,
                 completion = controller.completionState,
                 onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },
@@ -1250,6 +1257,7 @@ private fun BalanceFlow(
                 puzzleType = PuzzleType.BALANCE,
                 onBack = onExitBalance,
                 onStart = controller::selectDifficulty,
+                onReplay = controller::replayLevel,
             )
         is WebBalanceState.Loading ->
             WebCatalogLoadingContent(
@@ -1303,6 +1311,7 @@ private fun CrownsFlow(
                 puzzleType = PuzzleType.CROWNS,
                 onBack = onExitCrowns,
                 onStart = controller::selectDifficulty,
+                onReplay = controller::replayLevel,
             )
         is WebCrownsState.Loading ->
             WebCatalogLoadingContent(
@@ -1407,6 +1416,7 @@ private fun SudokuFlow(
                 puzzleType = PuzzleType.SUDOKU,
                 onBack = onExitSudoku,
                 onStart = controller::selectDifficulty,
+                onReplay = controller::replayLevel,
             )
         is WebSudokuState.Loading ->
             WebCatalogLoadingContent(
@@ -1500,8 +1510,10 @@ private fun DifficultyContent(
     onBack: () -> Unit,
     onStart: (Difficulty) -> Unit,
     gallery: (@Composable (onDismiss: () -> Unit) -> Unit)? = null,
+    onReplay: ((Difficulty, Int) -> Unit)? = null,
 ) {
     val ratingUi = LocalWebRating.current
+    var levelsOpen by remember { mutableStateOf(false) }
     var ratingOpen by remember { mutableStateOf(false) }
     var galleryOpen by remember { mutableStateOf(false) }
     if (ratingOpen) {
@@ -1513,6 +1525,28 @@ private fun DifficultyContent(
         )
     }
     if (galleryOpen) gallery?.invoke { galleryOpen = false }
+    val stars = LocalWebCatalogStars.current
+    val livesGuard = LocalWebLives.current
+    if (levelsOpen && onReplay != null) {
+        LevelMapSheet(
+            currentLevels = ratingUi.progress.clearedLevels(puzzleType).mapValues { it.value + 1 },
+            starsOf = { difficulty, level ->
+                stars.starsOf(WebCatalogProgressBucket(puzzleType, difficulty, CatalogLevelPackVersion.V1), level)
+            },
+            onPlayCurrent = { difficulty ->
+                levelsOpen = false
+                livesGuard.guard {
+                    WebLastPlayed.record(puzzleType, difficulty)
+                    onStart(difficulty)
+                }
+            },
+            onReplay = { difficulty, level ->
+                levelsOpen = false
+                livesGuard.guard { onReplay(difficulty, level) }
+            },
+            onDismiss = { levelsOpen = false },
+        )
+    }
     val showTutorial = LocalOpenTutorial.current
     val openTutorial = {
         WebTutorialOffers.markOffered(puzzleType)
@@ -1583,6 +1617,8 @@ private fun DifficultyContent(
                         onHowToPlay = openTutorial,
                         onRating = { ratingOpen = true },
                         onGallery = gallery?.let { { galleryOpen = true } },
+                        // The gallery is the Nonogram's way back into its cleared levels.
+                        onLevels = onReplay?.takeIf { gallery == null }?.let { { levelsOpen = true } },
                     )
                 }
                 if (showsWordNotice) WordLanguageNotice(Modifier.height(WORD_NOTICE_HEIGHT))
@@ -1682,6 +1718,7 @@ private fun PlayingBalanceContent(
             mistakesUsed = state.game.mistakesUsed,
             hintsUsed = state.game.hintsUsed,
             levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
+            replay = (state.source as? WebGameplaySource.CatalogLevel)?.attempt?.replay == true,
             solved = state.game.status == BalanceGameStatus.SOLVED,
             completion = controller.completionState,
             onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },
@@ -1764,6 +1801,7 @@ private fun PlayingCrownsContent(
             mistakesUsed = state.game.mistakesUsed,
             hintsUsed = state.game.hintsUsed,
             levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
+            replay = (state.source as? WebGameplaySource.CatalogLevel)?.attempt?.replay == true,
             solved = state.game.status == CrownsGameStatus.SOLVED,
             completion = controller.completionState,
             onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },
@@ -1930,6 +1968,7 @@ private fun PlayingSudokuContent(
             mistakesUsed = state.game.mistakesUsed,
             hintsUsed = state.game.hintsUsed,
             levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
+            replay = (state.source as? WebGameplaySource.CatalogLevel)?.attempt?.replay == true,
             solved = state.game.status == SudokuGameStatus.SOLVED,
             completion = controller.completionState,
             onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },

@@ -89,7 +89,18 @@ internal class WebNonogramController(
     var hintsExhaustedNotice by mutableStateOf(false)
         private set
 
-    fun selectDifficulty(difficulty: Difficulty) {
+    fun selectDifficulty(difficulty: Difficulty) = launchCatalog(difficulty, replayLevel = null)
+
+    /** A cleared [level] again from the level map; it can raise its stars and pays no gems. */
+    fun replayLevel(
+        difficulty: Difficulty,
+        level: Int,
+    ) = launchCatalog(difficulty, replayLevel = level)
+
+    private fun launchCatalog(
+        difficulty: Difficulty,
+        replayLevel: Int?,
+    ) {
         operation?.cancel()
         statisticsAttempt = null
         completion.reset()
@@ -102,7 +113,10 @@ internal class WebNonogramController(
                     val attempt =
                         when (
                             val resolved =
-                                progression.resolveCurrentLevel(PuzzleType.NONOGRAM, difficulty, CatalogLevelPackVersion.V1)
+                                (
+                                    replayLevel?.let { progression.resolveReplayLevel(PuzzleType.NONOGRAM, difficulty, it) }
+                                        ?: progression.resolveCurrentLevel(PuzzleType.NONOGRAM, difficulty, CatalogLevelPackVersion.V1)
+                                )
                         ) {
                             is WebCatalogLevelResolution.Resolved -> resolved.attempt
                             is WebCatalogLevelResolution.Unavailable -> {
@@ -251,7 +265,10 @@ internal class WebNonogramController(
             )
         }
         if (solved) completion.saveSolved(playing.source.attempt, PuzzleStars.forMistakes(updated.mistakesUsed))
-        economy.recordTerminalResult(PuzzleType.NONOGRAM, playing.source.difficulty, solved = solved)
+        // A solved replay only raises stars and pays nothing; a failed one still costs a life.
+        if (!(solved && playing.source.attempt.replay)) {
+            economy.recordTerminalResult(PuzzleType.NONOGRAM, playing.source.difficulty, solved = solved)
+        }
     }
 
     private fun resolveLevel(levelId: CatalogLevelId): CatalogLevelDefinition =

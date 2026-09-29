@@ -31,6 +31,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.difficulty_expert
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_hard
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_medium
 import com.stanisryz.logica.shared.ui.generated.resources.gallery_action
+import com.stanisryz.logica.shared.ui.generated.resources.levels_action
 import com.stanisryz.logica.shared.ui.generated.resources.rating_action
 import com.stanisryz.logica.shared.ui.generated.resources.rating_best_explained
 import com.stanisryz.logica.shared.ui.generated.resources.rating_best_score
@@ -77,6 +78,7 @@ fun DifficultyScreenActions(
     onRating: () -> Unit,
     modifier: Modifier = Modifier,
     onGallery: (() -> Unit)? = null,
+    onLevels: (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -84,8 +86,10 @@ fun DifficultyScreenActions(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ActionButton(howToPlayLabel, onHowToPlay)
-        ActionButton(stringResource(Res.string.rating_action), onRating)
+        // Levels and the gallery are both ways back into cleared levels; a game shows one of them.
+        onLevels?.let { ActionButton(stringResource(Res.string.levels_action), it) }
         onGallery?.let { ActionButton(stringResource(Res.string.gallery_action), it) }
+        ActionButton(stringResource(Res.string.rating_action), onRating)
     }
 }
 

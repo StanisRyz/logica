@@ -83,7 +83,18 @@ internal class WebCrownsController(
     val dailyCompletionState: WebDailyCompletionState
         get() = dailyCompletion.state
 
-    fun selectDifficulty(difficulty: Difficulty) {
+    fun selectDifficulty(difficulty: Difficulty) = launchCatalog(difficulty, replayLevel = null)
+
+    /** A cleared [level] again from the level map; it can raise its stars and pays no gems. */
+    fun replayLevel(
+        difficulty: Difficulty,
+        level: Int,
+    ) = launchCatalog(difficulty, replayLevel = level)
+
+    private fun launchCatalog(
+        difficulty: Difficulty,
+        replayLevel: Int?,
+    ) {
         operation?.cancel()
         statisticsAttempt = null
         completion.reset()
@@ -100,10 +111,13 @@ internal class WebCrownsController(
                     val attempt =
                         when (
                             val resolved =
-                                progression.resolveCurrentLevel(
-                                    PuzzleType.CROWNS,
-                                    difficulty,
-                                    CatalogLevelPackVersion.V1,
+                                (
+                                    replayLevel?.let { progression.resolveReplayLevel(PuzzleType.CROWNS, difficulty, it) }
+                                        ?: progression.resolveCurrentLevel(
+                                            PuzzleType.CROWNS,
+                                            difficulty,
+                                            CatalogLevelPackVersion.V1,
+                                        )
                                 )
                         ) {
                             is WebCatalogLevelResolution.Resolved -> resolved.attempt
@@ -359,11 +373,14 @@ internal class WebCrownsController(
                         completion.saveSolved(source.attempt, PuzzleStars.forMistakes(updated.mistakesUsed))
                     }
                     // Catalog terminals feed the wallet.
-                    economy.recordTerminalResult(
-                        PuzzleType.CROWNS,
-                        source.attempt.levelId.difficulty,
-                        solved = updated.status == CrownsGameStatus.SOLVED,
-                    )
+                    // A solved replay only raises stars and pays nothing; a failed one still costs a life.
+                    if (!(source.attempt.replay && updated.status == CrownsGameStatus.SOLVED)) {
+                        economy.recordTerminalResult(
+                            PuzzleType.CROWNS,
+                            source.attempt.levelId.difficulty,
+                            solved = updated.status == CrownsGameStatus.SOLVED,
+                        )
+                    }
                 }
                 is WebGameplaySource.DailyChallenge -> {
                     dailyCompletion.saveTerminal(source.attempt, outcome)

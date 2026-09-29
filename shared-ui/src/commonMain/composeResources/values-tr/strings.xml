@@ -380,4 +380,11 @@
     <string name="achievements_section_unlocked">Kazanılanlar</string>
     <string name="achievements_section_locked">Sıradakiler</string>
     <string name="achievement_done">Kazanıldı</string>
+    <string name="levels_action">Seviyeler</string>
+    <string name="levels_title">Seviyeler</string>
+    <string name="levels_cleared">Geçilen: %1$s</string>
+    <string name="levels_current">Sıradaki</string>
+    <string name="levels_hint">Daha fazla yıldız için geçilen bir seviyeyi tekrar oynayın. Tekrarlar elmas kazandırmaz ve ilerlemeyi değiştirmez.</string>
+    <string name="gallery_replay">Tekrar oyna</string>
+    <string name="levels_empty">İlk seviyeyi geçin, buradan tekrar oynayabilirsiniz.</string>
 </resources>

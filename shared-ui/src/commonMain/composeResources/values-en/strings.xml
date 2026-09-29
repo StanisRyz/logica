@@ -380,4 +380,11 @@
     <string name="achievements_section_unlocked">Unlocked</string>
     <string name="achievements_section_locked">Up next</string>
     <string name="achievement_done">Unlocked</string>
+    <string name="levels_action">Levels</string>
+    <string name="levels_title">Levels</string>
+    <string name="levels_cleared">Cleared: %1$s</string>
+    <string name="levels_current">Current</string>
+    <string name="levels_hint">Replay a cleared level to earn more stars. Replays pay no gems and do not change your progress.</string>
+    <string name="gallery_replay">Play again</string>
+    <string name="levels_empty">Clear your first level and you can replay it from here.</string>
 </resources>

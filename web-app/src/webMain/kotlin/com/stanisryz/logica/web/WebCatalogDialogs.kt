@@ -113,6 +113,7 @@ internal fun WebOrdinaryCatalogTerminalDialog(
     mistakesUsed: Int? = null,
     hintsUsed: Int? = null,
     stars: Int? = null,
+    replay: Boolean = false,
     onNextLevel: () -> Unit,
     onRetry: () -> Unit,
     onRetrySave: () -> Unit,
@@ -142,10 +143,11 @@ internal fun WebOrdinaryCatalogTerminalDialog(
         detail = if (solved) solvedDetail else failedDetail,
         saveErrorDetail = saveError?.let { stringResource(WebRes.string.web_save_error_catalog, it.detail) },
         economy =
-            if (solved) {
-                GameResultEconomy(gemsEarned = WebEconomyProcessor.gemRewardFor(puzzleType, difficulty))
-            } else {
-                GameResultEconomy(livesLost = 1)
+            when {
+                // A solved replay only raises stars; it pays nothing.
+                solved && replay -> GameResultEconomy()
+                solved -> GameResultEconomy(gemsEarned = WebEconomyProcessor.gemRewardFor(puzzleType, difficulty))
+                else -> GameResultEconomy(livesLost = 1)
             },
         mistakesUsed = mistakesUsed,
         hintsUsed = hintsUsed,

@@ -1,6 +1,7 @@
 package com.stanisryz.logica.ui.components
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.res.stringResource
 import com.stanisryz.logica.R
 import com.stanisryz.logica.economy.EconomyRules
@@ -32,6 +33,7 @@ internal fun PuzzleTerminalDialog(
     onRetryLevel: () -> Unit,
     onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
+    isReplay: Boolean = LocalLevelReplay.current,
 ) {
     GameResultDialog(
         solved = isSolved,
@@ -44,7 +46,8 @@ internal fun PuzzleTerminalDialog(
         onRetrySave = onRetryCompletion,
         onExit = onGameHub,
         saveErrorDetail = stringResource(R.string.completion_save_error_body),
-        economy = resultEconomy(isSolved, puzzleType, difficulty),
+        // A solved replay pays nothing; a failed one costs a life like any failure.
+        economy = if (isReplay && isSolved) GameResultEconomy(gemsEarned = 0) else resultEconomy(isSolved, puzzleType, difficulty),
         mistakesUsed = mistakesUsed,
         maxMistakes = maxMistakes,
         hintsUsed = hintsUsed,
@@ -74,3 +77,6 @@ internal fun resultEconomy(
     } else {
         GameResultEconomy(livesLost = EconomyRules.FAILED_LIFE_PENALTY)
     }
+
+/** True while the game on screen replays a cleared level from the level map. */
+internal val LocalLevelReplay = staticCompositionLocalOf { false }
