@@ -76,6 +76,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.how_to_play
 import com.stanisryz.logica.shared.ui.generated.resources.primary_games
 import com.stanisryz.logica.shared.ui.generated.resources.primary_profile
 import com.stanisryz.logica.shared.ui.generated.resources.primary_store
+import com.stanisryz.logica.shared.ui.generated.resources.profile_achievements
 import com.stanisryz.logica.ui.balance.BalanceGameContent
 import com.stanisryz.logica.ui.components.ContinueGameCard
 import com.stanisryz.logica.ui.components.DifficultySelector
@@ -99,6 +100,7 @@ import com.stanisryz.logica.ui.nonogram.NonogramGameContent
 import com.stanisryz.logica.ui.profile.Achievement
 import com.stanisryz.logica.ui.profile.AchievementAnnouncementHost
 import com.stanisryz.logica.ui.profile.AchievementAnnouncer
+import com.stanisryz.logica.ui.profile.AchievementsScreenContent
 import com.stanisryz.logica.ui.profile.DailyProfileMetrics
 import com.stanisryz.logica.ui.profile.LocalAchievementAnnouncer
 import com.stanisryz.logica.ui.profile.ProfileContent
@@ -119,6 +121,7 @@ import com.stanisryz.logica.web.generated.resources.web_loading
 import com.stanisryz.logica.web.generated.resources.web_score_final
 import com.stanisryz.logica.web.generated.resources.web_settings
 import com.stanisryz.logica.web.generated.resources.web_to_games
+import com.stanisryz.logica.web.generated.resources.web_to_profile
 import com.stanisryz.logica.web.generated.resources.web_word_answer
 import com.stanisryz.logica.web.generated.resources.web_word_guessed
 import com.stanisryz.logica.web.generated.resources.web_word_level_solved
@@ -371,6 +374,9 @@ private fun ReadyContent(
     onRendered: () -> Unit,
 ) {
     var route by remember { mutableStateOf<WebRoute>(WebRoute.GameHub) }
+    // The achievements list opens in place of the Profile and closes whenever the route changes.
+    var achievementsOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(route) { achievementsOpen = false }
 
     // Desktop keyboard input goes to the puzzle only while it is actively played and uncovered.
     val keyboard = remember { WebKeyboard().also(WebKeyboard::install) }
@@ -726,19 +732,38 @@ private fun ReadyContent(
                     )
                 }
             WebRoute.Profile ->
-                PrimaryDestinationShell(
-                    selected = WebRoute.Profile,
-                    onSelect = { route = it },
-                ) {
-                    WideReadableColumn(WIDE_PROFILE_MAX_WIDTH) {
-                        WebProfileRoute(
-                            playerSession = playerSession,
-                            leaderboard = leaderboard,
-                            binding = playerSession.statisticsBinding.collectAsState().value,
-                            currentDate = dailyDate,
-                            onRetry = playerSession::retryCurrentContext,
-                            onOpenGames = { route = WebRoute.GameHub },
+                if (achievementsOpen) {
+                    Column(Modifier.fillMaxSize()) {
+                        WebTopBar(
+                            backLabel = stringResource(WebRes.string.web_to_profile),
+                            onBack = { achievementsOpen = false },
+                            title = stringResource(Res.string.profile_achievements),
                         )
+                        WideReadableColumn(WIDE_PROFILE_MAX_WIDTH) {
+                            val binding = playerSession.statisticsBinding.collectAsState().value
+                            if (binding is WebStatisticsBinding.Ready) {
+                                key(binding.token) {
+                                    AchievementsScreenContent(webProfileStatistics(playerSession, binding, dailyDate))
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    PrimaryDestinationShell(
+                        selected = WebRoute.Profile,
+                        onSelect = { route = it },
+                    ) {
+                        WideReadableColumn(WIDE_PROFILE_MAX_WIDTH) {
+                            WebProfileRoute(
+                                playerSession = playerSession,
+                                leaderboard = leaderboard,
+                                binding = playerSession.statisticsBinding.collectAsState().value,
+                                currentDate = dailyDate,
+                                onRetry = playerSession::retryCurrentContext,
+                                onOpenGames = { route = WebRoute.GameHub },
+                                onOpenAchievements = { achievementsOpen = true },
+                            )
+                        }
                     }
                 }
             WebRoute.Store ->
@@ -1021,6 +1046,7 @@ private fun WebProfileRoute(
     currentDate: DailyDate,
     onRetry: () -> Unit,
     onOpenGames: () -> Unit,
+    onOpenAchievements: () -> Unit,
 ) {
     when (binding) {
         WebStatisticsBinding.Loading ->
@@ -1040,6 +1066,7 @@ private fun WebProfileRoute(
                     onRetry = onRetry,
                     onOpenGames = onOpenGames,
                     footer = if (leaderboard.isSupported) ({ WebLeaderboardCard(leaderboard) }) else null,
+                    onOpenAchievements = onOpenAchievements,
                 )
             }
     }

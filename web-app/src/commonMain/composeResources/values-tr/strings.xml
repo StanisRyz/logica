@@ -12,6 +12,7 @@
     <string name="web_back">Geri</string>
     <string name="web_to_games">Oyunlara</string>
     <string name="web_to_difficulty">Zorluk seçimine</string>
+    <string name="web_to_profile">Profile</string>
     <string name="web_back_to_difficulty">Zorluk seçimine dön</string>
     <string name="web_rules">Kurallar</string>
     <string name="web_how_to_play_title">Nasıl oynanır: %1$s</string>

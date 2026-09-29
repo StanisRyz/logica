@@ -293,8 +293,6 @@
     <string name="continue_level">%1$s · уровень %2$d</string>
     <string name="profile_achievements">Достижения</string>
     <string name="achievements_count">Получено %1$d из %2$d</string>
-    <string name="achievements_show_all">Показать все</string>
-    <string name="achievements_show_less">Свернуть</string>
     <string name="achievement_unlocked">Новое достижение</string>
     <string name="achievement_first_solve">Первый шаг</string>
     <string name="achievement_first_solve_body">Решите первую головоломку</string>
@@ -390,4 +388,7 @@
     <string name="gallery_count">Рисунков: %1$s</string>
     <string name="gallery_empty">Решите уровень — и здесь появится его рисунок.</string>
     <string name="gallery_close">Закрыть</string>
+    <string name="achievements_section_unlocked">Получены</string>
+    <string name="achievements_section_locked">Впереди</string>
+    <string name="achievement_done">Получено</string>
 </resources>

@@ -273,8 +273,6 @@
     <string name="continue_level">%1$s · level %2$d</string>
     <string name="profile_achievements">Achievements</string>
     <string name="achievements_count">%1$d of %2$d unlocked</string>
-    <string name="achievements_show_all">Show all</string>
-    <string name="achievements_show_less">Show less</string>
     <string name="achievement_unlocked">New achievement</string>
     <string name="achievement_first_solve">First step</string>
     <string name="achievement_first_solve_body">Solve your first puzzle</string>
@@ -379,4 +377,7 @@
     <string name="gallery_count">Pictures: %1$s</string>
     <string name="gallery_empty">Solve a level and its picture appears here.</string>
     <string name="gallery_close">Close</string>
+    <string name="achievements_section_unlocked">Unlocked</string>
+    <string name="achievements_section_locked">Up next</string>
+    <string name="achievement_done">Unlocked</string>
 </resources>

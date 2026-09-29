@@ -12,6 +12,7 @@
     <string name="web_back">Назад</string>
     <string name="web_to_games">К играм</string>
     <string name="web_to_difficulty">К сложности</string>
+    <string name="web_to_profile">К профилю</string>
     <string name="web_back_to_difficulty">Назад к сложности</string>
     <string name="web_rules">Правила</string>
     <string name="web_how_to_play_title">Как играть: %1$s</string>

@@ -273,8 +273,6 @@
     <string name="continue_level">%1$s · seviye %2$d</string>
     <string name="profile_achievements">Başarılar</string>
     <string name="achievements_count">%2$d başarıdan %1$d kazanıldı</string>
-    <string name="achievements_show_all">Tümünü göster</string>
-    <string name="achievements_show_less">Daha az göster</string>
     <string name="achievement_unlocked">Yeni başarı</string>
     <string name="achievement_first_solve">İlk adım</string>
     <string name="achievement_first_solve_body">İlk bulmacanı çöz</string>
@@ -379,4 +377,7 @@
     <string name="gallery_count">Resim: %1$s</string>
     <string name="gallery_empty">Bir seviyeyi çözün, resmi burada görünecek.</string>
     <string name="gallery_close">Kapat</string>
+    <string name="achievements_section_unlocked">Kazanılanlar</string>
+    <string name="achievements_section_locked">Sıradakiler</string>
+    <string name="achievement_done">Kazanıldı</string>
 </resources>

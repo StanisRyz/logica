@@ -38,6 +38,9 @@ internal sealed interface AppDestination {
 
     data object Settings : AppDestination
 
+    /** Every achievement on its own row, opened from the Profile. */
+    data object Achievements : AppDestination
+
     data object BalanceStart : AppDestination
 
     data object BalanceTutorial : AppDestination

@@ -70,7 +70,6 @@ import com.stanisryz.logica.shared.ui.generated.resources.difficulty_expert
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_hard
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_medium
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_stars
-import com.stanisryz.logica.shared.ui.generated.resources.profile_achievements
 import com.stanisryz.logica.shared.ui.generated.resources.profile_best_streak
 import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_completed
 import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_day
@@ -115,6 +114,7 @@ fun ProfileContent(
     modifier: Modifier = Modifier,
     onOpenGames: (() -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
+    onOpenAchievements: () -> Unit = {},
 ) {
     AnimatedContent(
         targetState = uiState,
@@ -131,7 +131,7 @@ fun ProfileContent(
                 ProfileUiState.Loading -> LoadingState(modifier)
                 ProfileUiState.Error -> ErrorState(onRetry, modifier)
                 ProfileUiState.Empty -> EmptyState(modifier, onOpenGames)
-                is ProfileUiState.Ready -> ReadyProfileContent(state.statistics, modifier, footer)
+                is ProfileUiState.Ready -> ReadyProfileContent(state.statistics, modifier, footer, onOpenAchievements)
             }
         }
     }
@@ -150,6 +150,7 @@ private fun ReadyProfileContent(
     statistics: ProfileStatistics,
     modifier: Modifier,
     footer: (@Composable () -> Unit)?,
+    onOpenAchievements: () -> Unit,
 ) {
     Column(
         modifier =
@@ -171,7 +172,7 @@ private fun ReadyProfileContent(
                 ProfileSection(stringResource(Res.string.profile_recent_days)) { RecentDaysRow(days) }
             }
         }
-        ProfileSection(stringResource(Res.string.profile_achievements)) { AchievementsCard(statistics) }
+        AchievementsEntryCard(statistics, onOpenAchievements)
         ProfileSection(stringResource(Res.string.profile_games)) {
             ProfileCard(verticalSpacing = 0.dp) {
                 val games = profileGames(statistics)

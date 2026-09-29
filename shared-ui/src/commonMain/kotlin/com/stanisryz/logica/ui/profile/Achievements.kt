@@ -10,21 +10,25 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Balance
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Brush
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.EventAvailable
 import androidx.compose.material.icons.rounded.Extension
@@ -43,7 +47,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -51,12 +54,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -78,6 +81,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.achievement_daily_1
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_daily_1_body
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_daily_30
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_daily_30_body
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_done
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_expert_1
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_expert_1_body
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_expert_25
@@ -112,8 +116,9 @@ import com.stanisryz.logica.shared.ui.generated.resources.achievement_word_body
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_word_first_try
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_word_first_try_body
 import com.stanisryz.logica.shared.ui.generated.resources.achievements_count
-import com.stanisryz.logica.shared.ui.generated.resources.achievements_show_all
-import com.stanisryz.logica.shared.ui.generated.resources.achievements_show_less
+import com.stanisryz.logica.shared.ui.generated.resources.achievements_section_locked
+import com.stanisryz.logica.shared.ui.generated.resources.achievements_section_unlocked
+import com.stanisryz.logica.shared.ui.generated.resources.profile_achievements
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import kotlinx.coroutines.delay
@@ -241,42 +246,110 @@ fun ProfileStatistics.unlockedAchievementIds(): Set<String> =
         }.mapTo(linkedSetOf()) { it.id }
 
 /**
- * The Profile's achievements: the count, then the unlocked ones and those closest to done; the
- * rest open on request so the Profile stays short.
+ * The Profile's way into the achievements: one card with the count and a bar of how many are
+ * reached. The list itself is its own screen ([AchievementsScreenContent]), so the Profile stays short.
  */
 @Composable
-internal fun AchievementsCard(statistics: ProfileStatistics) {
-    var expanded by rememberSaveable { mutableStateOf(false) }
-    val ordered =
-        Achievement.entries.sortedWith(
-            compareByDescending<Achievement> { it.isUnlocked(statistics) }
-                .thenByDescending { it.progress(statistics).toDouble() / it.target },
-        )
-    val unlocked = ordered.count { it.isUnlocked(statistics) }
-    val shown = if (expanded) ordered else ordered.take(COLLAPSED_COUNT)
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
-        Text(
-            stringResource(Res.string.achievements_count, unlocked, Achievement.entries.size),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        shown.chunked(2).forEach { row ->
-            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
-                row.forEach { achievement -> AchievementTile(achievement, statistics, Modifier.weight(1f).fillMaxHeight()) }
-                if (row.size == 1) Box(Modifier.weight(1f))
+internal fun AchievementsEntryCard(
+    statistics: ProfileStatistics,
+    onOpen: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val unlocked = Achievement.entries.count { it.isUnlocked(statistics) }
+    val total = Achievement.entries.size
+    val countLabel = stringResource(Res.string.achievements_count, unlocked, total)
+    Surface(
+        onClick = onOpen,
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = colors.surfaceContainerLow,
+    ) {
+        Row(
+            modifier = Modifier.padding(ENTRY_PADDING),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(ENTRY_GAP),
+        ) {
+            Box(
+                Modifier.size(ENTRY_MEDAL).clip(CircleShape).background(LocalLogicaPalette.current.star),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = ACHIEVEMENT_ICON_INK, modifier = Modifier.size(26.dp))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(stringResource(Res.string.profile_achievements), style = MaterialTheme.typography.titleMedium)
+                Text(countLabel, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                LinearProgressIndicator(
+                    progress = { unlocked.toFloat() / total },
+                    modifier = Modifier.fillMaxWidth().height(6.dp),
+                    strokeCap = StrokeCap.Round,
+                    gapSize = 0.dp,
+                    drawStopIndicator = {},
+                )
+            }
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = colors.onSurfaceVariant)
+        }
+    }
+}
+
+/**
+ * Every achievement on its own row: the ones reached first, then the rest nearest-first, each with
+ * its medal, what it asks for, and how far along the player is. Hosts put it under their own bar.
+ */
+@Composable
+fun AchievementsScreenContent(
+    statistics: ProfileStatistics,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    val (reached, ahead) =
+        Achievement.entries
+            .sortedByDescending { it.progress(statistics).toDouble() / it.target }
+            .partition { it.isUnlocked(statistics) }
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = LogicaSpacing.screenHorizontal, vertical = LogicaSpacing.screenVertical),
+        verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text * 2),
+    ) {
+        item {
+            Column(Modifier.fillMaxWidth().padding(bottom = LogicaSpacing.item), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    stringResource(Res.string.achievements_count, reached.size, Achievement.entries.size),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                LinearProgressIndicator(
+                    progress = { reached.size.toFloat() / Achievement.entries.size },
+                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                    strokeCap = StrokeCap.Round,
+                    gapSize = 0.dp,
+                    drawStopIndicator = {},
+                )
             }
         }
-        TextButton(onClick = { expanded = !expanded }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-            Text(stringResource(if (expanded) Res.string.achievements_show_less else Res.string.achievements_show_all))
+        if (reached.isNotEmpty()) {
+            item { ListHeader(stringResource(Res.string.achievements_section_unlocked)) }
+            items(reached, key = { it.id }) { AchievementRow(it, statistics) }
+        }
+        if (ahead.isNotEmpty()) {
+            item { ListHeader(stringResource(Res.string.achievements_section_locked)) }
+            items(ahead, key = { it.id }) { AchievementRow(it, statistics) }
         }
     }
 }
 
 @Composable
-private fun AchievementTile(
+private fun ListHeader(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = LogicaSpacing.item),
+    )
+}
+
+@Composable
+private fun AchievementRow(
     achievement: Achievement,
     statistics: ProfileStatistics,
-    modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     val palette = LocalLogicaPalette.current
@@ -284,48 +357,66 @@ private fun AchievementTile(
     val progress = achievement.progress(statistics)
     val title = stringResource(achievement.title)
     val body = stringResource(achievement.body)
+    val done = stringResource(Res.string.achievement_done)
     Surface(
-        modifier = modifier.clearAndSetSemantics { contentDescription = "$title. $body. $progress/${achievement.target}" },
+        modifier =
+            Modifier.fillMaxWidth().clearAndSetSemantics {
+                contentDescription = if (unlocked) "$title. $body. $done" else "$title. $body. $progress/${achievement.target}"
+            },
         shape = MaterialTheme.shapes.medium,
-        color = if (unlocked) colors.primaryContainer else colors.surfaceContainerLow,
-        contentColor = if (unlocked) colors.onPrimaryContainer else colors.onSurface,
+        color = colors.surfaceContainerLow,
     ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(
-                    Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(if (unlocked) palette.star else colors.surfaceContainerHighest),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        achievement.icon,
-                        contentDescription = null,
-                        tint = if (unlocked) ACHIEVEMENT_ICON_INK else colors.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-                Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
-            Text(
-                body,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (unlocked) colors.onPrimaryContainer else colors.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (!unlocked && achievement.target > 1L) {
-                LinearProgressIndicator(
-                    progress = { progress.toFloat() / achievement.target },
-                    modifier = Modifier.fillMaxWidth().height(4.dp),
-                    drawStopIndicator = {},
+        Row(
+            modifier = Modifier.padding(ROW_PADDING),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(ENTRY_GAP),
+        ) {
+            Box(
+                Modifier
+                    .size(ROW_MEDAL)
+                    .clip(CircleShape)
+                    .background(if (unlocked) palette.star else colors.surfaceContainerHighest),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    achievement.icon,
+                    contentDescription = null,
+                    tint = if (unlocked) ACHIEVEMENT_ICON_INK else colors.onSurfaceVariant,
+                    modifier = Modifier.size(ROW_MEDAL * 0.55f),
                 )
-                Text("$progress / ${achievement.target}", style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(body, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                if (!unlocked && achievement.target > 1L) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LinearProgressIndicator(
+                            progress = { progress.toFloat() / achievement.target },
+                            modifier = Modifier.weight(1f).height(6.dp),
+                            strokeCap = StrokeCap.Round,
+                            gapSize = 0.dp,
+                            drawStopIndicator = {},
+                        )
+                        Text(
+                            "$progress / ${achievement.target}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = colors.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            if (unlocked) {
+                Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = palette.success, modifier = Modifier.size(24.dp))
             }
         }
     }
 }
+
+private val ENTRY_PADDING = 16.dp
+private val ENTRY_GAP = 14.dp
+private val ENTRY_MEDAL = 48.dp
+private val ROW_PADDING = 14.dp
+private val ROW_MEDAL = 46.dp
 
 /**
  * The queue of achievements a host has just seen reached. An open result card claims them at once
@@ -446,7 +537,6 @@ private fun AchievementMedal(
     }
 }
 
-private const val COLLAPSED_COUNT = 6
 private const val BANNER_MILLIS = 3_200L
 private const val CLAIM_WINDOW_MILLIS = 700L
 private const val BANNER_EXIT_MILLIS = 400L

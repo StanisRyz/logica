@@ -12,6 +12,7 @@
     <string name="web_back">Back</string>
     <string name="web_to_games">To games</string>
     <string name="web_to_difficulty">To difficulty</string>
+    <string name="web_to_profile">To profile</string>
     <string name="web_back_to_difficulty">Back to difficulty</string>
     <string name="web_rules">Rules</string>
     <string name="web_how_to_play_title">How to play: %1$s</string>

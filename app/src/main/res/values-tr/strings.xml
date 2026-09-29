@@ -9,6 +9,7 @@
     <string name="tab_profile">Profil</string>
     <string name="statistics">İstatistikler</string>
     <string name="settings">Ayarlar</string>
+    <string name="achievements">Başarılar</string>
     <string name="back">Geri</string>
     <string name="balance">Denge</string>
     <string name="balance_rules_summary">Her satır ve sütunda beyaz ve siyah taş sayısı eşit olmalı. Yan yana üç aynı taş olamaz ve tamamlanan hatlar tekrarlanmaz.</string>

@@ -14,7 +14,10 @@ import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.statistics.StatisticsViewModel
 import com.stanisryz.logica.statistics.StatisticsViewModelFactory
 import com.stanisryz.logica.statistics.toProfileUiState
+import com.stanisryz.logica.ui.components.LoadingState
+import com.stanisryz.logica.ui.profile.AchievementsScreenContent
 import com.stanisryz.logica.ui.profile.ProfileContent
+import com.stanisryz.logica.ui.profile.ProfileUiState
 
 /** Android host for shared Profile presentation; Room, lifecycle, and retry stay platform-owned. */
 @Composable
@@ -22,6 +25,7 @@ internal fun ProfileRoute(
     repository: StatisticsRepository,
     onOpenGames: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenAchievements: () -> Unit = {},
 ) {
     val factory = remember(repository) { StatisticsViewModelFactory(repository) }
     val statisticsViewModel: StatisticsViewModel = viewModel(factory = factory)
@@ -42,5 +46,21 @@ internal fun ProfileRoute(
         onRetry = statisticsViewModel::refresh,
         modifier = modifier,
         onOpenGames = onOpenGames,
+        onOpenAchievements = onOpenAchievements,
     )
+}
+
+/** The achievements list opened from the Profile, over the same durable statistics. */
+@Composable
+internal fun AchievementsRoute(
+    repository: StatisticsRepository,
+    modifier: Modifier = Modifier,
+) {
+    val factory = remember(repository) { StatisticsViewModelFactory(repository) }
+    val statisticsViewModel: StatisticsViewModel = viewModel(factory = factory)
+    val statisticsState by statisticsViewModel.uiState.collectAsStateWithLifecycle()
+    when (val state = statisticsState.toProfileUiState()) {
+        is ProfileUiState.Ready -> AchievementsScreenContent(state.statistics, modifier)
+        else -> LoadingState(modifier)
+    }
 }

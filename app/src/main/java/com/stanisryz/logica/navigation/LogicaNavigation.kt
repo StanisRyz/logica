@@ -103,6 +103,7 @@ import com.stanisryz.logica.ui.components.LivesDialog
 import com.stanisryz.logica.ui.components.PuzzleStartScreen
 import com.stanisryz.logica.ui.nonogram.NonogramGallerySheet
 import com.stanisryz.logica.ui.rating.GameRating
+import com.stanisryz.logica.ui.screens.AchievementsRoute
 import com.stanisryz.logica.ui.screens.BalanceGameRoute
 import com.stanisryz.logica.ui.screens.BalanceTutorialRoute
 import com.stanisryz.logica.ui.screens.CrownsGameRoute
@@ -458,10 +459,11 @@ internal fun LogicaNavigation(
                                                             rewarded = storeRewardedOffers,
                                                         )
                                                     PrimaryTab.PROFILE ->
-                                                        ProfileRoute(statisticsRepository, onOpenGames = {
-                                                            selectedTab =
-                                                                PrimaryTab.GAME
-                                                        })
+                                                        ProfileRoute(
+                                                            statisticsRepository,
+                                                            onOpenGames = { selectedTab = PrimaryTab.GAME },
+                                                            onOpenAchievements = { backStack.add(AppDestination.Achievements) },
+                                                        )
                                                 }
                                             }
                                         }
@@ -476,6 +478,9 @@ internal fun LogicaNavigation(
                                             .onSizeChanged { primaryNavigationBarSize = it },
                                 )
                             }
+                        }
+                        entry<AppDestination.Achievements> {
+                            AchievementsRoute(statisticsRepository)
                         }
                         entry<AppDestination.Settings> {
                             SettingsScreen(settings, onThemeModeChanged, onSoundEnabledChanged, onHapticsEnabledChanged)
@@ -910,6 +915,7 @@ private fun destinationTitle(
         when (destination) {
             AppDestination.Home -> tab.titleResource
             AppDestination.Settings -> R.string.settings
+            AppDestination.Achievements -> R.string.achievements
             AppDestination.BalanceStart, is AppDestination.BalanceGame -> R.string.balance
             AppDestination.BalanceTutorial -> R.string.balance_tutorial_title
             AppDestination.CrownsStart, is AppDestination.CrownsGame -> R.string.crowns

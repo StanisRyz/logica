@@ -10,6 +10,7 @@
     <string name="tab_profile">Профиль</string>
     <string name="statistics">Статистика</string>
     <string name="settings">Настройки</string>
+    <string name="achievements">Достижения</string>
     <string name="back">Назад</string>
     <string name="balance">Баланс</string>
     <string name="balance_rules_summary">В каждой строке и столбце должно быть поровну белых и чёрных фишек. Нельзя ставить три одинаковые фишки подряд, а завершённые линии не повторяются.</string>
