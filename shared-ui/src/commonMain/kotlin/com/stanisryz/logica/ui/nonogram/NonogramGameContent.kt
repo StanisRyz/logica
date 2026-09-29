@@ -9,7 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -111,7 +111,6 @@ fun NonogramToolBar(
     enabled: Boolean = true,
     hintCount: Int? = null,
 ) {
-    val fillColor = MaterialTheme.colorScheme.primary
     PuzzleToolBar(
         tools =
             listOf(
@@ -120,7 +119,7 @@ fun NonogramToolBar(
                     stateDescription = selectedDescription(selectedTool == NonogramTool.FILL),
                     selected = selectedTool == NonogramTool.FILL,
                     onClick = { onSelectTool(NonogramTool.FILL) },
-                    symbol = { Box(Modifier.size(TOOL_SQUARE).background(fillColor, RoundedCornerShape(3.dp))) },
+                    symbol = { Box(Modifier.size(TOOL_SQUARE).background(LocalContentColor.current, RoundedCornerShape(3.dp))) },
                     caption = stringResource(Res.string.nonogram_caption_fill),
                 ),
                 PuzzleTool(

@@ -183,7 +183,7 @@ fun Game2048Content(
             CompositionLocalProvider(LocalRoomyGameplayControls provides roomy) {
                 CenteredBoardLayout(
                     spacing = sectionSpacing,
-                    anchorControlsToBottom = roomy,
+                    anchorControlsToBottom = true,
                     modifier =
                         Modifier
                             .fillMaxSize()

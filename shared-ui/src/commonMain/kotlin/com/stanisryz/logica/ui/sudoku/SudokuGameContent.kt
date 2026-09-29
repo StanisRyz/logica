@@ -33,6 +33,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.difficulty_medium
 import com.stanisryz.logica.ui.components.BoardInfoHeader
 import com.stanisryz.logica.ui.components.CellGameSounds
 import com.stanisryz.logica.ui.components.CenteredBoardLayout
+import com.stanisryz.logica.ui.components.GameDock
 import com.stanisryz.logica.ui.components.GameSound
 import com.stanisryz.logica.ui.components.LocalGameSounds
 import com.stanisryz.logica.ui.components.LocalRoomyGameplayControls
@@ -148,26 +149,30 @@ fun SudokuGameContent(
                         totalCells = game.cells.count { it.status != SudokuCellStatus.GIVEN },
                     )
                     hostStatusContent()
-                    SudokuToolBar(
-                        isPencilMode = isPencilMode,
-                        onToggle = onTogglePencil,
-                        onErase = onErase,
-                        eraseEnabled = eraseEnabled,
-                        canUndo = undoEnabled,
-                        onUndo = onUndo,
-                        onHint = onHint,
-                        hintEnabled = game.status == SudokuGameStatus.IN_PROGRESS && gameplayEnabled,
-                        enabled = gameplayEnabled,
-                        wrapTools = wideLayout,
-                        hintCount = hintCount,
-                    )
-                    SudokuNumberPad(
-                        enabled = keypadEnabled,
-                        onDigit = guardedDigit,
-                        remaining = remaining,
-                        isPencilMode = isPencilMode,
-                        columns = WIDE_DIGIT_COLUMNS,
-                    )
+                    GameDock {
+                        Column(verticalArrangement = Arrangement.spacedBy(sectionSpacing)) {
+                            SudokuToolBar(
+                                isPencilMode = isPencilMode,
+                                onToggle = onTogglePencil,
+                                onErase = onErase,
+                                eraseEnabled = eraseEnabled,
+                                canUndo = undoEnabled,
+                                onUndo = onUndo,
+                                onHint = onHint,
+                                hintEnabled = game.status == SudokuGameStatus.IN_PROGRESS && gameplayEnabled,
+                                enabled = gameplayEnabled,
+                                wrapTools = wideLayout,
+                                hintCount = hintCount,
+                            )
+                            SudokuNumberPad(
+                                enabled = keypadEnabled,
+                                onDigit = guardedDigit,
+                                remaining = remaining,
+                                isPencilMode = isPencilMode,
+                                columns = WIDE_DIGIT_COLUMNS,
+                            )
+                        }
+                    }
                 }
             }
         } else {
@@ -175,7 +180,7 @@ fun SudokuGameContent(
             CompositionLocalProvider(LocalRoomyGameplayControls provides roomy) {
                 CenteredBoardLayout(
                     spacing = sectionSpacing,
-                    anchorControlsToBottom = roomy,
+                    anchorControlsToBottom = true,
                     modifier =
                         Modifier
                             .fillMaxSize()
@@ -209,29 +214,32 @@ fun SudokuGameContent(
                         )
                     },
                     controls = {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(sectionSpacing),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            SudokuToolBar(
-                                isPencilMode = isPencilMode,
-                                onToggle = onTogglePencil,
-                                onErase = onErase,
-                                eraseEnabled = eraseEnabled,
-                                canUndo = undoEnabled,
-                                onUndo = onUndo,
-                                onHint = onHint,
-                                hintEnabled = game.status == SudokuGameStatus.IN_PROGRESS && gameplayEnabled,
-                                enabled = gameplayEnabled,
-                                hintCount = hintCount,
-                            )
-                            SudokuNumberPad(
-                                enabled = keypadEnabled,
-                                onDigit = guardedDigit,
-                                remaining = remaining,
-                                isPencilMode = isPencilMode,
-                            )
+                        // Tools and digits share the floating dock at the bottom edge, under the thumb.
+                        GameDock {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(sectionSpacing),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                SudokuToolBar(
+                                    isPencilMode = isPencilMode,
+                                    onToggle = onTogglePencil,
+                                    onErase = onErase,
+                                    eraseEnabled = eraseEnabled,
+                                    canUndo = undoEnabled,
+                                    onUndo = onUndo,
+                                    onHint = onHint,
+                                    hintEnabled = game.status == SudokuGameStatus.IN_PROGRESS && gameplayEnabled,
+                                    enabled = gameplayEnabled,
+                                    hintCount = hintCount,
+                                )
+                                SudokuNumberPad(
+                                    enabled = keypadEnabled,
+                                    onDigit = guardedDigit,
+                                    remaining = remaining,
+                                    isPencilMode = isPencilMode,
+                                )
+                            }
                         }
                     },
                 )

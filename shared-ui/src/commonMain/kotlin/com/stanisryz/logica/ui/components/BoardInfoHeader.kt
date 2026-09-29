@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
@@ -37,9 +39,9 @@ import com.stanisryz.logica.shared.ui.generated.resources.sudoku_mistakes_short
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The header that sits right on top of a square board. With [showTitle] it is a small title block:
- * the level (or the Daily label), the difficulty under it, and the mistakes as marks that turn red
- * one by one. Without it everything shares one line, as Sudoku needs every row for its board. A
+ * The header that sits right on top of a square board. With [showTitle] it is one centred line: the
+ * level (or the Daily label), the difficulty, and the mistakes as marks that turn red one by one.
+ * Without it the three spread across the width, as Sudoku shows them. A
  * thin bar shows how much of the board the player has closed; only cells the board already shows
  * as correct count, so it reveals nothing new.
  */
@@ -68,8 +70,31 @@ fun BoardInfoHeader(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         if (showTitle) {
-            BoardTitle(difficultyLabel, levelNumber, contextLabel)
-            MistakeMarks(mistakesUsed, maxMistakes)
+            // One compact centred line — the level, the difficulty, then the mistake marks — so the
+            // board gets the height.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (placeLabel.isNotEmpty()) {
+                    Text(
+                        text = placeLabel,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = colors.onSurface,
+                        maxLines = 1,
+                    )
+                    Text(
+                        text = " · ",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = colors.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    text = difficultyLabel,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colors.onSurfaceVariant,
+                    maxLines = 1,
+                )
+                Spacer(Modifier.width(MISTAKES_GAP))
+                MistakeMarks(mistakesUsed, maxMistakes)
+            }
         } else {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -185,7 +210,8 @@ private val HEADER_HORIZONTAL_PADDING = 4.dp
 private val HEADER_ROW_SPACING = 10.dp
 private val PROGRESS_HEIGHT = 4.dp
 private const val PROGRESS_ANIMATION_MILLIS = 250
-private val MISTAKE_MARK_SIZE = 22.dp
-private val MISTAKE_ICON_SIZE = 16.dp
+private val MISTAKE_MARK_SIZE = 18.dp
+private val MISTAKE_ICON_SIZE = 13.dp
+private val MISTAKES_GAP = 14.dp
 private val MISTAKE_MARK_BORDER = 1.dp
-private val MISTAKE_MARK_SPACING = 10.dp
+private val MISTAKE_MARK_SPACING = 6.dp

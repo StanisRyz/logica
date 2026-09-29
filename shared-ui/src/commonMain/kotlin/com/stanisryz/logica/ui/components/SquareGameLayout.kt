@@ -77,7 +77,7 @@ internal fun SquareGameLayout(
             CompositionLocalProvider(LocalRoomyGameplayControls provides roomy) {
                 CenteredBoardLayout(
                     spacing = sectionSpacing,
-                    anchorControlsToBottom = roomy,
+                    anchorControlsToBottom = true,
                     modifier =
                         Modifier
                             .fillMaxSize()
