@@ -398,4 +398,11 @@
     <string name="levels_hint">Сыграйте пройденный уровень ещё раз, чтобы собрать больше звёзд. Повтор не даёт кристаллов и не меняет прогресс.</string>
     <string name="gallery_replay">Сыграть снова</string>
     <string name="levels_empty">Пройдите первый уровень — и его можно будет переиграть отсюда.</string>
+    <string name="second_chance_title">Третья ошибка</string>
+    <string name="second_chance_body">Посмотрите короткую рекламу — одна ошибка снимется, и вы продолжите с того же места. Шанс даётся один раз за попытку.</string>
+    <string name="second_chance_watch">Продолжить за рекламу</string>
+    <string name="second_chance_loading">Реклама загружается…</string>
+    <string name="second_chance_unavailable">Реклама сейчас недоступна</string>
+    <string name="second_chance_retry">Повторить</string>
+    <string name="second_chance_decline">Завершить уровень</string>
 </resources>

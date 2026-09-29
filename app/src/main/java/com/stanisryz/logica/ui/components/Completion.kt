@@ -35,6 +35,7 @@ internal fun PuzzleTerminalDialog(
     onGameHub: () -> Unit,
     isReplay: Boolean = LocalLevelReplay.current,
 ) {
+    if (LocalSecondChancePending.current) return
     GameResultDialog(
         solved = isSolved,
         levelNumber = levelNumber,

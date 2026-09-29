@@ -104,7 +104,9 @@ import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.LevelMapSheet
 import com.stanisryz.logica.ui.components.LivesDialog
 import com.stanisryz.logica.ui.components.LocalLevelReplay
+import com.stanisryz.logica.ui.components.LocalSecondChanceAd
 import com.stanisryz.logica.ui.components.PuzzleStartScreen
+import com.stanisryz.logica.ui.components.SecondChanceAd
 import com.stanisryz.logica.ui.nonogram.NonogramGallerySheet
 import com.stanisryz.logica.ui.rating.GameRating
 import com.stanisryz.logica.ui.screens.AchievementsRoute
@@ -153,6 +155,7 @@ internal fun LogicaNavigation(
     onPreloadRewardedAd: () -> Unit,
     onReleaseRewardedAd: () -> Unit,
     onWatchRewardedAd: (Activity, RewardedAdKind) -> Unit,
+    onWatchContinueAd: (Activity, () -> Unit) -> Unit,
     onRetryRewardedAd: () -> Unit,
     onGameplayStarted: () -> Unit,
     onGameplayStopped: () -> Unit,
@@ -236,8 +239,11 @@ internal fun LogicaNavigation(
      * rotating ads in the background, and a failed load stays failed until the player asks for a retry.
      */
     val storeVisible = showStoreSheet || (currentDestination == AppDestination.Home && selectedTab == PrimaryTab.STORE)
+    // A game waiting on its one ad-paid second chance after the third mistake.
+    var secondChanceVisible by remember { mutableStateOf(false) }
     val rewardedOfferVisible =
-        storeVisible ||
+        secondChanceVisible ||
+            storeVisible ||
             (!economy.isFull && showLivesDialog) ||
             (!economy.isGameplayAllowed && currentDestination.allowsRewardedOffer(selectedTab))
     val storeRewardedOffers =
@@ -390,369 +396,379 @@ internal fun LogicaNavigation(
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background),
         ) {
-            NavDisplay(
-                backStack = backStack,
-                modifier = Modifier.fillMaxSize().clipToBounds().background(MaterialTheme.colorScheme.background),
-                onBack = goBack,
-                transitionSpec = {
-                    horizontalSlideTransition(
-                        incomingDirection = 1,
-                        outgoingDirection = -1,
-                    )
-                },
-                popTransitionSpec = {
-                    horizontalSlideTransition(
-                        incomingDirection = -1,
-                        outgoingDirection = 1,
-                    )
-                },
-                entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
-                entryProvider =
-                    entryProvider {
-                        entry<AppDestination.Home> {
-                            Box(Modifier.fillMaxSize()) {
-                                Box(
-                                    Modifier
-                                        .fillMaxSize()
-                                        .padding(bottom = primaryNavigationBarHeight),
-                                ) {
-                                    AnimatedContent(
-                                        targetState = selectedTab,
-                                        modifier =
-                                            Modifier
-                                                .fillMaxSize()
-                                                .clipToBounds()
-                                                .background(MaterialTheme.colorScheme.background),
-                                        transitionSpec = {
-                                            val direction = if (targetState.ordinal >= initialState.ordinal) 1 else -1
-                                            horizontalSlideTransition(
-                                                incomingDirection = direction,
-                                                outgoingDirection = -direction,
-                                            )
-                                        },
-                                        label = "primaryTab",
-                                    ) { tab ->
-                                        Box(
-                                            Modifier
-                                                .fillMaxSize()
-                                                .background(MaterialTheme.colorScheme.background)
-                                                .semantics { if (tab != selectedTab) hideFromAccessibility() },
-                                        ) {
-                                            tabStateHolder.SaveableStateProvider(tab) {
-                                                when (tab) {
-                                                    PrimaryTab.GAME ->
-                                                        GameHubRoute(
-                                                            dailyChallengeRepository = dailyChallengeRepository,
-                                                            statisticsRepository = statisticsRepository,
-                                                            dailyResultRepository = dailyResultRepository,
-                                                            catalog = GAME_CATALOG_PUZZLE_TYPES,
-                                                            economy = economy,
-                                                            onGameSelected = onGameSelected,
-                                                            onOpenDaily = openDaily,
-                                                            onRestoreLife = onRestoreLife,
-                                                            continueGame =
-                                                                settings.lastPlayedPuzzle?.let { puzzle ->
-                                                                    settings.lastPlayedDifficulty?.let { puzzle to it }
+            CompositionLocalProvider(
+                LocalSecondChanceAd provides
+                    SecondChanceAd(
+                        state = rewardedState,
+                        setVisible = { secondChanceVisible = it },
+                        watch = { onGranted -> activity?.let { onWatchContinueAd(it, onGranted) } },
+                        retry = onRetryRewardedAd,
+                    ),
+            ) {
+                NavDisplay(
+                    backStack = backStack,
+                    modifier = Modifier.fillMaxSize().clipToBounds().background(MaterialTheme.colorScheme.background),
+                    onBack = goBack,
+                    transitionSpec = {
+                        horizontalSlideTransition(
+                            incomingDirection = 1,
+                            outgoingDirection = -1,
+                        )
+                    },
+                    popTransitionSpec = {
+                        horizontalSlideTransition(
+                            incomingDirection = -1,
+                            outgoingDirection = 1,
+                        )
+                    },
+                    entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
+                    entryProvider =
+                        entryProvider {
+                            entry<AppDestination.Home> {
+                                Box(Modifier.fillMaxSize()) {
+                                    Box(
+                                        Modifier
+                                            .fillMaxSize()
+                                            .padding(bottom = primaryNavigationBarHeight),
+                                    ) {
+                                        AnimatedContent(
+                                            targetState = selectedTab,
+                                            modifier =
+                                                Modifier
+                                                    .fillMaxSize()
+                                                    .clipToBounds()
+                                                    .background(MaterialTheme.colorScheme.background),
+                                            transitionSpec = {
+                                                val direction = if (targetState.ordinal >= initialState.ordinal) 1 else -1
+                                                horizontalSlideTransition(
+                                                    incomingDirection = direction,
+                                                    outgoingDirection = -direction,
+                                                )
+                                            },
+                                            label = "primaryTab",
+                                        ) { tab ->
+                                            Box(
+                                                Modifier
+                                                    .fillMaxSize()
+                                                    .background(MaterialTheme.colorScheme.background)
+                                                    .semantics { if (tab != selectedTab) hideFromAccessibility() },
+                                            ) {
+                                                tabStateHolder.SaveableStateProvider(tab) {
+                                                    when (tab) {
+                                                        PrimaryTab.GAME ->
+                                                            GameHubRoute(
+                                                                dailyChallengeRepository = dailyChallengeRepository,
+                                                                statisticsRepository = statisticsRepository,
+                                                                dailyResultRepository = dailyResultRepository,
+                                                                catalog = GAME_CATALOG_PUZZLE_TYPES,
+                                                                economy = economy,
+                                                                onGameSelected = onGameSelected,
+                                                                onOpenDaily = openDaily,
+                                                                onRestoreLife = onRestoreLife,
+                                                                continueGame =
+                                                                    settings.lastPlayedPuzzle?.let { puzzle ->
+                                                                        settings.lastPlayedDifficulty?.let { puzzle to it }
+                                                                    },
+                                                                catalogLevelRepository = catalogLevelRepository,
+                                                                onContinue = { puzzle, difficulty ->
+                                                                    if (economy.isGameplayAllowed) {
+                                                                        openLevel(puzzle, difficulty)
+                                                                    } else {
+                                                                        showLivesDialog =
+                                                                            true
+                                                                    }
                                                                 },
-                                                            catalogLevelRepository = catalogLevelRepository,
-                                                            onContinue = { puzzle, difficulty ->
-                                                                if (economy.isGameplayAllowed) {
-                                                                    openLevel(puzzle, difficulty)
-                                                                } else {
-                                                                    showLivesDialog =
-                                                                        true
-                                                                }
-                                                            },
-                                                        )
-                                                    PrimaryTab.STORE ->
-                                                        StoreRoute(
-                                                            economy = economy,
-                                                            economyRepository = economyRepository,
-                                                            storeGateway = storeGateway,
-                                                            storeProducts = storeProducts,
-                                                            rewarded = storeRewardedOffers,
-                                                        )
-                                                    PrimaryTab.PROFILE ->
-                                                        ProfileRoute(
-                                                            statisticsRepository,
-                                                            onOpenGames = { selectedTab = PrimaryTab.GAME },
-                                                            onOpenAchievements = { backStack.add(AppDestination.Achievements) },
-                                                        )
+                                                            )
+                                                        PrimaryTab.STORE ->
+                                                            StoreRoute(
+                                                                economy = economy,
+                                                                economyRepository = economyRepository,
+                                                                storeGateway = storeGateway,
+                                                                storeProducts = storeProducts,
+                                                                rewarded = storeRewardedOffers,
+                                                            )
+                                                        PrimaryTab.PROFILE ->
+                                                            ProfileRoute(
+                                                                statisticsRepository,
+                                                                onOpenGames = { selectedTab = PrimaryTab.GAME },
+                                                                onOpenAchievements = { backStack.add(AppDestination.Achievements) },
+                                                            )
+                                                    }
                                                 }
                                             }
                                         }
                                     }
+                                    AppBottomBar(
+                                        selectedTab = selectedTab,
+                                        onTabSelected = { selectedTab = it },
+                                        modifier =
+                                            Modifier
+                                                .align(Alignment.BottomCenter)
+                                                .onSizeChanged { primaryNavigationBarSize = it },
+                                    )
                                 }
-                                AppBottomBar(
-                                    selectedTab = selectedTab,
-                                    onTabSelected = { selectedTab = it },
-                                    modifier =
-                                        Modifier
-                                            .align(Alignment.BottomCenter)
-                                            .onSizeChanged { primaryNavigationBarSize = it },
+                            }
+                            entry<AppDestination.Achievements> {
+                                AchievementsRoute(statisticsRepository)
+                            }
+                            entry<AppDestination.Settings> {
+                                SettingsScreen(settings, onThemeModeChanged, onSoundEnabledChanged, onHapticsEnabledChanged)
+                            }
+                            entry<AppDestination.BalanceStart> {
+                                PuzzleStartScreen(
+                                    puzzleType = PuzzleType.BALANCE,
+                                    stars = difficultyStars(statisticsRepository, PuzzleType.BALANCE),
+                                    rating = levelRating(catalogLevelRepository, PuzzleType.BALANCE),
+                                    levelMap = { onDismiss ->
+                                        LevelMap(
+                                            catalogLevelRepository,
+                                            statisticsRepository,
+                                            PuzzleType.BALANCE,
+                                            onDismiss,
+                                            openLevel,
+                                            replayLevel,
+                                        )
+                                    },
+                                    economy = economy,
+                                    tutorialPending = !settings.tutorialCompleted(PuzzleType.BALANCE),
+                                    onTutorialOffered = { onTutorialSeen(PuzzleType.BALANCE) },
+                                    onOpenTutorial = { backStack.add(AppDestination.BalanceTutorial) },
+                                    onStart = { difficulty -> openLevel(PuzzleType.BALANCE, difficulty) },
+                                    onRestoreLife = onRestoreLife,
                                 )
                             }
-                        }
-                        entry<AppDestination.Achievements> {
-                            AchievementsRoute(statisticsRepository)
-                        }
-                        entry<AppDestination.Settings> {
-                            SettingsScreen(settings, onThemeModeChanged, onSoundEnabledChanged, onHapticsEnabledChanged)
-                        }
-                        entry<AppDestination.BalanceStart> {
-                            PuzzleStartScreen(
-                                puzzleType = PuzzleType.BALANCE,
-                                stars = difficultyStars(statisticsRepository, PuzzleType.BALANCE),
-                                rating = levelRating(catalogLevelRepository, PuzzleType.BALANCE),
-                                levelMap = { onDismiss ->
-                                    LevelMap(
-                                        catalogLevelRepository,
-                                        statisticsRepository,
-                                        PuzzleType.BALANCE,
-                                        onDismiss,
-                                        openLevel,
-                                        replayLevel,
+                            entry<AppDestination.BalanceTutorial> {
+                                BalanceTutorialRoute(settingsRepository = settingsRepository, onDone = { backStack.removeLastOrNull() })
+                            }
+                            entry<AppDestination.CrownsStart> {
+                                PuzzleStartScreen(
+                                    puzzleType = PuzzleType.CROWNS,
+                                    stars = difficultyStars(statisticsRepository, PuzzleType.CROWNS),
+                                    rating = levelRating(catalogLevelRepository, PuzzleType.CROWNS),
+                                    levelMap = { onDismiss ->
+                                        LevelMap(
+                                            catalogLevelRepository,
+                                            statisticsRepository,
+                                            PuzzleType.CROWNS,
+                                            onDismiss,
+                                            openLevel,
+                                            replayLevel,
+                                        )
+                                    },
+                                    economy = economy,
+                                    tutorialPending = !settings.tutorialCompleted(PuzzleType.CROWNS),
+                                    onTutorialOffered = { onTutorialSeen(PuzzleType.CROWNS) },
+                                    onOpenTutorial = { backStack.add(AppDestination.CrownsTutorial) },
+                                    onStart = { difficulty -> openLevel(PuzzleType.CROWNS, difficulty) },
+                                    onRestoreLife = onRestoreLife,
+                                )
+                            }
+                            entry<AppDestination.CrownsTutorial> {
+                                CrownsTutorialRoute(
+                                    settingsRepository = settingsRepository,
+                                    hapticsEnabled = settings.hapticsEnabled,
+                                    onDone = { backStack.removeLastOrNull() },
+                                )
+                            }
+                            entry<AppDestination.WordStart> {
+                                PuzzleStartScreen(
+                                    puzzleType = PuzzleType.WORD,
+                                    stars = difficultyStars(statisticsRepository, PuzzleType.WORD),
+                                    rating = levelRating(catalogLevelRepository, PuzzleType.WORD),
+                                    economy = economy,
+                                    tutorialPending = !settings.tutorialCompleted(PuzzleType.WORD),
+                                    onTutorialOffered = { onTutorialSeen(PuzzleType.WORD) },
+                                    onOpenTutorial = { backStack.add(AppDestination.WordTutorial) },
+                                    onStart = { difficulty -> openLevel(PuzzleType.WORD, difficulty) },
+                                    onRestoreLife = onRestoreLife,
+                                )
+                            }
+                            entry<AppDestination.WordTutorial> {
+                                WordTutorialRoute(settingsRepository = settingsRepository, onDone = { backStack.removeLastOrNull() })
+                            }
+                            entry<AppDestination.SudokuStart> {
+                                PuzzleStartScreen(
+                                    puzzleType = PuzzleType.SUDOKU,
+                                    stars = difficultyStars(statisticsRepository, PuzzleType.SUDOKU),
+                                    rating = levelRating(catalogLevelRepository, PuzzleType.SUDOKU),
+                                    levelMap = { onDismiss ->
+                                        LevelMap(
+                                            catalogLevelRepository,
+                                            statisticsRepository,
+                                            PuzzleType.SUDOKU,
+                                            onDismiss,
+                                            openLevel,
+                                            replayLevel,
+                                        )
+                                    },
+                                    economy = economy,
+                                    tutorialPending = !settings.tutorialCompleted(PuzzleType.SUDOKU),
+                                    onTutorialOffered = { onTutorialSeen(PuzzleType.SUDOKU) },
+                                    onOpenTutorial = { backStack.add(AppDestination.SudokuTutorial) },
+                                    onStart = { difficulty -> openLevel(PuzzleType.SUDOKU, difficulty) },
+                                    onRestoreLife = onRestoreLife,
+                                )
+                            }
+                            entry<AppDestination.SudokuTutorial> {
+                                SudokuTutorialRoute(
+                                    settingsRepository = settingsRepository,
+                                    onDone = { backStack.removeLastOrNull() },
+                                )
+                            }
+                            entry<AppDestination.Game2048Start> {
+                                PuzzleStartScreen(
+                                    puzzleType = PuzzleType.GAME_2048,
+                                    stars = difficultyStars(statisticsRepository, PuzzleType.GAME_2048),
+                                    rating = bestScoreRating(game2048BestScore),
+                                    economy = economy,
+                                    tutorialPending = !settings.tutorialCompleted(PuzzleType.GAME_2048),
+                                    onTutorialOffered = { onTutorialSeen(PuzzleType.GAME_2048) },
+                                    onOpenTutorial = { backStack.add(AppDestination.Game2048Tutorial) },
+                                    onStart = { difficulty -> openLevel(PuzzleType.GAME_2048, difficulty) },
+                                    onRestoreLife = onRestoreLife,
+                                )
+                            }
+                            entry<AppDestination.Game2048Tutorial> {
+                                Game2048TutorialRoute(
+                                    settingsRepository = settingsRepository,
+                                    onDone = { backStack.removeLastOrNull() },
+                                )
+                            }
+                            entry<AppDestination.NonogramStart> {
+                                PuzzleStartScreen(
+                                    puzzleType = PuzzleType.NONOGRAM,
+                                    stars = difficultyStars(statisticsRepository, PuzzleType.NONOGRAM),
+                                    rating = levelRating(catalogLevelRepository, PuzzleType.NONOGRAM),
+                                    gallery = { onDismiss ->
+                                        NonogramGallery(catalogLevelRepository, statisticsRepository, onDismiss) { difficulty, level ->
+                                            onDismiss()
+                                            replayLevel(PuzzleType.NONOGRAM, difficulty, level)
+                                        }
+                                    },
+                                    economy = economy,
+                                    tutorialPending = !settings.tutorialCompleted(PuzzleType.NONOGRAM),
+                                    onTutorialOffered = { onTutorialSeen(PuzzleType.NONOGRAM) },
+                                    onOpenTutorial = { backStack.add(AppDestination.NonogramTutorial) },
+                                    onStart = { difficulty -> openLevel(PuzzleType.NONOGRAM, difficulty) },
+                                    onRestoreLife = onRestoreLife,
+                                )
+                            }
+                            entry<AppDestination.NonogramTutorial> {
+                                NonogramTutorialRoute(
+                                    settingsRepository = settingsRepository,
+                                    onDone = { backStack.removeLastOrNull() },
+                                )
+                            }
+                            entry<AppDestination.BalanceGame> { destination ->
+                                // A replayed level pays no gems; its result card says so.
+                                CompositionLocalProvider(LocalLevelReplay provides destination.launch.isReplay) {
+                                    BalanceGameRoute(
+                                        launch = destination.launch,
+                                        attemptFactory = attemptFactory,
+                                        completionRepository = gameCompletionRepository,
+                                        economyRepository = economyRepository,
+                                        exitGuard = exitGuard,
+                                        hapticsEnabled = settings.hapticsEnabled,
+                                        onBack = goBack,
+                                        onNextLevel = { openNextLevel(PuzzleType.BALANCE, destination.launch) },
+                                        onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                                        onTerminalAction = onTerminalAction,
+                                        onRestoreLife = onRestoreLife,
+                                        onOpenStore = openStore,
                                     )
-                                },
-                                economy = economy,
-                                tutorialPending = !settings.tutorialCompleted(PuzzleType.BALANCE),
-                                onTutorialOffered = { onTutorialSeen(PuzzleType.BALANCE) },
-                                onOpenTutorial = { backStack.add(AppDestination.BalanceTutorial) },
-                                onStart = { difficulty -> openLevel(PuzzleType.BALANCE, difficulty) },
-                                onRestoreLife = onRestoreLife,
-                            )
-                        }
-                        entry<AppDestination.BalanceTutorial> {
-                            BalanceTutorialRoute(settingsRepository = settingsRepository, onDone = { backStack.removeLastOrNull() })
-                        }
-                        entry<AppDestination.CrownsStart> {
-                            PuzzleStartScreen(
-                                puzzleType = PuzzleType.CROWNS,
-                                stars = difficultyStars(statisticsRepository, PuzzleType.CROWNS),
-                                rating = levelRating(catalogLevelRepository, PuzzleType.CROWNS),
-                                levelMap = { onDismiss ->
-                                    LevelMap(
-                                        catalogLevelRepository,
-                                        statisticsRepository,
-                                        PuzzleType.CROWNS,
-                                        onDismiss,
-                                        openLevel,
-                                        replayLevel,
+                                }
+                            }
+                            entry<AppDestination.CrownsGame> { destination ->
+                                // A replayed level pays no gems; its result card says so.
+                                CompositionLocalProvider(LocalLevelReplay provides destination.launch.isReplay) {
+                                    CrownsGameRoute(
+                                        launch = destination.launch,
+                                        attemptFactory = attemptFactory,
+                                        completionRepository = gameCompletionRepository,
+                                        economyRepository = economyRepository,
+                                        exitGuard = exitGuard,
+                                        hapticsEnabled = settings.hapticsEnabled,
+                                        onBack = goBack,
+                                        onNextLevel = { openNextLevel(PuzzleType.CROWNS, destination.launch) },
+                                        onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                                        onTerminalAction = onTerminalAction,
+                                        onRestoreLife = onRestoreLife,
+                                        onOpenStore = openStore,
                                     )
-                                },
-                                economy = economy,
-                                tutorialPending = !settings.tutorialCompleted(PuzzleType.CROWNS),
-                                onTutorialOffered = { onTutorialSeen(PuzzleType.CROWNS) },
-                                onOpenTutorial = { backStack.add(AppDestination.CrownsTutorial) },
-                                onStart = { difficulty -> openLevel(PuzzleType.CROWNS, difficulty) },
-                                onRestoreLife = onRestoreLife,
-                            )
-                        }
-                        entry<AppDestination.CrownsTutorial> {
-                            CrownsTutorialRoute(
-                                settingsRepository = settingsRepository,
-                                hapticsEnabled = settings.hapticsEnabled,
-                                onDone = { backStack.removeLastOrNull() },
-                            )
-                        }
-                        entry<AppDestination.WordStart> {
-                            PuzzleStartScreen(
-                                puzzleType = PuzzleType.WORD,
-                                stars = difficultyStars(statisticsRepository, PuzzleType.WORD),
-                                rating = levelRating(catalogLevelRepository, PuzzleType.WORD),
-                                economy = economy,
-                                tutorialPending = !settings.tutorialCompleted(PuzzleType.WORD),
-                                onTutorialOffered = { onTutorialSeen(PuzzleType.WORD) },
-                                onOpenTutorial = { backStack.add(AppDestination.WordTutorial) },
-                                onStart = { difficulty -> openLevel(PuzzleType.WORD, difficulty) },
-                                onRestoreLife = onRestoreLife,
-                            )
-                        }
-                        entry<AppDestination.WordTutorial> {
-                            WordTutorialRoute(settingsRepository = settingsRepository, onDone = { backStack.removeLastOrNull() })
-                        }
-                        entry<AppDestination.SudokuStart> {
-                            PuzzleStartScreen(
-                                puzzleType = PuzzleType.SUDOKU,
-                                stars = difficultyStars(statisticsRepository, PuzzleType.SUDOKU),
-                                rating = levelRating(catalogLevelRepository, PuzzleType.SUDOKU),
-                                levelMap = { onDismiss ->
-                                    LevelMap(
-                                        catalogLevelRepository,
-                                        statisticsRepository,
-                                        PuzzleType.SUDOKU,
-                                        onDismiss,
-                                        openLevel,
-                                        replayLevel,
+                                }
+                            }
+                            entry<AppDestination.WordGame> { destination ->
+                                WordGameRoute(
+                                    launch = destination.launch,
+                                    attemptFactory = attemptFactory,
+                                    completionRepository = gameCompletionRepository,
+                                    economyRepository = economyRepository,
+                                    exitGuard = exitGuard,
+                                    hapticsEnabled = settings.hapticsEnabled,
+                                    onBack = goBack,
+                                    onNextLevel = { openNextLevel(PuzzleType.WORD, destination.launch) },
+                                    onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                                    onTerminalAction = onTerminalAction,
+                                    onRestoreLife = onRestoreLife,
+                                )
+                            }
+                            entry<AppDestination.SudokuGame> { destination ->
+                                // A replayed level pays no gems; its result card says so.
+                                CompositionLocalProvider(LocalLevelReplay provides destination.launch.isReplay) {
+                                    SudokuGameRoute(
+                                        launch = destination.launch,
+                                        attemptFactory = attemptFactory,
+                                        completionRepository = gameCompletionRepository,
+                                        economyRepository = economyRepository,
+                                        exitGuard = exitGuard,
+                                        hapticsEnabled = settings.hapticsEnabled,
+                                        onBack = goBack,
+                                        onNextLevel = { openNextLevel(PuzzleType.SUDOKU, destination.launch) },
+                                        onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                                        onTerminalAction = onTerminalAction,
+                                        onRestoreLife = onRestoreLife,
+                                        onOpenStore = openStore,
                                     )
-                                },
-                                economy = economy,
-                                tutorialPending = !settings.tutorialCompleted(PuzzleType.SUDOKU),
-                                onTutorialOffered = { onTutorialSeen(PuzzleType.SUDOKU) },
-                                onOpenTutorial = { backStack.add(AppDestination.SudokuTutorial) },
-                                onStart = { difficulty -> openLevel(PuzzleType.SUDOKU, difficulty) },
-                                onRestoreLife = onRestoreLife,
-                            )
-                        }
-                        entry<AppDestination.SudokuTutorial> {
-                            SudokuTutorialRoute(
-                                settingsRepository = settingsRepository,
-                                onDone = { backStack.removeLastOrNull() },
-                            )
-                        }
-                        entry<AppDestination.Game2048Start> {
-                            PuzzleStartScreen(
-                                puzzleType = PuzzleType.GAME_2048,
-                                stars = difficultyStars(statisticsRepository, PuzzleType.GAME_2048),
-                                rating = bestScoreRating(game2048BestScore),
-                                economy = economy,
-                                tutorialPending = !settings.tutorialCompleted(PuzzleType.GAME_2048),
-                                onTutorialOffered = { onTutorialSeen(PuzzleType.GAME_2048) },
-                                onOpenTutorial = { backStack.add(AppDestination.Game2048Tutorial) },
-                                onStart = { difficulty -> openLevel(PuzzleType.GAME_2048, difficulty) },
-                                onRestoreLife = onRestoreLife,
-                            )
-                        }
-                        entry<AppDestination.Game2048Tutorial> {
-                            Game2048TutorialRoute(
-                                settingsRepository = settingsRepository,
-                                onDone = { backStack.removeLastOrNull() },
-                            )
-                        }
-                        entry<AppDestination.NonogramStart> {
-                            PuzzleStartScreen(
-                                puzzleType = PuzzleType.NONOGRAM,
-                                stars = difficultyStars(statisticsRepository, PuzzleType.NONOGRAM),
-                                rating = levelRating(catalogLevelRepository, PuzzleType.NONOGRAM),
-                                gallery = { onDismiss ->
-                                    NonogramGallery(catalogLevelRepository, statisticsRepository, onDismiss) { difficulty, level ->
-                                        onDismiss()
-                                        replayLevel(PuzzleType.NONOGRAM, difficulty, level)
-                                    }
-                                },
-                                economy = economy,
-                                tutorialPending = !settings.tutorialCompleted(PuzzleType.NONOGRAM),
-                                onTutorialOffered = { onTutorialSeen(PuzzleType.NONOGRAM) },
-                                onOpenTutorial = { backStack.add(AppDestination.NonogramTutorial) },
-                                onStart = { difficulty -> openLevel(PuzzleType.NONOGRAM, difficulty) },
-                                onRestoreLife = onRestoreLife,
-                            )
-                        }
-                        entry<AppDestination.NonogramTutorial> {
-                            NonogramTutorialRoute(
-                                settingsRepository = settingsRepository,
-                                onDone = { backStack.removeLastOrNull() },
-                            )
-                        }
-                        entry<AppDestination.BalanceGame> { destination ->
-                            // A replayed level pays no gems; its result card says so.
-                            CompositionLocalProvider(LocalLevelReplay provides destination.launch.isReplay) {
-                                BalanceGameRoute(
+                                }
+                            }
+                            entry<AppDestination.Game2048Game> { destination ->
+                                Game2048Route(
                                     launch = destination.launch,
                                     attemptFactory = attemptFactory,
                                     completionRepository = gameCompletionRepository,
                                     economyRepository = economyRepository,
+                                    bestScore = game2048BestScore,
                                     exitGuard = exitGuard,
                                     hapticsEnabled = settings.hapticsEnabled,
                                     onBack = goBack,
-                                    onNextLevel = { openNextLevel(PuzzleType.BALANCE, destination.launch) },
+                                    onNextLevel = { openNextLevel(PuzzleType.GAME_2048, destination.launch) },
                                     onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
                                     onTerminalAction = onTerminalAction,
                                     onRestoreLife = onRestoreLife,
-                                    onOpenStore = openStore,
                                 )
                             }
-                        }
-                        entry<AppDestination.CrownsGame> { destination ->
-                            // A replayed level pays no gems; its result card says so.
-                            CompositionLocalProvider(LocalLevelReplay provides destination.launch.isReplay) {
-                                CrownsGameRoute(
-                                    launch = destination.launch,
-                                    attemptFactory = attemptFactory,
-                                    completionRepository = gameCompletionRepository,
-                                    economyRepository = economyRepository,
-                                    exitGuard = exitGuard,
-                                    hapticsEnabled = settings.hapticsEnabled,
-                                    onBack = goBack,
-                                    onNextLevel = { openNextLevel(PuzzleType.CROWNS, destination.launch) },
-                                    onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                                    onTerminalAction = onTerminalAction,
-                                    onRestoreLife = onRestoreLife,
-                                    onOpenStore = openStore,
-                                )
+                            entry<AppDestination.NonogramGame> { destination ->
+                                // A replayed level pays no gems; its result card says so.
+                                CompositionLocalProvider(LocalLevelReplay provides destination.launch.isReplay) {
+                                    NonogramGameRoute(
+                                        launch = destination.launch,
+                                        attemptFactory = attemptFactory,
+                                        completionRepository = gameCompletionRepository,
+                                        economyRepository = economyRepository,
+                                        exitGuard = exitGuard,
+                                        hapticsEnabled = settings.hapticsEnabled,
+                                        onBack = goBack,
+                                        onNextLevel = { openNextLevel(PuzzleType.NONOGRAM, destination.launch) },
+                                        onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                                        onTerminalAction = onTerminalAction,
+                                        onRestoreLife = onRestoreLife,
+                                        onOpenStore = openStore,
+                                    )
+                                }
                             }
-                        }
-                        entry<AppDestination.WordGame> { destination ->
-                            WordGameRoute(
-                                launch = destination.launch,
-                                attemptFactory = attemptFactory,
-                                completionRepository = gameCompletionRepository,
-                                economyRepository = economyRepository,
-                                exitGuard = exitGuard,
-                                hapticsEnabled = settings.hapticsEnabled,
-                                onBack = goBack,
-                                onNextLevel = { openNextLevel(PuzzleType.WORD, destination.launch) },
-                                onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                                onTerminalAction = onTerminalAction,
-                                onRestoreLife = onRestoreLife,
-                            )
-                        }
-                        entry<AppDestination.SudokuGame> { destination ->
-                            // A replayed level pays no gems; its result card says so.
-                            CompositionLocalProvider(LocalLevelReplay provides destination.launch.isReplay) {
-                                SudokuGameRoute(
-                                    launch = destination.launch,
-                                    attemptFactory = attemptFactory,
-                                    completionRepository = gameCompletionRepository,
-                                    economyRepository = economyRepository,
-                                    exitGuard = exitGuard,
-                                    hapticsEnabled = settings.hapticsEnabled,
-                                    onBack = goBack,
-                                    onNextLevel = { openNextLevel(PuzzleType.SUDOKU, destination.launch) },
-                                    onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                                    onTerminalAction = onTerminalAction,
-                                    onRestoreLife = onRestoreLife,
-                                    onOpenStore = openStore,
-                                )
-                            }
-                        }
-                        entry<AppDestination.Game2048Game> { destination ->
-                            Game2048Route(
-                                launch = destination.launch,
-                                attemptFactory = attemptFactory,
-                                completionRepository = gameCompletionRepository,
-                                economyRepository = economyRepository,
-                                bestScore = game2048BestScore,
-                                exitGuard = exitGuard,
-                                hapticsEnabled = settings.hapticsEnabled,
-                                onBack = goBack,
-                                onNextLevel = { openNextLevel(PuzzleType.GAME_2048, destination.launch) },
-                                onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                                onTerminalAction = onTerminalAction,
-                                onRestoreLife = onRestoreLife,
-                            )
-                        }
-                        entry<AppDestination.NonogramGame> { destination ->
-                            // A replayed level pays no gems; its result card says so.
-                            CompositionLocalProvider(LocalLevelReplay provides destination.launch.isReplay) {
-                                NonogramGameRoute(
-                                    launch = destination.launch,
-                                    attemptFactory = attemptFactory,
-                                    completionRepository = gameCompletionRepository,
-                                    economyRepository = economyRepository,
-                                    exitGuard = exitGuard,
-                                    hapticsEnabled = settings.hapticsEnabled,
-                                    onBack = goBack,
-                                    onNextLevel = { openNextLevel(PuzzleType.NONOGRAM, destination.launch) },
-                                    onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                                    onTerminalAction = onTerminalAction,
-                                    onRestoreLife = onRestoreLife,
-                                    onOpenStore = openStore,
-                                )
-                            }
-                        }
-                    },
-            )
+                        },
+                )
+            }
         }
     }
 

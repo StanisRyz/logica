@@ -49,11 +49,15 @@ internal sealed interface BalanceGameUiState {
         /** A hint was requested with an empty hint stock; the screen offers to restock. */
         val hintsExhausted: Boolean = false,
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
+        /** The third mistake is waiting on the one ad-paid second chance; nothing is recorded yet. */
+        val continueOffered: Boolean = false,
     ) : BalanceGameUiState {
         /** Whether leaving now would throw away something the player actually did. */
         val hasMeaningfulProgress: Boolean
             get() =
-                !game.status.isTerminal &&
+                // Leaving while the second chance is offered is leaving an unfinished level.
+                continueOffered ||
+                    !game.status.isTerminal &&
                     (
                         game.cellStatuses.values.any { it != BalanceCellStatus.FIXED } ||
                             game.pencilMarks.isNotEmpty() ||
@@ -96,6 +100,9 @@ internal class BalanceGameViewModel(
     private var attempt: GameAttempt? = null
     private var hintJob: Job? = null
     private var completionJob: Job? = null
+
+    /** One second chance per attempt, used or declined. */
+    private var continueUsed = false
 
     init {
         viewModelScope.launch {
@@ -159,6 +166,7 @@ internal class BalanceGameViewModel(
         val previous = attempt ?: return
 
         attempt = previous.restarted(attemptFactory.nextAttemptId())
+        continueUsed = false
         mutableUiState.value =
             BalanceGameUiState.Ready(
                 puzzle = ready.puzzle,
@@ -220,7 +228,7 @@ internal class BalanceGameViewModel(
 
     fun retryCompletion() {
         val ready = mutableUiState.value as? BalanceGameUiState.Ready ?: return
-        if (ready.game.status.isTerminal) persistCompletion(ready.game)
+        if (ready.game.status.isTerminal && !ready.continueOffered) persistCompletion(ready.game)
     }
 
     private fun updateGame(update: (BalanceGameEngine, BalanceGameState) -> BalanceGameState) {
@@ -233,7 +241,34 @@ internal class BalanceGameViewModel(
             return
         }
         mutableUiState.value = current.copy(game = updatedGame, isHintLoading = false)
-        if (updatedGame.status.isTerminal) persistCompletion(updatedGame)
+        if (updatedGame.status.isTerminal) finishOrOffer(updatedGame)
+    }
+
+    /** The third mistake first offers one ad-paid second chance; any other end is recorded at once. */
+    private fun finishOrOffer(game: BalanceGameState) {
+        val ready = mutableUiState.value as? BalanceGameUiState.Ready ?: return
+        if (game.status == BalanceGameStatus.FAILED && !continueUsed) {
+            continueUsed = true
+            mutableUiState.value = ready.copy(continueOffered = true)
+        } else {
+            persistCompletion(game)
+        }
+    }
+
+    /** The player turned the second chance down: the failure is recorded as usual. */
+    fun declineContinue() {
+        val ready = mutableUiState.value as? BalanceGameUiState.Ready ?: return
+        if (!ready.continueOffered) return
+        mutableUiState.value = ready.copy(continueOffered = false)
+        persistCompletion(ready.game)
+    }
+
+    /** The rewarded ad was watched: the same board goes on with one mistake to spare. */
+    fun continueAfterAd() {
+        val ready = mutableUiState.value as? BalanceGameUiState.Ready ?: return
+        val activeEngine = gameEngine ?: return
+        if (!ready.continueOffered) return
+        mutableUiState.value = ready.copy(game = activeEngine.continueAfterFailure(ready.game), continueOffered = false)
     }
 
     private fun persistCompletion(game: BalanceGameState) {

@@ -150,6 +150,18 @@ class BalanceGameEngine(
         )
     }
 
+    /**
+     * The one second chance of an attempt that the third mistake ended: the board stays exactly as
+     * it was and the attempt goes on with one mistake left. Anything but a failed attempt is
+     * returned unchanged; how often it may be offered is the host's policy.
+     */
+    fun continueAfterFailure(state: BalanceGameState): BalanceGameState =
+        if (state.status != BalanceGameStatus.FAILED) {
+            state
+        } else {
+            createState(state.board, state.pencilMarks, PuzzleMistakes.MAX_MISTAKES - 1, state.hintsUsed, currentHint = null)
+        }
+
     private fun createState(
         board: BalanceState,
         pencilMarks: Map<BalancePosition, Set<BalanceCell>>,

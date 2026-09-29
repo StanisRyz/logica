@@ -49,7 +49,8 @@ internal enum class WebRewardedAdState {
  * for an old session. Cooldowns begin only after the platform reports the ad actually opened.
  */
 internal class WebRewardedPlacementController(
-    private val reward: AdRewardDefinition,
+    /** What the placement pays into the wallet; null for the second chance, whose reward is the game going on. */
+    private val reward: AdRewardDefinition?,
     private val provider: RewardedAdProvider,
     private val policy: WebAdPolicy,
     private val rewardService: WebRewardService,
@@ -69,8 +70,12 @@ internal class WebRewardedPlacementController(
     val isRequestAllowed: Boolean
         get() = activeSession == null
 
-    fun requestReward() {
+    /** The caller's own grant for this request, run once on a valid reward (the second chance). */
+    private var onGranted: (() -> Unit)? = null
+
+    fun requestReward(onGranted: (() -> Unit)? = null) {
         if (!isRequestAllowed) return // double tap / one active session per placement
+        this.onGranted = onGranted
         val now = currentTimeMs()
         if (!policy.canShow(AdKind.REWARDED, now)) {
             analytics.record(now, MonetizationAnalyticsEvent.AD_FAILED)
@@ -111,11 +116,13 @@ internal class WebRewardedPlacementController(
                     capturedContext != null && capturedContext == currentPlayerContext()
                 val granted =
                     contextStillValid &&
-                        rewardService.apply(reward).also { granted ->
+                        (reward == null || rewardService.apply(reward)).also { granted ->
                             if (granted) {
                                 analytics.record(currentTimeMs(), MonetizationAnalyticsEvent.REWARD_GRANTED)
                             }
                         }
+                if (granted) onGranted?.invoke()
+                onGranted = null
                 mutableState.value =
                     if (granted) WebRewardedAdState.RewardGranted else WebRewardedAdState.Error
             }
@@ -141,10 +148,14 @@ internal class WebRewardedPlacementController(
     }
 }
 
-/** The two rewarded placements: +1 gem in the Store, +1 life in the Store and the no-lives dialog. */
+/**
+ * The rewarded placements: +1 gem in the Store, +1 life in the Store and the no-lives dialog, and
+ * the second chance after a third mistake, which pays nothing into the wallet.
+ */
 internal class WebRewardedAds(
     val gems: WebRewardedPlacementController,
     val life: WebRewardedPlacementController,
+    val secondChance: WebRewardedPlacementController? = null,
 )
 
 /**

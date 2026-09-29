@@ -101,6 +101,7 @@ internal class WebNonogramController(
         difficulty: Difficulty,
         replayLevel: Int?,
     ) {
+        resetSecondChance()
         operation?.cancel()
         statisticsAttempt = null
         completion.reset()
@@ -201,6 +202,7 @@ internal class WebNonogramController(
     }
 
     fun retry() {
+        resetSecondChance()
         val playing = state as? WebNonogramState.Playing ?: return
         if (playing.game.status != NonogramGameStatus.FAILED) return
         val activeEngine = engine ?: return
@@ -222,7 +224,36 @@ internal class WebNonogramController(
         completion.saveSolved(playing.source.attempt, PuzzleStars.forMistakes(playing.game.mistakesUsed))
     }
 
+    /** One second chance per attempt: the failed board waiting on its ad, recorded only if declined. */
+    private var secondChanceUsed = false
+    private var secondChanceOffer by mutableStateOf<Pair<WebNonogramState.Playing, NonogramGameState>?>(null)
+
+    val secondChanceOffered: Boolean
+        get() = secondChanceOffer != null
+
+    /** The player ended the level instead: the failure is recorded as usual. */
+    fun declineSecondChance() {
+        val (playing, failed) = secondChanceOffer ?: return
+        secondChanceOffer = null
+        recordTerminal(playing, failed)
+    }
+
+    /** The rewarded ad was watched: the same board goes on with one mistake to spare. */
+    fun continueAfterAd() {
+        secondChanceOffer ?: return
+        secondChanceOffer = null
+        val playing = state as? WebNonogramState.Playing ?: return
+        val activeEngine = engine ?: return
+        state = playing.copy(game = activeEngine.continueAfterFailure(playing.game))
+    }
+
+    private fun resetSecondChance() {
+        secondChanceUsed = false
+        secondChanceOffer = null
+    }
+
     fun showDifficultySelector() {
+        resetSecondChance()
         operation?.cancel()
         hintsExhaustedNotice = false
         engine = null
@@ -256,6 +287,19 @@ internal class WebNonogramController(
     ) {
         state = playing.copy(game = updated)
         if (playing.game.status.isTerminal || !updated.status.isTerminal) return
+        // The third mistake first offers the one ad-paid second chance; nothing is recorded yet.
+        if (updated.status == NonogramGameStatus.FAILED && !secondChanceUsed) {
+            secondChanceUsed = true
+            secondChanceOffer = playing to updated
+            return
+        }
+        recordTerminal(playing, updated)
+    }
+
+    private fun recordTerminal(
+        playing: WebNonogramState.Playing,
+        updated: NonogramGameState,
+    ) {
         val solved = updated.status == NonogramGameStatus.SOLVED
         statisticsAttempt?.let {
             statistics.recordTerminalResult(

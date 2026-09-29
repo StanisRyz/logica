@@ -577,6 +577,7 @@ private fun ReadyContent(
         LocalAchievementAnnouncer provides achievementAnnouncer,
         LocalWebCatalogStars provides catalogStars,
         LocalWebRating provides ratingUi,
+        LocalWebSecondChanceAd provides rewardedAds.secondChance,
         LocalWebLives provides livesUi,
         LocalWebOpenStore provides openStore,
         LocalWebKeyboard provides keyboard,
@@ -1193,7 +1194,7 @@ private fun NonogramFlow(
                 WebGameplayHeader(
                     puzzleType = PuzzleType.NONOGRAM,
                     isDaily = false,
-                    hasMeaningfulProgress = state.hasMeaningfulProgress,
+                    hasMeaningfulProgress = state.hasMeaningfulProgress || controller.secondChanceOffered,
                     onExit = controller::showDifficultySelector,
                 )
                 NonogramGameContent(
@@ -1210,6 +1211,10 @@ private fun NonogramFlow(
                     hintCount = hintCount,
                 )
             }
+            // The third mistake waits here for the one ad-paid second chance.
+            if (controller.secondChanceOffered) {
+                WebSecondChanceDialog(onContinue = controller::continueAfterAd, onDecline = controller::declineSecondChance)
+            }
             if (controller.hintsExhaustedNotice) {
                 WebHintsExhaustedDialog(
                     onOpenStore = {
@@ -1225,7 +1230,7 @@ private fun NonogramFlow(
             )
             WebOrdinaryCatalogTerminalDialog(
                 puzzleType = PuzzleType.NONOGRAM,
-                visible = state.game.status.isTerminal,
+                visible = state.game.status.isTerminal && !controller.secondChanceOffered,
                 difficulty = state.source.difficulty,
                 mistakesUsed = state.game.mistakesUsed,
                 hintsUsed = state.game.hintsUsed,
@@ -1661,7 +1666,7 @@ private fun PlayingBalanceContent(
         WebGameplayHeader(
             puzzleType = PuzzleType.BALANCE,
             isDaily = state.source.isDaily,
-            hasMeaningfulProgress = state.game.hasMeaningfulProgress,
+            hasMeaningfulProgress = state.game.hasMeaningfulProgress || controller.secondChanceOffered,
             onExit = if (state.source.isDaily) onExitBalance else controller::showDifficultySelector,
         )
         BalanceGameContent(
@@ -1683,6 +1688,10 @@ private fun PlayingBalanceContent(
         )
     }
 
+    // The third mistake waits here for the one ad-paid second chance.
+    if (controller.secondChanceOffered) {
+        WebSecondChanceDialog(onContinue = controller::continueAfterAd, onDecline = controller::declineSecondChance)
+    }
     if (controller.hintsExhaustedNotice) {
         WebHintsExhaustedDialog(
             onOpenStore = {
@@ -1696,7 +1705,7 @@ private fun PlayingBalanceContent(
     if (state.source.isDaily) {
         WebDailyOrdinaryTerminalDialog(
             puzzleType = PuzzleType.BALANCE,
-            visible = state.game.status.isTerminal,
+            visible = state.game.status.isTerminal && !controller.secondChanceOffered,
             difficulty = state.source.difficulty,
             mistakesUsed = state.game.mistakesUsed,
             hintsUsed = state.game.hintsUsed,
@@ -1713,7 +1722,7 @@ private fun PlayingBalanceContent(
         )
         WebOrdinaryCatalogTerminalDialog(
             puzzleType = PuzzleType.BALANCE,
-            visible = state.game.status.isTerminal,
+            visible = state.game.status.isTerminal && !controller.secondChanceOffered,
             difficulty = state.source.difficulty,
             mistakesUsed = state.game.mistakesUsed,
             hintsUsed = state.game.hintsUsed,
@@ -1744,7 +1753,7 @@ private fun PlayingCrownsContent(
         WebGameplayHeader(
             puzzleType = PuzzleType.CROWNS,
             isDaily = state.source.isDaily,
-            hasMeaningfulProgress = state.game.hasMeaningfulProgress,
+            hasMeaningfulProgress = state.game.hasMeaningfulProgress || controller.secondChanceOffered,
             onExit = if (state.source.isDaily) onExitCrowns else controller::showDifficultySelector,
         )
         CrownsGameContent(
@@ -1766,6 +1775,10 @@ private fun PlayingCrownsContent(
         )
     }
 
+    // The third mistake waits here for the one ad-paid second chance.
+    if (controller.secondChanceOffered) {
+        WebSecondChanceDialog(onContinue = controller::continueAfterAd, onDecline = controller::declineSecondChance)
+    }
     if (controller.hintsExhaustedNotice) {
         WebHintsExhaustedDialog(
             onOpenStore = {
@@ -1779,7 +1792,7 @@ private fun PlayingCrownsContent(
     if (state.source.isDaily) {
         WebDailyOrdinaryTerminalDialog(
             puzzleType = PuzzleType.CROWNS,
-            visible = state.game.status.isTerminal,
+            visible = state.game.status.isTerminal && !controller.secondChanceOffered,
             difficulty = state.source.difficulty,
             mistakesUsed = state.game.mistakesUsed,
             hintsUsed = state.game.hintsUsed,
@@ -1796,7 +1809,7 @@ private fun PlayingCrownsContent(
         )
         WebOrdinaryCatalogTerminalDialog(
             puzzleType = PuzzleType.CROWNS,
-            visible = state.game.status.isTerminal,
+            visible = state.game.status.isTerminal && !controller.secondChanceOffered,
             difficulty = state.source.difficulty,
             mistakesUsed = state.game.mistakesUsed,
             hintsUsed = state.game.hintsUsed,
@@ -1900,7 +1913,7 @@ private fun PlayingSudokuContent(
         WebGameplayHeader(
             puzzleType = PuzzleType.SUDOKU,
             isDaily = state.source.isDaily,
-            hasMeaningfulProgress = state.game.hasMeaningfulProgress,
+            hasMeaningfulProgress = state.game.hasMeaningfulProgress || controller.secondChanceOffered,
             onExit = if (state.source.isDaily) onExitSudoku else controller::showDifficultySelector,
         )
         val selectedStatus = state.selectedCell?.let(state.game::cellAt)?.status
@@ -1933,6 +1946,10 @@ private fun PlayingSudokuContent(
         )
     }
 
+    // The third mistake waits here for the one ad-paid second chance.
+    if (controller.secondChanceOffered) {
+        WebSecondChanceDialog(onContinue = controller::continueAfterAd, onDecline = controller::declineSecondChance)
+    }
     if (controller.hintsExhaustedNotice) {
         WebHintsExhaustedDialog(
             onOpenStore = {
@@ -1946,7 +1963,7 @@ private fun PlayingSudokuContent(
     if (state.source.isDaily) {
         WebDailyOrdinaryTerminalDialog(
             puzzleType = PuzzleType.SUDOKU,
-            visible = state.game.status.isTerminal,
+            visible = state.game.status.isTerminal && !controller.secondChanceOffered,
             difficulty = state.source.difficulty,
             mistakesUsed = state.game.mistakesUsed,
             hintsUsed = state.game.hintsUsed,
@@ -1963,7 +1980,7 @@ private fun PlayingSudokuContent(
         )
         WebOrdinaryCatalogTerminalDialog(
             puzzleType = PuzzleType.SUDOKU,
-            visible = state.game.status.isTerminal,
+            visible = state.game.status.isTerminal && !controller.secondChanceOffered,
             difficulty = state.source.difficulty,
             mistakesUsed = state.game.mistakesUsed,
             hintsUsed = state.game.hintsUsed,

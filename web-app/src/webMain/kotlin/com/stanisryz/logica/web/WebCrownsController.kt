@@ -95,6 +95,7 @@ internal class WebCrownsController(
         difficulty: Difficulty,
         replayLevel: Int?,
     ) {
+        resetSecondChance()
         operation?.cancel()
         statisticsAttempt = null
         completion.reset()
@@ -183,6 +184,7 @@ internal class WebCrownsController(
 
     /** Starts the deterministic Daily Crowns puzzle straight from its policy entry identity. */
     fun startDaily(dailyAttempt: WebDailyAttempt) {
+        resetSecondChance()
         operation?.cancel()
         statisticsAttempt = null
         completion.reset()
@@ -288,6 +290,7 @@ internal class WebCrownsController(
     }
 
     fun retry() {
+        resetSecondChance()
         val playing = state as? WebCrownsState.Playing ?: return
         if (playing.game.status != CrownsGameStatus.FAILED) return
         if (dailyReplayBlocked(playing.source)) return
@@ -319,7 +322,36 @@ internal class WebCrownsController(
         completion.saveSolved(source.attempt, PuzzleStars.forMistakes(playing.game.mistakesUsed))
     }
 
+    /** One second chance per attempt: the failed board waiting on its ad, recorded only if declined. */
+    private var secondChanceUsed = false
+    private var secondChanceOffer by mutableStateOf<Pair<WebCrownsState.Playing, CrownsGameState>?>(null)
+
+    val secondChanceOffered: Boolean
+        get() = secondChanceOffer != null
+
+    /** The player ended the level instead: the failure is recorded as usual. */
+    fun declineSecondChance() {
+        val (playing, failed) = secondChanceOffer ?: return
+        secondChanceOffer = null
+        recordTerminal(playing, failed)
+    }
+
+    /** The rewarded ad was watched: the same board goes on with one mistake to spare. */
+    fun continueAfterAd() {
+        secondChanceOffer ?: return
+        secondChanceOffer = null
+        val playing = state as? WebCrownsState.Playing ?: return
+        val activeEngine = engine ?: return
+        state = playing.copy(game = activeEngine.continueAfterFailure(playing.game))
+    }
+
+    private fun resetSecondChance() {
+        secondChanceUsed = false
+        secondChanceOffer = null
+    }
+
     fun showDifficultySelector() {
+        resetSecondChance()
         operation?.cancel()
         hintsExhaustedNotice = false
         engine = null
@@ -351,46 +383,59 @@ internal class WebCrownsController(
     ) {
         state = playing.copy(game = updated, isHintLoading = isHintLoading)
         if (!playing.game.status.isTerminal && updated.status.isTerminal) {
-            val outcome =
-                if (updated.status == CrownsGameStatus.SOLVED) {
-                    WebStatisticsTerminalOutcome.SOLVED
-                } else {
-                    WebStatisticsTerminalOutcome.FAILED
-                }
-            statisticsAttempt?.let {
-                statistics.recordTerminalResult(
-                    attempt = it,
-                    outcome = outcome,
-                    hintsUsed = updated.hintsUsed,
-                )
+            // The third mistake first offers the one ad-paid second chance; nothing is recorded yet.
+            if (updated.status == CrownsGameStatus.FAILED && !secondChanceUsed) {
+                secondChanceUsed = true
+                secondChanceOffer = playing to updated
+                return
             }
-            when (val source = playing.source) {
-                is WebGameplaySource.CatalogLevel -> {
-                    // Daily never advances Catalog progression; Catalog completion stays here only.
-                    if (updated.status ==
-                        CrownsGameStatus.SOLVED
-                    ) {
-                        completion.saveSolved(source.attempt, PuzzleStars.forMistakes(updated.mistakesUsed))
-                    }
-                    // Catalog terminals feed the wallet.
-                    // A solved replay only raises stars and pays nothing; a failed one still costs a life.
-                    if (!(source.attempt.replay && updated.status == CrownsGameStatus.SOLVED)) {
-                        economy.recordTerminalResult(
-                            PuzzleType.CROWNS,
-                            source.attempt.levelId.difficulty,
-                            solved = updated.status == CrownsGameStatus.SOLVED,
-                        )
-                    }
+            recordTerminal(playing, updated)
+        }
+    }
+
+    private fun recordTerminal(
+        playing: WebCrownsState.Playing,
+        updated: CrownsGameState,
+    ) {
+        val outcome =
+            if (updated.status == CrownsGameStatus.SOLVED) {
+                WebStatisticsTerminalOutcome.SOLVED
+            } else {
+                WebStatisticsTerminalOutcome.FAILED
+            }
+        statisticsAttempt?.let {
+            statistics.recordTerminalResult(
+                attempt = it,
+                outcome = outcome,
+                hintsUsed = updated.hintsUsed,
+            )
+        }
+        when (val source = playing.source) {
+            is WebGameplaySource.CatalogLevel -> {
+                // Daily never advances Catalog progression; Catalog completion stays here only.
+                if (updated.status ==
+                    CrownsGameStatus.SOLVED
+                ) {
+                    completion.saveSolved(source.attempt, PuzzleStars.forMistakes(updated.mistakesUsed))
                 }
-                is WebGameplaySource.DailyChallenge -> {
-                    dailyCompletion.saveTerminal(source.attempt, outcome)
-                    // A Daily result feeds the wallet like a Catalog one: a failure costs a life.
+                // Catalog terminals feed the wallet.
+                // A solved replay only raises stars and pays nothing; a failed one still costs a life.
+                if (!(source.attempt.replay && updated.status == CrownsGameStatus.SOLVED)) {
                     economy.recordTerminalResult(
                         PuzzleType.CROWNS,
-                        source.difficulty,
-                        solved = outcome == WebStatisticsTerminalOutcome.SOLVED,
+                        source.attempt.levelId.difficulty,
+                        solved = updated.status == CrownsGameStatus.SOLVED,
                     )
                 }
+            }
+            is WebGameplaySource.DailyChallenge -> {
+                dailyCompletion.saveTerminal(source.attempt, outcome)
+                // A Daily result feeds the wallet like a Catalog one: a failure costs a life.
+                economy.recordTerminalResult(
+                    PuzzleType.CROWNS,
+                    source.difficulty,
+                    solved = outcome == WebStatisticsTerminalOutcome.SOLVED,
+                )
             }
         }
     }

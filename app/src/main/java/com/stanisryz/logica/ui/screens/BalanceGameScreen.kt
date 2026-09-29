@@ -2,6 +2,7 @@ package com.stanisryz.logica.ui.screens
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,8 +38,10 @@ import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.HintsExhaustedDialog
 import com.stanisryz.logica.ui.components.LeaveLevelGuard
 import com.stanisryz.logica.ui.components.LoadingState
+import com.stanisryz.logica.ui.components.LocalSecondChancePending
 import com.stanisryz.logica.ui.components.PuzzleTerminalDialog
 import com.stanisryz.logica.ui.components.RetryableErrorState
+import com.stanisryz.logica.ui.components.SecondChanceDialog
 import com.stanisryz.logica.ui.components.ZeroLivesCard
 
 @Composable
@@ -63,36 +66,43 @@ internal fun BalanceGameRoute(
         }
     val gameViewModel: BalanceGameViewModel = viewModel(factory = factory)
     val uiState by gameViewModel.uiState.collectAsStateWithLifecycle()
-    val economy by gameViewModel.economy.collectAsStateWithLifecycle()
-    // Unfinished levels are not saved, so the shell confirms before a live board is thrown away.
-    LeaveLevelGuard(exitGuard, (uiState as? BalanceGameUiState.Ready)?.hasMeaningfulProgress == true)
-    // Every way out of a finished attempt goes through the shell's terminal gate, which is where an
-    // optional interstitial fits between the tap and the action itself.
-    BalanceGameScreen(
-        uiState,
-        economy,
-        launch.levelNumberOrNull(),
-        gameViewModel::onCellTapped,
-        gameViewModel::selectValue,
-        gameViewModel::togglePencilMode,
-        gameViewModel::requestHint,
-        { onTerminalAction(gameViewModel::retry) },
-        gameViewModel::retryCompletion,
-        onRestoreLife,
-        hapticsEnabled,
-        onBack,
-        { onTerminalAction(onNextLevel) },
-        { onTerminalAction(onGameHub) },
-        launch is GameAttemptLaunch.Daily,
-        modifier,
-    )
-    if ((uiState as? BalanceGameUiState.Ready)?.hintsExhausted == true) {
-        HintsExhaustedDialog(
-            economy = economy,
-            onBuy = gameViewModel::buyHints,
-            onDismiss = gameViewModel::dismissHintsExhausted,
-            onOpenStore = onOpenStore,
+    // The third mistake first offers the one ad-paid second chance; the result waits for the answer.
+    val secondChance = (uiState as? BalanceGameUiState.Ready)?.continueOffered == true
+    if (secondChance) {
+        SecondChanceDialog(onContinue = gameViewModel::continueAfterAd, onDecline = gameViewModel::declineContinue)
+    }
+    CompositionLocalProvider(LocalSecondChancePending provides secondChance) {
+        val economy by gameViewModel.economy.collectAsStateWithLifecycle()
+        // Unfinished levels are not saved, so the shell confirms before a live board is thrown away.
+        LeaveLevelGuard(exitGuard, (uiState as? BalanceGameUiState.Ready)?.hasMeaningfulProgress == true)
+        // Every way out of a finished attempt goes through the shell's terminal gate, which is where an
+        // optional interstitial fits between the tap and the action itself.
+        BalanceGameScreen(
+            uiState,
+            economy,
+            launch.levelNumberOrNull(),
+            gameViewModel::onCellTapped,
+            gameViewModel::selectValue,
+            gameViewModel::togglePencilMode,
+            gameViewModel::requestHint,
+            { onTerminalAction(gameViewModel::retry) },
+            gameViewModel::retryCompletion,
+            onRestoreLife,
+            hapticsEnabled,
+            onBack,
+            { onTerminalAction(onNextLevel) },
+            { onTerminalAction(onGameHub) },
+            launch is GameAttemptLaunch.Daily,
+            modifier,
         )
+        if ((uiState as? BalanceGameUiState.Ready)?.hintsExhausted == true) {
+            HintsExhaustedDialog(
+                economy = economy,
+                onBuy = gameViewModel::buyHints,
+                onDismiss = gameViewModel::dismissHintsExhausted,
+                onOpenStore = onOpenStore,
+            )
+        }
     }
 }
 

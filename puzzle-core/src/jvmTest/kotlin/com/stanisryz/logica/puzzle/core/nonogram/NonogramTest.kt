@@ -80,6 +80,15 @@ class NonogramTest {
         state = engine.mark(state, NonogramPosition(2, 3), NonogramTool.FILL)
         assertEquals(NonogramGameStatus.FAILED, state.status)
         assertEquals(state, engine.mark(state, NonogramPosition(3, 0), NonogramTool.FILL))
+
+        // The second chance keeps the board and leaves one mistake to spare.
+        val continued = engine.continueAfterFailure(state)
+        assertEquals(NonogramGameStatus.IN_PROGRESS, continued.status)
+        assertEquals(2, continued.mistakesUsed)
+        assertEquals(state.cells, continued.cells)
+        assertEquals(continued, engine.continueAfterFailure(continued))
+        val afterTap = engine.mark(continued, NonogramPosition(3, 0), NonogramTool.FILL)
+        assertEquals(NonogramCell.FILLED, afterTap.cellAt(5, NonogramPosition(3, 0)))
     }
 
     @Test

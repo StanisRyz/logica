@@ -128,6 +128,18 @@ class NonogramGameEngine(
             ?: state.cells.indices.firstOrNull { state.cells[it] == NonogramCell.UNKNOWN }
     }
 
+    /**
+     * The one second chance of an attempt that the third mistake ended: the board stays exactly as
+     * it was and the attempt goes on with one mistake left. Anything but a failed attempt is
+     * returned unchanged; how often it may be offered is the host's policy.
+     */
+    fun continueAfterFailure(state: NonogramGameState): NonogramGameState =
+        if (state.status != NonogramGameStatus.FAILED) {
+            state
+        } else {
+            state.copy(status = NonogramGameStatus.IN_PROGRESS, mistakesUsed = PuzzleMistakes.MAX_MISTAKES - 1)
+        }
+
     private fun open(
         state: NonogramGameState,
         index: Int,

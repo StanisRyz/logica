@@ -47,9 +47,12 @@ internal sealed interface NonogramGameUiState {
         /** A hint was requested with an empty hint stock; the screen offers to restock. */
         val hintsExhausted: Boolean = false,
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
+        /** The third mistake is waiting on the one ad-paid second chance; nothing is recorded yet. */
+        val continueOffered: Boolean = false,
     ) : NonogramGameUiState {
         /** Whether leaving now would throw away something the player actually did. */
-        val hasMeaningfulProgress: Boolean get() = !game.status.isTerminal && game.hasMeaningfulProgress(initial)
+        val hasMeaningfulProgress: Boolean
+            get() = continueOffered || !game.status.isTerminal && game.hasMeaningfulProgress(initial)
     }
 
     data object Error : NonogramGameUiState
@@ -78,6 +81,9 @@ internal class NonogramGameViewModel(
     private var gameEngine: NonogramGameEngine? = null
     private var attempt: GameAttempt? = null
     private var completionJob: Job? = null
+
+    /** One second chance per attempt, used or declined. */
+    private var continueUsed = false
     private var hintJob: Job? = null
 
     init {
@@ -158,13 +164,14 @@ internal class NonogramGameViewModel(
         val engine = gameEngine ?: return
         val previous = attempt ?: return
         attempt = previous.restarted(attemptFactory.nextAttemptId())
+        continueUsed = false
         val initial = engine.start()
         mutableUiState.value = NonogramGameUiState.Ready(ready.puzzle, initial, initial, selectedTool = ready.selectedTool)
     }
 
     fun retryCompletion() {
         val ready = mutableUiState.value as? NonogramGameUiState.Ready ?: return
-        if (ready.game.status.isTerminal) persistCompletion(ready.game)
+        if (ready.game.status.isTerminal && !ready.continueOffered) persistCompletion(ready.game)
     }
 
     private fun updateGame(
@@ -173,7 +180,34 @@ internal class NonogramGameViewModel(
     ) {
         if (updated == current.game) return
         mutableUiState.value = current.copy(game = updated)
-        if (updated.status.isTerminal) persistCompletion(updated)
+        if (updated.status.isTerminal) finishOrOffer(updated)
+    }
+
+    /** The third mistake first offers one ad-paid second chance; any other end is recorded at once. */
+    private fun finishOrOffer(game: NonogramGameState) {
+        val ready = mutableUiState.value as? NonogramGameUiState.Ready ?: return
+        if (game.status == NonogramGameStatus.FAILED && !continueUsed) {
+            continueUsed = true
+            mutableUiState.value = ready.copy(continueOffered = true)
+        } else {
+            persistCompletion(game)
+        }
+    }
+
+    /** The player turned the second chance down: the failure is recorded as usual. */
+    fun declineContinue() {
+        val ready = mutableUiState.value as? NonogramGameUiState.Ready ?: return
+        if (!ready.continueOffered) return
+        mutableUiState.value = ready.copy(continueOffered = false)
+        persistCompletion(ready.game)
+    }
+
+    /** The rewarded ad was watched: the same board goes on with one mistake to spare. */
+    fun continueAfterAd() {
+        val ready = mutableUiState.value as? NonogramGameUiState.Ready ?: return
+        val activeEngine = gameEngine ?: return
+        if (!ready.continueOffered) return
+        mutableUiState.value = ready.copy(game = activeEngine.continueAfterFailure(ready.game), continueOffered = false)
     }
 
     private fun persistCompletion(game: NonogramGameState) {

@@ -387,4 +387,11 @@
     <string name="levels_hint">Daha fazla yıldız için geçilen bir seviyeyi tekrar oynayın. Tekrarlar elmas kazandırmaz ve ilerlemeyi değiştirmez.</string>
     <string name="gallery_replay">Tekrar oyna</string>
     <string name="levels_empty">İlk seviyeyi geçin, buradan tekrar oynayabilirsiniz.</string>
+    <string name="second_chance_title">Üçüncü hata</string>
+    <string name="second_chance_body">Kısa bir reklam izleyin, bir hata silinsin ve kaldığınız yerden devam edin. Bu şans her denemede bir kez verilir.</string>
+    <string name="second_chance_watch">Reklamla devam et</string>
+    <string name="second_chance_loading">Reklam yükleniyor…</string>
+    <string name="second_chance_unavailable">Şu anda reklam yok</string>
+    <string name="second_chance_retry">Tekrar dene</string>
+    <string name="second_chance_decline">Seviyeyi bitir</string>
 </resources>

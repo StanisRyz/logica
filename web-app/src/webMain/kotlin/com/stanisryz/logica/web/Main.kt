@@ -104,7 +104,7 @@ fun main() {
 
     // Fullscreen ads participate in the real effective lifecycle: WebHostLifecycle itself owns
     // the suppression flag, so no competing lifecycle and no dependency cycle can exist.
-    fun rewardedController(reward: AdRewardDefinition) =
+    fun rewardedController(reward: AdRewardDefinition?) =
         WebRewardedPlacementController(
             reward = reward,
             provider = YandexRewardedAdProvider(bridge),
@@ -119,6 +119,7 @@ fun main() {
         WebRewardedAds(
             gems = rewardedController(WebRewardedPlacementController.GEM_REWARD),
             life = rewardedController(WebRewardedPlacementController.LIFE_REWARD),
+            secondChance = rewardedController(reward = null),
         )
     val leaderboard = WebLeaderboardController(bridge, rememberMainScope())
     val interstitialController =

@@ -49,13 +49,17 @@ internal sealed interface SudokuGameUiState {
         val selectedCell: SudokuPosition? = null,
         val isPencilMode: Boolean = false,
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
+        /** The third mistake is waiting on the one ad-paid second chance; nothing is recorded yet. */
+        val continueOffered: Boolean = false,
         val canUndo: Boolean = false,
         /** A hint was requested with an empty hint stock; the screen offers to restock. */
         val hintsExhausted: Boolean = false,
     ) : SudokuGameUiState {
         val hasMeaningfulProgress: Boolean
             get() =
-                !game.status.isTerminal &&
+                // Leaving while the second chance is offered is leaving an unfinished level.
+                continueOffered ||
+                    !game.status.isTerminal &&
                     (
                         game.cells.any { cell ->
                             cell.status == SudokuCellStatus.CORRECT ||
@@ -105,6 +109,9 @@ internal class SudokuGameViewModel(
     private var engine: SudokuGameEngine? = null
     private var attempt: GameAttempt? = null
     private var completionJob: Job? = null
+
+    /** One second chance per attempt, used or declined. */
+    private var continueUsed = false
     private val undoHistory = mutableListOf<UndoFrame>()
     private var hintJob: Job? = null
 
@@ -226,12 +233,13 @@ internal class SudokuGameViewModel(
         val previous = attempt ?: return
         undoHistory.clear()
         attempt = previous.restarted(attemptFactory.nextAttemptId())
+        continueUsed = false
         mutableUiState.value = SudokuGameUiState.Ready(ready.puzzle, gameEngine.start())
     }
 
     fun retryCompletion() {
         val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
-        if (ready.game.status.isTerminal) persistCompletion(ready.game)
+        if (ready.game.status.isTerminal && !ready.continueOffered) persistCompletion(ready.game)
     }
 
     private fun load() {
@@ -285,7 +293,34 @@ internal class SudokuGameViewModel(
                 selectedCell = selectedCell,
                 canUndo = undoHistory.isNotEmpty(),
             )
-        if (updated.status.isTerminal) persistCompletion(updated)
+        if (updated.status.isTerminal) finishOrOffer(updated)
+    }
+
+    /** The third mistake first offers one ad-paid second chance; any other end is recorded at once. */
+    private fun finishOrOffer(game: SudokuGameState) {
+        val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
+        if (game.status == SudokuGameStatus.FAILED && !continueUsed) {
+            continueUsed = true
+            mutableUiState.value = ready.copy(continueOffered = true)
+        } else {
+            persistCompletion(game)
+        }
+    }
+
+    /** The player turned the second chance down: the failure is recorded as usual. */
+    fun declineContinue() {
+        val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
+        if (!ready.continueOffered) return
+        mutableUiState.value = ready.copy(continueOffered = false)
+        persistCompletion(ready.game)
+    }
+
+    /** The rewarded ad was watched: the same board goes on with one mistake to spare. */
+    fun continueAfterAd() {
+        val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
+        val activeEngine = engine ?: return
+        if (!ready.continueOffered) return
+        mutableUiState.value = ready.copy(game = activeEngine.continueAfterFailure(ready.game), continueOffered = false)
     }
 
     private fun persistCompletion(game: SudokuGameState) {

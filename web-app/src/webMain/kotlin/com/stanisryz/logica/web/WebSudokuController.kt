@@ -117,6 +117,7 @@ internal class WebSudokuController(
         difficulty: Difficulty,
         replayLevel: Int?,
     ) {
+        resetSecondChance()
         operation?.cancel()
         statisticsAttempt = null
         undoHistory.clear()
@@ -212,6 +213,7 @@ internal class WebSudokuController(
      * hints, and shared presentation behave exactly as in Catalog gameplay.
      */
     fun startDaily(dailyAttempt: WebDailyAttempt) {
+        resetSecondChance()
         operation?.cancel()
         statisticsAttempt = null
         undoHistory.clear()
@@ -376,6 +378,7 @@ internal class WebSudokuController(
     }
 
     fun retry() {
+        resetSecondChance()
         val playing = state as? WebSudokuState.Playing ?: return
         if (playing.game.status != SudokuGameStatus.FAILED) return
         if (dailyReplayBlocked(playing.source)) return
@@ -403,7 +406,36 @@ internal class WebSudokuController(
         completion.saveSolved(source.attempt, PuzzleStars.forMistakes(playing.game.mistakesUsed))
     }
 
+    /** One second chance per attempt: the failed board waiting on its ad, recorded only if declined. */
+    private var secondChanceUsed = false
+    private var secondChanceOffer by mutableStateOf<Pair<WebSudokuState.Playing, SudokuGameState>?>(null)
+
+    val secondChanceOffered: Boolean
+        get() = secondChanceOffer != null
+
+    /** The player ended the level instead: the failure is recorded as usual. */
+    fun declineSecondChance() {
+        val (playing, failed) = secondChanceOffer ?: return
+        secondChanceOffer = null
+        recordTerminal(playing, failed)
+    }
+
+    /** The rewarded ad was watched: the same board goes on with one mistake to spare. */
+    fun continueAfterAd() {
+        secondChanceOffer ?: return
+        secondChanceOffer = null
+        val playing = state as? WebSudokuState.Playing ?: return
+        val activeEngine = engine ?: return
+        state = playing.copy(game = activeEngine.continueAfterFailure(playing.game))
+    }
+
+    private fun resetSecondChance() {
+        secondChanceUsed = false
+        secondChanceOffer = null
+    }
+
     fun showDifficultySelector() {
+        resetSecondChance()
         operation?.cancel()
         engine = null
         statisticsAttempt = null
@@ -445,46 +477,59 @@ internal class WebSudokuController(
         }
         state = playing.copy(game = updated, selectedCell = selectedCell)
         if (!playing.game.status.isTerminal && updated.status.isTerminal) {
-            val outcome =
-                if (updated.status == SudokuGameStatus.SOLVED) {
-                    WebStatisticsTerminalOutcome.SOLVED
-                } else {
-                    WebStatisticsTerminalOutcome.FAILED
-                }
-            statisticsAttempt?.let {
-                statistics.recordTerminalResult(
-                    attempt = it,
-                    outcome = outcome,
-                    hintsUsed = updated.hintsUsed,
-                )
+            // The third mistake first offers the one ad-paid second chance; nothing is recorded yet.
+            if (updated.status == SudokuGameStatus.FAILED && !secondChanceUsed) {
+                secondChanceUsed = true
+                secondChanceOffer = playing to updated
+                return
             }
-            when (val source = playing.source) {
-                is WebGameplaySource.CatalogLevel -> {
-                    // Daily never advances Catalog progression; Catalog completion stays here only.
-                    if (updated.status ==
-                        SudokuGameStatus.SOLVED
-                    ) {
-                        completion.saveSolved(source.attempt, PuzzleStars.forMistakes(updated.mistakesUsed))
-                    }
-                    // Catalog terminals feed the wallet.
-                    // A solved replay only raises stars and pays nothing; a failed one still costs a life.
-                    if (!(source.attempt.replay && updated.status == SudokuGameStatus.SOLVED)) {
-                        economy.recordTerminalResult(
-                            PuzzleType.SUDOKU,
-                            source.attempt.levelId.difficulty,
-                            solved = updated.status == SudokuGameStatus.SOLVED,
-                        )
-                    }
+            recordTerminal(playing, updated)
+        }
+    }
+
+    private fun recordTerminal(
+        playing: WebSudokuState.Playing,
+        updated: SudokuGameState,
+    ) {
+        val outcome =
+            if (updated.status == SudokuGameStatus.SOLVED) {
+                WebStatisticsTerminalOutcome.SOLVED
+            } else {
+                WebStatisticsTerminalOutcome.FAILED
+            }
+        statisticsAttempt?.let {
+            statistics.recordTerminalResult(
+                attempt = it,
+                outcome = outcome,
+                hintsUsed = updated.hintsUsed,
+            )
+        }
+        when (val source = playing.source) {
+            is WebGameplaySource.CatalogLevel -> {
+                // Daily never advances Catalog progression; Catalog completion stays here only.
+                if (updated.status ==
+                    SudokuGameStatus.SOLVED
+                ) {
+                    completion.saveSolved(source.attempt, PuzzleStars.forMistakes(updated.mistakesUsed))
                 }
-                is WebGameplaySource.DailyChallenge -> {
-                    dailyCompletion.saveTerminal(source.attempt, outcome)
-                    // A Daily result feeds the wallet like a Catalog one: a failure costs a life.
+                // Catalog terminals feed the wallet.
+                // A solved replay only raises stars and pays nothing; a failed one still costs a life.
+                if (!(source.attempt.replay && updated.status == SudokuGameStatus.SOLVED)) {
                     economy.recordTerminalResult(
                         PuzzleType.SUDOKU,
-                        source.difficulty,
-                        solved = outcome == WebStatisticsTerminalOutcome.SOLVED,
+                        source.attempt.levelId.difficulty,
+                        solved = updated.status == SudokuGameStatus.SOLVED,
                     )
                 }
+            }
+            is WebGameplaySource.DailyChallenge -> {
+                dailyCompletion.saveTerminal(source.attempt, outcome)
+                // A Daily result feeds the wallet like a Catalog one: a failure costs a life.
+                economy.recordTerminalResult(
+                    PuzzleType.SUDOKU,
+                    source.difficulty,
+                    solved = outcome == WebStatisticsTerminalOutcome.SOLVED,
+                )
             }
         }
     }

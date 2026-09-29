@@ -53,6 +53,28 @@ internal class RewardedLifeController(
         )
     }
 
+    /**
+     * The second chance after a third mistake. It pays nothing into the economy: the official
+     * reward callback only lets the waiting board go on, at most once for this show.
+     */
+    fun showContinue(
+        host: AdDisplayHost,
+        onGranted: () -> Unit,
+    ) {
+        if (state.value != RewardedAdState.READY) return
+        var granted = false
+        ads.show(
+            host = host,
+            onWillShow = {},
+            onEvent = { event ->
+                if (event == RewardedAdEvent.Rewarded && !granted) {
+                    granted = true
+                    onGranted()
+                }
+            },
+        )
+    }
+
     fun release() = ads.release()
 
     override fun onCleared() {

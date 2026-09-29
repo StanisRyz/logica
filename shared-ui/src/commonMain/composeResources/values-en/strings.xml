@@ -387,4 +387,11 @@
     <string name="levels_hint">Replay a cleared level to earn more stars. Replays pay no gems and do not change your progress.</string>
     <string name="gallery_replay">Play again</string>
     <string name="levels_empty">Clear your first level and you can replay it from here.</string>
+    <string name="second_chance_title">Third mistake</string>
+    <string name="second_chance_body">Watch a short ad to take one mistake back and carry on from where you are. You get this once per attempt.</string>
+    <string name="second_chance_watch">Continue with an ad</string>
+    <string name="second_chance_loading">Loading the ad…</string>
+    <string name="second_chance_unavailable">No ad available right now</string>
+    <string name="second_chance_retry">Try again</string>
+    <string name="second_chance_decline">End the level</string>
 </resources>

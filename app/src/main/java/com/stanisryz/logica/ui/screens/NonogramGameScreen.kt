@@ -2,6 +2,7 @@ package com.stanisryz.logica.ui.screens
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -29,8 +30,10 @@ import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.HintsExhaustedDialog
 import com.stanisryz.logica.ui.components.LeaveLevelGuard
 import com.stanisryz.logica.ui.components.LoadingState
+import com.stanisryz.logica.ui.components.LocalSecondChancePending
 import com.stanisryz.logica.ui.components.PuzzleTerminalDialog
 import com.stanisryz.logica.ui.components.RetryableErrorState
+import com.stanisryz.logica.ui.components.SecondChanceDialog
 import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.nonogram.NonogramGameContent
 
@@ -57,85 +60,92 @@ internal fun NonogramGameRoute(
         }
     val gameViewModel: NonogramGameViewModel = viewModel(factory = factory)
     val uiState by gameViewModel.uiState.collectAsStateWithLifecycle()
-    val economy by gameViewModel.economy.collectAsStateWithLifecycle()
-    // Unfinished levels are not saved, so the shell confirms before a live board is thrown away.
-    LeaveLevelGuard(exitGuard, (uiState as? NonogramGameUiState.Ready)?.hasMeaningfulProgress == true)
-    val levelNumber = launch.levelNumberOrNull()
-    val view = LocalView.current
+    // The third mistake first offers the one ad-paid second chance; the result waits for the answer.
+    val secondChance = (uiState as? NonogramGameUiState.Ready)?.continueOffered == true
+    if (secondChance) {
+        SecondChanceDialog(onContinue = gameViewModel::continueAfterAd, onDecline = gameViewModel::declineContinue)
+    }
+    CompositionLocalProvider(LocalSecondChancePending provides secondChance) {
+        val economy by gameViewModel.economy.collectAsStateWithLifecycle()
+        // Unfinished levels are not saved, so the shell confirms before a live board is thrown away.
+        LeaveLevelGuard(exitGuard, (uiState as? NonogramGameUiState.Ready)?.hasMeaningfulProgress == true)
+        val levelNumber = launch.levelNumberOrNull()
+        val view = LocalView.current
 
-    when (val state = uiState) {
-        NonogramGameUiState.Loading -> LoadingState(modifier, stringResource(R.string.creating_puzzle))
-        NonogramGameUiState.Error ->
-            RetryableErrorState(
-                message = stringResource(R.string.level_content_error),
-                retryLabel = stringResource(R.string.to_games),
-                onRetry = onGameHub,
-                modifier = modifier,
-                secondaryLabel = stringResource(R.string.back),
-                onSecondary = onBack,
-            )
-        is NonogramGameUiState.Ready -> {
-            val game = state.game
-            var previousStatus by remember { mutableStateOf(game.status) }
-            var previousMistakes by remember { mutableIntStateOf(game.mistakesUsed) }
-            LaunchedEffect(game.status, game.mistakesUsed) {
-                if (hapticsEnabled) {
-                    when {
-                        previousStatus != game.status && game.status == NonogramGameStatus.SOLVED ->
-                            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                        previousStatus != game.status && game.status == NonogramGameStatus.FAILED ->
-                            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
-                        game.mistakesUsed > previousMistakes -> view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        when (val state = uiState) {
+            NonogramGameUiState.Loading -> LoadingState(modifier, stringResource(R.string.creating_puzzle))
+            NonogramGameUiState.Error ->
+                RetryableErrorState(
+                    message = stringResource(R.string.level_content_error),
+                    retryLabel = stringResource(R.string.to_games),
+                    onRetry = onGameHub,
+                    modifier = modifier,
+                    secondaryLabel = stringResource(R.string.back),
+                    onSecondary = onBack,
+                )
+            is NonogramGameUiState.Ready -> {
+                val game = state.game
+                var previousStatus by remember { mutableStateOf(game.status) }
+                var previousMistakes by remember { mutableIntStateOf(game.mistakesUsed) }
+                LaunchedEffect(game.status, game.mistakesUsed) {
+                    if (hapticsEnabled) {
+                        when {
+                            previousStatus != game.status && game.status == NonogramGameStatus.SOLVED ->
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            previousStatus != game.status && game.status == NonogramGameStatus.FAILED ->
+                                view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                            game.mistakesUsed > previousMistakes -> view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        }
                     }
+                    previousStatus = game.status
+                    previousMistakes = game.mistakesUsed
                 }
-                previousStatus = game.status
-                previousMistakes = game.mistakesUsed
-            }
-            NonogramGameContent(
-                puzzle = state.puzzle,
-                game = game,
-                difficulty = state.puzzle.id.difficulty,
-                levelNumber = levelNumber,
-                selectedTool = state.selectedTool,
-                gameplayEnabled = economy.isGameplayAllowed,
-                onCell = { position ->
-                    if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    gameViewModel.onCell(position)
-                },
-                onSelectTool = gameViewModel::selectTool,
-                onHint = gameViewModel::requestHint,
-                modifier = modifier,
-                hintCount = economy.hints,
-                hostStatusContent = {
-                    // The board stays visible at zero lives; Android economy policy only disables actions.
-                    ZeroLivesCard(economy, onRestoreLife)
-                },
-            )
-            if (game.status.isTerminal) {
-                PuzzleTerminalDialog(
-                    puzzleType = PuzzleType.NONOGRAM,
-                    isSolved = game.status == NonogramGameStatus.SOLVED,
-                    completionPersistence = state.completionPersistence,
-                    levelNumber = levelNumber,
-                    mistakesUsed = game.mistakesUsed,
-                    hintsUsed = game.hintsUsed,
-                    maxMistakes = PuzzleMistakes.MAX_MISTAKES,
+                NonogramGameContent(
+                    puzzle = state.puzzle,
+                    game = game,
                     difficulty = state.puzzle.id.difficulty,
-                    isRetryAllowed = economy.isGameplayAllowed,
-                    isDaily = launch is GameAttemptLaunch.Daily,
-                    onRetryCompletion = gameViewModel::retryCompletion,
-                    onRetryLevel = { onTerminalAction(gameViewModel::retry) },
-                    onNextLevel = { onTerminalAction(onNextLevel) },
-                    onGameHub = { onTerminalAction(onGameHub) },
+                    levelNumber = levelNumber,
+                    selectedTool = state.selectedTool,
+                    gameplayEnabled = economy.isGameplayAllowed,
+                    onCell = { position ->
+                        if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                        gameViewModel.onCell(position)
+                    },
+                    onSelectTool = gameViewModel::selectTool,
+                    onHint = gameViewModel::requestHint,
+                    modifier = modifier,
+                    hintCount = economy.hints,
+                    hostStatusContent = {
+                        // The board stays visible at zero lives; Android economy policy only disables actions.
+                        ZeroLivesCard(economy, onRestoreLife)
+                    },
                 )
-            }
-            if (state.hintsExhausted) {
-                HintsExhaustedDialog(
-                    economy = economy,
-                    onBuy = gameViewModel::buyHints,
-                    onDismiss = gameViewModel::dismissHintsExhausted,
-                    onOpenStore = onOpenStore,
-                )
+                if (game.status.isTerminal) {
+                    PuzzleTerminalDialog(
+                        puzzleType = PuzzleType.NONOGRAM,
+                        isSolved = game.status == NonogramGameStatus.SOLVED,
+                        completionPersistence = state.completionPersistence,
+                        levelNumber = levelNumber,
+                        mistakesUsed = game.mistakesUsed,
+                        hintsUsed = game.hintsUsed,
+                        maxMistakes = PuzzleMistakes.MAX_MISTAKES,
+                        difficulty = state.puzzle.id.difficulty,
+                        isRetryAllowed = economy.isGameplayAllowed,
+                        isDaily = launch is GameAttemptLaunch.Daily,
+                        onRetryCompletion = gameViewModel::retryCompletion,
+                        onRetryLevel = { onTerminalAction(gameViewModel::retry) },
+                        onNextLevel = { onTerminalAction(onNextLevel) },
+                        onGameHub = { onTerminalAction(onGameHub) },
+                    )
+                }
+                if (state.hintsExhausted) {
+                    HintsExhaustedDialog(
+                        economy = economy,
+                        onBuy = gameViewModel::buyHints,
+                        onDismiss = gameViewModel::dismissHintsExhausted,
+                        onOpenStore = onOpenStore,
+                    )
+                }
             }
         }
     }
