@@ -14,10 +14,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.shared.ui.generated.resources.Res
-import com.stanisryz.logica.shared.ui.generated.resources.nunito_bold
-import com.stanisryz.logica.shared.ui.generated.resources.nunito_medium
-import com.stanisryz.logica.shared.ui.generated.resources.nunito_regular
-import com.stanisryz.logica.shared.ui.generated.resources.nunito_semibold
+import com.stanisryz.logica.shared.ui.generated.resources.rubik_bold
+import com.stanisryz.logica.shared.ui.generated.resources.rubik_medium
+import com.stanisryz.logica.shared.ui.generated.resources.rubik_regular
+import com.stanisryz.logica.shared.ui.generated.resources.rubik_semibold
 import org.jetbrains.compose.resources.Font
 
 private val LightColorScheme =
@@ -108,36 +108,37 @@ private val LogicaShapes =
     )
 
 /**
- * Nunito (SIL Open Font License, bundled in `font/`) on every Material text style: a rounded,
- * friendly face with full Cyrillic that matches the rounded icons. Weights follow Material's own.
+ * Rubik (SIL Open Font License, bundled in `font/`) on every Material text style: a dense face
+ * with softly rounded corners and full Cyrillic and Turkish that matches the rounded icons. Weights
+ * follow Material's own.
  */
 @Composable
 private fun logicaTypography(): Typography {
-    val nunito =
+    val rubik =
         FontFamily(
-            Font(Res.font.nunito_regular, FontWeight.Normal),
-            Font(Res.font.nunito_medium, FontWeight.Medium),
-            Font(Res.font.nunito_semibold, FontWeight.SemiBold),
-            Font(Res.font.nunito_bold, FontWeight.Bold),
+            Font(Res.font.rubik_regular, FontWeight.Normal),
+            Font(Res.font.rubik_medium, FontWeight.Medium),
+            Font(Res.font.rubik_semibold, FontWeight.SemiBold),
+            Font(Res.font.rubik_bold, FontWeight.Bold),
         )
     val base = Typography()
-    return remember(nunito) {
+    return remember(rubik) {
         Typography(
-            displayLarge = base.displayLarge.copy(fontFamily = nunito),
-            displayMedium = base.displayMedium.copy(fontFamily = nunito),
-            displaySmall = base.displaySmall.copy(fontFamily = nunito),
-            headlineLarge = base.headlineLarge.copy(fontFamily = nunito, fontWeight = FontWeight.SemiBold),
-            headlineMedium = base.headlineMedium.copy(fontFamily = nunito, fontWeight = FontWeight.SemiBold),
-            headlineSmall = base.headlineSmall.copy(fontFamily = nunito, fontWeight = FontWeight.SemiBold),
-            titleLarge = base.titleLarge.copy(fontFamily = nunito, fontWeight = FontWeight.SemiBold),
-            titleMedium = base.titleMedium.copy(fontFamily = nunito, fontWeight = FontWeight.SemiBold),
-            titleSmall = base.titleSmall.copy(fontFamily = nunito, fontWeight = FontWeight.SemiBold),
-            bodyLarge = base.bodyLarge.copy(fontFamily = nunito),
-            bodyMedium = base.bodyMedium.copy(fontFamily = nunito),
-            bodySmall = base.bodySmall.copy(fontFamily = nunito),
-            labelLarge = base.labelLarge.copy(fontFamily = nunito, fontWeight = FontWeight.SemiBold),
-            labelMedium = base.labelMedium.copy(fontFamily = nunito, fontWeight = FontWeight.SemiBold),
-            labelSmall = base.labelSmall.copy(fontFamily = nunito, fontWeight = FontWeight.SemiBold),
+            displayLarge = base.displayLarge.copy(fontFamily = rubik),
+            displayMedium = base.displayMedium.copy(fontFamily = rubik),
+            displaySmall = base.displaySmall.copy(fontFamily = rubik),
+            headlineLarge = base.headlineLarge.copy(fontFamily = rubik, fontWeight = FontWeight.SemiBold),
+            headlineMedium = base.headlineMedium.copy(fontFamily = rubik, fontWeight = FontWeight.SemiBold),
+            headlineSmall = base.headlineSmall.copy(fontFamily = rubik, fontWeight = FontWeight.SemiBold),
+            titleLarge = base.titleLarge.copy(fontFamily = rubik, fontWeight = FontWeight.SemiBold),
+            titleMedium = base.titleMedium.copy(fontFamily = rubik, fontWeight = FontWeight.SemiBold),
+            titleSmall = base.titleSmall.copy(fontFamily = rubik, fontWeight = FontWeight.SemiBold),
+            bodyLarge = base.bodyLarge.copy(fontFamily = rubik),
+            bodyMedium = base.bodyMedium.copy(fontFamily = rubik),
+            bodySmall = base.bodySmall.copy(fontFamily = rubik),
+            labelLarge = base.labelLarge.copy(fontFamily = rubik, fontWeight = FontWeight.SemiBold),
+            labelMedium = base.labelMedium.copy(fontFamily = rubik, fontWeight = FontWeight.SemiBold),
+            labelSmall = base.labelSmall.copy(fontFamily = rubik, fontWeight = FontWeight.SemiBold),
         )
     }
 }
