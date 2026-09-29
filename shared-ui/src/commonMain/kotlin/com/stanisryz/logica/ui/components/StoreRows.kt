@@ -151,7 +151,10 @@ fun StoreItemRow(
             }
             Column(Modifier.weight(1f)) {
                 Text(text = title, style = MaterialTheme.typography.titleMedium)
-                subtitle?.let { Text(text = it, style = MaterialTheme.typography.bodySmall, color = subtitleColor) }
+                // A blank subtitle would still take a line and push the title above the button.
+                subtitle?.takeIf { it.isNotBlank() }?.let {
+                    Text(text = it, style = MaterialTheme.typography.bodySmall, color = subtitleColor)
+                }
             }
             action()
         }

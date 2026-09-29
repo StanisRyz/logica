@@ -94,7 +94,6 @@ import com.stanisryz.logica.web.generated.resources.web_store_life_ad_title
 import com.stanisryz.logica.web.generated.resources.web_store_next_life
 import com.stanisryz.logica.web.generated.resources.web_store_section_for_gems
 import com.stanisryz.logica.web.generated.resources.web_store_section_gems
-import com.stanisryz.logica.web.generated.resources.web_store_topup
 import com.stanisryz.logica.web.generated.resources.web_to_store
 import com.stanisryz.logica.web.generated.resources.web_wallet_unavailable
 import org.jetbrains.compose.resources.pluralStringResource
@@ -228,7 +227,8 @@ private fun PaidGemTopUpCard(
     StoreItemRow(
         icon = Icons.Rounded.Diamond,
         title = pluralStringResource(WebRes.plurals.web_gems_plus, entry.product.gemReward, entry.product.gemReward),
-        subtitle = message ?: entry.details.description ?: stringResource(WebRes.string.web_store_topup),
+        // Without a message or a catalog description the title stands alone, centred on the price.
+        subtitle = message ?: entry.details.description?.takeIf { it.isNotBlank() },
         subtitleColor =
             if (rowReportsState &&
                 state == WebPaidPurchaseState.Success
