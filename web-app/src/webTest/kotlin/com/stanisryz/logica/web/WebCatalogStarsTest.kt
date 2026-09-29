@@ -66,4 +66,37 @@ class WebCatalogStarsTest {
         assertTrue(repository.mergeCloudStars(WebCatalogStarsSnapshot.EMPTY)) // the cloud lacks level 1
         assertFalse(repository.mergeCloudStars(repository.stars.value))
     }
+
+    @Test
+    fun best2048IsKeptLocallyPublishedOnceAndMergedByMaximum() {
+        val bestStore = WebBestScoreStore.InMemory()
+        val repository =
+            WebCatalogProgressRepository(
+                WebCatalogProgressScope.STANDALONE,
+                MemoryProgressStore(),
+                bestScoreStore = bestStore,
+            )
+        repository.loadLocal()
+        var durableChanges = 0
+        repository.onDurableChange = { durableChanges++ }
+
+        repository.recordBest2048(1_200)
+        repository.recordBest2048(3_400)
+        repository.recordBest2048(2_000) // never lowers the best
+        assertEquals(3_400, bestStore.load())
+        assertEquals(0L, repository.best2048.value) // not published mid-game
+        repository.publishBest2048()
+        repository.publishBest2048() // nothing new to publish
+        assertEquals(3_400, repository.best2048.value)
+        assertEquals(1, durableChanges)
+
+        assertTrue(repository.mergeCloudBest2048(1_000)) // the cloud lacks the local best
+        assertFalse(repository.mergeCloudBest2048(9_000))
+        assertEquals(9_000, repository.best2048.value)
+        assertEquals(9_000, bestStore.load())
+
+        val encoded = WebBestScoreCodec.encode(9_000)
+        assertEquals(9_000, WebBestScoreCodec.decode(encoded))
+        assertNull(WebBestScoreCodec.decode(encoded.copyOf(encoded.size - 1)))
+    }
 }

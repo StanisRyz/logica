@@ -3,12 +3,8 @@ package com.stanisryz.logica.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,6 +17,9 @@ import com.stanisryz.logica.R
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.ui.rating.DifficultyScreenActions
+import com.stanisryz.logica.ui.rating.GameRating
+import com.stanisryz.logica.ui.rating.GameRatingSheet
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.ui.tutorial.FirstPlayTutorialDialog
 
@@ -40,10 +39,18 @@ internal fun PuzzleStartScreen(
     onOpenTutorial: () -> Unit,
     onStart: (Difficulty) -> Unit,
     onRestoreLife: () -> Unit,
+    rating: GameRating,
     modifier: Modifier = Modifier,
     stars: Map<Difficulty, Long> = emptyMap(),
+    gallery: (@Composable (onDismiss: () -> Unit) -> Unit)? = null,
 ) {
     var offeredDifficulty by remember { mutableStateOf<Difficulty?>(null) }
+    var ratingOpen by remember { mutableStateOf(false) }
+    var galleryOpen by remember { mutableStateOf(false) }
+    // Android has no shared table of players, so its rating is the player's own points.
+    if (ratingOpen) GameRatingSheet(puzzleType, rating, onDismiss = { ratingOpen = false })
+    if (galleryOpen) gallery?.invoke { galleryOpen = false }
+    val onGallery: (() -> Unit)? = gallery?.let { { galleryOpen = true } }
     val openTutorial = {
         if (tutorialPending) onTutorialOffered()
         onOpenTutorial()
@@ -79,6 +86,8 @@ internal fun PuzzleStartScreen(
             StartDifficultyContent(
                 cardHeight = normalCardHeight(if (puzzleType == PuzzleType.WORD) maxHeight - WORD_NOTICE_ALLOWANCE else maxHeight),
                 onOpenTutorial = openTutorial,
+                onRating = { ratingOpen = true },
+                onGallery = onGallery,
                 onStart = start,
                 enabled = true,
                 modifier = Modifier.fillMaxSize(),
@@ -93,6 +102,8 @@ internal fun PuzzleStartScreen(
             StartDifficultyContent(
                 cardHeight = ZERO_LIVES_CARD_HEIGHT,
                 onOpenTutorial = openTutorial,
+                onRating = { ratingOpen = true },
+                onGallery = onGallery,
                 onStart = start,
                 enabled = false,
                 modifier = Modifier,
@@ -107,6 +118,8 @@ internal fun PuzzleStartScreen(
 private fun StartDifficultyContent(
     cardHeight: androidx.compose.ui.unit.Dp,
     onOpenTutorial: () -> Unit,
+    onRating: () -> Unit,
+    onGallery: (() -> Unit)?,
     onStart: (Difficulty) -> Unit,
     enabled: Boolean,
     modifier: Modifier,
@@ -117,14 +130,12 @@ private fun StartDifficultyContent(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(LogicaSpacing.section),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            OutlinedButton(onClick = onOpenTutorial) {
-                Text(stringResource(R.string.how_to_play_question))
-            }
-        }
+        DifficultyScreenActions(
+            howToPlayLabel = stringResource(R.string.how_to_play_question),
+            onHowToPlay = onOpenTutorial,
+            onRating = onRating,
+            onGallery = onGallery,
+        )
         // The Word game says up front that its words are Russian in every language.
         if (showsWordNotice) WordLanguageNotice()
         DifficultySelector(

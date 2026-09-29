@@ -19,6 +19,7 @@ import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.catalog.levelNumberOrNull
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
+import com.stanisryz.logica.game2048.Game2048BestScore
 import com.stanisryz.logica.game2048.Game2048GameError
 import com.stanisryz.logica.game2048.Game2048UiState
 import com.stanisryz.logica.game2048.Game2048ViewModel
@@ -62,10 +63,11 @@ internal fun Game2048Route(
     onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
     onTerminalAction: (() -> Unit) -> Unit = { it() },
+    bestScore: Game2048BestScore? = null,
 ) {
     val factory =
-        remember(launch, attemptFactory, completionRepository, economyRepository) {
-            Game2048ViewModelFactory(launch, attemptFactory, completionRepository, economyRepository)
+        remember(launch, attemptFactory, completionRepository, economyRepository, bestScore) {
+            Game2048ViewModelFactory(launch, attemptFactory, completionRepository, economyRepository, bestScore)
         }
     val gameViewModel: Game2048ViewModel = viewModel(factory = factory)
     val uiState by gameViewModel.uiState.collectAsStateWithLifecycle()

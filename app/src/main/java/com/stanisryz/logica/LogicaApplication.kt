@@ -17,6 +17,7 @@ import com.stanisryz.logica.daily.RoomDailyChallengeRepository
 import com.stanisryz.logica.daily.RoomDailyResultRepository
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.RoomEconomyRepository
+import com.stanisryz.logica.game2048.Game2048BestScore
 import com.stanisryz.logica.platform.android.AndroidPlatformComposition
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.result.RoomGameCompletionRepository
@@ -25,6 +26,9 @@ import com.stanisryz.logica.settings.DataStoreSettingsRepository
 import com.stanisryz.logica.settings.SettingsRepository
 import com.stanisryz.logica.statistics.RoomStatisticsRepository
 import com.stanisryz.logica.statistics.StatisticsRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 private val Context.userSettingsDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "user_settings",
@@ -36,6 +40,11 @@ private val Context.userSettingsDataStore: DataStore<Preferences> by preferences
  */
 private val Context.advertisingDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "advertising",
+)
+
+/** Personal records that are single growing numbers, such as the best 2048 score. */
+private val Context.recordsDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "records",
 )
 
 class LogicaApplication : Application() {
@@ -106,5 +115,12 @@ internal class AppContainer(
 
     val economyRepository: EconomyRepository by lazy {
         RoomEconomyRepository(database.economyDao())
+    }
+
+    /** Application-lifetime work that must outlive the screen that started it. */
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    val game2048BestScore: Game2048BestScore by lazy {
+        Game2048BestScore(context.recordsDataStore, applicationScope)
     }
 }

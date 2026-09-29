@@ -366,4 +366,17 @@
     <string name="nonogram_tutorial_failed">Üç hata — resme baştan başlayalım.</string>
     <string name="achievement_nonogram">Ressam</string>
     <string name="achievement_nonogram_body">25 nonogram çöz</string>
+    <string name="rating_action">Sıralama</string>
+    <string name="rating_title">Sıralama · %1$s</string>
+    <string name="rating_points">Puanınız</string>
+    <string name="rating_best_score">En iyi skor</string>
+    <string name="rating_levels_count">Seviye: %1$s</string>
+    <string name="rating_levels_explained">Geçilen her seviye puan kazandırır: Kolay +1, Orta +2, Zor +3, Uzman +4. Bir seviyeyi tekrar oynamak puan eklemez.</string>
+    <string name="rating_best_explained">Tek bir oyundaki en iyi skorunuz — seviyelerde, hedeften sonra ve günlük bulmacada.</string>
+    <string name="rating_leaderboard">En iyi oyuncular</string>
+    <string name="gallery_action">Galeri</string>
+    <string name="gallery_title">Resim galerisi</string>
+    <string name="gallery_count">Resim: %1$s</string>
+    <string name="gallery_empty">Bir seviyeyi çözün, resmi burada görünecek.</string>
+    <string name="gallery_close">Kapat</string>
 </resources>

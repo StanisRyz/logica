@@ -377,4 +377,17 @@
     <string name="nonogram_tutorial_failed">Три ошибки — начнём рисунок заново.</string>
     <string name="achievement_nonogram">Художник</string>
     <string name="achievement_nonogram_body">Решите 25 нонограмм</string>
+    <string name="rating_action">Рейтинг</string>
+    <string name="rating_title">Рейтинг · %1$s</string>
+    <string name="rating_points">Ваши очки</string>
+    <string name="rating_best_score">Лучший счёт</string>
+    <string name="rating_levels_count">Уровней: %1$s</string>
+    <string name="rating_levels_explained">За каждый пройденный уровень: Легко +1, Средне +2, Сложно +3, Эксперт +4. Повторное прохождение очков не добавляет.</string>
+    <string name="rating_best_explained">Лучший счёт за одну партию — в уровнях, после цели и в задаче дня.</string>
+    <string name="rating_leaderboard">Лучшие игроки</string>
+    <string name="gallery_action">Галерея</string>
+    <string name="gallery_title">Галерея рисунков</string>
+    <string name="gallery_count">Рисунков: %1$s</string>
+    <string name="gallery_empty">Решите уровень — и здесь появится его рисунок.</string>
+    <string name="gallery_close">Закрыть</string>
 </resources>

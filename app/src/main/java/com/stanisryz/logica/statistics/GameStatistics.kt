@@ -215,5 +215,5 @@ private fun bestLevelStars(solvedResults: List<GameResult>): List<LevelStarRecor
         .filter { it.catalogLevel != null && it.stars != null }
         .groupBy { checkNotNull(it.catalogLevel) }
         .map { (level, results) ->
-            LevelStarRecord(level.puzzleType, level.difficulty, results.maxOf { checkNotNull(it.stars) })
+            LevelStarRecord(level.puzzleType, level.difficulty, results.maxOf { checkNotNull(it.stars) }, level.levelNumber.value)
         }

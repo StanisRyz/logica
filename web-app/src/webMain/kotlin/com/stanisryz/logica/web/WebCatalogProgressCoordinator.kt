@@ -64,12 +64,26 @@ internal interface WebCatalogProgressAccess {
     ): WebCatalogCompletionResult
 
     fun retryContextBinding()
+
+    /** Keeps a 2048 score as the bound Player's best when it beats it; local only until published. */
+    fun recordBest2048(score: Long) {}
+
+    /** Publishes the best 2048 score once a game ends or is left, so the rating and cloud see it. */
+    fun publishBest2048() {}
 }
 
 /** Dynamically delegates every operation to the repository bound to the current Player context. */
 internal class WebCatalogProgressCoordinator(
     private val playerSession: WebPlayerSessionController,
 ) : WebCatalogProgressAccess {
+    override fun recordBest2048(score: Long) {
+        (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository?.recordBest2048(score)
+    }
+
+    override fun publishBest2048() {
+        (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository?.publishBest2048()
+    }
+
     override val isReady: Boolean
         get() = playerSession.progressBinding.value is WebCatalogProgressBinding.Ready
 

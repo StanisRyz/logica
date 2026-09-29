@@ -19,10 +19,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.web.generated.resources.web_leaderboard_empty
 import com.stanisryz.logica.web.generated.resources.web_leaderboard_join
@@ -77,77 +79,101 @@ internal sealed interface WebLeaderboardState {
 }
 
 /**
- * The one Web leaderboard, "solved puzzles": the bound Player's solved total is submitted
- * best-effort whenever it grows (one call in flight, then the latest value, spaced for the
- * platform's rate limit), and the table is read only when the Profile shows it. Nothing here is
- * persisted or synced; a failed or unauthorized call simply leaves the table as it was.
+ * The Web leaderboards: "solved puzzles" for the Profile plus one rating table per game. Each
+ * value is submitted best-effort whenever it grows (one call in flight, then the latest pending
+ * value of every table, spaced for the platform's rate limit), and a table is read only when a
+ * screen shows it. Nothing here is persisted or synced; a failed or unauthorized call — a guest
+ * Player — simply leaves the table as it was, and the Player's own points stay visible regardless.
  */
 internal class WebLeaderboardController(
     private val bridge: WebLeaderboardBridge,
     private val scope: CoroutineScope,
 ) {
-    private val mutableState = MutableStateFlow<WebLeaderboardState>(WebLeaderboardState.Idle)
-    val state: StateFlow<WebLeaderboardState> = mutableState.asStateFlow()
+    private val states = mutableMapOf<String, MutableStateFlow<WebLeaderboardState>>()
 
     val isSupported: Boolean get() = bridge.isLeaderboardsSupported()
 
     private var playerKey: Any? = null
-    private var submitted = 0L
-    private var pending: Long? = null
+    private val submitted = mutableMapOf<String, Long>()
+    private val pending = linkedMapOf<String, Long>()
     private var submitting = false
 
-    /** Submits [solvedTotal] for the Player identified by [player] when it beats the last value sent. */
-    fun submitSolved(
+    /** The table [board] as last read; Idle until a screen asks for it. */
+    fun state(board: String): StateFlow<WebLeaderboardState> = mutableState(board).asStateFlow()
+
+    /** Submits [value] to [board] for the Player identified by [player] when it beats the last value sent. */
+    fun submit(
+        board: String,
         player: Any,
-        solvedTotal: Long,
+        value: Long,
     ) {
         if (!isSupported) return
         if (player != playerKey) {
-            // Another Player: forget what the previous one sent and the table it saw.
+            // Another Player: forget what the previous one sent and the tables it saw.
             playerKey = player
-            submitted = 0L
-            pending = null
-            mutableState.value = WebLeaderboardState.Idle
+            submitted.clear()
+            pending.clear()
+            states.values.forEach { it.value = WebLeaderboardState.Idle }
         }
-        if (solvedTotal <= submitted || solvedTotal <= (pending ?: 0L)) return
-        pending = solvedTotal
+        if (value <= 0L || value <= (submitted[board] ?: 0L) || value <= (pending[board] ?: 0L)) return
+        pending[board] = value
         if (submitting) return
         submitting = true
         scope.launch {
             while (true) {
-                val value = pending ?: break
-                pending = null
+                val (name, next) = pending.entries.firstOrNull()?.toPair() ?: break
+                pending.remove(name)
                 val key = playerKey
-                val sent = bridge.setLeaderboardScore(SOLVED_LEADERBOARD, value.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
-                if (sent && key == playerKey) submitted = maxOf(submitted, value)
+                val sent = bridge.setLeaderboardScore(name, next.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+                if (sent && key == playerKey) {
+                    submitted[name] = maxOf(submitted[name] ?: 0L, next)
+                    // A table read before this value is stale; the next look reads it again.
+                    if (mutableState(name).value is WebLeaderboardState.Ready) mutableState(name).value = WebLeaderboardState.Idle
+                }
                 delay(MIN_CALL_SPACING_MS)
             }
             submitting = false
         }
     }
 
-    /** Reads the table once per explicit request (Profile open or refresh). */
-    fun load() {
-        if (!isSupported || mutableState.value == WebLeaderboardState.Loading) return
-        mutableState.value = WebLeaderboardState.Loading
+    /** Reads [board] once per explicit request (a screen opening it, or refresh). */
+    fun load(board: String) {
+        val state = mutableState(board)
+        if (!isSupported || state.value == WebLeaderboardState.Loading) return
+        state.value = WebLeaderboardState.Loading
         scope.launch {
-            mutableState.value =
-                bridge.leaderboardEntries(SOLVED_LEADERBOARD)?.let(WebLeaderboardState::Ready) ?: WebLeaderboardState.Unavailable
+            state.value = bridge.leaderboardEntries(board)?.let(WebLeaderboardState::Ready) ?: WebLeaderboardState.Unavailable
         }
     }
 
+    private fun mutableState(board: String): MutableStateFlow<WebLeaderboardState> =
+        states.getOrPut(board) { MutableStateFlow(WebLeaderboardState.Idle) }
+
     companion object {
-        /** Technical name configured in the Yandex Games console. */
+        /** Technical names configured in the Yandex Games console. */
         const val SOLVED_LEADERBOARD = "solved"
         private const val MIN_CALL_SPACING_MS = 1_100L
+
+        /** The rating table of [puzzleType]: points for cleared levels, or 2048's best score. */
+        fun ratingLeaderboard(puzzleType: PuzzleType): String =
+            when (puzzleType) {
+                PuzzleType.BALANCE -> "rating_balance"
+                PuzzleType.CROWNS -> "rating_crowns"
+                PuzzleType.WORD -> "rating_word"
+                PuzzleType.SUDOKU -> "rating_sudoku"
+                PuzzleType.NONOGRAM -> "rating_nonogram"
+                PuzzleType.GAME_2048 -> "best_2048"
+                else -> error("$puzzleType has no rating leaderboard.")
+            }
     }
 }
 
 /** The Profile's leaderboard card on Yandex Games; standalone development never shows it. */
 @Composable
 internal fun WebLeaderboardCard(controller: WebLeaderboardController) {
-    val state by controller.state.collectAsState()
-    LaunchedEffect(controller) { if (controller.state.value == WebLeaderboardState.Idle) controller.load() }
+    val board = WebLeaderboardController.SOLVED_LEADERBOARD
+    val state by controller.state(board).collectAsState()
+    LaunchedEffect(controller) { if (controller.state(board).value == WebLeaderboardState.Idle) controller.load(board) }
     val colors = MaterialTheme.colorScheme
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -158,37 +184,62 @@ internal fun WebLeaderboardCard(controller: WebLeaderboardController) {
                 modifier = Modifier.weight(1f),
             )
             TextButton(
-                onClick = controller::load,
+                onClick = { controller.load(board) },
                 enabled = state != WebLeaderboardState.Loading,
             ) { Text(stringResource(WebRes.string.web_refresh)) }
         }
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLow),
-        ) {
-            Column(Modifier.padding(LogicaSpacing.cardPadding), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                when (val current = state) {
-                    WebLeaderboardState.Idle, WebLeaderboardState.Loading ->
-                        Text(
-                            stringResource(WebRes.string.web_leaderboard_loading),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.onSurfaceVariant,
-                        )
-                    WebLeaderboardState.Unavailable ->
-                        Text(
-                            stringResource(WebRes.string.web_leaderboard_unavailable),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.onSurfaceVariant,
-                        )
-                    is WebLeaderboardState.Ready -> LeaderboardRows(current.snapshot)
-                }
+        LeaderboardTable(state)
+    }
+}
+
+/** One game's rating table inside its rating sheet; read once when first shown. */
+@Composable
+internal fun WebRatingLeaderboard(
+    controller: WebLeaderboardController,
+    puzzleType: PuzzleType,
+) {
+    val board = WebLeaderboardController.ratingLeaderboard(puzzleType)
+    val state by controller.state(board).collectAsState()
+    LaunchedEffect(board) { if (controller.state(board).value == WebLeaderboardState.Idle) controller.load(board) }
+    // The rating sheet already sits on the low container, so its table takes the lightest surface.
+    LeaderboardTable(state, MaterialTheme.colorScheme.surfaceContainerLowest)
+}
+
+@Composable
+private fun LeaderboardTable(
+    state: WebLeaderboardState,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
+) {
+    val colors = MaterialTheme.colorScheme
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+    ) {
+        Column(Modifier.padding(LogicaSpacing.cardPadding), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            when (state) {
+                WebLeaderboardState.Idle, WebLeaderboardState.Loading ->
+                    Text(
+                        stringResource(WebRes.string.web_leaderboard_loading),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurfaceVariant,
+                    )
+                WebLeaderboardState.Unavailable ->
+                    Text(
+                        stringResource(WebRes.string.web_leaderboard_unavailable),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurfaceVariant,
+                    )
+                is WebLeaderboardState.Ready -> LeaderboardRows(state.snapshot, containerColor)
             }
         }
     }
 }
 
 @Composable
-private fun LeaderboardRows(snapshot: WebLeaderboardSnapshot) {
+private fun LeaderboardRows(
+    snapshot: WebLeaderboardSnapshot,
+    rowColor: Color,
+) {
     val colors = MaterialTheme.colorScheme
     if (snapshot.entries.isEmpty()) {
         Text(
@@ -209,7 +260,7 @@ private fun LeaderboardRows(snapshot: WebLeaderboardSnapshot) {
                 Modifier
                     .fillMaxWidth()
                     .clip(MaterialTheme.shapes.small)
-                    .background(if (mine) colors.primaryContainer else colors.surfaceContainerLow)
+                    .background(if (mine) colors.primaryContainer else rowColor)
                     .padding(horizontal = LogicaSpacing.item, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

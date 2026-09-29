@@ -366,4 +366,17 @@
     <string name="nonogram_tutorial_failed">Three mistakes — let\'s start the picture again.</string>
     <string name="achievement_nonogram">Artist</string>
     <string name="achievement_nonogram_body">Solve 25 nonograms</string>
+    <string name="rating_action">Rating</string>
+    <string name="rating_title">Rating · %1$s</string>
+    <string name="rating_points">Your points</string>
+    <string name="rating_best_score">Best score</string>
+    <string name="rating_levels_count">Levels: %1$s</string>
+    <string name="rating_levels_explained">Every cleared level earns points: Easy +1, Medium +2, Hard +3, Expert +4. Replaying a level adds nothing.</string>
+    <string name="rating_best_explained">Your best score in a single game — in levels, after the target, and in the Daily.</string>
+    <string name="rating_leaderboard">Top players</string>
+    <string name="gallery_action">Gallery</string>
+    <string name="gallery_title">Picture gallery</string>
+    <string name="gallery_count">Pictures: %1$s</string>
+    <string name="gallery_empty">Solve a level and its picture appears here.</string>
+    <string name="gallery_close">Close</string>
 </resources>

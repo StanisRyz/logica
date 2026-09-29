@@ -28,6 +28,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 internal sealed interface WebNonogramState {
     data object DifficultySelection : WebNonogramState
@@ -72,6 +74,7 @@ internal class WebNonogramController(
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private var operation: Job? = null
+    private val galleryPackLock = Mutex()
     private var engine: NonogramGameEngine? = null
     private var statisticsAttempt: WebStatisticsAttempt? = null
     private val completion = WebCatalogCompletionController(progression)
@@ -213,6 +216,21 @@ internal class WebNonogramController(
         completion.reset()
         state = WebNonogramState.DifficultySelection
     }
+
+    /**
+     * The picture of an already cleared [level] for the gallery, rebuilt from its frozen level.
+     * Null when its bucket cannot be loaded; the gallery simply leaves that tile blank.
+     */
+    suspend fun galleryPicture(
+        difficulty: Difficulty,
+        level: Int,
+    ): NonogramPuzzle? =
+        runCatching {
+            // The first visible tiles all ask at once; one of them fetches the bucket.
+            galleryPackLock.withLock { loadPack(difficulty) }
+            val definition = resolveLevel(CatalogLevelId(PuzzleType.NONOGRAM, difficulty, CatalogLevelNumber(level)))
+            generator.generate(definition.seed, difficulty)
+        }.getOrNull()
 
     fun dispose() {
         scope.cancel()

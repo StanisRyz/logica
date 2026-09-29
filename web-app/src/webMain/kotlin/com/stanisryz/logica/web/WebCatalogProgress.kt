@@ -238,6 +238,7 @@ internal class WebCatalogProgressRepository(
     val scope: WebCatalogProgressScope,
     private val localStore: WebCatalogProgressStore,
     private val starsStore: WebCatalogStarsStore = WebCatalogStarsStore.InMemory(),
+    private val bestScoreStore: WebBestScoreStore = WebBestScoreStore.InMemory(),
 ) {
     private val mutableSnapshot = MutableStateFlow(WebCatalogProgressSnapshot.EMPTY)
     val snapshot: StateFlow<WebCatalogProgressSnapshot> = mutableSnapshot.asStateFlow()
@@ -247,11 +248,21 @@ internal class WebCatalogProgressRepository(
     /** Best stars per level in this Player scope; lives beside progress and never gates it. */
     val stars: StateFlow<WebCatalogStarsSnapshot> = mutableStars.asStateFlow()
 
+    private val mutableBest2048 = MutableStateFlow(0L)
+
+    /** The best 2048 score in this Player scope, as last published at the end of a game. */
+    val best2048: StateFlow<Long> = mutableBest2048.asStateFlow()
+
+    /** Kept locally move by move; published (and so synced) only when a game ends or is left. */
+    private var unpublishedBest2048 = 0L
+
     /** Invoked after every successful durable local mutation; never after a cloud merge. */
     var onDurableChange: (() -> Unit)? = null
 
     fun loadLocal(): WebCatalogProgressSnapshot {
         mutableStars.value = runCatching { starsStore.load() }.getOrDefault(WebCatalogStarsSnapshot.EMPTY)
+        mutableBest2048.value = runCatching { bestScoreStore.load() }.getOrDefault(0L)
+        unpublishedBest2048 = mutableBest2048.value
         return localStore.load().also { mutableSnapshot.value = it }
     }
 
@@ -277,6 +288,29 @@ internal class WebCatalogProgressRepository(
         val merged = local.mergedWith(cloud)
         if (merged != local && runCatching { starsStore.save(merged) }.isSuccess) mutableStars.value = merged
         return merged != cloud
+    }
+
+    /** Keeps [score] locally when it beats the best 2048 score; cheap enough to call on every move. */
+    fun recordBest2048(score: Long) {
+        if (score <= unpublishedBest2048) return
+        if (runCatching { bestScoreStore.save(score) }.isSuccess) unpublishedBest2048 = score
+    }
+
+    /** Publishes a best score recorded since the last call, so it reaches the rating and the cloud. */
+    fun publishBest2048() {
+        if (unpublishedBest2048 <= mutableBest2048.value) return
+        mutableBest2048.value = unpublishedBest2048
+        onDurableChange?.invoke()
+    }
+
+    /** Maximum with the cloud copy; true when the cloud lacks the local best. */
+    fun mergeCloudBest2048(cloud: Long): Boolean {
+        val local = maxOf(mutableBest2048.value, unpublishedBest2048)
+        if (cloud > local && runCatching { bestScoreStore.save(cloud) }.isSuccess) {
+            unpublishedBest2048 = cloud
+            mutableBest2048.value = cloud
+        }
+        return local > cloud
     }
 
     fun currentLevel(bucket: WebCatalogProgressBucket): CatalogLevelNumber = mutableSnapshot.value.currentLevel(bucket)

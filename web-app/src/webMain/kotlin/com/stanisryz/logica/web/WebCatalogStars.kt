@@ -51,7 +51,9 @@ internal data class WebCatalogStarsSnapshot(
 
     fun levelRecords(): List<LevelStarRecord> =
         levels.flatMap { (bucket, stars) ->
-            stars.filter { it > 0 }.map { LevelStarRecord(bucket.puzzleType, bucket.difficulty, it) }
+            stars.mapIndexedNotNull { index, value ->
+                value.takeIf { it > 0 }?.let { LevelStarRecord(bucket.puzzleType, bucket.difficulty, it, index + 1) }
+            }
         }
 
     companion object {

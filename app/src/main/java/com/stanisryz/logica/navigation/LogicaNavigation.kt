@@ -81,9 +81,13 @@ import com.stanisryz.logica.daily.DailyGameLaunch
 import com.stanisryz.logica.daily.DailyResultRepository
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
+import com.stanisryz.logica.game2048.Game2048BestScore
 import com.stanisryz.logica.platform.StoreGateway
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV1
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.settings.SettingsRepository
 import com.stanisryz.logica.settings.ThemeMode
@@ -97,6 +101,8 @@ import com.stanisryz.logica.ui.components.GameRulesSheet
 import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.LivesDialog
 import com.stanisryz.logica.ui.components.PuzzleStartScreen
+import com.stanisryz.logica.ui.nonogram.NonogramGallerySheet
+import com.stanisryz.logica.ui.rating.GameRating
 import com.stanisryz.logica.ui.screens.BalanceGameRoute
 import com.stanisryz.logica.ui.screens.BalanceTutorialRoute
 import com.stanisryz.logica.ui.screens.CrownsGameRoute
@@ -116,7 +122,9 @@ import com.stanisryz.logica.ui.screens.SudokuTutorialRoute
 import com.stanisryz.logica.ui.screens.WordGameRoute
 import com.stanisryz.logica.ui.screens.WordTutorialRoute
 import com.stanisryz.logica.ui.theme.LogicaMotion
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.util.UUID
 
@@ -130,6 +138,7 @@ internal fun LogicaNavigation(
     statisticsRepository: StatisticsRepository,
     dailyResultRepository: DailyResultRepository,
     economyRepository: EconomyRepository,
+    game2048BestScore: Game2048BestScore,
     economy: PlayerEconomy,
     rewardedState: RewardedAdState,
     interstitialOpportunity: InterstitialOpportunity?,
@@ -475,6 +484,7 @@ internal fun LogicaNavigation(
                             PuzzleStartScreen(
                                 puzzleType = PuzzleType.BALANCE,
                                 stars = difficultyStars(statisticsRepository, PuzzleType.BALANCE),
+                                rating = levelRating(catalogLevelRepository, PuzzleType.BALANCE),
                                 economy = economy,
                                 tutorialPending = !settings.tutorialCompleted(PuzzleType.BALANCE),
                                 onTutorialOffered = { onTutorialSeen(PuzzleType.BALANCE) },
@@ -490,6 +500,7 @@ internal fun LogicaNavigation(
                             PuzzleStartScreen(
                                 puzzleType = PuzzleType.CROWNS,
                                 stars = difficultyStars(statisticsRepository, PuzzleType.CROWNS),
+                                rating = levelRating(catalogLevelRepository, PuzzleType.CROWNS),
                                 economy = economy,
                                 tutorialPending = !settings.tutorialCompleted(PuzzleType.CROWNS),
                                 onTutorialOffered = { onTutorialSeen(PuzzleType.CROWNS) },
@@ -509,6 +520,7 @@ internal fun LogicaNavigation(
                             PuzzleStartScreen(
                                 puzzleType = PuzzleType.WORD,
                                 stars = difficultyStars(statisticsRepository, PuzzleType.WORD),
+                                rating = levelRating(catalogLevelRepository, PuzzleType.WORD),
                                 economy = economy,
                                 tutorialPending = !settings.tutorialCompleted(PuzzleType.WORD),
                                 onTutorialOffered = { onTutorialSeen(PuzzleType.WORD) },
@@ -524,6 +536,7 @@ internal fun LogicaNavigation(
                             PuzzleStartScreen(
                                 puzzleType = PuzzleType.SUDOKU,
                                 stars = difficultyStars(statisticsRepository, PuzzleType.SUDOKU),
+                                rating = levelRating(catalogLevelRepository, PuzzleType.SUDOKU),
                                 economy = economy,
                                 tutorialPending = !settings.tutorialCompleted(PuzzleType.SUDOKU),
                                 onTutorialOffered = { onTutorialSeen(PuzzleType.SUDOKU) },
@@ -542,6 +555,7 @@ internal fun LogicaNavigation(
                             PuzzleStartScreen(
                                 puzzleType = PuzzleType.GAME_2048,
                                 stars = difficultyStars(statisticsRepository, PuzzleType.GAME_2048),
+                                rating = bestScoreRating(game2048BestScore),
                                 economy = economy,
                                 tutorialPending = !settings.tutorialCompleted(PuzzleType.GAME_2048),
                                 onTutorialOffered = { onTutorialSeen(PuzzleType.GAME_2048) },
@@ -560,6 +574,8 @@ internal fun LogicaNavigation(
                             PuzzleStartScreen(
                                 puzzleType = PuzzleType.NONOGRAM,
                                 stars = difficultyStars(statisticsRepository, PuzzleType.NONOGRAM),
+                                rating = levelRating(catalogLevelRepository, PuzzleType.NONOGRAM),
+                                gallery = { onDismiss -> NonogramGallery(catalogLevelRepository, statisticsRepository, onDismiss) },
                                 economy = economy,
                                 tutorialPending = !settings.tutorialCompleted(PuzzleType.NONOGRAM),
                                 onTutorialOffered = { onTutorialSeen(PuzzleType.NONOGRAM) },
@@ -643,6 +659,7 @@ internal fun LogicaNavigation(
                                 attemptFactory = attemptFactory,
                                 completionRepository = gameCompletionRepository,
                                 economyRepository = economyRepository,
+                                bestScore = game2048BestScore,
                                 exitGuard = exitGuard,
                                 hapticsEnabled = settings.hapticsEnabled,
                                 onBack = goBack,
@@ -925,4 +942,61 @@ private fun difficultyStars(
             ?.mapValues { (_, levels) -> levels.sumOf { it.stars.toLong() } }
             .orEmpty()
     }
+}
+
+/** A level game's rating: Catalog levels cleared per difficulty, straight from progression. */
+@Composable
+private fun levelRating(
+    catalogLevelRepository: CatalogLevelRepository,
+    puzzleType: PuzzleType,
+): GameRating {
+    val flow = remember(catalogLevelRepository, puzzleType) { catalogLevelRepository.observeCurrentLevels(puzzleType) }
+    val levels by flow.collectAsStateWithLifecycle(initialValue = emptyMap())
+    return GameRating.Levels(levels.clearedLevels().mapValues { it.value.toLong() })
+}
+
+@Composable
+private fun bestScoreRating(bestScore: Game2048BestScore): GameRating {
+    val best by bestScore.best.collectAsStateWithLifecycle(initialValue = 0L)
+    return GameRating.BestScore(best)
+}
+
+/** Levels are cleared in order, so everything below the current level is solved. */
+private fun Map<Difficulty, CatalogLevelNumber>.clearedLevels(): Map<Difficulty, Int> = mapValues { (_, level) -> level.value - 1 }
+
+/** The Nonogram gallery: every cleared level's picture, rebuilt from its frozen level on demand. */
+@Composable
+private fun NonogramGallery(
+    catalogLevelRepository: CatalogLevelRepository,
+    statisticsRepository: StatisticsRepository,
+    onDismiss: () -> Unit,
+) {
+    val levelsFlow = remember(catalogLevelRepository) { catalogLevelRepository.observeCurrentLevels(PuzzleType.NONOGRAM) }
+    val levels by levelsFlow.collectAsStateWithLifecycle(initialValue = emptyMap())
+    val statisticsFlow = remember(statisticsRepository) { statisticsRepository.observe(LocalDate.now()) }
+    val statistics by statisticsFlow.collectAsStateWithLifecycle(initialValue = null)
+    val stars =
+        remember(statistics) {
+            statistics
+                ?.statistics
+                ?.levelStars
+                ?.filter { it.puzzleType == PuzzleType.NONOGRAM }
+                ?.associate { (it.difficulty to it.level) to it.stars }
+                .orEmpty()
+        }
+    val generator = remember { NonogramGeneratorV1() }
+    NonogramGallerySheet(
+        clearedLevels = levels.clearedLevels(),
+        loadPicture = { difficulty, level ->
+            withContext(Dispatchers.Default) {
+                runCatching {
+                    val definition =
+                        catalogLevelRepository.resolve(CatalogLevelId(PuzzleType.NONOGRAM, difficulty, CatalogLevelNumber(level)))
+                    generator.generate(definition.seed, difficulty)
+                }.getOrNull()
+            }
+        },
+        starsOf = { difficulty, level -> stars[difficulty to level] ?: 0 },
+        onDismiss = onDismiss,
+    )
 }

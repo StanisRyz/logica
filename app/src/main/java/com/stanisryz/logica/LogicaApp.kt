@@ -125,6 +125,7 @@ fun LogicaApp() {
                     statisticsRepository = statisticsRepository,
                     dailyResultRepository = dailyResultRepository,
                     economyRepository = economyRepository,
+                    game2048BestScore = application.container.game2048BestScore,
                     economy = economy,
                     rewardedState = rewardedState,
                     interstitialOpportunity = interstitialOpportunity,

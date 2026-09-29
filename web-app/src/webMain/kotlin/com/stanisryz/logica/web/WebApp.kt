@@ -29,7 +29,6 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -95,6 +94,7 @@ import com.stanisryz.logica.ui.daily.DailyShareFormatter
 import com.stanisryz.logica.ui.daily.DailyShareLanguage
 import com.stanisryz.logica.ui.game2048.Game2048Content
 import com.stanisryz.logica.ui.game2048.formatGame2048Number
+import com.stanisryz.logica.ui.nonogram.NonogramGallerySheet
 import com.stanisryz.logica.ui.nonogram.NonogramGameContent
 import com.stanisryz.logica.ui.profile.Achievement
 import com.stanisryz.logica.ui.profile.AchievementAnnouncementHost
@@ -107,6 +107,8 @@ import com.stanisryz.logica.ui.profile.ProfileStarSummary
 import com.stanisryz.logica.ui.profile.ProfileStatistics
 import com.stanisryz.logica.ui.profile.ProfileUiState
 import com.stanisryz.logica.ui.profile.unlockedAchievementIds
+import com.stanisryz.logica.ui.rating.DifficultyScreenActions
+import com.stanisryz.logica.ui.rating.GameRatingSheet
 import com.stanisryz.logica.ui.sudoku.SudokuGameContent
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.ui.theme.LogicaTheme
@@ -476,9 +478,44 @@ private fun ReadyContent(
         key(leaderboardBinding.token) {
             val statisticsSnapshot by leaderboardBinding.repository.snapshot.collectAsState()
             val solvedTotal = WebStatisticsAggregator.aggregate(statisticsSnapshot).toProfileStatistics().totalSolved
-            LaunchedEffect(solvedTotal) { leaderboard.submitSolved(leaderboardBinding.token, solvedTotal) }
+            LaunchedEffect(solvedTotal) {
+                leaderboard.submit(WebLeaderboardController.SOLVED_LEADERBOARD, leaderboardBinding.token, solvedTotal)
+            }
         }
     }
+    // Each game's rating feeds its own table whenever it grows.
+    val ratingBinding = playerSession.progressBinding.collectAsState().value as? WebCatalogProgressBinding.Ready
+    val ratingProgress =
+        ratingBinding?.let { binding ->
+            key(binding.token) {
+                binding.repository.snapshot
+                    .collectAsState()
+                    .value
+            }
+        }
+            ?: WebCatalogProgressSnapshot.EMPTY
+    val ratingBest2048 =
+        ratingBinding?.let { binding ->
+            key(binding.token) {
+                binding.repository.best2048
+                    .collectAsState()
+                    .value
+            }
+        } ?: 0L
+    if (ratingBinding != null) {
+        GAME_CATALOG_PUZZLE_TYPES.forEach { puzzleType ->
+            val value = gameRating(puzzleType, ratingProgress, ratingBest2048).value
+            LaunchedEffect(ratingBinding.token, puzzleType, value) {
+                leaderboard.submit(WebLeaderboardController.ratingLeaderboard(puzzleType), ratingBinding.token, value)
+            }
+        }
+    }
+    val ratingUi =
+        WebRatingUi(
+            progress = ratingProgress,
+            rating = { puzzleType -> gameRating(puzzleType, ratingProgress, ratingBest2048) },
+            leaderboard = if (leaderboard.isSupported) ({ puzzleType -> WebRatingLeaderboard(leaderboard, puzzleType) }) else null,
+        )
     var showNoLives by remember { mutableStateOf(false) }
     val livesUi =
         WebLivesUi(economyState) { start ->
@@ -532,6 +569,7 @@ private fun ReadyContent(
     CompositionLocalProvider(
         LocalAchievementAnnouncer provides achievementAnnouncer,
         LocalWebCatalogStars provides catalogStars,
+        LocalWebRating provides ratingUi,
         LocalWebLives provides livesUi,
         LocalWebOpenStore provides openStore,
         LocalWebKeyboard provides keyboard,
@@ -1088,6 +1126,17 @@ private fun NonogramFlow(
                 puzzleType = PuzzleType.NONOGRAM,
                 onBack = onExitNonogram,
                 onStart = controller::selectDifficulty,
+                gallery = { onDismiss ->
+                    val stars = LocalWebCatalogStars.current
+                    NonogramGallerySheet(
+                        clearedLevels = LocalWebRating.current.progress.clearedLevels(PuzzleType.NONOGRAM),
+                        loadPicture = controller::galleryPicture,
+                        starsOf = { difficulty, level ->
+                            stars.starsOf(WebCatalogProgressBucket(PuzzleType.NONOGRAM, difficulty, CatalogLevelPackVersion.V1), level)
+                        },
+                        onDismiss = onDismiss,
+                    )
+                },
             )
         is WebNonogramState.Loading ->
             WebCatalogLoadingContent(
@@ -1423,7 +1472,20 @@ private fun DifficultyContent(
     puzzleType: PuzzleType,
     onBack: () -> Unit,
     onStart: (Difficulty) -> Unit,
+    gallery: (@Composable (onDismiss: () -> Unit) -> Unit)? = null,
 ) {
+    val ratingUi = LocalWebRating.current
+    var ratingOpen by remember { mutableStateOf(false) }
+    var galleryOpen by remember { mutableStateOf(false) }
+    if (ratingOpen) {
+        GameRatingSheet(
+            puzzleType = puzzleType,
+            rating = ratingUi.rating(puzzleType),
+            onDismiss = { ratingOpen = false },
+            leaderboard = ratingUi.leaderboard?.let { table -> { table(puzzleType) } },
+        )
+    }
+    if (galleryOpen) gallery?.invoke { galleryOpen = false }
     val showTutorial = LocalOpenTutorial.current
     val openTutorial = {
         WebTutorialOffers.markOffered(puzzleType)
@@ -1489,7 +1551,12 @@ private fun DifficultyContent(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    OutlinedButton(onClick = openTutorial) { Text(stringResource(Res.string.how_to_play)) }
+                    DifficultyScreenActions(
+                        howToPlayLabel = stringResource(Res.string.how_to_play),
+                        onHowToPlay = openTutorial,
+                        onRating = { ratingOpen = true },
+                        onGallery = gallery?.let { { galleryOpen = true } },
+                    )
                 }
                 if (showsWordNotice) WordLanguageNotice(Modifier.height(WORD_NOTICE_HEIGHT))
                 if (livesState != null) {

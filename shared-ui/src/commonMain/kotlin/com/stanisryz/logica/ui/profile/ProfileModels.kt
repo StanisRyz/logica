@@ -47,6 +47,8 @@ data class LevelStarRecord(
     val puzzleType: PuzzleType,
     val difficulty: Difficulty,
     val stars: Int,
+    /** The Catalog level number, for views that show one level (0 when not known). */
+    val level: Int = 0,
 )
 
 /**

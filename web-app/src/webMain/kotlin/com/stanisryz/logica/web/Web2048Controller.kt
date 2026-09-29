@@ -116,6 +116,7 @@ internal class Web2048Controller(
                 } == true
 
     fun selectDifficulty(difficulty: Difficulty) {
+        progression.publishBest2048()
         operation?.cancel()
         statisticsAttempt = null
         undoHistory.clear()
@@ -207,6 +208,7 @@ internal class Web2048Controller(
      * crossing is not a result here, and only the real final game state resolves the attempt.
      */
     fun startDaily(dailyAttempt: WebDailyAttempt) {
+        progression.publishBest2048()
         operation?.cancel()
         statisticsAttempt = null
         undoHistory.clear()
@@ -272,6 +274,9 @@ internal class Web2048Controller(
                 motionRevision = nextMotionRevision,
                 motionTrace = trace,
             )
+        // Every game's score is a candidate for the best one; it is published once the game ends.
+        progression.recordBest2048(transition.state.score)
+        if (transition.state.status.isTerminal) progression.publishBest2048()
         val firstGoalCrossing = !playing.game.goalReached && transition.state.goalReached
         when (val source = playing.source) {
             is WebGameplaySource.CatalogLevel -> {
@@ -336,6 +341,7 @@ internal class Web2048Controller(
     }
 
     fun retry() {
+        progression.publishBest2048()
         val playing = state as? Web2048State.Playing ?: return
         if (!playing.game.status.isTerminal || playing.motionTrace != null) return
         val source = playing.source
@@ -364,6 +370,7 @@ internal class Web2048Controller(
     }
 
     fun nextLevel() {
+        progression.publishBest2048()
         val playing = state as? Web2048State.Playing ?: return
         if (!playing.game.status.isTerminal) return
         val source = playing.source as? WebGameplaySource.CatalogLevel ?: return
@@ -379,6 +386,7 @@ internal class Web2048Controller(
     }
 
     fun showDifficultySelector() {
+        progression.publishBest2048()
         operation?.cancel()
         engine = null
         statisticsAttempt = null
@@ -400,6 +408,7 @@ internal class Web2048Controller(
             (dailyCompletion.state as WebDailyCompletionState.Saved).outcome == WebStatisticsTerminalOutcome.SOLVED
 
     fun dispose() {
+        progression.publishBest2048()
         scope.cancel()
     }
 

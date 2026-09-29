@@ -26,6 +26,7 @@ fun main() {
                 scope = scope,
                 localStore = WebCatalogProgressLocalStore(scope),
                 starsStore = WebCatalogStarsLocalStore(scope),
+                bestScoreStore = WebBestScoreLocalStore(scope),
             )
         }
     val installationIdProvider = WebInstallationIdProvider()

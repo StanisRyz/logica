@@ -83,6 +83,7 @@ internal class Game2048ViewModel(
     private val attemptFactory: GameAttemptFactory,
     private val completionRepository: GameCompletionRepository,
     private val economyRepository: EconomyRepository,
+    private val bestScore: Game2048BestScore? = null,
 ) : ViewModel() {
     private val undoHistory = mutableListOf<Game2048State>()
     private val mutableUiState = MutableStateFlow<Game2048UiState>(Game2048UiState.Loading)
@@ -148,6 +149,8 @@ internal class Game2048ViewModel(
                 motionEvent = Game2048MotionEvent(nextMotionRevision, trace),
                 canUndo = undoHistory.isNotEmpty(),
             )
+        // Every game's score is a candidate for the best one, whether the level was cleared or not.
+        bestScore?.offer(transition.state.score)
         onStateAdvanced(transition.state)
     }
 
@@ -258,12 +261,13 @@ internal class Game2048ViewModelFactory(
     private val attemptFactory: GameAttemptFactory,
     private val completionRepository: GameCompletionRepository,
     private val economyRepository: EconomyRepository,
+    private val bestScore: Game2048BestScore? = null,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(Game2048ViewModel::class.java)) {
             "Unknown ViewModel class: ${modelClass.name}"
         }
         @Suppress("UNCHECKED_CAST")
-        return Game2048ViewModel(launch, attemptFactory, completionRepository, economyRepository) as T
+        return Game2048ViewModel(launch, attemptFactory, completionRepository, economyRepository, bestScore) as T
     }
 }
