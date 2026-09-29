@@ -134,6 +134,35 @@ internal interface EconomyDao {
     @Query("SELECT EXISTS(SELECT 1 FROM economy_events WHERE event_id = :eventId)")
     suspend fun hasEvent(eventId: String): Boolean
 
+    /** Ledger rows whose ID starts with [prefix], such as one day's claimed quests. */
+    @Query("SELECT event_id FROM economy_events WHERE event_id LIKE :prefix || '%'")
+    fun observeEventIds(prefix: String): Flow<List<String>>
+
+    @Query("SELECT * FROM economy_events WHERE event_type = 'LOGIN_GIFT' ORDER BY created_at_epoch_millis DESC LIMIT 1")
+    fun observeLastLoginGift(): Flow<EconomyEventEntity?>
+
+    @Query("SELECT * FROM economy_events WHERE event_type = 'LOGIN_GIFT' ORDER BY created_at_epoch_millis DESC LIMIT 1")
+    suspend fun findLastLoginGift(): EconomyEventEntity?
+
+    /**
+     * Pays one daily reward — a quest or the login gift — exactly once: the ledger row keyed by
+     * [eventId] is the duplicate boundary, so a repeated claim adds nothing. False for a repeat.
+     */
+    @Transaction
+    suspend fun grantDailyReward(
+        eventId: String,
+        type: EconomyEventType,
+        sourceId: String,
+        gems: Int,
+        nowEpochMillis: Long,
+    ): Boolean {
+        val current = find().toPlayerEconomy(nowEpochMillis).regenerated(nowEpochMillis)
+        val event = EconomyEvent(eventId, type, sourceId, gemDelta = gems, lifeDelta = 0)
+        if (insertEvent(event.toEntity(nowEpochMillis)) == -1L) return false
+        upsert(current.withGemsGranted(gems).toEntity(nowEpochMillis))
+        return true
+    }
+
     /** Persists whatever regeneration is already due; the wallet is seeded on first use. */
     @Transaction
     suspend fun refresh(nowEpochMillis: Long): PlayerEconomy {

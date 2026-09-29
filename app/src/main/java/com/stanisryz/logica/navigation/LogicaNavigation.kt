@@ -81,6 +81,7 @@ import com.stanisryz.logica.catalog.isReplay
 import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.DailyGameLaunch
 import com.stanisryz.logica.daily.DailyResultRepository
+import com.stanisryz.logica.economy.DailyRewardsRepository
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.game2048.Game2048BestScore
@@ -144,6 +145,7 @@ internal fun LogicaNavigation(
     dailyChallengeRepository: DailyChallengeRepository,
     statisticsRepository: StatisticsRepository,
     dailyResultRepository: DailyResultRepository,
+    dailyRewardsRepository: DailyRewardsRepository,
     economyRepository: EconomyRepository,
     game2048BestScore: Game2048BestScore,
     economy: PlayerEconomy,
@@ -460,6 +462,7 @@ internal fun LogicaNavigation(
                                                                 dailyChallengeRepository = dailyChallengeRepository,
                                                                 statisticsRepository = statisticsRepository,
                                                                 dailyResultRepository = dailyResultRepository,
+                                                                dailyRewardsRepository = dailyRewardsRepository,
                                                                 catalog = GAME_CATALOG_PUZZLE_TYPES,
                                                                 economy = economy,
                                                                 onGameSelected = onGameSelected,

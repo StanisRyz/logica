@@ -90,6 +90,7 @@ fun GameHubContent(
     headerContent: (@Composable () -> Unit)? = null,
     statusContent: (@Composable () -> Unit)? = null,
     continueContent: (@Composable () -> Unit)? = null,
+    rewardsContent: (@Composable () -> Unit)? = null,
 ) {
     BoxWithConstraints(modifier.fillMaxSize()) {
         // Wide windows (a desktop, a tablet) lay the game cards out in a grid instead of one tall list.
@@ -112,6 +113,7 @@ fun GameHubContent(
             continueContent?.let { content -> item(key = "host-continue") { content() } }
             headerContent?.let { content -> item(key = "host-header") { content() } }
             statusContent?.let { content -> item(key = "host-status") { content() } }
+            rewardsContent?.let { content -> item(key = "host-rewards") { content() } }
             item(key = "games-title") {
                 Text(
                     text = stringResource(Res.string.game_catalog_section_title),

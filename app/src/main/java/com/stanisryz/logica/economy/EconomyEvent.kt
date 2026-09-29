@@ -26,6 +26,12 @@ internal enum class EconomyEventType {
 
     /** Hints bought for gems through a [HintOffer]. */
     GEM_HINT_PURCHASE,
+
+    /** One claimed daily quest, keyed by its day and index. */
+    DAILY_QUEST_REWARD,
+
+    /** One claimed daily login gift, keyed by its day; the source carries its cycle day. */
+    LOGIN_GIFT,
 }
 
 /**
@@ -73,6 +79,15 @@ internal data class EconomyEvent(
         fun hintUseEventId(actionId: String): String = "hint:$actionId"
 
         fun hintPurchaseEventId(actionId: String): String = "hint_purchase:$actionId"
+
+        /** One quest of one local day pays once. */
+        fun questEventId(
+            epochDay: Long,
+            index: Int,
+        ): String = "quest:$epochDay:$index"
+
+        /** One login gift per local day. */
+        fun loginGiftEventId(epochDay: Long): String = "login_gift:$epochDay"
     }
 }
 

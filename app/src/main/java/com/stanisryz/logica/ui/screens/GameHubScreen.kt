@@ -29,11 +29,15 @@ import com.stanisryz.logica.daily.TodayUiState
 import com.stanisryz.logica.daily.TodayViewModel
 import com.stanisryz.logica.daily.TodayViewModelFactory
 import com.stanisryz.logica.daily.toDailyHubUiState
+import com.stanisryz.logica.economy.DailyRewardsRepository
+import com.stanisryz.logica.economy.DailyRewardsViewModel
+import com.stanisryz.logica.economy.DailyRewardsViewModelFactory
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.ui.components.ContinueGameCard
+import com.stanisryz.logica.ui.components.DailyRewardsCard
 import com.stanisryz.logica.ui.components.GameHubContent
 import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.components.russianLabel
@@ -55,6 +59,7 @@ internal fun GameHubRoute(
     dailyChallengeRepository: DailyChallengeRepository,
     statisticsRepository: StatisticsRepository,
     dailyResultRepository: DailyResultRepository,
+    dailyRewardsRepository: DailyRewardsRepository,
     catalog: List<PuzzleType>,
     economy: PlayerEconomy,
     onGameSelected: (PuzzleType) -> Unit,
@@ -84,6 +89,9 @@ internal fun GameHubRoute(
         }
     val todayViewModel: TodayViewModel = viewModel(factory = factory)
     val uiState by todayViewModel.uiState.collectAsStateWithLifecycle()
+    val rewardsViewModel: DailyRewardsViewModel =
+        viewModel(factory = remember(dailyRewardsRepository) { DailyRewardsViewModelFactory(dailyRewardsRepository) })
+    val rewardsState by rewardsViewModel.uiState.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(todayViewModel, onOpenDaily) {
@@ -100,6 +108,7 @@ internal fun GameHubRoute(
             LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_RESUME) {
                     todayViewModel.refresh()
+                    rewardsViewModel.refresh()
                     resumes++
                 }
             }
@@ -113,6 +122,7 @@ internal fun GameHubRoute(
             while (true) {
                 delay(millisUntilNextLocalMidnight() + MIDNIGHT_ROLLOVER_SLACK_MS)
                 todayViewModel.refresh()
+                rewardsViewModel.refresh()
             }
         }
     }
@@ -126,6 +136,16 @@ internal fun GameHubRoute(
         onRestoreLife = onRestoreLife,
         onGameSelected = onGameSelected,
         modifier = modifier,
+        rewardsContent =
+            rewardsState?.let { state ->
+                {
+                    DailyRewardsCard(
+                        state = state,
+                        onClaimGift = rewardsViewModel::claimLoginGift,
+                        onClaimQuest = rewardsViewModel::claimQuest,
+                    )
+                }
+            },
         continueContent =
             continueGame?.let { (puzzle, difficulty) ->
                 {
@@ -157,6 +177,7 @@ private fun GameHubScreen(
     onGameSelected: (PuzzleType) -> Unit,
     modifier: Modifier = Modifier,
     continueContent: (@Composable () -> Unit)? = null,
+    rewardsContent: (@Composable () -> Unit)? = null,
 ) {
     GameHubContent(
         puzzleTypes = catalog,
@@ -164,6 +185,7 @@ private fun GameHubScreen(
         onGameSelected = onGameSelected,
         modifier = modifier,
         continueContent = continueContent,
+        rewardsContent = rewardsContent,
         headerContent = {
             DailyHubSection(
                 uiState = dailyState.toDailyHubUiState(),

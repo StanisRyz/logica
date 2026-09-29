@@ -8,6 +8,7 @@ import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPacks
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.puzzle.core.quest.LoginGift
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -239,6 +240,7 @@ internal class WebCatalogProgressRepository(
     private val localStore: WebCatalogProgressStore,
     private val starsStore: WebCatalogStarsStore = WebCatalogStarsStore.InMemory(),
     private val bestScoreStore: WebBestScoreStore = WebBestScoreStore.InMemory(),
+    private val rewardsStore: WebDailyRewardsStore = WebDailyRewardsStore.InMemory(),
 ) {
     private val mutableSnapshot = MutableStateFlow(WebCatalogProgressSnapshot.EMPTY)
     val snapshot: StateFlow<WebCatalogProgressSnapshot> = mutableSnapshot.asStateFlow()
@@ -256,6 +258,11 @@ internal class WebCatalogProgressRepository(
     /** Kept locally move by move; published (and so synced) only when a game ends or is left. */
     private var unpublishedBest2048 = 0L
 
+    private val mutableRewards = MutableStateFlow(WebDailyRewardsSnapshot.EMPTY)
+
+    /** Today's quest counters and claims plus the login gift, in this Player scope. */
+    val rewards: StateFlow<WebDailyRewardsSnapshot> = mutableRewards.asStateFlow()
+
     /** Invoked after every successful durable local mutation; never after a cloud merge. */
     var onDurableChange: (() -> Unit)? = null
 
@@ -263,6 +270,7 @@ internal class WebCatalogProgressRepository(
         mutableStars.value = runCatching { starsStore.load() }.getOrDefault(WebCatalogStarsSnapshot.EMPTY)
         mutableBest2048.value = runCatching { bestScoreStore.load() }.getOrDefault(0L)
         unpublishedBest2048 = mutableBest2048.value
+        mutableRewards.value = runCatching { rewardsStore.load() }.getOrDefault(WebDailyRewardsSnapshot.EMPTY)
         return localStore.load().also { mutableSnapshot.value = it }
     }
 
@@ -311,6 +319,54 @@ internal class WebCatalogProgressRepository(
             mutableBest2048.value = cloud
         }
         return local > cloud
+    }
+
+    /** Counts one recorded terminal attempt toward the quests of the local day [today]. */
+    fun recordQuestActivity(
+        today: Long,
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+        solved: Boolean,
+    ) {
+        saveRewards(mutableRewards.value.plus(today, puzzleType, difficulty, solved))
+    }
+
+    /**
+     * Marks quest [index] of [today] claimed; true only for the first claim, and only once the claim
+     * is durable, so the caller pays exactly once. A lost browser write pays nothing.
+     */
+    fun claimQuest(
+        today: Long,
+        index: Int,
+    ): Boolean {
+        val current = mutableRewards.value.on(today)
+        val bit = 1 shl index
+        if (current.claimedQuests and bit != 0) return false
+        return saveRewards(current.copy(claimedQuests = current.claimedQuests or bit))
+    }
+
+    /** Claims [today]'s login gift once; returns its gems, or null when it was already claimed. */
+    fun claimLoginGift(today: Long): Int? {
+        val current = mutableRewards.value
+        if (current.lastGiftEpochDay == today) return null
+        val day = LoginGift.streakDay(current.lastGiftDayOrNull, current.giftStreakDay, today)
+        return if (saveRewards(current.copy(lastGiftEpochDay = today, giftStreakDay = day))) LoginGift.gemsFor(day) else null
+    }
+
+    /** Day-aware merge with the cloud copy; true when the cloud lacks something local. */
+    fun mergeCloudRewards(cloud: WebDailyRewardsSnapshot): Boolean {
+        val local = mutableRewards.value
+        val merged = local.mergedWith(cloud)
+        if (merged != local && runCatching { rewardsStore.save(merged) }.isSuccess) mutableRewards.value = merged
+        return merged != cloud
+    }
+
+    private fun saveRewards(updated: WebDailyRewardsSnapshot): Boolean {
+        if (updated == mutableRewards.value) return true
+        if (runCatching { rewardsStore.save(updated) }.isFailure) return false
+        mutableRewards.value = updated
+        onDurableChange?.invoke()
+        return true
     }
 
     fun currentLevel(bucket: WebCatalogProgressBucket): CatalogLevelNumber = mutableSnapshot.value.currentLevel(bucket)

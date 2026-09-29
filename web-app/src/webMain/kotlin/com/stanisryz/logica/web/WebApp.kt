@@ -57,6 +57,7 @@ import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
 import com.stanisryz.logica.puzzle.core.daily.DailyDate
+import com.stanisryz.logica.puzzle.core.daily.toDailyEpochDay
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Direction
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Status
 import com.stanisryz.logica.puzzle.core.model.Difficulty
@@ -79,6 +80,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.primary_store
 import com.stanisryz.logica.shared.ui.generated.resources.profile_achievements
 import com.stanisryz.logica.ui.balance.BalanceGameContent
 import com.stanisryz.logica.ui.components.ContinueGameCard
+import com.stanisryz.logica.ui.components.DailyRewardsCard
 import com.stanisryz.logica.ui.components.DifficultySelector
 import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
 import com.stanisryz.logica.ui.components.GameHubContent
@@ -87,6 +89,7 @@ import com.stanisryz.logica.ui.components.LevelMapSheet
 import com.stanisryz.logica.ui.components.LocalGameSounds
 import com.stanisryz.logica.ui.components.WordLanguageNotice
 import com.stanisryz.logica.ui.components.catalogTitleResource
+import com.stanisryz.logica.ui.components.dailyRewardsUiState
 import com.stanisryz.logica.ui.components.starsForWordAttempts
 import com.stanisryz.logica.ui.crowns.CrownsGameContent
 import com.stanisryz.logica.ui.daily.DailyHubResultRow
@@ -630,6 +633,14 @@ private fun ReadyContent(
                                     else -> error("$puzzleType has no Web game flow.")
                                 }
                         },
+                        rewardsContent = {
+                            WebDailyRewardsRoute(
+                                progressRepository = progressRepository,
+                                economyRepository = economyRepository,
+                                playerSession = playerSession,
+                                currentDate = dailyDate,
+                            )
+                        },
                         continueContent =
                             WebLastPlayed.value?.let { (puzzleType, difficulty) ->
                                 {
@@ -950,6 +961,50 @@ private fun PrimaryDestinationShell(
             }
         }
     }
+}
+
+/**
+ * The day's login gift and quests for the bound Player. Quest counters and claims live beside
+ * Catalog progress; Daily solves come from the durable Daily history. A claim is made durable
+ * first and pays its gems only after that, so a repeated tap never pays twice.
+ */
+@Composable
+private fun WebDailyRewardsRoute(
+    progressRepository: WebCatalogProgressRepository?,
+    economyRepository: WebPlayerEconomyRepository?,
+    playerSession: WebPlayerSessionController,
+    currentDate: DailyDate,
+) {
+    val repository = progressRepository ?: return
+    val economy = economyRepository ?: return
+    val rewards by key(repository) { repository.rewards.collectAsState() }
+    val dailyBinding by playerSession.dailyBinding.collectAsState()
+    val dailySnapshot =
+        (dailyBinding as? WebDailyBinding.Ready)?.let { ready ->
+            key(ready.token) {
+                ready.repository.snapshot
+                    .collectAsState()
+                    .value
+            }
+        }
+    val today = currentDate.toDailyEpochDay()
+    val dailySolved = dailySnapshot?.days?.get(currentDate)?.completedEntryCount ?: 0
+    val state =
+        dailyRewardsUiState(
+            epochDay = today,
+            activity = rewards.activity(today, dailySolved),
+            claimedQuests = rewards.claimedQuests(today),
+            lastGiftEpochDay = rewards.lastGiftDayOrNull,
+            lastGiftStreakDay = rewards.giftStreakDay,
+        )
+    DailyRewardsCard(
+        state = state,
+        onClaimGift = { repository.claimLoginGift(today)?.let(economy::grantGems) },
+        onClaimQuest = { index ->
+            val quest = state.quests.firstOrNull { it.quest.index == index }
+            if (quest != null && quest.complete && repository.claimQuest(today, index)) economy.grantGems(quest.quest.gems)
+        },
+    )
 }
 
 /**

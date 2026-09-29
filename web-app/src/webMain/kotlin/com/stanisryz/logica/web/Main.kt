@@ -5,6 +5,7 @@ package com.stanisryz.logica.web
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport
 import com.stanisryz.logica.platform.AdRewardDefinition
+import com.stanisryz.logica.puzzle.core.daily.toDailyEpochDay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -27,6 +28,7 @@ fun main() {
                 localStore = WebCatalogProgressLocalStore(scope),
                 starsStore = WebCatalogStarsLocalStore(scope),
                 bestScoreStore = WebBestScoreLocalStore(scope),
+                rewardsStore = WebDailyRewardsLocalStore(scope),
             )
         }
     val installationIdProvider = WebInstallationIdProvider()
@@ -79,7 +81,16 @@ fun main() {
             )
         }
     val progressCoordinator = WebCatalogProgressCoordinator(playerSession)
-    val statisticsCoordinator = WebGameplayStatisticsCoordinator(playerSession)
+    // Daily quests count exactly the terminal attempts Statistics records, in the bound Player scope.
+    val statisticsCoordinator =
+        WebQuestCountingStatistics(WebGameplayStatisticsCoordinator(playerSession)) { puzzleType, difficulty, solved ->
+            (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository?.recordQuestActivity(
+                today = BrowserLocalWebDailyDateProvider.currentDate().toDailyEpochDay(),
+                puzzleType = puzzleType,
+                difficulty = difficulty,
+                solved = solved,
+            )
+        }
     val dailyCoordinator = WebDailyGameplayCoordinator(playerSession)
     val economyCoordinator = WebGameplayEconomyCoordinator(playerSession)
     val storeCoordinator = WebGameplayStoreCoordinator(playerSession)

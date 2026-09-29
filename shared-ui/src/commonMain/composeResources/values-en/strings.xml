@@ -394,4 +394,17 @@
     <string name="second_chance_unavailable">No ad available right now</string>
     <string name="second_chance_retry">Try again</string>
     <string name="second_chance_decline">End the level</string>
+    <string name="login_gift_title">Daily login gift</string>
+    <string name="login_gift_day">Day %1$d of %2$d</string>
+    <string name="quests_title">Daily quests</string>
+    <string name="rewards_claim">Claim</string>
+    <string name="rewards_claimed">Claimed</string>
+    <string name="quest_play_few">Play %1$d games</string>
+    <string name="quest_play_many">Play %1$d games</string>
+    <string name="quest_solve_few">Solve %1$d puzzles</string>
+    <string name="quest_solve_many">Solve %1$d puzzles</string>
+    <string name="quest_solve_game">Solve a puzzle in %1$s</string>
+    <string name="quest_solve_hard">Solve a puzzle on Hard or Expert</string>
+    <string name="quest_solve_daily">Solve a daily puzzle</string>
+    <string name="quest_different_games">Solve puzzles in %1$d different games</string>
 </resources>

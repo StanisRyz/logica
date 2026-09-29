@@ -15,6 +15,7 @@ import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.DailyResultRepository
 import com.stanisryz.logica.daily.RoomDailyChallengeRepository
 import com.stanisryz.logica.daily.RoomDailyResultRepository
+import com.stanisryz.logica.economy.DailyRewardsRepository
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.RoomEconomyRepository
 import com.stanisryz.logica.game2048.Game2048BestScore
@@ -111,6 +112,10 @@ internal class AppContainer(
 
     val dailyResultRepository: DailyResultRepository by lazy {
         RoomDailyResultRepository(database.gameResultDao())
+    }
+
+    val dailyRewardsRepository: DailyRewardsRepository by lazy {
+        DailyRewardsRepository(database.gameResultDao(), database.economyDao())
     }
 
     val economyRepository: EconomyRepository by lazy {

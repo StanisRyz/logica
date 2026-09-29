@@ -405,4 +405,17 @@
     <string name="second_chance_unavailable">Реклама сейчас недоступна</string>
     <string name="second_chance_retry">Повторить</string>
     <string name="second_chance_decline">Завершить уровень</string>
+    <string name="login_gift_title">Подарок за вход</string>
+    <string name="login_gift_day">День %1$d из %2$d</string>
+    <string name="quests_title">Задания дня</string>
+    <string name="rewards_claim">Забрать</string>
+    <string name="rewards_claimed">Получено</string>
+    <string name="quest_play_few">Сыграйте %1$d партии</string>
+    <string name="quest_play_many">Сыграйте %1$d партий</string>
+    <string name="quest_solve_few">Решите %1$d головоломки</string>
+    <string name="quest_solve_many">Решите %1$d головоломок</string>
+    <string name="quest_solve_game">Решите головоломку в игре «%1$s»</string>
+    <string name="quest_solve_hard">Решите головоломку на сложности «Сложно» или «Эксперт»</string>
+    <string name="quest_solve_daily">Решите задачу дня</string>
+    <string name="quest_different_games">Решите головоломки в %1$d разных играх</string>
 </resources>

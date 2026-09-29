@@ -40,7 +40,7 @@ object DailyStreakCalculator {
 }
 
 /** Proleptic-Gregorian day identity matching java.time.LocalDate without using java.time in common code. */
-private fun DailyDate.toDailyEpochDay(): Long {
+fun DailyDate.toDailyEpochDay(): Long {
     val year = getYear().toLong()
     val month = getMonthValue().toLong()
     var total = 365L * year

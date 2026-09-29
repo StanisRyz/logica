@@ -276,6 +276,7 @@ internal object WebSaveSectionIds {
     const val PAYMENTS = "payments"
     const val STARS = "stars"
     const val BEST_2048 = "best2048"
+    const val REWARDS = "rewards"
 }
 
 /**
@@ -299,6 +300,7 @@ internal class WebSaveSections(
             paymentsSection(),
             starsSection(),
             best2048Section(),
+            rewardsSection(),
         )
 
     private fun catalogSection(): WebSaveSection =
@@ -359,6 +361,27 @@ internal class WebSaveSections(
                     (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository ?: return
                 val cloud = WebBestScoreCodec.decode(payload) ?: return
                 repository.mergeCloudBest2048(cloud)
+            }
+        }
+
+    /** Daily quests and the login gift, beside progress in the same binding; merges by day. */
+    private fun rewardsSection(): WebSaveSection =
+        object : WebSaveSection {
+            override val id = WebSaveSectionIds.REWARDS
+
+            override fun export(): ByteArray? =
+                (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)
+                    ?.repository
+                    ?.rewards
+                    ?.value
+                    ?.takeIf { it != WebDailyRewardsSnapshot.EMPTY }
+                    ?.let(WebDailyRewardsCodec::encode)
+
+            override fun apply(payload: ByteArray) {
+                val repository =
+                    (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository ?: return
+                val cloud = WebDailyRewardsCodec.decode(payload) ?: return
+                repository.mergeCloudRewards(cloud)
             }
         }
 

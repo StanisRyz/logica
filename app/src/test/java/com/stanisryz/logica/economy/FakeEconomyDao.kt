@@ -22,5 +22,14 @@ internal class FakeEconomyDao(
 
     override suspend fun hasEvent(eventId: String): Boolean = events.containsKey(eventId)
 
+    override fun observeEventIds(prefix: String): Flow<List<String>> = flowOf(events.keys.filter { it.startsWith(prefix) })
+
+    override fun observeLastLoginGift(): Flow<EconomyEventEntity?> = flowOf(lastLoginGift())
+
+    override suspend fun findLastLoginGift(): EconomyEventEntity? = lastLoginGift()
+
+    private fun lastLoginGift(): EconomyEventEntity? =
+        events.values.filter { it.eventType == EconomyEventType.LOGIN_GIFT.name }.maxByOrNull { it.createdAtEpochMillis }
+
     fun wallet(nowEpochMillis: Long): PlayerEconomy = economy.toPlayerEconomy(nowEpochMillis)
 }
