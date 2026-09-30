@@ -764,6 +764,10 @@ private fun ReadyContent(
                                                             nonogramController.startDaily(started.attempt)
                                                             WebRoute.Nonogram
                                                         }
+                                                        PuzzleType.BLOCK_SUDOKU -> {
+                                                            blockSudokuController.startDaily(started.attempt)
+                                                            WebRoute.BlockSudoku
+                                                        }
                                                         else -> error("$puzzleType has no Daily gameplay.")
                                                     }
                                             }
@@ -1403,16 +1407,16 @@ private fun BlockSudokuFlow(
             WebCatalogLoadingContent(
                 difficulty = state.difficulty,
                 levelNumber = state.levelNumber?.value,
-                onBack = controller::showDifficultySelector,
-                isDaily = false,
+                onBack = if (state.launch.isDaily) onExit else controller::showDifficultySelector,
+                isDaily = state.launch.isDaily,
             )
         is WebBlockSudokuState.Error ->
             WebCatalogLevelErrorContent(
                 levelNumber = state.levelNumber?.value,
                 detail = state.detail,
                 onRetry = controller::retryLoading,
-                onBack = controller::showDifficultySelector,
-                isDaily = false,
+                onBack = if (state.launch.isDaily) onExit else controller::showDifficultySelector,
+                isDaily = state.launch.isDaily,
             )
         is WebBlockSudokuState.Playing -> {
             val livesGuard = LocalWebLives.current.guard
@@ -1420,24 +1424,39 @@ private fun BlockSudokuFlow(
             Column(Modifier.fillMaxSize()) {
                 WebGameplayHeader(
                     puzzleType = PuzzleType.BLOCK_SUDOKU,
-                    isDaily = false,
+                    isDaily = state.source.isDaily,
                     hasMeaningfulProgress = state.hasMeaningfulProgress,
-                    onExit = controller::showDifficultySelector,
+                    onExit = if (state.source.isDaily) onExit else controller::showDifficultySelector,
                 )
                 BlockSudokuContent(
                     state = state.game,
                     difficulty = state.source.difficulty,
                     levelNumber = state.source.catalogLevelNumberOrNull,
+                    contextBadgeLabel = state.source.contextBadgeLabelOrNull(),
                     gameplayEnabled = state.game.status == BlockSudokuStatus.IN_PROGRESS,
                     onPlace = controller::place,
                     modifier = Modifier.weight(1f),
                 )
             }
+            val scoreDetail = "${stringResource(Res.string.block_sudoku_score)}: ${state.game.score}"
+            if (state.source.isDaily) {
+                WebDailyOrdinaryTerminalDialog(
+                    puzzleType = PuzzleType.BLOCK_SUDOKU,
+                    visible = state.game.status.isTerminal,
+                    difficulty = state.source.difficulty,
+                    solved = state.game.status == BlockSudokuStatus.SOLVED,
+                    completion = controller.dailyCompletionState,
+                    scoreDetail = scoreDetail,
+                    onRetry = { livesGuard { transitionAd(controller::retry) } },
+                    onRetrySave = controller::retryDailySave,
+                    onExit = { transitionAd(onExit) },
+                )
+                return
+            }
             WebCatalogSaveErrorBanner(
                 completion = controller.completionState,
                 onRetrySave = controller::retrySave,
             )
-            val scoreDetail = "${stringResource(Res.string.block_sudoku_score)}: ${state.game.score}"
             WebOrdinaryCatalogTerminalDialog(
                 puzzleType = PuzzleType.BLOCK_SUDOKU,
                 visible = state.game.status.isTerminal,

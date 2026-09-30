@@ -35,7 +35,7 @@ internal sealed interface WebBlockSudokuState {
     ) : WebBlockSudokuState
 
     data class Playing(
-        val source: WebGameplaySource.CatalogLevel,
+        val source: WebGameplaySource,
         val game: BlockSudokuState,
     ) : WebBlockSudokuState {
         val hasMeaningfulProgress: Boolean get() = !game.status.isTerminal && game.hasProgress
@@ -51,9 +51,10 @@ internal sealed interface WebBlockSudokuState {
 }
 
 /**
- * Catalog-only Web orchestration of Block Sudoku over its frozen seeds and Rules V1: the level is
- * cleared at its target score and lost when no tray piece fits, through the same progression,
- * completion, statistics, and economy seams as the other games. There are no hints or stars.
+ * Web orchestration of Block Sudoku over its frozen seeds and Rules V1, plus its Daily entry
+ * (Policy V7) on the Daily seed: the game is cleared at its target score and lost when no tray piece
+ * fits, through the same progression, Daily, completion, statistics, and economy seams as the other
+ * games. There are no hints or stars.
  */
 internal class WebBlockSudokuController(
     private val loadPack: suspend (Difficulty) -> Unit,
@@ -61,12 +62,14 @@ internal class WebBlockSudokuController(
     private val levelPack: CatalogLevelPack = BinaryCatalogLevelPack(WebPuzzleData),
     private val statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
     private val economy: WebGameplayEconomy = DisabledWebGameplayEconomy,
+    private val daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private var operation: Job? = null
     private var engine: BlockSudokuEngine? = null
     private var statisticsAttempt: WebStatisticsAttempt? = null
     private val completion = WebCatalogCompletionController(progression)
+    private val dailyCompletion = WebDailyCompletionController(daily)
 
     var state by mutableStateOf<WebBlockSudokuState>(WebBlockSudokuState.DifficultySelection)
         private set
@@ -74,10 +77,14 @@ internal class WebBlockSudokuController(
     val completionState: WebCatalogCompletionState
         get() = completion.state
 
+    val dailyCompletionState: WebDailyCompletionState
+        get() = dailyCompletion.state
+
     fun selectDifficulty(difficulty: Difficulty) {
         operation?.cancel()
         statisticsAttempt = null
         completion.reset()
+        dailyCompletion.reset()
         val launch = WebGameLaunch.Catalog(PuzzleType.BLOCK_SUDOKU, difficulty)
         state = WebBlockSudokuState.Loading(difficulty, launch = launch)
         operation =
@@ -134,8 +141,42 @@ internal class WebBlockSudokuController(
 
     fun retryLoading() {
         val error = state as? WebBlockSudokuState.Error ?: return
-        if (error.progressionUnavailable) progression.retryContextBinding()
-        selectDifficulty(error.difficulty)
+        when (val launch = error.launch) {
+            is WebGameLaunch.Catalog -> {
+                if (error.progressionUnavailable) progression.retryContextBinding()
+                selectDifficulty(error.difficulty)
+            }
+            is WebGameLaunch.Daily -> startDaily(launch.attempt)
+        }
+    }
+
+    /** Starts the Daily Block Sudoku on the Daily seed, with no Catalog level involved. */
+    fun startDaily(dailyAttempt: WebDailyAttempt) {
+        operation?.cancel()
+        statisticsAttempt = null
+        completion.reset()
+        val launch = WebGameLaunch.Daily(dailyAttempt)
+        dailyCompletion.startAttempt(dailyAttempt)
+        val entry = dailyAttempt.entry
+        try {
+            require(entry.generatorVersion == BlockSudokuRules.VERSION) {
+                "Block Sudoku Daily requires rules ${entry.generatorVersion.value}."
+            }
+            val nextEngine = BlockSudokuEngine(entry.seed, entry.difficulty)
+            engine = nextEngine
+            statisticsAttempt = statistics.startAttempt(PuzzleType.BLOCK_SUDOKU, entry.difficulty)
+            state = WebBlockSudokuState.Playing(WebGameplaySource.DailyChallenge(dailyAttempt), nextEngine.start())
+        } catch (exception: Exception) {
+            engine = null
+            statisticsAttempt = null
+            state =
+                WebBlockSudokuState.Error(
+                    entry.difficulty,
+                    null,
+                    exception.message ?: "Block Sudoku Daily is unavailable.",
+                    launch = launch,
+                )
+        }
     }
 
     fun place(
@@ -155,21 +196,31 @@ internal class WebBlockSudokuController(
         val playing = state as? WebBlockSudokuState.Playing ?: return
         if (playing.game.status != BlockSudokuStatus.FAILED) return
         val activeEngine = engine ?: return
-        completion.startAttempt(playing.source.attempt)
+        when (val source = playing.source) {
+            is WebGameplaySource.CatalogLevel -> completion.startAttempt(source.attempt)
+            is WebGameplaySource.DailyChallenge -> dailyCompletion.startAttempt(source.attempt)
+        }
         statisticsAttempt = statistics.startAttempt(PuzzleType.BLOCK_SUDOKU, playing.source.difficulty)
         state = playing.copy(game = activeEngine.start())
     }
 
     fun nextLevel() {
         val playing = state as? WebBlockSudokuState.Playing ?: return
+        val source = playing.source as? WebGameplaySource.CatalogLevel ?: return
         if (completion.state !is WebCatalogCompletionState.Saved) return
-        selectDifficulty(playing.source.attempt.levelId.difficulty)
+        selectDifficulty(source.attempt.levelId.difficulty)
     }
 
     fun retrySave() {
         val playing = state as? WebBlockSudokuState.Playing ?: return
+        val source = playing.source as? WebGameplaySource.CatalogLevel ?: return
         if (playing.game.status != BlockSudokuStatus.SOLVED) return
-        completion.saveSolved(playing.source.attempt)
+        completion.saveSolved(source.attempt)
+    }
+
+    /** Repeats only the failed Daily local mutation; never Statistics, never a new gameplay attempt. */
+    fun retryDailySave() {
+        dailyCompletion.retrySave()
     }
 
     fun showDifficultySelector() {
@@ -177,6 +228,7 @@ internal class WebBlockSudokuController(
         engine = null
         statisticsAttempt = null
         completion.reset()
+        dailyCompletion.reset()
         state = WebBlockSudokuState.DifficultySelection
     }
 
@@ -195,7 +247,14 @@ internal class WebBlockSudokuController(
                 outcome = if (solved) WebStatisticsTerminalOutcome.SOLVED else WebStatisticsTerminalOutcome.FAILED,
             )
         }
-        if (solved) completion.saveSolved(playing.source.attempt)
+        when (val source = playing.source) {
+            is WebGameplaySource.CatalogLevel -> if (solved) completion.saveSolved(source.attempt)
+            is WebGameplaySource.DailyChallenge ->
+                dailyCompletion.saveTerminal(
+                    source.attempt,
+                    if (solved) WebStatisticsTerminalOutcome.SOLVED else WebStatisticsTerminalOutcome.FAILED,
+                )
+        }
         economy.recordTerminalResult(PuzzleType.BLOCK_SUDOKU, playing.source.difficulty, solved = solved)
     }
 
@@ -211,6 +270,7 @@ internal class WebBlockSudokuController(
             progression: WebCatalogProgressAccess,
             statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
             economy: WebGameplayEconomy = DisabledWebGameplayEconomy,
+            daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
         ): WebBlockSudokuController =
             WebBlockSudokuController(
                 loadPack = { difficulty ->
@@ -223,6 +283,7 @@ internal class WebBlockSudokuController(
                 progression = progression,
                 statistics = statistics,
                 economy = economy,
+                daily = daily,
             )
     }
 }

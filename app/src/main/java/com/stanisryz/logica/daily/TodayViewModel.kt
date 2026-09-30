@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengeDefinition
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
-import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV6
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV7
 import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
 import com.stanisryz.logica.puzzle.core.model.Difficulty
@@ -133,9 +133,9 @@ internal class TodayViewModel(
                 if (!retainsSameDayContent) mutableUiState.value = TodayUiState.Loading
                 try {
                     val run = dailyChallengeRepository.readRun(challengeDate)
-                    // A persisted run keeps its own policy version forever; only brand-new runs use V5.
+                    // A persisted run keeps its own policy version forever; only brand-new runs use the newest.
                     val definition =
-                        definitionProvider(challengeDate, run?.policyVersion ?: DailyChallengePolicyV6.VERSION)
+                        definitionProvider(challengeDate, run?.policyVersion ?: DailyChallengePolicyV7.VERSION)
                     val results =
                         run
                             ?.let { dailyResultRepository.readResults(challengeDate, it.policyVersion) }
@@ -292,6 +292,8 @@ internal class TodayViewModel(
                 PuzzleType.WORD,
                 PuzzleType.SUDOKU,
                 PuzzleType.GAME_2048,
+                PuzzleType.NONOGRAM,
+                PuzzleType.BLOCK_SUDOKU,
             )
     }
 }

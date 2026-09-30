@@ -7,7 +7,7 @@ import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV2
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV3
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV4
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV5
-import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV6
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV7
 import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
@@ -82,11 +82,11 @@ class TodayViewModelTest {
         }
 
     @Test
-    fun newRunsUseV6WhilePersistedOlderRunsKeepTheirOriginalEntries() =
+    fun newRunsUseV7WhilePersistedOlderRunsKeepTheirOriginalEntries() =
         runBlocking {
             val fresh = viewModel(FakeDailyChallengeRepository()).awaitContent()
 
-            assertEquals(DailyChallengePolicyV6.VERSION, fresh.definition.policyVersion)
+            assertEquals(DailyChallengePolicyV7.VERSION, fresh.definition.policyVersion)
             assertEquals(
                 listOf(
                     PuzzleType.BALANCE,
@@ -95,11 +95,12 @@ class TodayViewModelTest {
                     PuzzleType.SUDOKU,
                     PuzzleType.GAME_2048,
                     PuzzleType.NONOGRAM,
+                    PuzzleType.BLOCK_SUDOKU,
                 ),
                 fresh.entries.map { it.puzzleType },
             )
             assertEquals(0, fresh.completedCount)
-            assertEquals(6, fresh.totalCount)
+            assertEquals(7, fresh.totalCount)
             assertEquals(
                 GeneratorVersion(2),
                 fresh.definition.entries

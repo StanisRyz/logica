@@ -212,6 +212,7 @@ fun main() {
             progressCoordinator,
             statisticsCoordinator,
             economyCoordinator,
+            dailyCoordinator,
         )
     val balanceController =
         WebBalanceController.create(

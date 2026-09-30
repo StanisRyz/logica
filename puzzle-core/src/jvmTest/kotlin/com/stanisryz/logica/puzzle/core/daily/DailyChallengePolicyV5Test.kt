@@ -100,3 +100,18 @@ class DailyChallengePolicyV6Test {
         org.junit.Assert.assertTrue(DailyChallengePolicyResolver.qualifiesStreakOnAnySolvedEntry(DailyChallengePolicyV6.VERSION))
     }
 }
+
+class DailyChallengePolicyV7Test {
+    @org.junit.Test
+    fun v7IsV6PlusAMediumBlockSudokuOnTheDailySeed() {
+        val date = java.time.LocalDate.of(2026, 10, 1)
+        val v6 = DailyChallengePolicyV6.definitionFor(date)
+        val v7 = DailyChallengePolicyResolver.definitionFor(date, DailyChallengePolicyV7.VERSION)
+        org.junit.Assert.assertEquals(v6.entries, v7.entries.dropLast(1))
+        val blockSudoku = v7.entries.last()
+        org.junit.Assert.assertEquals(com.stanisryz.logica.puzzle.core.model.PuzzleType.BLOCK_SUDOKU, blockSudoku.puzzleType)
+        org.junit.Assert.assertEquals(com.stanisryz.logica.puzzle.core.model.Difficulty.MEDIUM, blockSudoku.difficulty)
+        org.junit.Assert.assertEquals(DailyChallengePolicyV7.BLOCK_SUDOKU_RULES_VERSION, blockSudoku.generatorVersion)
+        org.junit.Assert.assertTrue(DailyChallengePolicyResolver.qualifiesStreakOnAnySolvedEntry(DailyChallengePolicyV7.VERSION))
+    }
+}

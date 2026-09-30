@@ -106,7 +106,7 @@ internal fun BlockSudokuRoute(
                 GameResultDialog(
                     solved = solved,
                     levelNumber = levelNumber,
-                    isDaily = false,
+                    isDaily = launch is GameAttemptLaunch.Daily,
                     difficultyLabel = launch.difficulty().russianLabel(),
                     saveState = state.completionPersistence.toResultSaveState(),
                     onNextLevel = { onTerminalAction(onNextLevel) },

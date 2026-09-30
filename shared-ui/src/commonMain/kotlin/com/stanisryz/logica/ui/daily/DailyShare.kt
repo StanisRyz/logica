@@ -97,7 +97,8 @@ object DailyShareFormatter {
                         DailyShareLanguage.TURKISH -> "bilinemedi"
                     }
             }
-        return "${puzzleLabel(entry.puzzleType, language).padEnd(LABEL_WIDTH)}$value"
+        // Names longer than the column still keep one space before the mark.
+        return "${puzzleLabel(entry.puzzleType, language).padEnd(LABEL_WIDTH - 1)} $value"
     }
 
     private fun puzzleLabel(
@@ -106,9 +107,9 @@ object DailyShareFormatter {
     ): String {
         val labels =
             when (language) {
-                DailyShareLanguage.RUSSIAN -> listOf("Баланс", "Короны", "Слово", "Судоку", "Нонограмма")
-                DailyShareLanguage.ENGLISH -> listOf("Balance", "Crowns", "Word", "Sudoku", "Nonogram")
-                DailyShareLanguage.TURKISH -> listOf("Denge", "Taçlar", "Kelime", "Sudoku", "Nonogram")
+                DailyShareLanguage.RUSSIAN -> listOf("Баланс", "Короны", "Слово", "Судоку", "Нонограмма", "Блок-судоку")
+                DailyShareLanguage.ENGLISH -> listOf("Balance", "Crowns", "Word", "Sudoku", "Nonogram", "Block Sudoku")
+                DailyShareLanguage.TURKISH -> listOf("Denge", "Taçlar", "Kelime", "Sudoku", "Nonogram", "Blok Sudoku")
             }
         return when (puzzleType) {
             PuzzleType.BALANCE -> labels[0]
@@ -118,6 +119,7 @@ object DailyShareFormatter {
             // The 2048 score is deliberately absent: a generic result does not carry that metric.
             PuzzleType.GAME_2048 -> "2048"
             PuzzleType.NONOGRAM -> labels[4]
+            PuzzleType.BLOCK_SUDOKU -> labels[5]
             else -> error("Daily sharing does not support $puzzleType.")
         }
     }
