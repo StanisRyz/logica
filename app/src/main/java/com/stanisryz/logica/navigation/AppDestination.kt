@@ -3,6 +3,7 @@ package com.stanisryz.logica.navigation
 import com.stanisryz.logica.R
 import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.ui.profile.ProfilePage
 
 /**
  * The three primary sections of the application. Everything the player can reach is either one of
@@ -40,6 +41,11 @@ internal sealed interface AppDestination {
 
     /** Every achievement on its own row, opened from the Profile. */
     data object Achievements : AppDestination
+
+    /** One Profile page (the Daily calendar or the games), opened from the Profile. */
+    data class ProfileSection(
+        val page: ProfilePage,
+    ) : AppDestination
 
     data object BalanceStart : AppDestination
 

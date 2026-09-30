@@ -434,4 +434,10 @@
     <string name="block_sudoku_tutorial_rules_title">Satırlar, sütunlar ve kareler</string>
     <string name="achievement_block_sudoku">Blok ustası</string>
     <string name="achievement_block_sudoku_body">25 Blok Sudoku seviyesini geçin</string>
+    <string name="profile_page_daily_title">Takvim</string>
+    <string name="profile_page_daily_summary">Bu ayın günlük bulmacaları</string>
+    <string name="profile_page_games_title">Oyun istatistikleri</string>
+    <string name="profile_page_games_summary">Oynanan: %1$d · Çözülen: %2$d</string>
+    <string name="profile_page_rating_title">Sıralama</string>
+    <string name="profile_page_rating_summary">En çok çözenler</string>
 </resources>

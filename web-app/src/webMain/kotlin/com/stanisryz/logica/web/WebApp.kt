@@ -80,6 +80,9 @@ import com.stanisryz.logica.shared.ui.generated.resources.primary_games
 import com.stanisryz.logica.shared.ui.generated.resources.primary_profile
 import com.stanisryz.logica.shared.ui.generated.resources.primary_store
 import com.stanisryz.logica.shared.ui.generated.resources.profile_achievements
+import com.stanisryz.logica.shared.ui.generated.resources.profile_page_daily_title
+import com.stanisryz.logica.shared.ui.generated.resources.profile_page_games_title
+import com.stanisryz.logica.shared.ui.generated.resources.profile_page_rating_title
 import com.stanisryz.logica.ui.balance.BalanceGameContent
 import com.stanisryz.logica.ui.blocksudoku.BlockSudokuContent
 import com.stanisryz.logica.ui.components.ContinueGameCard
@@ -113,6 +116,8 @@ import com.stanisryz.logica.ui.profile.DailyProfileMetrics
 import com.stanisryz.logica.ui.profile.LocalAchievementAnnouncer
 import com.stanisryz.logica.ui.profile.ProfileContent
 import com.stanisryz.logica.ui.profile.ProfileEconomyMetrics
+import com.stanisryz.logica.ui.profile.ProfilePage
+import com.stanisryz.logica.ui.profile.ProfilePageContent
 import com.stanisryz.logica.ui.profile.ProfileStarSummary
 import com.stanisryz.logica.ui.profile.ProfileStatistics
 import com.stanisryz.logica.ui.profile.ProfileUiState
@@ -394,7 +399,12 @@ private fun ReadyContent(
     var route by remember { mutableStateOf<WebRoute>(WebRoute.GameHub) }
     // The achievements list opens in place of the Profile and closes whenever the route changes.
     var achievementsOpen by remember { mutableStateOf(false) }
-    LaunchedEffect(route) { achievementsOpen = false }
+    // A Profile page (the Daily calendar, the games, the leaderboard) opened in place of the Profile.
+    var profilePage by remember { mutableStateOf<ProfilePage?>(null) }
+    LaunchedEffect(route) {
+        achievementsOpen = false
+        profilePage = null
+    }
 
     // Desktop keyboard input goes to the puzzle only while it is actively played and uncovered.
     val keyboard = remember { WebKeyboard().also(WebKeyboard::install) }
@@ -799,6 +809,37 @@ private fun ReadyContent(
                             }
                         }
                     }
+                } else if (profilePage != null) {
+                    val page = requireNotNull(profilePage)
+                    Column(Modifier.fillMaxSize()) {
+                        WebTopBar(
+                            backLabel = stringResource(WebRes.string.web_to_profile),
+                            onBack = { profilePage = null },
+                            title =
+                                stringResource(
+                                    when (page) {
+                                        ProfilePage.DAILY -> Res.string.profile_page_daily_title
+                                        ProfilePage.GAMES -> Res.string.profile_page_games_title
+                                        ProfilePage.RATING -> Res.string.profile_page_rating_title
+                                    },
+                                ),
+                        )
+                        WideReadableColumn(WIDE_PROFILE_MAX_WIDTH) {
+                            if (page == ProfilePage.RATING) {
+                                Box(Modifier.fillMaxSize().padding(LogicaSpacing.screenHorizontal)) { WebLeaderboardCard(leaderboard) }
+                            } else {
+                                val binding = playerSession.statisticsBinding.collectAsState().value
+                                val uiState =
+                                    when (binding) {
+                                        is WebStatisticsBinding.Ready ->
+                                            key(binding.token) { webProfileStatistics(playerSession, binding, dailyDate).toUiState() }
+                                        is WebStatisticsBinding.Unavailable -> ProfileUiState.Error
+                                        else -> ProfileUiState.Loading
+                                    }
+                                ProfilePageContent(page, uiState)
+                            }
+                        }
+                    }
                 } else {
                     PrimaryDestinationShell(
                         selected = WebRoute.Profile,
@@ -813,6 +854,7 @@ private fun ReadyContent(
                                 onRetry = playerSession::retryCurrentContext,
                                 onOpenGames = { route = WebRoute.GameHub },
                                 onOpenAchievements = { achievementsOpen = true },
+                                onOpenPage = { profilePage = it },
                                 achievementRewards = webAchievementRewards(progressRepository, economyRepository),
                             )
                         }
@@ -1153,6 +1195,7 @@ private fun WebProfileRoute(
     onRetry: () -> Unit,
     onOpenGames: () -> Unit,
     onOpenAchievements: () -> Unit,
+    onOpenPage: (ProfilePage) -> Unit,
     achievementRewards: AchievementRewards?,
 ) {
     when (binding) {
@@ -1172,7 +1215,8 @@ private fun WebProfileRoute(
                     uiState = webProfileStatistics(playerSession, binding, currentDate).toUiState(),
                     onRetry = onRetry,
                     onOpenGames = onOpenGames,
-                    footer = if (leaderboard.isSupported) ({ WebLeaderboardCard(leaderboard) }) else null,
+                    onOpenPage = onOpenPage,
+                    hasRatingPage = leaderboard.isSupported,
                     onOpenAchievements = onOpenAchievements,
                     achievementRewards = achievementRewards,
                 )

@@ -223,4 +223,6 @@
     <string name="block_sudoku_tutorial_title">Blok Sudoku eğitimi</string>
     <string name="block_sudoku_result_score">Puan: %1$d</string>
     <string name="gem_store_ads_removed">Seviyeler arası reklamlar kalıcı olarak kapatıldı</string>
+    <string name="profile_daily_calendar">Takvim</string>
+    <string name="profile_game_statistics">Oyun istatistikleri</string>
 </resources>

@@ -445,4 +445,10 @@
     <string name="block_sudoku_tutorial_rules_title">Строки, столбцы и квадраты</string>
     <string name="achievement_block_sudoku">Мастер блоков</string>
     <string name="achievement_block_sudoku_body">Пройдите 25 уровней «Блок-судоку»</string>
+    <string name="profile_page_daily_title">Календарь</string>
+    <string name="profile_page_daily_summary">Задачи дня этого месяца</string>
+    <string name="profile_page_games_title">Статистика игр</string>
+    <string name="profile_page_games_summary">Сыграно: %1$d · Решено: %2$d</string>
+    <string name="profile_page_rating_title">Рейтинг</string>
+    <string name="profile_page_rating_summary">Лучшие по решённым</string>
 </resources>

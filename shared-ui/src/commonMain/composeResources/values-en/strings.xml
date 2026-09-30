@@ -434,4 +434,10 @@
     <string name="block_sudoku_tutorial_rules_title">Rows, columns, and boxes</string>
     <string name="achievement_block_sudoku">Block master</string>
     <string name="achievement_block_sudoku_body">Clear 25 Block Sudoku levels</string>
+    <string name="profile_page_daily_title">Calendar</string>
+    <string name="profile_page_daily_summary">This month\'s Daily puzzles</string>
+    <string name="profile_page_games_title">Game statistics</string>
+    <string name="profile_page_games_summary">Played: %1$d · Solved: %2$d</string>
+    <string name="profile_page_rating_title">Leaderboard</string>
+    <string name="profile_page_rating_summary">Top solvers</string>
 </resources>

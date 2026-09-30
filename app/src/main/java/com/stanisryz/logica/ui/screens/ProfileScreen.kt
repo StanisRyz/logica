@@ -21,6 +21,8 @@ import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.profile.AchievementRewards
 import com.stanisryz.logica.ui.profile.AchievementsScreenContent
 import com.stanisryz.logica.ui.profile.ProfileContent
+import com.stanisryz.logica.ui.profile.ProfilePage
+import com.stanisryz.logica.ui.profile.ProfilePageContent
 import com.stanisryz.logica.ui.profile.ProfileUiState
 
 /** Android host for shared Profile presentation; Room, lifecycle, and retry stay platform-owned. */
@@ -31,6 +33,7 @@ internal fun ProfileRoute(
     onOpenGames: () -> Unit,
     modifier: Modifier = Modifier,
     onOpenAchievements: () -> Unit = {},
+    onOpenPage: (ProfilePage) -> Unit = {},
 ) {
     val factory = remember(repository) { StatisticsViewModelFactory(repository) }
     val statisticsViewModel: StatisticsViewModel = viewModel(factory = factory)
@@ -52,8 +55,22 @@ internal fun ProfileRoute(
         modifier = modifier,
         onOpenGames = onOpenGames,
         onOpenAchievements = onOpenAchievements,
+        onOpenPage = onOpenPage,
         achievementRewards = rememberAchievementRewards(rewardsRepository),
     )
+}
+
+/** One Profile page (the Daily calendar or the games) over the same durable statistics. */
+@Composable
+internal fun ProfilePageRoute(
+    page: ProfilePage,
+    repository: StatisticsRepository,
+    modifier: Modifier = Modifier,
+) {
+    val factory = remember(repository) { StatisticsViewModelFactory(repository) }
+    val statisticsViewModel: StatisticsViewModel = viewModel(factory = factory)
+    val statisticsState by statisticsViewModel.uiState.collectAsStateWithLifecycle()
+    ProfilePageContent(page, statisticsState.toProfileUiState(), modifier)
 }
 
 /** The paid achievement ids and the way to pay one, or null until the ledger has been read. */

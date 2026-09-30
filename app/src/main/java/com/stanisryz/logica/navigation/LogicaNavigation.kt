@@ -113,6 +113,7 @@ import com.stanisryz.logica.ui.components.PuzzleStartScreen
 import com.stanisryz.logica.ui.components.SecondChanceAd
 import com.stanisryz.logica.ui.nonogram.DailyGalleryPicture
 import com.stanisryz.logica.ui.nonogram.NonogramGallerySheet
+import com.stanisryz.logica.ui.profile.ProfilePage
 import com.stanisryz.logica.ui.rating.GameRating
 import com.stanisryz.logica.ui.screens.AchievementsRoute
 import com.stanisryz.logica.ui.screens.BalanceGameRoute
@@ -126,6 +127,7 @@ import com.stanisryz.logica.ui.screens.Game2048TutorialRoute
 import com.stanisryz.logica.ui.screens.GameHubRoute
 import com.stanisryz.logica.ui.screens.NonogramGameRoute
 import com.stanisryz.logica.ui.screens.NonogramTutorialRoute
+import com.stanisryz.logica.ui.screens.ProfilePageRoute
 import com.stanisryz.logica.ui.screens.ProfileRoute
 import com.stanisryz.logica.ui.screens.SettingsScreen
 import com.stanisryz.logica.ui.screens.StoreRewardedOffers
@@ -504,6 +506,7 @@ internal fun LogicaNavigation(
                                                                 dailyRewardsRepository,
                                                                 onOpenGames = { selectedTab = PrimaryTab.GAME },
                                                                 onOpenAchievements = { backStack.add(AppDestination.Achievements) },
+                                                                onOpenPage = { backStack.add(AppDestination.ProfileSection(it)) },
                                                             )
                                                     }
                                                 }
@@ -522,6 +525,9 @@ internal fun LogicaNavigation(
                             }
                             entry<AppDestination.Achievements> {
                                 AchievementsRoute(statisticsRepository, dailyRewardsRepository)
+                            }
+                            entry<AppDestination.ProfileSection> { destination ->
+                                ProfilePageRoute(destination.page, statisticsRepository)
                             }
                             entry<AppDestination.Settings> {
                                 SettingsScreen(settings, onThemeModeChanged, onSoundEnabledChanged, onHapticsEnabledChanged)
@@ -1040,6 +1046,11 @@ private fun destinationTitle(
             AppDestination.Home -> tab.titleResource
             AppDestination.Settings -> R.string.settings
             AppDestination.Achievements -> R.string.achievements
+            is AppDestination.ProfileSection ->
+                when (destination.page) {
+                    ProfilePage.DAILY -> R.string.profile_daily_calendar
+                    ProfilePage.GAMES, ProfilePage.RATING -> R.string.profile_game_statistics
+                }
             AppDestination.BalanceStart, is AppDestination.BalanceGame -> R.string.balance
             AppDestination.BalanceTutorial -> R.string.balance_tutorial_title
             AppDestination.CrownsStart, is AppDestination.CrownsGame -> R.string.crowns

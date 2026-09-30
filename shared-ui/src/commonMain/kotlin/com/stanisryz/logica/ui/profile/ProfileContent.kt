@@ -7,6 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,6 +29,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
@@ -38,6 +40,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -61,11 +64,14 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordRules
 import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_all_games
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_daily_30
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_easy
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_expert
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_hard
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_medium
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_stars
+import com.stanisryz.logica.shared.ui.generated.resources.icon_medal_gold
 import com.stanisryz.logica.shared.ui.generated.resources.profile_best_streak
 import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_completed
 import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_day
@@ -75,12 +81,17 @@ import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_weekd
 import com.stanisryz.logica.shared.ui.generated.resources.profile_daily_short
 import com.stanisryz.logica.shared.ui.generated.resources.profile_empty_body
 import com.stanisryz.logica.shared.ui.generated.resources.profile_empty_title
-import com.stanisryz.logica.shared.ui.generated.resources.profile_games
 import com.stanisryz.logica.shared.ui.generated.resources.profile_gems
 import com.stanisryz.logica.shared.ui.generated.resources.profile_hints_short
 import com.stanisryz.logica.shared.ui.generated.resources.profile_lives
 import com.stanisryz.logica.shared.ui.generated.resources.profile_load_error
 import com.stanisryz.logica.shared.ui.generated.resources.profile_not_played
+import com.stanisryz.logica.shared.ui.generated.resources.profile_page_daily_summary
+import com.stanisryz.logica.shared.ui.generated.resources.profile_page_daily_title
+import com.stanisryz.logica.shared.ui.generated.resources.profile_page_games_summary
+import com.stanisryz.logica.shared.ui.generated.resources.profile_page_games_title
+import com.stanisryz.logica.shared.ui.generated.resources.profile_page_rating_summary
+import com.stanisryz.logica.shared.ui.generated.resources.profile_page_rating_title
 import com.stanisryz.logica.shared.ui.generated.resources.profile_recent_days
 import com.stanisryz.logica.shared.ui.generated.resources.profile_solved_count
 import com.stanisryz.logica.shared.ui.generated.resources.profile_solved_short
@@ -95,6 +106,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.word_attempt_bar_descr
 import com.stanisryz.logica.shared.ui.generated.resources.word_attempt_distribution
 import com.stanisryz.logica.shared.ui.generated.resources.word_percent_value
 import com.stanisryz.logica.shared.ui.generated.resources.word_win_rate
+import com.stanisryz.logica.ui.components.ArtworkFilterQuality
 import com.stanisryz.logica.ui.components.GameIcon
 import com.stanisryz.logica.ui.components.GameIconImage
 import com.stanisryz.logica.ui.components.StateArtwork
@@ -102,18 +114,37 @@ import com.stanisryz.logica.ui.components.StateArtworkImage
 import com.stanisryz.logica.ui.components.catalogTitleResource
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.imageResource
 import org.jetbrains.compose.resources.stringArrayResource
 import org.jetbrains.compose.resources.stringResource
 
-/** Shared scrolling Profile presentation used by both platform hosts. */
+/** The Profile's own pages, each opened from one row of the compact Profile. */
+enum class ProfilePage {
+    /** The Daily calendar of the current month (or the recent days without one). */
+    DAILY,
+
+    /** Every game's statistics, a played game opening to its details. */
+    GAMES,
+
+    /** A host's leaderboard; the shared Profile only offers the row when the host has one. */
+    RATING,
+}
+
+/**
+ * The compact shared Profile used by both platform hosts: the summary card, then one row per page
+ * (the Daily calendar, the games, the achievements, and a host rating when it has one). Hosts open
+ * the pages, like the achievements, with their own navigation.
+ */
 @Composable
 fun ProfileContent(
     uiState: ProfileUiState,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
     onOpenGames: (() -> Unit)? = null,
-    footer: (@Composable () -> Unit)? = null,
+    onOpenPage: (ProfilePage) -> Unit = {},
+    hasRatingPage: Boolean = false,
     onOpenAchievements: () -> Unit = {},
     achievementRewards: AchievementRewards? = null,
 ) {
@@ -132,7 +163,15 @@ fun ProfileContent(
                 ProfileUiState.Loading -> LoadingState(modifier)
                 ProfileUiState.Error -> ErrorState(onRetry, modifier)
                 ProfileUiState.Empty -> EmptyState(modifier, onOpenGames)
-                is ProfileUiState.Ready -> ReadyProfileContent(state.statistics, modifier, footer, onOpenAchievements, achievementRewards)
+                is ProfileUiState.Ready ->
+                    ReadyProfileContent(
+                        statistics = state.statistics,
+                        modifier = modifier,
+                        onOpenPage = onOpenPage,
+                        hasRatingPage = hasRatingPage,
+                        onOpenAchievements = onOpenAchievements,
+                        achievementRewards = achievementRewards,
+                    )
             }
         }
     }
@@ -150,7 +189,8 @@ private fun ProfileUiState.presentationKey(): String =
 private fun ReadyProfileContent(
     statistics: ProfileStatistics,
     modifier: Modifier,
-    footer: (@Composable () -> Unit)?,
+    onOpenPage: (ProfilePage) -> Unit,
+    hasRatingPage: Boolean,
     onOpenAchievements: () -> Unit,
     achievementRewards: AchievementRewards?,
 ) {
@@ -163,36 +203,133 @@ private fun ReadyProfileContent(
                     horizontal = LogicaSpacing.screenHorizontal,
                     vertical = LogicaSpacing.screenVertical,
                 ),
-        verticalArrangement = Arrangement.spacedBy(LogicaSpacing.section),
+        verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
     ) {
         SummaryCard(statistics)
-        val calendar = statistics.dailyMetrics?.calendar
-        if (calendar != null) {
-            ProfileSection(stringResource(Res.string.profile_recent_days)) { DailyCalendarCard(calendar) }
-        } else {
-            statistics.dailyMetrics?.recentDays?.takeIf { it.isNotEmpty() }?.let { days ->
-                ProfileSection(stringResource(Res.string.profile_recent_days)) { RecentDaysRow(days) }
-            }
+        Spacer(Modifier.height(LogicaSpacing.text))
+        if (statistics.dailyMetrics != null) {
+            ProfilePageRow(
+                artwork = Res.drawable.achievement_daily_30,
+                title = stringResource(Res.string.profile_page_daily_title),
+                summary = stringResource(Res.string.profile_page_daily_summary),
+                onClick = { onOpenPage(ProfilePage.DAILY) },
+            )
         }
+        ProfilePageRow(
+            artwork = Res.drawable.achievement_all_games,
+            title = stringResource(Res.string.profile_page_games_title),
+            summary =
+                stringResource(
+                    Res.string.profile_page_games_summary,
+                    statistics.completedTerminalResults,
+                    statistics.totalSolved,
+                ),
+            onClick = { onOpenPage(ProfilePage.GAMES) },
+        )
         AchievementsEntryCard(statistics, onOpenAchievements, achievementRewards)
-        ProfileSection(stringResource(Res.string.profile_games)) {
-            ProfileCard(verticalSpacing = 0.dp) {
-                val games = profileGames(statistics)
-                games.forEachIndexed { index, game ->
-                    GameRow(game)
-                    if (index < games.lastIndex) {
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .height(1.dp)
-                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = DIVIDER_ALPHA)),
-                        )
+        if (hasRatingPage) {
+            ProfilePageRow(
+                artwork = Res.drawable.icon_medal_gold,
+                title = stringResource(Res.string.profile_page_rating_title),
+                summary = stringResource(Res.string.profile_page_rating_summary),
+                onClick = { onOpenPage(ProfilePage.RATING) },
+            )
+        }
+    }
+}
+
+/** One way into a Profile page: its picture, name, a short summary, and the arrow. */
+@Composable
+private fun ProfilePageRow(
+    artwork: DrawableResource,
+    title: String,
+    summary: String,
+    onClick: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = colors.surfaceContainerLow,
+    ) {
+        Row(
+            modifier = Modifier.padding(PAGE_ROW_PADDING),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(PAGE_ROW_GAP),
+        ) {
+            Image(
+                bitmap = imageResource(artwork),
+                contentDescription = null,
+                filterQuality = ArtworkFilterQuality,
+                modifier = Modifier.size(PAGE_ROW_ARTWORK),
+            )
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                Text(summary, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+            }
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = colors.onSurfaceVariant)
+        }
+    }
+}
+
+/**
+ * One Profile page under its host's bar: the Daily calendar or the games. The rating page is the
+ * host's own content, so it is not drawn here.
+ */
+@Composable
+fun ProfilePageContent(
+    page: ProfilePage,
+    uiState: ProfileUiState,
+    modifier: Modifier = Modifier,
+) {
+    val statistics = (uiState as? ProfileUiState.Ready)?.statistics
+    if (statistics == null) {
+        when (uiState) {
+            ProfileUiState.Error -> ErrorState({}, modifier)
+            else -> LoadingState(modifier)
+        }
+        return
+    }
+    Column(
+        modifier =
+            modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(
+                    horizontal = LogicaSpacing.screenHorizontal,
+                    vertical = LogicaSpacing.screenVertical,
+                ),
+        verticalArrangement = Arrangement.spacedBy(LogicaSpacing.section),
+    ) {
+        when (page) {
+            ProfilePage.DAILY -> {
+                val calendar = statistics.dailyMetrics?.calendar
+                if (calendar != null) {
+                    DailyCalendarCard(calendar)
+                } else {
+                    statistics.dailyMetrics?.recentDays?.takeIf { it.isNotEmpty() }?.let { days ->
+                        ProfileSection(stringResource(Res.string.profile_recent_days)) { RecentDaysRow(days) }
                     }
                 }
             }
+            ProfilePage.GAMES ->
+                ProfileCard(verticalSpacing = 0.dp) {
+                    val games = profileGames(statistics)
+                    games.forEachIndexed { index, game ->
+                        GameRow(game)
+                        if (index < games.lastIndex) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(1.dp)
+                                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = DIVIDER_ALPHA)),
+                            )
+                        }
+                    }
+                }
+            ProfilePage.RATING -> Unit
         }
-        // A host section after the games, such as the Web leaderboard.
-        footer?.invoke()
     }
 }
 
@@ -821,6 +958,9 @@ private val ACCENT_DOT_SIZE = 10.dp
 private val BAR_HEIGHT = 12.dp
 private val GAME_ROW_VERTICAL_PADDING = 14.dp
 private const val DIVIDER_ALPHA = 0.6f
+private val PAGE_ROW_PADDING = 16.dp
+private val PAGE_ROW_GAP = 14.dp
+private val PAGE_ROW_ARTWORK = 48.dp
 
 private const val DAYS_IN_WEEK = 7
 private val CALENDAR_CELL_HEIGHT = 40.dp

@@ -223,4 +223,6 @@
     <string name="block_sudoku_tutorial_title">Block Sudoku tutorial</string>
     <string name="block_sudoku_result_score">Score: %1$d</string>
     <string name="gem_store_ads_removed">Ads between levels are off for good</string>
+    <string name="profile_daily_calendar">Calendar</string>
+    <string name="profile_game_statistics">Game statistics</string>
 </resources>

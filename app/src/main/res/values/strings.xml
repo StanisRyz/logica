@@ -233,4 +233,6 @@
     <string name="block_sudoku_tutorial_title">Обучение «Блок-судоку»</string>
     <string name="block_sudoku_result_score">Очки: %1$d</string>
     <string name="gem_store_ads_removed">Реклама между уровнями отключена навсегда</string>
+    <string name="profile_daily_calendar">Календарь</string>
+    <string name="profile_game_statistics">Статистика игр</string>
 </resources>
