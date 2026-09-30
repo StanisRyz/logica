@@ -14,20 +14,27 @@ from PIL import Image
 from scipy import ndimage
 
 ROOT = Path(__file__).resolve().parents[2]
+# (sheet under art/, drawable name prefix, names row by row; None skips a picture nothing uses yet)
 SHEETS = [
-    ("sheet1.png", [
+    ("achievements/sheet1.png", "achievement", [
         ["first_solve", "all_games", "solver_50"],
         ["solver_250", "solver_1000", "balance"],
         ["crowns", "sudoku", "word"],
         ["game_2048", "nonogram", "block_sudoku"],
     ]),
-    ("sheet2.png", [
+    ("achievements/sheet2.png", "achievement", [
         ["word_first_try", "expert_1", "expert_25", "stars_100", "stars_500"],
         ["perfect_25", "daily_1", "daily_30", "streak_7", "streak_30"],
+    ]),
+    ("store/sheet.png", "store", [
+        ["gems_50", "gems_150", "gems_500", "starter_pack"],
+        ["no_ads", "hint_single", "hint_pack", "life"],
+        ["ad_gem", "ad_life", None],
     ]),
 ]
 OUTPUT = ROOT / "shared-ui/src/commonMain/composeResources/drawable"
 SIZE = 192          # 48 dp at xxxhdpi, the largest the game shows
+NOISE = 16          # on a transparent sheet, alpha below this is generator noise, not drawing
 MARGIN = 0.06       # empty border around every icon, as a share of SIZE
 INK = 14            # a channel this far from white counts as drawing, not background
 EDGE = 60           # up to this far from white an edge pixel is partly transparent
@@ -80,6 +87,14 @@ def cut(cell: np.ndarray) -> Image.Image:
     return image.crop(image.getbbox())
 
 
+def trim(cell: np.ndarray) -> Image.Image:
+    """A transparent sheet's cell without its alpha noise, cropped to the drawing."""
+    rgba = cell.copy()
+    rgba[rgba[..., 3] < NOISE] = 0
+    image = Image.fromarray(rgba, "RGBA")
+    return image.crop(image.getbbox())
+
+
 def fit(icon: Image.Image) -> Image.Image:
     inner = round(SIZE * (1 - 2 * MARGIN))
     scale = inner / max(icon.size)
@@ -90,15 +105,23 @@ def fit(icon: Image.Image) -> Image.Image:
 
 
 def main() -> None:
-    for sheet, grid in SHEETS:
-        pixels = np.asarray(Image.open(ROOT / "art/achievements" / sheet).convert("RGB"))
-        drawn = np.abs(pixels.astype(int) - 255).max(axis=2) >= INK
+    for sheet, prefix, grid in SHEETS:
+        image = Image.open(ROOT / "art" / sheet)
+        transparent = image.mode == "RGBA" and (np.asarray(image)[..., 3] == 0).mean() > 0.2
+        pixels = np.asarray(image.convert("RGBA" if transparent else "RGB"))
+        if transparent:
+            drawn = pixels[..., 3] >= NOISE
+        else:
+            drawn = np.abs(pixels.astype(int) - 255).max(axis=2) >= INK
         for (top, bottom), names in zip(bands(drawn.sum(axis=1), len(grid)), grid):
             for (left, right), name in zip(bands(drawn[top:bottom].sum(axis=0), len(names)), names):
+                if name is None:
+                    continue
                 pad = 4
                 cell = pixels[max(0, top - pad):bottom + pad, max(0, left - pad):right + pad]
-                fit(cut(cell)).save(OUTPUT / f"achievement_{name}.webp", "WEBP", quality=90, method=6)
-                print(f"achievement_{name}.webp")
+                picture = trim(cell) if transparent else cut(cell)
+                fit(picture).save(OUTPUT / f"{prefix}_{name}.webp", "WEBP", quality=90, method=6)
+                print(f"{prefix}_{name}.webp")
 
 
 if __name__ == "__main__":

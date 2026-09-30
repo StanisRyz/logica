@@ -23,11 +23,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Diamond
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.Lightbulb
-import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -45,7 +40,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.platform.PaymentProductSnapshot
@@ -56,6 +50,7 @@ import com.stanisryz.logica.platform.StoreRewardType
 import com.stanisryz.logica.ui.components.GemPriceButton
 import com.stanisryz.logica.ui.components.NoAdsRow
 import com.stanisryz.logica.ui.components.StarterPackCard
+import com.stanisryz.logica.ui.components.StoreArtwork
 import com.stanisryz.logica.ui.components.StoreBalanceCard
 import com.stanisryz.logica.ui.components.StoreItemRow
 import com.stanisryz.logica.ui.components.StoreSectionTitle
@@ -169,7 +164,7 @@ internal fun WebStoreScreen(
             title = stringResource(WebRes.string.web_store_gem_ad_title),
             grantedText = stringResource(WebRes.string.web_store_gem_ad_granted),
             enabled = economyBinding is WebEconomyBinding.Ready,
-            icon = Icons.Rounded.Diamond,
+            artwork = StoreArtwork.AD_GEM,
         )
         // The life placement exists only while a life is actually missing.
         val walletLives =
@@ -185,7 +180,7 @@ internal fun WebStoreScreen(
                 title = stringResource(WebRes.string.web_store_life_ad_title),
                 grantedText = stringResource(WebRes.string.web_life_ad_granted),
                 enabled = true,
-                icon = Icons.Rounded.Favorite,
+                artwork = StoreArtwork.AD_LIFE,
             )
         }
 
@@ -247,7 +242,7 @@ private fun PaidGemTopUpCard(
     // One payment runs at a time: every pack waits for it, and only the one being bought says why.
     val message = if (rowReportsState) paidPurchaseMessage(state) else null
     StoreItemRow(
-        icon = Icons.Rounded.Diamond,
+        artwork = StoreArtwork.forGemPack(entry.product.gemReward),
         title = pluralStringResource(WebRes.plurals.web_gems_plus, entry.product.gemReward, entry.product.gemReward),
         // Without a message or a catalog description the title stands alone, centred on the price.
         subtitle = message ?: entry.details.description?.takeIf { it.isNotBlank() },
@@ -316,13 +311,13 @@ internal fun RewardedAdRow(
     title: String,
     grantedText: String,
     enabled: Boolean,
-    icon: ImageVector = Icons.Rounded.PlayCircle,
+    artwork: StoreArtwork,
 ) {
     val state by controller.state.collectAsState()
     val colors = MaterialTheme.colorScheme
     val (subtitle, subtitleColor) = rewardedAdSubtitle(state, grantedText)
     StoreItemRow(
-        icon = icon,
+        artwork = artwork,
         title = title,
         subtitle = subtitle,
         subtitleColor = subtitleColor ?: colors.onSurfaceVariant,
@@ -369,7 +364,7 @@ private fun StoreCatalogRow(
     // A purchase the balance cannot cover is shown as such instead of failing after the tap.
     val missingGems = wallet?.let { (item.priceGems - it.gems).coerceAtLeast(0) } ?: 0
     StoreItemRow(
-        icon = if (item.reward.type == StoreRewardType.LIFE_RESTORE) Icons.Rounded.Favorite else Icons.Rounded.Lightbulb,
+        artwork = if (item.reward.type == StoreRewardType.LIFE_RESTORE) StoreArtwork.LIFE else StoreArtwork.forHints(item.reward.amount),
         title = item.webTitle(),
         subtitle =
             when {

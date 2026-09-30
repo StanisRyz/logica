@@ -11,10 +11,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Diamond
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -59,6 +55,7 @@ import com.stanisryz.logica.ui.components.GemPriceButton
 import com.stanisryz.logica.ui.components.NoAdsRow
 import com.stanisryz.logica.ui.components.ScreenColumn
 import com.stanisryz.logica.ui.components.StarterPackCard
+import com.stanisryz.logica.ui.components.StoreArtwork
 import com.stanisryz.logica.ui.components.StoreBalanceCard
 import com.stanisryz.logica.ui.components.StoreItemRow
 import com.stanisryz.logica.ui.components.StoreSectionTitle
@@ -209,7 +206,7 @@ internal fun StoreScreen(
         HintOffer.entries.forEach { offer ->
             val missing = (offer.gemCost - economy.gems).coerceAtLeast(0)
             StoreItemRow(
-                icon = Icons.Rounded.Lightbulb,
+                artwork = StoreArtwork.forHints(offer.hints),
                 title = pluralStringResource(R.plurals.hints_store_offer_title, offer.hints, offer.hints),
                 subtitle = if (missing > 0) pluralStringResource(R.plurals.hints_store_missing, missing, missing) else null,
                 subtitleColor = MaterialTheme.colorScheme.error,
@@ -228,7 +225,7 @@ private fun RewardedStoreRow(
 ) {
     val state = offers.state
     StoreItemRow(
-        icon = if (kind == RewardedAdKind.GEM) Icons.Rounded.Diamond else Icons.Rounded.Favorite,
+        artwork = if (kind == RewardedAdKind.GEM) StoreArtwork.AD_GEM else StoreArtwork.AD_LIFE,
         title =
             stringResource(
                 if (kind == RewardedAdKind.GEM) R.string.store_rewarded_gem_title else R.string.store_rewarded_life_title,
@@ -326,7 +323,7 @@ private fun GemPackRow(
     onBuy: () -> Unit,
 ) {
     StoreItemRow(
-        icon = Icons.Rounded.Diamond,
+        artwork = StoreArtwork.forGemPack(offer.pack.gems),
         title = stringResource(R.string.gem_store_pack_gems, offer.pack.gems),
         subtitle = null,
     ) {

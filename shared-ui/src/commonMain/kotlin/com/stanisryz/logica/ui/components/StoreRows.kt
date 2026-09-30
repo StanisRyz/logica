@@ -1,8 +1,8 @@
 package com.stanisryz.logica.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,10 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Block
-import androidx.compose.material.icons.rounded.CardGiftcard
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Diamond
 import androidx.compose.material.icons.rounded.Favorite
@@ -45,7 +42,19 @@ import com.stanisryz.logica.shared.ui.generated.resources.profile_lives
 import com.stanisryz.logica.shared.ui.generated.resources.starter_pack_lives_full
 import com.stanisryz.logica.shared.ui.generated.resources.starter_pack_subtitle
 import com.stanisryz.logica.shared.ui.generated.resources.starter_pack_title
+import com.stanisryz.logica.shared.ui.generated.resources.store_ad_gem
+import com.stanisryz.logica.shared.ui.generated.resources.store_ad_life
+import com.stanisryz.logica.shared.ui.generated.resources.store_gems_150
+import com.stanisryz.logica.shared.ui.generated.resources.store_gems_50
+import com.stanisryz.logica.shared.ui.generated.resources.store_gems_500
+import com.stanisryz.logica.shared.ui.generated.resources.store_hint_pack
+import com.stanisryz.logica.shared.ui.generated.resources.store_hint_single
+import com.stanisryz.logica.shared.ui.generated.resources.store_life
+import com.stanisryz.logica.shared.ui.generated.resources.store_no_ads
+import com.stanisryz.logica.shared.ui.generated.resources.store_starter_pack
 import com.stanisryz.logica.ui.theme.LogicaSpacing
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -123,10 +132,43 @@ fun StoreSectionTitle(text: String) {
     )
 }
 
-/** One Store line: an icon, what it is and what it gives, and its action on the right. */
+/** The Store's pictures: hosts pick one per row, while the drawables stay in the shared resources. */
+enum class StoreArtwork(
+    internal val drawable: DrawableResource,
+) {
+    GEMS_SMALL(Res.drawable.store_gems_50),
+    GEMS_MEDIUM(Res.drawable.store_gems_150),
+    GEMS_LARGE(Res.drawable.store_gems_500),
+    STARTER_PACK(Res.drawable.store_starter_pack),
+    NO_ADS(Res.drawable.store_no_ads),
+    HINT(Res.drawable.store_hint_single),
+    HINTS(Res.drawable.store_hint_pack),
+    LIFE(Res.drawable.store_life),
+    AD_GEM(Res.drawable.store_ad_gem),
+    AD_LIFE(Res.drawable.store_ad_life),
+    ;
+
+    companion object {
+        /** A bigger gem pack shows a bigger heap: a handful, a pouch, then a chest. */
+        fun forGemPack(gems: Int): StoreArtwork =
+            when {
+                gems >= LARGE_PACK_GEMS -> GEMS_LARGE
+                gems >= MEDIUM_PACK_GEMS -> GEMS_MEDIUM
+                else -> GEMS_SMALL
+            }
+
+        /** One hint or a pack of them. */
+        fun forHints(hints: Int): StoreArtwork = if (hints > 1) HINTS else HINT
+
+        private const val MEDIUM_PACK_GEMS = 150
+        private const val LARGE_PACK_GEMS = 500
+    }
+}
+
+/** One Store line: its picture, what it is and what it gives, and its action on the right. */
 @Composable
 fun StoreItemRow(
-    icon: ImageVector,
+    artwork: StoreArtwork,
     title: String,
     subtitle: String?,
     modifier: Modifier = Modifier,
@@ -148,16 +190,7 @@ fun StoreItemRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
         ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(ICON_BOX)
-                        .clip(CircleShape)
-                        .background(if (highlighted) colors.surfaceBright else colors.surfaceContainerHigh),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(icon, contentDescription = null, tint = colors.primary, modifier = Modifier.size(22.dp))
-            }
+            Image(painterResource(artwork.drawable), contentDescription = null, modifier = Modifier.size(ARTWORK))
             Column(Modifier.weight(1f)) {
                 Text(text = title, style = MaterialTheme.typography.titleMedium)
                 // A blank subtitle would still take a line and push the title above the button.
@@ -185,7 +218,8 @@ fun GemPriceButton(
 }
 
 private val ROW_PADDING = 14.dp
-private val ICON_BOX = 40.dp
+private val ARTWORK = 48.dp
+private val STARTER_ARTWORK = 64.dp
 
 /** What the one-time starter pack holds, the same on both platforms. */
 object StarterPackContents {
@@ -212,12 +246,11 @@ fun StarterPackCard(
     ) {
         Column(Modifier.padding(16.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(
-                    Modifier.size(ICON_BOX).clip(CircleShape).background(colors.surfaceBright),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Rounded.CardGiftcard, contentDescription = null, tint = colors.primary, modifier = Modifier.size(22.dp))
-                }
+                Image(
+                    painterResource(StoreArtwork.STARTER_PACK.drawable),
+                    contentDescription = null,
+                    modifier = Modifier.size(STARTER_ARTWORK),
+                )
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(Res.string.starter_pack_title), style = MaterialTheme.typography.titleMedium)
                     Text(
@@ -291,7 +324,7 @@ fun NoAdsRow(
     priceContent: @Composable () -> Unit,
 ) {
     StoreItemRow(
-        icon = Icons.Rounded.Block,
+        artwork = StoreArtwork.NO_ADS,
         title = stringResource(Res.string.no_ads_title),
         subtitle = message ?: stringResource(if (owned) Res.string.no_ads_owned else Res.string.no_ads_subtitle),
         modifier = modifier,
