@@ -46,7 +46,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -89,6 +94,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.total_hints_used
 import com.stanisryz.logica.ui.components.catalogArtworkResource
 import com.stanisryz.logica.ui.components.catalogTitleResource
 import com.stanisryz.logica.ui.theme.LogicaSpacing
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -355,74 +361,90 @@ private fun DailyEntryCard(
     gameplayAllowed: Boolean,
     onStart: (PuzzleType) -> Unit,
 ) {
-    val title = stringResource(entry.puzzleType.catalogTitleResource())
-    val actionable = gameplayAllowed && entry.state != DailyHubEntryState.COMPLETED
-    val completed = entry.state == DailyHubEntryState.COMPLETED
-    val cardColor by
-        animateColorAsState(
-            targetValue =
-                when {
-                    completed -> MaterialTheme.colorScheme.tertiaryContainer
-                    !gameplayAllowed -> MaterialTheme.colorScheme.surfaceContainerLow
-                    else -> MaterialTheme.colorScheme.surfaceBright
-                },
-            animationSpec = tween(DAILY_STATE_ANIMATION_MILLIS),
-            label = "daily-entry-card-color",
-        )
-    Card(
-        modifier =
-            Modifier
-                .width(DAILY_CARD_WIDTH)
-                .heightIn(min = DAILY_CARD_MIN_HEIGHT)
-                .animateContentSize()
-                // The press and hover highlight follows the card's rounded shape.
-                .clip(CardDefaults.shape)
-                .then(
-                    if (actionable) {
-                        Modifier.clickable(
-                            onClickLabel = stringResource(Res.string.game_catalog_play_label, title),
-                            onClick = { onStart(entry.puzzleType) },
-                        )
-                    } else {
-                        Modifier
+    // On Web the first read of a title and artwork the catalog below also shows can stay empty for
+    // good (the card was blank until the tab was reopened); reading them again a moment later comes
+    // from the resource cache.
+    var attempt by remember { mutableIntStateOf(0) }
+    key(attempt) {
+        val title = stringResource(entry.puzzleType.catalogTitleResource())
+        val stateLabel = entry.state.chipLabel()
+        if ((title.isEmpty() || stateLabel.isEmpty()) && attempt < DAILY_RESOURCE_RETRIES) {
+            LaunchedEffect(Unit) {
+                delay(DAILY_RESOURCE_RETRY_MILLIS)
+                attempt++
+            }
+        }
+        val actionable = gameplayAllowed && entry.state != DailyHubEntryState.COMPLETED
+        val completed = entry.state == DailyHubEntryState.COMPLETED
+        val cardColor by
+            animateColorAsState(
+                targetValue =
+                    when {
+                        completed -> MaterialTheme.colorScheme.tertiaryContainer
+                        !gameplayAllowed -> MaterialTheme.colorScheme.surfaceContainerLow
+                        else -> MaterialTheme.colorScheme.surfaceBright
                     },
-                ),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = cardColor,
-                contentColor =
-                    if (!gameplayAllowed && !completed) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-            ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = DAILY_CARD_BORDER_ALPHA)),
-        elevation = CardDefaults.cardElevation(defaultElevation = DAILY_ENTRY_ELEVATION),
-    ) {
-        Column(
-            modifier = Modifier.padding(LogicaSpacing.cardContent).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Image(
-                painter = painterResource(entry.puzzleType.catalogArtworkResource()),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(DAILY_ARTWORK_HEIGHT)
-                        .clip(MaterialTheme.shapes.medium),
+                animationSpec = tween(DAILY_STATE_ANIMATION_MILLIS),
+                label = "daily-entry-card-color",
             )
-            Text(text = title, style = MaterialTheme.typography.titleMedium)
-            DailyEntryStateChip(entry.state)
+        Card(
+            modifier =
+                Modifier
+                    .width(DAILY_CARD_WIDTH)
+                    .heightIn(min = DAILY_CARD_MIN_HEIGHT)
+                    .animateContentSize()
+                    // The press and hover highlight follows the card's rounded shape.
+                    .clip(CardDefaults.shape)
+                    .then(
+                        if (actionable) {
+                            Modifier.clickable(
+                                onClickLabel = stringResource(Res.string.game_catalog_play_label, title),
+                                onClick = { onStart(entry.puzzleType) },
+                            )
+                        } else {
+                            Modifier
+                        },
+                    ),
+            colors =
+                CardDefaults.cardColors(
+                    containerColor = cardColor,
+                    contentColor =
+                        if (!gameplayAllowed && !completed) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        },
+                ),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = DAILY_CARD_BORDER_ALPHA)),
+            elevation = CardDefaults.cardElevation(defaultElevation = DAILY_ENTRY_ELEVATION),
+        ) {
+            Column(
+                modifier = Modifier.padding(LogicaSpacing.cardContent).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Image(
+                    painter = painterResource(entry.puzzleType.catalogArtworkResource()),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(DAILY_ARTWORK_HEIGHT)
+                            .clip(MaterialTheme.shapes.medium),
+                )
+                Text(text = title, style = MaterialTheme.typography.titleMedium)
+                DailyEntryStateChip(entry.state, stateLabel)
+            }
         }
     }
 }
 
 @Composable
-private fun DailyEntryStateChip(state: DailyHubEntryState) {
+private fun DailyEntryStateChip(
+    state: DailyHubEntryState,
+    label: String,
+) {
     val completed = state == DailyHubEntryState.COMPLETED
     val containerColor by
         animateColorAsState(
@@ -462,7 +484,7 @@ private fun DailyEntryStateChip(state: DailyHubEntryState) {
             modifier = Modifier.size(DAILY_CHIP_ICON_SIZE),
         )
         Text(
-            text = state.chipLabel(),
+            text = label,
             style = MaterialTheme.typography.labelMedium,
             color = contentColor,
         )
@@ -587,6 +609,8 @@ private fun DailyLabeledValue(
 }
 
 private val DAILY_CARD_WIDTH = 160.dp
+private const val DAILY_RESOURCE_RETRIES = 5
+private const val DAILY_RESOURCE_RETRY_MILLIS = 600L
 
 /** A minimum, never a fixed height: the card grows with a larger font scale instead of clipping. */
 private val DAILY_CARD_MIN_HEIGHT = 184.dp

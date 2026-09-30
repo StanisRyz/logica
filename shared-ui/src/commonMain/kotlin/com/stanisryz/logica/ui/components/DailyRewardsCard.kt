@@ -1,5 +1,6 @@
 package com.stanisryz.logica.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.CardGiftcard
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Diamond
 import androidx.compose.material3.Button
@@ -41,6 +41,18 @@ import com.stanisryz.logica.puzzle.core.quest.DailyQuestKind
 import com.stanisryz.logica.puzzle.core.quest.DailyQuests
 import com.stanisryz.logica.puzzle.core.quest.LoginGift
 import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_all_games
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_balance
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_block_sudoku
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_crowns
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_daily_1
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_expert_1
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_first_solve
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_game_2048
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_nonogram
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_solver_50
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_sudoku
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_word
 import com.stanisryz.logica.shared.ui.generated.resources.login_gift_day
 import com.stanisryz.logica.shared.ui.generated.resources.login_gift_title
 import com.stanisryz.logica.shared.ui.generated.resources.quest_different_games
@@ -57,10 +69,16 @@ import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_nonogram
 import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_sudoku
 import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_word
 import com.stanisryz.logica.shared.ui.generated.resources.quests_title
+import com.stanisryz.logica.shared.ui.generated.resources.reward_gift_big
+import com.stanisryz.logica.shared.ui.generated.resources.reward_gift_chest
+import com.stanisryz.logica.shared.ui.generated.resources.reward_gift_open
+import com.stanisryz.logica.shared.ui.generated.resources.reward_gift_small
 import com.stanisryz.logica.shared.ui.generated.resources.rewards_claim
 import com.stanisryz.logica.shared.ui.generated.resources.rewards_claimed
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /** One of the day's quests as the hub shows it. */
@@ -142,12 +160,7 @@ private fun GiftRow(
 ) {
     val colors = MaterialTheme.colorScheme
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
-        Box(
-            modifier = Modifier.size(ICON_BOX).clip(CircleShape).background(colors.primaryContainer),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Rounded.CardGiftcard, contentDescription = null, tint = colors.onPrimaryContainer)
-        }
+        Image(painterResource(giftArtwork(state)), contentDescription = null, modifier = Modifier.size(GIFT_ARTWORK))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(stringResource(Res.string.login_gift_title), style = MaterialTheme.typography.titleMedium)
             Text(
@@ -190,6 +203,7 @@ private fun QuestRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
     ) {
+        Image(painterResource(questArtwork(state.quest)), contentDescription = null, modifier = Modifier.size(QUEST_ARTWORK))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(title, style = MaterialTheme.typography.bodyMedium)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -279,4 +293,36 @@ private fun questTitle(quest: DailyQuest): String =
 private fun Int.isFewForm(): Boolean = this % 10 in 2..4 && this % 100 !in 12..14
 
 private val CARD_PADDING = 16.dp
-private val ICON_BOX = 44.dp
+
+/** The gift grows through the cycle: a small box, a bigger one on the 2-gem days, the chest on the last day; opened once claimed. */
+private fun giftArtwork(state: DailyRewardsUiState): DrawableResource =
+    when {
+        state.giftClaimed -> Res.drawable.reward_gift_open
+        state.giftStreakDay == LoginGift.CYCLE_DAYS -> Res.drawable.reward_gift_chest
+        state.giftGems > 1 -> Res.drawable.reward_gift_big
+        else -> Res.drawable.reward_gift_small
+    }
+
+/** Quests reuse the achievement pictures of the same idea, so the two read as one family. */
+private fun questArtwork(quest: DailyQuest): DrawableResource =
+    when (quest.kind) {
+        DailyQuestKind.PLAY -> Res.drawable.achievement_first_solve
+        DailyQuestKind.SOLVE -> Res.drawable.achievement_solver_50
+        DailyQuestKind.SOLVE_HARD -> Res.drawable.achievement_expert_1
+        DailyQuestKind.SOLVE_DAILY -> Res.drawable.achievement_daily_1
+        DailyQuestKind.DIFFERENT_GAMES -> Res.drawable.achievement_all_games
+        DailyQuestKind.SOLVE_GAME ->
+            when (quest.puzzleType) {
+                PuzzleType.BALANCE -> Res.drawable.achievement_balance
+                PuzzleType.CROWNS -> Res.drawable.achievement_crowns
+                PuzzleType.WORD -> Res.drawable.achievement_word
+                PuzzleType.SUDOKU -> Res.drawable.achievement_sudoku
+                PuzzleType.GAME_2048 -> Res.drawable.achievement_game_2048
+                PuzzleType.NONOGRAM -> Res.drawable.achievement_nonogram
+                PuzzleType.BLOCK_SUDOKU -> Res.drawable.achievement_block_sudoku
+                else -> Res.drawable.achievement_solver_50
+            }
+    }
+
+private val GIFT_ARTWORK = 52.dp
+private val QUEST_ARTWORK = 36.dp

@@ -14,7 +14,8 @@ from PIL import Image
 from scipy import ndimage
 
 ROOT = Path(__file__).resolve().parents[2]
-# (sheet under art/, drawable name prefix, names row by row; None skips a picture nothing uses yet)
+# (sheet under art/, drawable name prefix, names row by row; None skips a picture nothing uses yet),
+# and optionally True to keep the sheet's relative sizes (a gift that grows) instead of filling each square.
 SHEETS = [
     ("achievements/sheet1.png", "achievement", [
         ["first_solve", "all_games", "solver_50"],
@@ -31,6 +32,9 @@ SHEETS = [
         ["no_ads", "hint_single", "hint_pack", "life"],
         ["ad_gem", "ad_life", None],
     ]),
+    ("rewards/sheet.png", "reward", [
+        ["gift_small", "gift_big", "gift_chest", "gift_open"],
+    ], True),
 ]
 OUTPUT = ROOT / "shared-ui/src/commonMain/composeResources/drawable"
 SIZE = 192          # 48 dp at xxxhdpi, the largest the game shows
@@ -95,9 +99,10 @@ def trim(cell: np.ndarray) -> Image.Image:
     return image.crop(image.getbbox())
 
 
-def fit(icon: Image.Image) -> Image.Image:
+def fit(icon: Image.Image, largest: int | None = None) -> Image.Image:
+    """[icon] centred in the square; with [largest], smaller pictures stay smaller, by half the difference."""
     inner = round(SIZE * (1 - 2 * MARGIN))
-    scale = inner / max(icon.size)
+    scale = inner / (((largest + max(icon.size)) / 2) if largest else max(icon.size))
     icon = icon.resize((max(1, round(icon.width * scale)), max(1, round(icon.height * scale))), Image.LANCZOS)
     square = Image.new("RGBA", (SIZE, SIZE))
     square.alpha_composite(icon, ((SIZE - icon.width) // 2, (SIZE - icon.height) // 2))
@@ -105,7 +110,8 @@ def fit(icon: Image.Image) -> Image.Image:
 
 
 def main() -> None:
-    for sheet, prefix, grid in SHEETS:
+    for sheet, prefix, grid, *options in SHEETS:
+        keep_scale = bool(options and options[0])
         image = Image.open(ROOT / "art" / sheet)
         transparent = image.mode == "RGBA" and (np.asarray(image)[..., 3] == 0).mean() > 0.2
         pixels = np.asarray(image.convert("RGBA" if transparent else "RGB"))
@@ -113,15 +119,18 @@ def main() -> None:
             drawn = pixels[..., 3] >= NOISE
         else:
             drawn = np.abs(pixels.astype(int) - 255).max(axis=2) >= INK
+        pictures = []
         for (top, bottom), names in zip(bands(drawn.sum(axis=1), len(grid)), grid):
             for (left, right), name in zip(bands(drawn[top:bottom].sum(axis=0), len(names)), names):
                 if name is None:
                     continue
                 pad = 4
                 cell = pixels[max(0, top - pad):bottom + pad, max(0, left - pad):right + pad]
-                picture = trim(cell) if transparent else cut(cell)
-                fit(picture).save(OUTPUT / f"{prefix}_{name}.webp", "WEBP", quality=90, method=6)
-                print(f"{prefix}_{name}.webp")
+                pictures.append((name, trim(cell) if transparent else cut(cell)))
+        largest = max(max(picture.size) for _, picture in pictures) if keep_scale else None
+        for name, picture in pictures:
+            fit(picture, largest).save(OUTPUT / f"{prefix}_{name}.webp", "WEBP", quality=90, method=6)
+            print(f"{prefix}_{name}.webp")
 
 
 if __name__ == "__main__":
