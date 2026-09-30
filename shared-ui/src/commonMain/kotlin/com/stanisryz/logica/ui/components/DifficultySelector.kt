@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Card
@@ -32,6 +33,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.shared.ui.generated.resources.Res
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_easy
@@ -127,13 +129,14 @@ private fun DifficultyCard(
                         ),
                     ),
             )
+            // One line that shrinks to fit, so a narrow card never breaks «Эксперт» in two.
+            val titleSize = MaterialTheme.typography.headlineSmall.fontSize * CATALOG_CARD_TITLE_SCALE
             Text(
                 text = label,
-                modifier = Modifier.fillMaxWidth(0.5f).padding(start = DIFFICULTY_LABEL_PADDING),
-                style =
-                    MaterialTheme.typography.headlineSmall.copy(
-                        fontSize = MaterialTheme.typography.headlineSmall.fontSize * CATALOG_CARD_TITLE_SCALE,
-                    ),
+                modifier = Modifier.fillMaxWidth(DIFFICULTY_LABEL_WIDTH).padding(start = DIFFICULTY_LABEL_PADDING),
+                style = MaterialTheme.typography.headlineSmall.copy(fontSize = titleSize),
+                maxLines = 1,
+                autoSize = TextAutoSize.StepBased(minFontSize = MIN_LABEL_SIZE, maxFontSize = titleSize),
                 color = DIFFICULTY_LABEL_COLOR.copy(alpha = if (enabled) 1f else DISABLED_ALPHA),
             )
             // The stars this difficulty has earned so far, each level counting its best attempt.
@@ -185,6 +188,8 @@ private fun Difficulty.labelResource(): StringResource =
     }
 
 private val DIFFICULTY_LABEL_PADDING = 24.dp
+private const val DIFFICULTY_LABEL_WIDTH = 0.6f
+private val MIN_LABEL_SIZE = 16.sp
 private val STARS_CHIP_MARGIN = 10.dp
 private val STARS_CHIP_BACKGROUND = Color(0xFFFFFBF4).copy(alpha = 0.9f)
 private val DIFFICULTY_LABEL_COLOR = Color(0xFF1B2A35)

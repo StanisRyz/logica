@@ -1,10 +1,12 @@
 package com.stanisryz.logica.ui.tutorial
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -45,55 +47,100 @@ internal fun TutorialLayout(
 ) {
     // The step navigation stays pinned below the scrolling example, so it is always reachable.
     val scroll = rememberScrollState()
+    val exampleScroll = rememberScrollState()
     // Every new step starts at its title rather than wherever the previous one was scrolled.
-    LaunchedEffect(step, title) { scroll.scrollTo(0) }
-    Column(modifier = modifier.fillMaxSize()) {
-        Column(
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .verticalScroll(scroll)
-                    .padding(horizontal = LogicaSpacing.screenHorizontal, vertical = LogicaSpacing.screenVertical),
-            verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            if (step != null) {
-                Text(
-                    text = stringResource(Res.string.tutorial_step, step, stepCount),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            Text(text = title, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+    LaunchedEffect(step, title) {
+        scroll.scrollTo(0)
+        exampleScroll.scrollTo(0)
+    }
+    val instruction: @Composable ColumnScope.() -> Unit = {
+        if (step != null) {
             Text(
-                text = body,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth(),
+                text = stringResource(Res.string.tutorial_step, step, stepCount),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
             )
-            // Feedback sits right under the instruction, where the eye already is, not below the board.
-            if (feedback != null) {
-                Surface(
-                    color = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                    shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.fillMaxWidth(),
+        }
+        Text(text = title, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+        Text(
+            text = body,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        // Feedback sits right under the instruction, where the eye already is, not below the board.
+        if (feedback != null) {
+            Surface(
+                color = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(text = feedback, modifier = Modifier.padding(LogicaSpacing.cardContent))
+            }
+        }
+    }
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        // A wide landscape window reads the instruction beside the example instead of above it.
+        val twoPanes = maxWidth >= TWO_PANE_MIN_WIDTH && maxWidth > maxHeight
+        Column(Modifier.fillMaxSize()) {
+            if (twoPanes) {
+                Row(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(horizontal = LogicaSpacing.screenHorizontal),
+                    horizontalArrangement = Arrangement.spacedBy(TWO_PANE_GAP),
                 ) {
-                    Text(text = feedback, modifier = Modifier.padding(LogicaSpacing.cardContent))
+                    Column(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .verticalScroll(scroll)
+                                .padding(vertical = LogicaSpacing.screenVertical),
+                        verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item, Alignment.CenterVertically),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        content = instruction,
+                    )
+                    Column(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .verticalScroll(exampleScroll)
+                                .padding(vertical = LogicaSpacing.screenVertical),
+                        verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item, Alignment.CenterVertically),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        content = content,
+                    )
+                }
+            } else {
+                Column(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .verticalScroll(scroll)
+                            .padding(horizontal = LogicaSpacing.screenHorizontal, vertical = LogicaSpacing.screenVertical),
+                    verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    instruction()
+                    content()
                 }
             }
-            content()
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = LogicaSpacing.screenHorizontal, vertical = LogicaSpacing.item),
+                horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.action, Alignment.End),
+                verticalAlignment = Alignment.CenterVertically,
+                content = footer,
+            )
         }
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = LogicaSpacing.screenHorizontal, vertical = LogicaSpacing.item),
-            horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.action, Alignment.End),
-            verticalAlignment = Alignment.CenterVertically,
-            content = footer,
-        )
     }
 }
 
@@ -110,6 +157,9 @@ internal fun TutorialCompleteDialog(
         confirmButton = { Button(onClick = onDone) { Text(stringResource(Res.string.tutorial_done)) } },
     )
 }
+
+private val TWO_PANE_MIN_WIDTH = 720.dp
+private val TWO_PANE_GAP = 32.dp
 
 /** Keeps the example board and its tools on one screen together with the instruction. */
 internal val TUTORIAL_BOARD_MAX_WIDTH = 320.dp

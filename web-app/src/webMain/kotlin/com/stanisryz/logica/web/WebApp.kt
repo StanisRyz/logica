@@ -314,7 +314,9 @@ private fun PortraitHostSurface(content: @Composable () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         // A landscape window (a desktop browser, Yandex Games on a computer) gets the whole width;
-        // a portrait or narrow one keeps the 9:16 phone column.
+        // a portrait or narrow one gets a phone column. The column fills a phone's whole screen,
+        // also when a sticky banner takes part of its height, and narrows only in a window too
+        // wide for a phone layout, so text never wraps because the window became shorter.
         val wide = maxWidth >= WIDE_HOST_MIN_WIDTH && maxWidth > maxHeight * WIDE_HOST_ASPECT
         if (wide) {
             Surface(
@@ -325,14 +327,11 @@ private fun PortraitHostSurface(content: @Composable () -> Unit) {
             }
             return@BoxWithConstraints
         }
-        val widthLimited = maxWidth * 16f <= maxHeight * 9f
-        val portraitWidth = if (widthLimited) maxWidth else maxHeight * 9f / 16f
-        val portraitHeight = if (widthLimited) maxWidth * 16f / 9f else maxHeight
-
+        val columnWidth = minOf(maxWidth, maxHeight * PORTRAIT_COLUMN_MAX_ASPECT)
         Surface(
-            modifier = Modifier.width(portraitWidth).height(portraitHeight),
+            modifier = Modifier.width(columnWidth).fillMaxHeight(),
             color = MaterialTheme.colorScheme.surface,
-            shadowElevation = 8.dp,
+            shadowElevation = if (columnWidth < maxWidth) 8.dp else 0.dp,
         ) {
             content()
         }
@@ -970,7 +969,7 @@ private fun PrimaryDestinationShell(
             }
         }
         Column(Modifier.weight(1f).fillMaxHeight()) {
-            // Every tab opens with its name and, except in the Store that shows the full balance, the wallet.
+            // Every tab opens with its name and the wallet, the Store included.
             Row(
                 modifier =
                     Modifier
@@ -985,7 +984,7 @@ private fun PrimaryDestinationShell(
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
                 )
-                if (selected != WebRoute.Store) WebGameplayWallet()
+                WebGameplayWallet()
                 var settingsOpen by remember { mutableStateOf(false) }
                 IconButton(onClick = { settingsOpen = true }) {
                     Icon(Icons.Outlined.Settings, contentDescription = stringResource(WebRes.string.web_settings))
@@ -2328,9 +2327,12 @@ private fun Difficulty.hubLabelResource(): StringResource =
 
 private val WIDE_PROFILE_MAX_WIDTH = 720.dp
 private val WIDE_STORE_MAX_WIDTH = 640.dp
-private val WIDE_TUTORIAL_MAX_WIDTH = 560.dp
+private val WIDE_TUTORIAL_MAX_WIDTH = 1100.dp
 private val WIDE_HOST_MAX_WIDTH = 1440.dp
 private const val WIDE_HOST_ASPECT = 1.2f
+
+/** The widest phone column, width over height, before a window counts as too wide for it. */
+private const val PORTRAIT_COLUMN_MAX_ASPECT = 0.8f
 private val MIN_DIFFICULTY_CARD_HEIGHT = 96.dp
 private val MAX_DIFFICULTY_CARD_HEIGHT = 152.dp
 private val MAX_WIDE_DIFFICULTY_CARD_HEIGHT = 260.dp

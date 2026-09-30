@@ -1,5 +1,6 @@
 package com.stanisryz.logica.ui.tutorial
 
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.widthIn
@@ -81,14 +82,18 @@ fun BlockSudokuTutorial(
         },
     ) {
         if (step == PLAY_STEP) {
-            BlockSudokuContent(
-                state = game,
-                difficulty = Difficulty.EASY,
-                levelNumber = null,
-                gameplayEnabled = !cleared,
-                onPlace = { index, row, column -> game = engine.place(game, index, row, column) },
-                modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth().height(PRACTICE_HEIGHT),
-            )
+            // The practice keeps its board near the full width: the height is the board's side plus
+            // what the score header and the tray need, instead of a fixed box they would share.
+            BoxWithConstraints(Modifier.widthIn(max = PRACTICE_MAX_WIDTH).fillMaxWidth()) {
+                BlockSudokuContent(
+                    state = game,
+                    difficulty = Difficulty.EASY,
+                    levelNumber = null,
+                    gameplayEnabled = !cleared,
+                    onPlace = { index, row, column -> game = engine.place(game, index, row, column) },
+                    modifier = Modifier.fillMaxWidth().height(maxWidth + PRACTICE_CHROME_HEIGHT),
+                )
+            }
         }
     }
 }
@@ -102,7 +107,10 @@ private fun practiceStart(engine: BlockSudokuEngine) =
     )
 
 private val PRACTICE_PIECE = BlockPiece(listOf(BlockCell(0, 0), BlockCell(0, 1), BlockCell(0, 2)))
-private val PRACTICE_HEIGHT = 420.dp
+private val PRACTICE_MAX_WIDTH = 360.dp
+
+/** The score header, the tray, and the spacing around the board in the portrait layout. */
+private val PRACTICE_CHROME_HEIGHT = 220.dp
 private const val TUTORIAL_SEED = 7L
 
 /** Above the one clear (3 + 9 x 2 = 21), so the practice board never ends by itself. */
