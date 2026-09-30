@@ -368,8 +368,12 @@ internal fun AchievementsEntryCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(ENTRY_GAP),
         ) {
-            // The trophy of the rarest solving goal stands for the whole collection.
-            AchievementArtwork(Achievement.SOLVER_1000, ENTRY_MEDAL, unlocked = true)
+            Image(
+                bitmap = imageResource(Res.drawable.profile_achievements),
+                contentDescription = null,
+                filterQuality = ArtworkFilterQuality,
+                modifier = Modifier.size(ENTRY_MEDAL),
+            )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(stringResource(Res.string.profile_achievements), style = MaterialTheme.typography.titleMedium)
                 Text(countLabel, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)

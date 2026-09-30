@@ -44,7 +44,18 @@ SHEETS = [
         ["gem", "heart", "heart_broken", "hint"],
         ["medal_gold", "medal_silver", "medal_bronze"],
     ], {"size": 128}),
+    ("profile/sheet.png", "profile", [
+        ["daily", "games", "achievements", "rating"],
+    ]),
 ]
+# Whole pictures that are only scaled down, not cut: (picture under art/, drawable name).
+SCENES = [
+    ("difficulty/easy.png", "difficulty_easy"),
+    ("difficulty/medium.png", "difficulty_medium"),
+    ("difficulty/hard.png", "difficulty_hard"),
+    ("difficulty/expert.png", "difficulty_expert"),
+]
+SCENE_SIZE = (1200, 600)  # 2:1, sharp on the widest difficulty card of the wide Web host
 OUTPUT = ROOT / "shared-ui/src/commonMain/composeResources/drawable"
 SIZE = 192          # 48 dp at xxxhdpi, the largest the game shows
 NOISE = 16          # on a transparent sheet, alpha below this is generator noise, not drawing
@@ -142,6 +153,10 @@ def main() -> None:
         for name, picture in pictures:
             fit(picture, largest, size).save(OUTPUT / f"{prefix}_{name}.webp", "WEBP", quality=90, method=6)
             print(f"{prefix}_{name}.webp")
+    for picture, name in SCENES:
+        scene = Image.open(ROOT / "art" / picture).convert("RGB")
+        scene.resize(SCENE_SIZE, Image.LANCZOS).save(OUTPUT / f"{name}.webp", "WEBP", quality=85, method=6)
+        print(f"{name}.webp")
 
 
 if __name__ == "__main__":

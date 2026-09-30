@@ -64,23 +64,22 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordRules
 import com.stanisryz.logica.shared.ui.generated.resources.Res
-import com.stanisryz.logica.shared.ui.generated.resources.achievement_all_games
-import com.stanisryz.logica.shared.ui.generated.resources.achievement_daily_30
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_easy
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_expert
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_hard
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_medium
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_stars
-import com.stanisryz.logica.shared.ui.generated.resources.icon_medal_gold
 import com.stanisryz.logica.shared.ui.generated.resources.profile_best_streak
 import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_completed
 import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_day
 import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_none
 import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_partial
 import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_weekdays
+import com.stanisryz.logica.shared.ui.generated.resources.profile_daily
 import com.stanisryz.logica.shared.ui.generated.resources.profile_daily_short
 import com.stanisryz.logica.shared.ui.generated.resources.profile_empty_body
 import com.stanisryz.logica.shared.ui.generated.resources.profile_empty_title
+import com.stanisryz.logica.shared.ui.generated.resources.profile_games
 import com.stanisryz.logica.shared.ui.generated.resources.profile_gems
 import com.stanisryz.logica.shared.ui.generated.resources.profile_hints_short
 import com.stanisryz.logica.shared.ui.generated.resources.profile_lives
@@ -92,6 +91,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.profile_page_games_sum
 import com.stanisryz.logica.shared.ui.generated.resources.profile_page_games_title
 import com.stanisryz.logica.shared.ui.generated.resources.profile_page_rating_summary
 import com.stanisryz.logica.shared.ui.generated.resources.profile_page_rating_title
+import com.stanisryz.logica.shared.ui.generated.resources.profile_rating
 import com.stanisryz.logica.shared.ui.generated.resources.profile_recent_days
 import com.stanisryz.logica.shared.ui.generated.resources.profile_solved_count
 import com.stanisryz.logica.shared.ui.generated.resources.profile_solved_short
@@ -209,14 +209,14 @@ private fun ReadyProfileContent(
         Spacer(Modifier.height(LogicaSpacing.text))
         if (statistics.dailyMetrics != null) {
             ProfilePageRow(
-                artwork = Res.drawable.achievement_daily_30,
+                artwork = Res.drawable.profile_daily,
                 title = stringResource(Res.string.profile_page_daily_title),
                 summary = stringResource(Res.string.profile_page_daily_summary),
                 onClick = { onOpenPage(ProfilePage.DAILY) },
             )
         }
         ProfilePageRow(
-            artwork = Res.drawable.achievement_all_games,
+            artwork = Res.drawable.profile_games,
             title = stringResource(Res.string.profile_page_games_title),
             summary =
                 stringResource(
@@ -229,7 +229,7 @@ private fun ReadyProfileContent(
         AchievementsEntryCard(statistics, onOpenAchievements, achievementRewards)
         if (hasRatingPage) {
             ProfilePageRow(
-                artwork = Res.drawable.icon_medal_gold,
+                artwork = Res.drawable.profile_rating,
                 title = stringResource(Res.string.profile_page_rating_title),
                 summary = stringResource(Res.string.profile_page_rating_summary),
                 onClick = { onOpenPage(ProfilePage.RATING) },
