@@ -17,6 +17,7 @@ import com.stanisryz.logica.puzzle.core.nonogram.NonogramGameEngine
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramGameState
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramGameStatus
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV1
+import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV2
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramPosition
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramPuzzle
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramTool
@@ -41,7 +42,7 @@ internal sealed interface WebNonogramState {
     ) : WebNonogramState
 
     data class Playing(
-        val source: WebGameplaySource.CatalogLevel,
+        val source: WebGameplaySource,
         val puzzle: NonogramPuzzle,
         val game: NonogramGameState,
         val initial: NonogramGameState,
@@ -60,8 +61,9 @@ internal sealed interface WebNonogramState {
 }
 
 /**
- * Catalog-only Web orchestration of the Nonogram over its frozen pack and Generator V1: the same
- * progression, completion, statistics, economy, and hint-inventory seams as the other games.
+ * Web orchestration of the Nonogram: Catalog levels over the frozen pack and Generator V1, and the
+ * Daily entry (Policy V6) as a Generator V2 real picture — the same progression, Daily, statistics,
+ * economy, and hint-inventory seams as the other games.
  */
 internal class WebNonogramController(
     private val loadPack: suspend (Difficulty) -> Unit,
@@ -71,6 +73,7 @@ internal class WebNonogramController(
     private val statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
     private val economy: WebGameplayEconomy = DisabledWebGameplayEconomy,
     private val store: WebGameplayStore = DisabledWebGameplayStore,
+    private val daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private var operation: Job? = null
@@ -78,6 +81,11 @@ internal class WebNonogramController(
     private var engine: NonogramGameEngine? = null
     private var statisticsAttempt: WebStatisticsAttempt? = null
     private val completion = WebCatalogCompletionController(progression)
+    private val dailyCompletion = WebDailyCompletionController(daily)
+    private val pictureGenerator = NonogramGeneratorV2()
+
+    val dailyCompletionState: WebDailyCompletionState
+        get() = dailyCompletion.state
 
     var state by mutableStateOf<WebNonogramState>(WebNonogramState.DifficultySelection)
         private set
@@ -105,6 +113,7 @@ internal class WebNonogramController(
         operation?.cancel()
         statisticsAttempt = null
         completion.reset()
+        dailyCompletion.reset()
         val launch = WebGameLaunch.Catalog(PuzzleType.NONOGRAM, difficulty)
         state = WebNonogramState.Loading(difficulty, launch = launch)
         operation =
@@ -166,8 +175,45 @@ internal class WebNonogramController(
 
     fun retryLoading() {
         val error = state as? WebNonogramState.Error ?: return
-        if (error.progressionUnavailable) progression.retryContextBinding()
-        selectDifficulty(error.difficulty)
+        when (val launch = error.launch) {
+            is WebGameLaunch.Catalog -> {
+                if (error.progressionUnavailable) progression.retryContextBinding()
+                selectDifficulty(error.difficulty)
+            }
+            is WebGameLaunch.Daily -> startDaily(launch.attempt)
+        }
+    }
+
+    /** Starts the Daily Nonogram: a real picture from Generator V2, with no Catalog level involved. */
+    fun startDaily(dailyAttempt: WebDailyAttempt) {
+        resetSecondChance()
+        operation?.cancel()
+        statisticsAttempt = null
+        completion.reset()
+        val launch = WebGameLaunch.Daily(dailyAttempt)
+        dailyCompletion.startAttempt(dailyAttempt)
+        state = WebNonogramState.Loading(dailyAttempt.entry.difficulty, launch = launch)
+        try {
+            require(dailyAttempt.entry.generatorVersion == pictureGenerator.version) {
+                "Nonogram Daily requires generator ${dailyAttempt.entry.generatorVersion.value}."
+            }
+            val puzzle = pictureGenerator.generate(dailyAttempt.entry.seed, dailyAttempt.entry.difficulty)
+            val nextEngine = NonogramGameEngine(puzzle)
+            engine = nextEngine
+            statisticsAttempt = statistics.startAttempt(PuzzleType.NONOGRAM, dailyAttempt.entry.difficulty)
+            val initial = nextEngine.start()
+            state = WebNonogramState.Playing(WebGameplaySource.DailyChallenge(dailyAttempt), puzzle, initial, initial)
+        } catch (exception: Exception) {
+            engine = null
+            statisticsAttempt = null
+            state =
+                WebNonogramState.Error(
+                    dailyAttempt.entry.difficulty,
+                    null,
+                    exception.message ?: "Nonogram Daily is unavailable.",
+                    launch = launch,
+                )
+        }
     }
 
     fun selectTool(tool: NonogramTool) {
@@ -205,8 +251,12 @@ internal class WebNonogramController(
         resetSecondChance()
         val playing = state as? WebNonogramState.Playing ?: return
         if (playing.game.status != NonogramGameStatus.FAILED) return
+        if (dailyReplayBlocked(playing.source)) return
         val activeEngine = engine ?: return
-        completion.startAttempt(playing.source.attempt)
+        when (val source = playing.source) {
+            is WebGameplaySource.CatalogLevel -> completion.startAttempt(source.attempt)
+            is WebGameplaySource.DailyChallenge -> dailyCompletion.startAttempt(source.attempt)
+        }
         statisticsAttempt = statistics.startAttempt(PuzzleType.NONOGRAM, playing.source.difficulty)
         val initial = activeEngine.start()
         state = playing.copy(game = initial, initial = initial)
@@ -214,15 +264,27 @@ internal class WebNonogramController(
 
     fun nextLevel() {
         val playing = state as? WebNonogramState.Playing ?: return
+        val source = playing.source as? WebGameplaySource.CatalogLevel ?: return
         if (completion.state !is WebCatalogCompletionState.Saved) return
-        selectDifficulty(playing.source.attempt.levelId.difficulty)
+        selectDifficulty(source.attempt.levelId.difficulty)
     }
 
     fun retrySave() {
         val playing = state as? WebNonogramState.Playing ?: return
+        val source = playing.source as? WebGameplaySource.CatalogLevel ?: return
         if (playing.game.status != NonogramGameStatus.SOLVED) return
-        completion.saveSolved(playing.source.attempt, PuzzleStars.forMistakes(playing.game.mistakesUsed))
+        completion.saveSolved(source.attempt, PuzzleStars.forMistakes(playing.game.mistakesUsed))
     }
+
+    /** Repeats only the failed Daily local mutation; never Statistics, never a new gameplay attempt. */
+    fun retryDailySave() {
+        dailyCompletion.retrySave()
+    }
+
+    /** A solved Daily entry is never replayable from the terminal screen. */
+    private fun dailyReplayBlocked(source: WebGameplaySource): Boolean =
+        source is WebGameplaySource.DailyChallenge &&
+            (dailyCompletion.state as? WebDailyCompletionState.Saved)?.outcome == WebStatisticsTerminalOutcome.SOLVED
 
     /** One second chance per attempt: the failed board waiting on its ad, recorded only if declined. */
     private var secondChanceUsed = false
@@ -259,6 +321,7 @@ internal class WebNonogramController(
         engine = null
         statisticsAttempt = null
         completion.reset()
+        dailyCompletion.reset()
         state = WebNonogramState.DifficultySelection
     }
 
@@ -308,10 +371,21 @@ internal class WebNonogramController(
                 hintsUsed = updated.hintsUsed,
             )
         }
-        if (solved) completion.saveSolved(playing.source.attempt, PuzzleStars.forMistakes(updated.mistakesUsed))
-        // A solved replay only raises stars and pays nothing; a failed one still costs a life.
-        if (!(solved && playing.source.attempt.replay)) {
-            economy.recordTerminalResult(PuzzleType.NONOGRAM, playing.source.difficulty, solved = solved)
+        when (val source = playing.source) {
+            is WebGameplaySource.CatalogLevel -> {
+                if (solved) completion.saveSolved(source.attempt, PuzzleStars.forMistakes(updated.mistakesUsed))
+                // A solved replay only raises stars and pays nothing; a failed one still costs a life.
+                if (!(solved && source.attempt.replay)) {
+                    economy.recordTerminalResult(PuzzleType.NONOGRAM, source.difficulty, solved = solved)
+                }
+            }
+            is WebGameplaySource.DailyChallenge -> {
+                dailyCompletion.saveTerminal(
+                    source.attempt,
+                    if (solved) WebStatisticsTerminalOutcome.SOLVED else WebStatisticsTerminalOutcome.FAILED,
+                )
+                economy.recordTerminalResult(PuzzleType.NONOGRAM, source.difficulty, solved = solved)
+            }
         }
     }
 
@@ -328,6 +402,7 @@ internal class WebNonogramController(
             statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
             economy: WebGameplayEconomy = DisabledWebGameplayEconomy,
             store: WebGameplayStore = DisabledWebGameplayStore,
+            daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
         ): WebNonogramController =
             WebNonogramController(
                 loadPack = { difficulty ->
@@ -341,6 +416,7 @@ internal class WebNonogramController(
                 statistics = statistics,
                 economy = economy,
                 store = store,
+                daily = daily,
             )
     }
 }

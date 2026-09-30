@@ -85,3 +85,18 @@ class DailyChallengePolicyV5Test {
         assertTrue(DailyChallengePolicyResolver.qualifiesStreakOnAnySolvedEntry(DailyChallengePolicyV5.VERSION))
     }
 }
+
+class DailyChallengePolicyV6Test {
+    @org.junit.Test
+    fun v6IsV5PlusARealPictureNonogramSeededByTheEpochDay() {
+        val date = java.time.LocalDate.of(2026, 10, 1)
+        val v5 = DailyChallengePolicyV5.definitionFor(date)
+        val v6 = DailyChallengePolicyResolver.definitionFor(date, DailyChallengePolicyV6.VERSION)
+        org.junit.Assert.assertEquals(v5.entries, v6.entries.dropLast(1))
+        val nonogram = v6.entries.last()
+        org.junit.Assert.assertEquals(com.stanisryz.logica.puzzle.core.model.PuzzleType.NONOGRAM, nonogram.puzzleType)
+        org.junit.Assert.assertEquals(date.toEpochDay(), nonogram.seed.value)
+        org.junit.Assert.assertEquals(DailyChallengePolicyV6.NONOGRAM_GENERATOR_VERSION, nonogram.generatorVersion)
+        org.junit.Assert.assertTrue(DailyChallengePolicyResolver.qualifiesStreakOnAnySolvedEntry(DailyChallengePolicyV6.VERSION))
+    }
+}

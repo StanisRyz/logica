@@ -106,9 +106,9 @@ object DailyShareFormatter {
     ): String {
         val labels =
             when (language) {
-                DailyShareLanguage.RUSSIAN -> listOf("Баланс", "Короны", "Слово", "Судоку")
-                DailyShareLanguage.ENGLISH -> listOf("Balance", "Crowns", "Word", "Sudoku")
-                DailyShareLanguage.TURKISH -> listOf("Denge", "Taçlar", "Kelime", "Sudoku")
+                DailyShareLanguage.RUSSIAN -> listOf("Баланс", "Короны", "Слово", "Судоку", "Нонограмма")
+                DailyShareLanguage.ENGLISH -> listOf("Balance", "Crowns", "Word", "Sudoku", "Nonogram")
+                DailyShareLanguage.TURKISH -> listOf("Denge", "Taçlar", "Kelime", "Sudoku", "Nonogram")
             }
         return when (puzzleType) {
             PuzzleType.BALANCE -> labels[0]
@@ -117,6 +117,7 @@ object DailyShareFormatter {
             PuzzleType.SUDOKU -> labels[3]
             // The 2048 score is deliberately absent: a generic result does not carry that metric.
             PuzzleType.GAME_2048 -> "2048"
+            PuzzleType.NONOGRAM -> labels[4]
             else -> error("Daily sharing does not support $puzzleType.")
         }
     }

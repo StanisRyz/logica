@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengeDefinition
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
-import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV5
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV6
 import com.stanisryz.logica.puzzle.core.daily.DailyDate
 import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
 import com.stanisryz.logica.puzzle.core.daily.DailyStreakCalculator
@@ -308,7 +308,7 @@ internal fun buildWebDailyHubUiState(
     currentDate: DailyDate,
 ): DailyHubUiState {
     val record = snapshot.days[currentDate]
-    val policyVersion = record?.policyVersion ?: DailyChallengePolicyV5.VERSION
+    val policyVersion = record?.policyVersion ?: DailyChallengePolicyV6.VERSION
     val definition = DailyChallengePolicyResolver.definitionFor(currentDate, policyVersion)
     val entries =
         definition.entries.map { entry ->

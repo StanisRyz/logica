@@ -11,6 +11,7 @@ object DailyChallengePolicyResolver {
             DailyChallengePolicyV3.VERSION -> DailyChallengePolicyV3.definitionFor(date)
             DailyChallengePolicyV4.VERSION -> DailyChallengePolicyV4.definitionFor(date)
             DailyChallengePolicyV5.VERSION -> DailyChallengePolicyV5.definitionFor(date)
+            DailyChallengePolicyV6.VERSION -> DailyChallengePolicyV6.definitionFor(date)
             else -> error("Unsupported Daily policy version ${policyVersion.value}.")
         }
 

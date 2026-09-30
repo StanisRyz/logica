@@ -403,7 +403,6 @@
     <string name="quest_play_many">%1$d oyun oyna</string>
     <string name="quest_solve_few">%1$d bulmaca çöz</string>
     <string name="quest_solve_many">%1$d bulmaca çöz</string>
-    <string name="quest_solve_game">%1$s oyununda bir bulmaca çöz</string>
     <string name="quest_solve_hard">Zor veya Uzman seviyesinde bir bulmaca çöz</string>
     <string name="quest_solve_daily">Bir günlük bulmaca çöz</string>
     <string name="quest_different_games">%1$d farklı oyunda bulmaca çöz</string>
@@ -415,4 +414,11 @@
     <string name="no_ads_title">Reklamsız</string>
     <string name="no_ads_subtitle">Seviyeler arası reklamları ve banner’ı kalıcı olarak kaldırır. Ödüllü reklamlar isteğe bağlı kalır</string>
     <string name="no_ads_owned">Satın alındı: seviyeler arasında artık reklam yok</string>
+    <string name="gallery_daily">Günün bulmacası</string>
+    <string name="quest_solve_balance">Bir Denge bulmacası çöz</string>
+    <string name="quest_solve_crowns">Bir Taçlar bulmacası çöz</string>
+    <string name="quest_solve_word">Rusça Kelime oyununda bir kelime bul</string>
+    <string name="quest_solve_sudoku">Bir Sudoku çöz</string>
+    <string name="quest_solve_2048">Bir 2048 seviyesini geç</string>
+    <string name="quest_solve_nonogram">Bir Nonogram çöz</string>
 </resources>

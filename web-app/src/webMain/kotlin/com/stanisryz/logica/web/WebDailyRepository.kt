@@ -4,7 +4,7 @@ package com.stanisryz.logica.web
 
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengeDefinition
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
-import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV5
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV6
 import com.stanisryz.logica.puzzle.core.daily.DailyDate
 import com.stanisryz.logica.puzzle.core.daily.DailyStreak
 import com.stanisryz.logica.puzzle.core.daily.DailyStreakCalculator
@@ -132,7 +132,7 @@ internal class WebDailyRepository(
 
     fun stateFor(date: DailyDate): WebDailyRunState {
         val record = mutableSnapshot.value.days[date]
-        val policyVersion = record?.policyVersion ?: DailyChallengePolicyV5.VERSION
+        val policyVersion = record?.policyVersion ?: DailyChallengePolicyV6.VERSION
         return runState(
             DailyChallengePolicyResolver.definitionFor(date, policyVersion),
             record,

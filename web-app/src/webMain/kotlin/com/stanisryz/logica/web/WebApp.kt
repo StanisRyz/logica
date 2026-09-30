@@ -574,12 +574,17 @@ private fun ReadyContent(
     val catalogStars =
         progressRepository?.let { repository -> key(repository) { repository.stars.collectAsState().value } }
             ?: WebCatalogStarsSnapshot.EMPTY
+    // The bound Player's solved Daily Nonogram pictures, for the gallery's Daily chip.
+    val dailyHistory = (playerSession.dailyBinding.collectAsState().value as? WebDailyBinding.Ready)?.repository
+    val dailySnapshot = dailyHistory?.let { repository -> key(repository) { repository.snapshot.collectAsState().value } }
+    val dailyPictures = remember(dailySnapshot) { dailySnapshot?.let(::solvedDailyNonogramPictures).orEmpty() }
     val achievementAnnouncer = remember { AchievementAnnouncer() }
     val abandonEconomy = remember(playerSession) { WebGameplayEconomyCoordinator(playerSession) }
     val abandonAttempt: () -> Unit = remember(abandonEconomy) { { abandonEconomy.recordAbandonedAttempt() } }
     CompositionLocalProvider(
         LocalAchievementAnnouncer provides achievementAnnouncer,
         LocalWebCatalogStars provides catalogStars,
+        LocalWebDailyPictures provides dailyPictures,
         LocalWebRating provides ratingUi,
         LocalWebSecondChanceAd provides rewardedAds.secondChance,
         LocalWebLives provides livesUi,
@@ -733,6 +738,10 @@ private fun ReadyContent(
                                                         PuzzleType.GAME_2048 -> {
                                                             game2048Controller.startDaily(started.attempt)
                                                             WebRoute.Game2048
+                                                        }
+                                                        PuzzleType.NONOGRAM -> {
+                                                            nonogramController.startDaily(started.attempt)
+                                                            WebRoute.Nonogram
                                                         }
                                                         else -> error("$puzzleType has no Daily gameplay.")
                                                     }
@@ -1250,6 +1259,7 @@ private fun NonogramFlow(
                             onDismiss()
                             lives.guard { controller.replayLevel(difficulty, level) }
                         },
+                        dailyPictures = LocalWebDailyPictures.current,
                     )
                 },
             )
@@ -1257,16 +1267,16 @@ private fun NonogramFlow(
             WebCatalogLoadingContent(
                 difficulty = state.difficulty,
                 levelNumber = state.levelNumber?.value,
-                onBack = controller::showDifficultySelector,
-                isDaily = false,
+                onBack = if (state.launch.isDaily) onExitNonogram else controller::showDifficultySelector,
+                isDaily = state.launch.isDaily,
             )
         is WebNonogramState.Error ->
             WebCatalogLevelErrorContent(
                 levelNumber = state.levelNumber?.value,
                 detail = state.detail,
                 onRetry = controller::retryLoading,
-                onBack = controller::showDifficultySelector,
-                isDaily = false,
+                onBack = if (state.launch.isDaily) onExitNonogram else controller::showDifficultySelector,
+                isDaily = state.launch.isDaily,
             )
         is WebNonogramState.Playing -> {
             val livesGuard = LocalWebLives.current.guard
@@ -1274,15 +1284,16 @@ private fun NonogramFlow(
             Column(Modifier.fillMaxSize()) {
                 WebGameplayHeader(
                     puzzleType = PuzzleType.NONOGRAM,
-                    isDaily = false,
+                    isDaily = state.source.isDaily,
                     hasMeaningfulProgress = state.hasMeaningfulProgress || controller.secondChanceOffered,
-                    onExit = controller::showDifficultySelector,
+                    onExit = if (state.source.isDaily) onExitNonogram else controller::showDifficultySelector,
                 )
                 NonogramGameContent(
                     puzzle = state.puzzle,
                     game = state.game,
                     difficulty = state.source.difficulty,
                     levelNumber = state.source.catalogLevelNumberOrNull,
+                    contextBadgeLabel = state.source.contextBadgeLabelOrNull(),
                     selectedTool = state.selectedTool,
                     gameplayEnabled = state.game.status == NonogramGameStatus.IN_PROGRESS,
                     onCell = controller::onCell,
@@ -1305,25 +1316,40 @@ private fun NonogramFlow(
                     onDismiss = controller::dismissHintsExhaustedNotice,
                 )
             }
-            WebCatalogSaveErrorBanner(
-                completion = controller.completionState,
-                onRetrySave = controller::retrySave,
-            )
-            WebOrdinaryCatalogTerminalDialog(
-                puzzleType = PuzzleType.NONOGRAM,
-                visible = state.game.status.isTerminal && !controller.secondChanceOffered,
-                difficulty = state.source.difficulty,
-                mistakesUsed = state.game.mistakesUsed,
-                hintsUsed = state.game.hintsUsed,
-                levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
-                replay = (state.source as? WebGameplaySource.CatalogLevel)?.attempt?.replay == true,
-                solved = state.game.status == NonogramGameStatus.SOLVED,
-                completion = controller.completionState,
-                onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },
-                onRetry = { livesGuard { transitionAd(controller::retry) } },
-                onRetrySave = controller::retrySave,
-                onBack = { transitionAd(controller::showDifficultySelector) },
-            )
+            if (state.source.isDaily) {
+                WebDailyOrdinaryTerminalDialog(
+                    puzzleType = PuzzleType.NONOGRAM,
+                    visible = state.game.status.isTerminal && !controller.secondChanceOffered,
+                    difficulty = state.source.difficulty,
+                    mistakesUsed = state.game.mistakesUsed,
+                    hintsUsed = state.game.hintsUsed,
+                    solved = state.game.status == NonogramGameStatus.SOLVED,
+                    completion = controller.dailyCompletionState,
+                    onRetry = { livesGuard { transitionAd(controller::retry) } },
+                    onRetrySave = controller::retryDailySave,
+                    onExit = { transitionAd(onExitNonogram) },
+                )
+            } else {
+                WebCatalogSaveErrorBanner(
+                    completion = controller.completionState,
+                    onRetrySave = controller::retrySave,
+                )
+                WebOrdinaryCatalogTerminalDialog(
+                    puzzleType = PuzzleType.NONOGRAM,
+                    visible = state.game.status.isTerminal && !controller.secondChanceOffered,
+                    difficulty = state.source.difficulty,
+                    mistakesUsed = state.game.mistakesUsed,
+                    hintsUsed = state.game.hintsUsed,
+                    levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
+                    replay = (state.source as? WebGameplaySource.CatalogLevel)?.attempt?.replay == true,
+                    solved = state.game.status == NonogramGameStatus.SOLVED,
+                    completion = controller.completionState,
+                    onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },
+                    onRetry = { livesGuard { transitionAd(controller::retry) } },
+                    onRetrySave = controller::retrySave,
+                    onBack = { transitionAd(controller::showDifficultySelector) },
+                )
+            }
         }
     }
 }

@@ -414,7 +414,6 @@
     <string name="quest_play_many">Сыграйте %1$d партий</string>
     <string name="quest_solve_few">Решите %1$d головоломки</string>
     <string name="quest_solve_many">Решите %1$d головоломок</string>
-    <string name="quest_solve_game">Решите головоломку в игре «%1$s»</string>
     <string name="quest_solve_hard">Решите головоломку на сложности «Сложно» или «Эксперт»</string>
     <string name="quest_solve_daily">Решите задачу дня</string>
     <string name="quest_different_games">Решите головоломки в %1$d разных играх</string>
@@ -426,4 +425,11 @@
     <string name="no_ads_title">Без рекламы</string>
     <string name="no_ads_subtitle">Навсегда убирает рекламу между уровнями и баннер. Реклама за награду остаётся по желанию</string>
     <string name="no_ads_owned">Куплено: рекламы между уровнями больше нет</string>
+    <string name="gallery_daily">Задача дня</string>
+    <string name="quest_solve_balance">Решите головоломку «Баланс»</string>
+    <string name="quest_solve_crowns">Решите головоломку «Короны»</string>
+    <string name="quest_solve_word">Угадайте слово в игре «Слово»</string>
+    <string name="quest_solve_sudoku">Решите судоку</string>
+    <string name="quest_solve_2048">Пройдите уровень 2048</string>
+    <string name="quest_solve_nonogram">Решите нонограмму</string>
 </resources>

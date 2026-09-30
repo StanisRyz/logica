@@ -46,11 +46,16 @@ import com.stanisryz.logica.shared.ui.generated.resources.login_gift_title
 import com.stanisryz.logica.shared.ui.generated.resources.quest_different_games
 import com.stanisryz.logica.shared.ui.generated.resources.quest_play_few
 import com.stanisryz.logica.shared.ui.generated.resources.quest_play_many
+import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_2048
+import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_balance
+import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_crowns
 import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_daily
 import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_few
-import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_game
 import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_hard
 import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_many
+import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_nonogram
+import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_sudoku
+import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_word
 import com.stanisryz.logica.shared.ui.generated.resources.quests_title
 import com.stanisryz.logica.shared.ui.generated.resources.rewards_claim
 import com.stanisryz.logica.shared.ui.generated.resources.rewards_claimed
@@ -253,8 +258,14 @@ private fun questTitle(quest: DailyQuest): String =
             stringResource(if (quest.target.isFewForm()) Res.string.quest_solve_few else Res.string.quest_solve_many, quest.target)
         DailyQuestKind.SOLVE_GAME ->
             stringResource(
-                Res.string.quest_solve_game,
-                stringResource((quest.puzzleType ?: PuzzleType.BALANCE).catalogTitleResource()),
+                when (quest.puzzleType) {
+                    PuzzleType.CROWNS -> Res.string.quest_solve_crowns
+                    PuzzleType.WORD -> Res.string.quest_solve_word
+                    PuzzleType.SUDOKU -> Res.string.quest_solve_sudoku
+                    PuzzleType.GAME_2048 -> Res.string.quest_solve_2048
+                    PuzzleType.NONOGRAM -> Res.string.quest_solve_nonogram
+                    else -> Res.string.quest_solve_balance
+                },
             )
         DailyQuestKind.SOLVE_HARD -> stringResource(Res.string.quest_solve_hard)
         DailyQuestKind.SOLVE_DAILY -> stringResource(Res.string.quest_solve_daily)

@@ -17,6 +17,7 @@ import com.stanisryz.logica.puzzle.core.nonogram.NonogramGameEngine
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramGameState
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramGameStatus
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV1
+import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV2
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramPosition
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramPuzzle
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramTool
@@ -92,7 +93,13 @@ internal class NonogramGameViewModel(
                 val resolved = attemptFactory.create(launch, PuzzleType.NONOGRAM)
                 val (puzzle, engine) =
                     withContext(workDispatcher) {
-                        val puzzle = generator.generate(resolved.seed, resolved.difficulty)
+                        // Catalog levels are Generator V1 pictures; the Daily's real pictures are V2.
+                        val puzzle =
+                            if (resolved.generatorVersion == NonogramGeneratorV2().version) {
+                                NonogramGeneratorV2().generate(resolved.seed, resolved.difficulty)
+                            } else {
+                                generator.generate(resolved.seed, resolved.difficulty)
+                            }
                         require(puzzle.id.generatorVersion == resolved.generatorVersion)
                         puzzle to NonogramGameEngine(puzzle)
                     }

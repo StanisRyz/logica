@@ -69,6 +69,7 @@ import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDe
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.stanisryz.logica.AppLanguage
 import com.stanisryz.logica.R
 import com.stanisryz.logica.ads.InterstitialOpportunity
 import com.stanisryz.logica.ads.RewardedAdKind
@@ -89,8 +90,10 @@ import com.stanisryz.logica.platform.StoreGateway
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV1
+import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV2
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.settings.SettingsRepository
 import com.stanisryz.logica.settings.ThemeMode
@@ -108,6 +111,7 @@ import com.stanisryz.logica.ui.components.LocalLevelReplay
 import com.stanisryz.logica.ui.components.LocalSecondChanceAd
 import com.stanisryz.logica.ui.components.PuzzleStartScreen
 import com.stanisryz.logica.ui.components.SecondChanceAd
+import com.stanisryz.logica.ui.nonogram.DailyGalleryPicture
 import com.stanisryz.logica.ui.nonogram.NonogramGallerySheet
 import com.stanisryz.logica.ui.rating.GameRating
 import com.stanisryz.logica.ui.screens.AchievementsRoute
@@ -134,6 +138,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.UUID
 
 @Composable
@@ -1073,6 +1079,18 @@ private fun NonogramGallery(
                 .orEmpty()
         }
     val generator = remember { NonogramGeneratorV1() }
+    val dailyFlow = remember(statisticsRepository) { statisticsRepository.observeSolvedDailyPictures() }
+    val dailySolved by dailyFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    val dailyPictures =
+        remember(dailySolved) {
+            val pictures = NonogramGeneratorV2()
+            val formatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(AppLanguage.locale)
+            dailySolved.mapNotNull { (date, seed) ->
+                runCatching {
+                    DailyGalleryPicture(formatter.format(date), pictures.generate(PuzzleSeed(seed), Difficulty.MEDIUM))
+                }.getOrNull()
+            }
+        }
     NonogramGallerySheet(
         clearedLevels = levels.clearedLevels(),
         loadPicture = { difficulty, level ->
@@ -1087,6 +1105,7 @@ private fun NonogramGallery(
         starsOf = { difficulty, level -> stars[difficulty to level] ?: 0 },
         onDismiss = onDismiss,
         onReplay = onReplay,
+        dailyPictures = dailyPictures,
     )
 }
 

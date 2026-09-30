@@ -55,6 +55,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.difficulty_hard
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_medium
 import com.stanisryz.logica.shared.ui.generated.resources.gallery_close
 import com.stanisryz.logica.shared.ui.generated.resources.gallery_count
+import com.stanisryz.logica.shared.ui.generated.resources.gallery_daily
 import com.stanisryz.logica.shared.ui.generated.resources.gallery_empty
 import com.stanisryz.logica.shared.ui.generated.resources.gallery_replay
 import com.stanisryz.logica.shared.ui.generated.resources.gallery_title
@@ -76,7 +77,11 @@ fun NonogramGallerySheet(
     starsOf: (Difficulty, Int) -> Int,
     onDismiss: () -> Unit,
     onReplay: ((Difficulty, Int) -> Unit)? = null,
+    dailyPictures: List<DailyGalleryPicture> = emptyList(),
 ) {
+    // The Daily's real pictures sit under their own chip, newest first.
+    var showDaily by remember { mutableStateOf(clearedLevels.values.all { it <= 0 } && dailyPictures.isNotEmpty()) }
+    var openedDaily by remember { mutableStateOf<DailyGalleryPicture?>(null) }
     var difficulty by remember {
         mutableStateOf(Difficulty.entries.firstOrNull { (clearedLevels[it] ?: 0) > 0 } ?: Difficulty.EASY)
     }
@@ -102,13 +107,48 @@ fun NonogramGallerySheet(
             ) {
                 Difficulty.entries.forEach { entry ->
                     FilterChip(
-                        selected = entry == difficulty,
-                        onClick = { difficulty = entry },
+                        selected = !showDaily && entry == difficulty,
+                        onClick = {
+                            showDaily = false
+                            difficulty = entry
+                        },
                         label = { Text("${stringResource(entry.labelResource())} · ${clearedLevels[entry] ?: 0}") },
                     )
                 }
+                if (dailyPictures.isNotEmpty()) {
+                    FilterChip(
+                        selected = showDaily,
+                        onClick = { showDaily = true },
+                        label = { Text("${stringResource(Res.string.gallery_daily)} · ${dailyPictures.size}") },
+                    )
+                }
             }
-            if (count == 0) {
+            if (showDaily) {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(THUMBNAIL_MIN_SIZE),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
+                    verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
+                ) {
+                    items(dailyPictures.size, key = { index -> "daily-${dailyPictures[index].dateLabel}" }) { index ->
+                        val picture = dailyPictures[index]
+                        Card(
+                            modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).clickable { openedDaily = picture },
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                        ) {
+                            Column(Modifier.padding(LogicaSpacing.text * 2), horizontalAlignment = Alignment.CenterHorizontally) {
+                                NonogramPicture(picture.puzzle, Modifier.fillMaxWidth())
+                                Text(
+                                    picture.dateLabel,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    modifier = Modifier.padding(top = LogicaSpacing.text),
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                    }
+                }
+            } else if (count == 0) {
                 Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                     Text(
                         stringResource(Res.string.gallery_empty),
@@ -138,6 +178,23 @@ fun NonogramGallerySheet(
                             load = load,
                             onClick = { opened = level },
                         )
+                    }
+                }
+            }
+        }
+    }
+    openedDaily?.let { picture ->
+        Dialog(onDismissRequest = { openedDaily = null }) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
+                Column(
+                    modifier = Modifier.padding(LogicaSpacing.cardPadding),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
+                ) {
+                    Text(picture.dateLabel, style = MaterialTheme.typography.titleLarge)
+                    NonogramPicture(picture.puzzle, Modifier.size(LARGE_PICTURE_SIZE))
+                    OutlinedButton(onClick = { openedDaily = null }, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(Res.string.gallery_close))
                     }
                 }
             }
@@ -228,6 +285,12 @@ private fun LoadedPicture(
     val puzzle by produceState<NonogramPuzzle?>(null, difficulty, level) { value = load(difficulty, level) }
     NonogramPicture(puzzle, modifier)
 }
+
+/** One solved Daily picture: the host's formatted date and the rebuilt Generator V2 picture. */
+data class DailyGalleryPicture(
+    val dateLabel: String,
+    val puzzle: NonogramPuzzle,
+)
 
 /** The finished picture alone: filled cells on a light ground, without clues or grid. */
 @Composable

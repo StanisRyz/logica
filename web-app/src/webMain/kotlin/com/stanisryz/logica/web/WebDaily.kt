@@ -1,12 +1,16 @@
 package com.stanisryz.logica.web
 
+import androidx.compose.runtime.compositionLocalOf
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV1
-import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV5
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV6
 import com.stanisryz.logica.puzzle.core.daily.DailyDate
 import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
+import com.stanisryz.logica.puzzle.core.daily.toDailyEpochDay
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV2
 import com.stanisryz.logica.puzzle.core.word.WordRules
+import com.stanisryz.logica.ui.nonogram.DailyGalleryPicture
 
 internal data class WebDailyEntryFacts(
     val failedSeen: Boolean = false,
@@ -76,7 +80,7 @@ internal data class WebDailyDayRecord(
         const val MIN_YEAR = 1
         const val MAX_YEAR = 9_999
         private val MIN_POLICY_VERSION = DailyChallengePolicyV1.VERSION.value
-        private val MAX_POLICY_VERSION = DailyChallengePolicyV5.VERSION.value
+        private val MAX_POLICY_VERSION = DailyChallengePolicyV6.VERSION.value
     }
 }
 
@@ -104,6 +108,8 @@ internal object WebDailyPuzzleOrder {
             PuzzleType.WORD,
             PuzzleType.SUDOKU,
             PuzzleType.GAME_2048,
+            // Appended for Policy V6: existing bits keep their meaning in stored snapshots.
+            PuzzleType.NONOGRAM,
         )
     val ALL_MASK = (1 shl puzzleTypes.size) - 1
 
@@ -261,3 +267,24 @@ internal val webDailyDateComparator =
     )
 
 internal fun DailyDate.isAfter(other: DailyDate): Boolean = webDailyDateComparator.compare(this, other) > 0
+
+/** The bound Player's solved Daily Nonogram pictures, newest first, for the gallery. */
+internal val LocalWebDailyPictures = compositionLocalOf { emptyList<DailyGalleryPicture>() }
+
+/** Every date whose Daily Nonogram is solved, rebuilt from its own policy entry (Generator V2). */
+internal fun solvedDailyNonogramPictures(snapshot: WebDailySnapshotV1): List<DailyGalleryPicture> {
+    val generator = NonogramGeneratorV2()
+    return snapshot.days.values
+        .filter { it.solvedMask and WebDailyPuzzleOrder.bit(PuzzleType.NONOGRAM) != 0 }
+        .sortedByDescending { it.date.toDailyEpochDay() }
+        .mapNotNull { record ->
+            runCatching {
+                val entry =
+                    DailyChallengePolicyResolver
+                        .definitionFor(record.date, record.policyVersion)
+                        .entries
+                        .first { it.puzzleType == PuzzleType.NONOGRAM }
+                DailyGalleryPicture(formatWebDailyShortDate(record.date), generator.generate(entry.seed, entry.difficulty))
+            }.getOrNull()
+        }
+}

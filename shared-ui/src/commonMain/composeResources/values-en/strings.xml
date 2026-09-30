@@ -403,7 +403,6 @@
     <string name="quest_play_many">Play %1$d games</string>
     <string name="quest_solve_few">Solve %1$d puzzles</string>
     <string name="quest_solve_many">Solve %1$d puzzles</string>
-    <string name="quest_solve_game">Solve a puzzle in %1$s</string>
     <string name="quest_solve_hard">Solve a puzzle on Hard or Expert</string>
     <string name="quest_solve_daily">Solve a daily puzzle</string>
     <string name="quest_different_games">Solve puzzles in %1$d different games</string>
@@ -415,4 +414,11 @@
     <string name="no_ads_title">No ads</string>
     <string name="no_ads_subtitle">Removes ads between levels and the banner for good. Ads for rewards stay optional</string>
     <string name="no_ads_owned">Purchased: no more ads between levels</string>
+    <string name="gallery_daily">Daily</string>
+    <string name="quest_solve_balance">Solve a Balance puzzle</string>
+    <string name="quest_solve_crowns">Solve a Crowns puzzle</string>
+    <string name="quest_solve_word">Guess a word in Russian Word</string>
+    <string name="quest_solve_sudoku">Solve a Sudoku</string>
+    <string name="quest_solve_2048">Clear a 2048 level</string>
+    <string name="quest_solve_nonogram">Solve a Nonogram</string>
 </resources>

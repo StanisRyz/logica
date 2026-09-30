@@ -252,14 +252,15 @@ private fun DrawScope.drawBoard(
                 } else {
                     colors.ink
                 }
-            drawClue(measurer, run.toString(), center, fontSize, ink, clueFont)
+            drawClue(measurer, run.toString(), center, fontSize, ink, clueFont, maxWidth = cell * CLUE_FIT)
         }
     }
     for (row in 0 until size) {
         val done = lineDone((0 until size).map { row * size + it })
         val runs = puzzle.rowClues[row].ifEmpty { listOf(0) }
         runs.reversed().forEachIndexed { fromRight, run ->
-            val center = Offset(gutter - (fromRight + 0.5f) * cell * ROW_CLUE_WIDTH, gutter + row * cell + cell / 2f)
+            // The last clue keeps a little air before the grid, so a two-digit run never touches it.
+            val center = Offset(gutter - (fromRight + 0.5f) * cell * ROW_CLUE_WIDTH - cell * ROW_CLUE_AIR, gutter + row * cell + cell / 2f)
             val ink =
                 if (done) {
                     colors.doneInk
@@ -268,7 +269,7 @@ private fun DrawScope.drawBoard(
                 } else {
                     colors.ink
                 }
-            drawClue(measurer, run.toString(), center, fontSize, ink, clueFont)
+            drawClue(measurer, run.toString(), center, fontSize, ink, clueFont, maxWidth = cell * ROW_CLUE_WIDTH * CLUE_FIT)
         }
     }
 
@@ -356,9 +357,13 @@ private fun DrawScope.drawClue(
     fontSize: TextUnit,
     color: Color,
     fontFamily: FontFamily?,
+    maxWidth: Float,
 ) {
-    val layout =
-        measurer.measure(text, TextStyle(fontSize = fontSize, fontWeight = FontWeight.Bold, color = color, fontFamily = fontFamily))
+    fun measure(size: TextUnit) =
+        measurer.measure(text, TextStyle(fontSize = size, fontWeight = FontWeight.Bold, color = color, fontFamily = fontFamily))
+    var layout = measure(fontSize)
+    // A two-digit run is narrowed to its slot rather than spilling into the next clue or the grid.
+    if (layout.size.width > maxWidth) layout = measure(fontSize * (maxWidth / layout.size.width))
     drawText(layout, topLeft = center - Offset(layout.size.width / 2f, layout.size.height / 2f))
 }
 
@@ -369,6 +374,10 @@ private fun progression(
 
 /** How wide one row clue number is, and how tall one column clue number, in cells. */
 private const val ROW_CLUE_WIDTH = 0.66f
+
+/** Share of its slot a clue may take, and the gap between the last row clue and the grid. */
+private const val CLUE_FIT = 0.92f
+private const val ROW_CLUE_AIR = 0.06f
 private const val COLUMN_CLUE_HEIGHT = 0.66f
 private const val MIN_GUTTER_CELLS = 1.2f
 private const val CLUE_FONT_RATIO = 0.58f
