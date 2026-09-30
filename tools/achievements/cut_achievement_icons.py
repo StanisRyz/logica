@@ -31,6 +31,7 @@ SIZE = 192          # 48 dp at xxxhdpi, the largest the game shows
 MARGIN = 0.06       # empty border around every icon, as a share of SIZE
 INK = 14            # a channel this far from white counts as drawing, not background
 EDGE = 60           # up to this far from white an edge pixel is partly transparent
+HOLE = 800          # an enclosed flat-white area at least this large (sheet pixels) is background too
 
 
 def bands(ink: np.ndarray, count: int) -> list[tuple[int, int]]:
@@ -60,6 +61,13 @@ def cut(cell: np.ndarray) -> Image.Image:
     labels, _ = ndimage.label(near_white)
     border = set(np.unique(np.concatenate([labels[0], labels[-1], labels[:, 0], labels[:, -1]]))) - {0}
     background = np.isin(labels, list(border))
+    # Background also shows through gaps the drawing closes on every side (inside a trophy's handles,
+    # between chains or blocks). Those are large and flat white; highlights on the drawing are small
+    # or tinted, so they stay.
+    for label in set(range(1, labels.max() + 1)) - border:
+        area = labels == label
+        if area.sum() >= HOLE and distance[area].mean() < 3.5 and (distance[area] < 5).mean() >= 0.7:
+            background |= area
     # Pixels next to the background fade out by how white they are, so no white fringe remains.
     rim = ndimage.binary_dilation(background, iterations=2) & ~background
     alpha = np.where(background, 0.0, 1.0)
