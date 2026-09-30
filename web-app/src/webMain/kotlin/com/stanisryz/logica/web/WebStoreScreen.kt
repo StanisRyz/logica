@@ -40,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.platform.PaymentProductSnapshot
@@ -49,7 +50,10 @@ import com.stanisryz.logica.platform.StoreItem
 import com.stanisryz.logica.platform.StoreRewardType
 import com.stanisryz.logica.ui.components.GemPriceButton
 import com.stanisryz.logica.ui.components.NoAdsRow
+import com.stanisryz.logica.ui.components.STATE_ARTWORK_DIALOG_SIZE
 import com.stanisryz.logica.ui.components.StarterPackCard
+import com.stanisryz.logica.ui.components.StateArtwork
+import com.stanisryz.logica.ui.components.StateArtworkImage
 import com.stanisryz.logica.ui.components.StoreArtwork
 import com.stanisryz.logica.ui.components.StoreBalanceCard
 import com.stanisryz.logica.ui.components.StoreItemRow
@@ -443,7 +447,8 @@ internal fun WebHintsExhaustedDialog(
     PauseGameKeysWhileShown()
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(WebRes.string.web_no_hints_title)) },
+        icon = { StateArtworkImage(StateArtwork.NO_HINTS, size = STATE_ARTWORK_DIALOG_SIZE) },
+        title = { Text(stringResource(WebRes.string.web_no_hints_title), textAlign = TextAlign.Center) },
         text = {
             Text(stringResource(WebRes.string.web_no_hints_body))
         },

@@ -23,9 +23,13 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.platform.EconomyState
+import com.stanisryz.logica.ui.components.STATE_ARTWORK_DIALOG_SIZE
+import com.stanisryz.logica.ui.components.StateArtwork
+import com.stanisryz.logica.ui.components.StateArtworkImage
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.web.generated.resources.web_ad_showing
 import com.stanisryz.logica.web.generated.resources.web_got_it
@@ -107,7 +111,8 @@ internal fun WebNoLivesDialog(
     LaunchedEffect(lives) { if (lives > 0) onDismiss() }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(WebRes.string.web_no_lives_title)) },
+        icon = { StateArtworkImage(StateArtwork.NO_LIVES, size = STATE_ARTWORK_DIALOG_SIZE) },
+        title = { Text(stringResource(WebRes.string.web_no_lives_title), textAlign = TextAlign.Center) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
                 Text(

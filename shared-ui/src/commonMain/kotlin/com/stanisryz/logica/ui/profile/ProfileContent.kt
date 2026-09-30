@@ -28,7 +28,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Diamond
 import androidx.compose.material.icons.rounded.ExpandLess
@@ -99,6 +98,8 @@ import com.stanisryz.logica.shared.ui.generated.resources.word_attempt_bar_descr
 import com.stanisryz.logica.shared.ui.generated.resources.word_attempt_distribution
 import com.stanisryz.logica.shared.ui.generated.resources.word_percent_value
 import com.stanisryz.logica.shared.ui.generated.resources.word_win_rate
+import com.stanisryz.logica.ui.components.StateArtwork
+import com.stanisryz.logica.ui.components.StateArtworkImage
 import com.stanisryz.logica.ui.components.catalogTitleResource
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
@@ -744,21 +745,7 @@ private fun EmptyState(
     onOpenGames: (() -> Unit)?,
 ) {
     CenteredState(modifier, verticalSpacing = LogicaSpacing.item) {
-        Box(
-            modifier =
-                Modifier
-                    .size(EMPTY_MARK_SIZE)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                Icons.Rounded.BarChart,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(EMPTY_ICON_SIZE),
-            )
-        }
+        StateArtworkImage(StateArtwork.NO_GAMES)
         Text(
             stringResource(Res.string.profile_empty_title),
             style = MaterialTheme.typography.titleLarge,
@@ -834,8 +821,6 @@ private const val SHORT_MILLIS = 140
 private val ACCENT_DOT_SIZE = 10.dp
 private val BAR_HEIGHT = 12.dp
 private val GAME_ROW_VERTICAL_PADDING = 14.dp
-private val EMPTY_MARK_SIZE = 72.dp
-private val EMPTY_ICON_SIZE = 36.dp
 private const val DIVIDER_ALPHA = 0.6f
 
 private const val DAYS_IN_WEEK = 7

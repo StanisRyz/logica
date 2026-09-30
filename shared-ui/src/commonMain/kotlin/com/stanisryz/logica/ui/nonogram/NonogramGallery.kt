@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -59,6 +58,8 @@ import com.stanisryz.logica.shared.ui.generated.resources.gallery_daily
 import com.stanisryz.logica.shared.ui.generated.resources.gallery_empty
 import com.stanisryz.logica.shared.ui.generated.resources.gallery_replay
 import com.stanisryz.logica.shared.ui.generated.resources.gallery_title
+import com.stanisryz.logica.ui.components.StateArtwork
+import com.stanisryz.logica.ui.components.StateArtworkImage
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.StringResource
@@ -149,7 +150,12 @@ fun NonogramGallerySheet(
                     }
                 }
             } else if (count == 0) {
-                Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                Column(
+                    Modifier.fillMaxWidth().weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item, Alignment.CenterVertically),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    StateArtworkImage(StateArtwork.EMPTY_GALLERY)
                     Text(
                         stringResource(Res.string.gallery_empty),
                         style = MaterialTheme.typography.bodyLarge,

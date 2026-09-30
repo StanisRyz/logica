@@ -15,7 +15,8 @@ from scipy import ndimage
 
 ROOT = Path(__file__).resolve().parents[2]
 # (sheet under art/, drawable name prefix, names row by row; None skips a picture nothing uses yet),
-# and optionally True to keep the sheet's relative sizes (a gift that grows) instead of filling each square.
+# and optional settings: "keep_scale" keeps the sheet's relative sizes (a gift that grows) instead of
+# filling each square, "size" overrides the square's side for pictures shown larger than 48 dp.
 SHEETS = [
     ("achievements/sheet1.png", "achievement", [
         ["first_solve", "all_games", "solver_50"],
@@ -34,7 +35,11 @@ SHEETS = [
     ]),
     ("rewards/sheet.png", "reward", [
         ["gift_small", "gift_big", "gift_chest", "gift_open"],
-    ], True),
+    ], {"keep_scale": True}),
+    ("states/sheet.png", "state", [
+        ["no_games", "no_lives", "second_chance"],
+        ["no_hints", "load_failed", "empty_gallery"],
+    ], {"size": 384}),
 ]
 OUTPUT = ROOT / "shared-ui/src/commonMain/composeResources/drawable"
 SIZE = 192          # 48 dp at xxxhdpi, the largest the game shows
@@ -99,19 +104,21 @@ def trim(cell: np.ndarray) -> Image.Image:
     return image.crop(image.getbbox())
 
 
-def fit(icon: Image.Image, largest: int | None = None) -> Image.Image:
+def fit(icon: Image.Image, largest: int | None = None, size: int = SIZE) -> Image.Image:
     """[icon] centred in the square; with [largest], smaller pictures stay smaller, by half the difference."""
-    inner = round(SIZE * (1 - 2 * MARGIN))
+    inner = round(size * (1 - 2 * MARGIN))
     scale = inner / (((largest + max(icon.size)) / 2) if largest else max(icon.size))
     icon = icon.resize((max(1, round(icon.width * scale)), max(1, round(icon.height * scale))), Image.LANCZOS)
-    square = Image.new("RGBA", (SIZE, SIZE))
-    square.alpha_composite(icon, ((SIZE - icon.width) // 2, (SIZE - icon.height) // 2))
+    square = Image.new("RGBA", (size, size))
+    square.alpha_composite(icon, ((size - icon.width) // 2, (size - icon.height) // 2))
     return square
 
 
 def main() -> None:
     for sheet, prefix, grid, *options in SHEETS:
-        keep_scale = bool(options and options[0])
+        settings = options[0] if options else {}
+        keep_scale = settings.get("keep_scale", False)
+        size = settings.get("size", SIZE)
         image = Image.open(ROOT / "art" / sheet)
         transparent = image.mode == "RGBA" and (np.asarray(image)[..., 3] == 0).mean() > 0.2
         pixels = np.asarray(image.convert("RGBA" if transparent else "RGB"))
@@ -129,7 +136,7 @@ def main() -> None:
                 pictures.append((name, trim(cell) if transparent else cut(cell)))
         largest = max(max(picture.size) for _, picture in pictures) if keep_scale else None
         for name, picture in pictures:
-            fit(picture, largest).save(OUTPUT / f"{prefix}_{name}.webp", "WEBP", quality=90, method=6)
+            fit(picture, largest, size).save(OUTPUT / f"{prefix}_{name}.webp", "WEBP", quality=90, method=6)
             print(f"{prefix}_{name}.webp")
 
 

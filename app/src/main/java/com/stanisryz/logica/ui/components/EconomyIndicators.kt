@@ -31,12 +31,16 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.R
 import com.stanisryz.logica.ads.RewardedAdState
 import com.stanisryz.logica.economy.EconomyClock
 import com.stanisryz.logica.economy.EconomyRules
 import com.stanisryz.logica.economy.PlayerEconomy
+import com.stanisryz.logica.ui.components.STATE_ARTWORK_DIALOG_SIZE
+import com.stanisryz.logica.ui.components.StateArtwork
+import com.stanisryz.logica.ui.components.StateArtworkImage
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import kotlinx.coroutines.delay
 
@@ -119,8 +123,14 @@ internal fun LivesDialog(
     val countdown = rememberLifeCountdown(economy)
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Rounded.Favorite, contentDescription = null) },
-        title = { Text(stringResource(R.string.economy_lives_title)) },
+        icon = {
+            if (economy.lives == 0) {
+                StateArtworkImage(StateArtwork.NO_LIVES, size = STATE_ARTWORK_DIALOG_SIZE)
+            } else {
+                Icon(Icons.Rounded.Favorite, contentDescription = null)
+            }
+        },
+        title = { Text(stringResource(R.string.economy_lives_title), textAlign = TextAlign.Center) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
                 Text(
@@ -231,7 +241,7 @@ internal fun ZeroLivesCard(
             horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.action),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Rounded.HeartBroken, contentDescription = null, modifier = Modifier.size(ICON_SIZE))
+            StateArtworkImage(StateArtwork.NO_LIVES, size = ZERO_LIVES_ARTWORK)
             Text(
                 text = stringResource(R.string.economy_no_lives_title),
                 style = MaterialTheme.typography.titleMedium,
@@ -279,3 +289,5 @@ private val ICON_SIZE = 20.dp
 private const val COUNTDOWN_TICK_MILLIS = 1_000L
 private const val MILLIS_PER_SECOND = 1_000L
 private const val SECONDS_PER_MINUTE = 60L
+
+private val ZERO_LIVES_ARTWORK = 48.dp

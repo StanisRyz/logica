@@ -22,6 +22,8 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.ui.components.GameResultDialog
 import com.stanisryz.logica.ui.components.GameResultEconomy
 import com.stanisryz.logica.ui.components.GameResultSaveState
+import com.stanisryz.logica.ui.components.StateArtwork
+import com.stanisryz.logica.ui.components.StateArtworkImage
 import com.stanisryz.logica.ui.components.displayName
 import com.stanisryz.logica.ui.components.starsForMistakes
 import com.stanisryz.logica.web.generated.resources.web_back_to_difficulty
@@ -74,6 +76,8 @@ internal fun WebCatalogLevelErrorContent(
     isDaily: Boolean = false,
 ) {
     CenteredColumn {
+        StateArtworkImage(StateArtwork.LOAD_FAILED)
+        Spacer(Modifier.height(12.dp))
         Text(
             text =
                 when {

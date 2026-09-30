@@ -3,20 +3,21 @@ package com.stanisryz.logica.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import com.stanisryz.logica.R
 import com.stanisryz.logica.economy.HintOffer
 import com.stanisryz.logica.economy.PlayerEconomy
+import com.stanisryz.logica.ui.components.STATE_ARTWORK_DIALOG_SIZE
+import com.stanisryz.logica.ui.components.StateArtwork
+import com.stanisryz.logica.ui.components.StateArtworkImage
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 /** Asked for a hint with an empty stock: restock right here so the running attempt is kept. */
@@ -29,8 +30,8 @@ internal fun HintsExhaustedDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Rounded.Lightbulb, contentDescription = null) },
-        title = { Text(stringResource(R.string.hints_exhausted_title)) },
+        icon = { StateArtworkImage(StateArtwork.NO_HINTS, size = STATE_ARTWORK_DIALOG_SIZE) },
+        title = { Text(stringResource(R.string.hints_exhausted_title), textAlign = TextAlign.Center) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
                 Text(

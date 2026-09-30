@@ -14,6 +14,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import com.stanisryz.logica.ui.components.StateArtwork
+import com.stanisryz.logica.ui.components.StateArtworkImage
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 
 /** The one loading state used by Profile and the three gameplay screens. */
@@ -51,6 +53,7 @@ internal fun RetryableErrorState(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
         ) {
+            StateArtworkImage(StateArtwork.LOAD_FAILED)
             Text(
                 text = message,
                 style = MaterialTheme.typography.titleMedium,
