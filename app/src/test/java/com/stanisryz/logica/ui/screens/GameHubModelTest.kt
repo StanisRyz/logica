@@ -13,7 +13,7 @@ import org.junit.Test
 /** What the Game hub is made of: the Daily entries on top and the regular catalog below them. */
 class GameHubModelTest {
     @Test
-    fun `shared catalog maps exactly five games in product order`() {
+    fun `shared catalog maps exactly seven games in product order`() {
         assertEquals(
             listOf(
                 PuzzleType.BALANCE,
@@ -22,6 +22,7 @@ class GameHubModelTest {
                 PuzzleType.SUDOKU,
                 PuzzleType.GAME_2048,
                 PuzzleType.NONOGRAM,
+                PuzzleType.BLOCK_SUDOKU,
             ),
             GAME_CATALOG_PUZZLE_TYPES,
         )

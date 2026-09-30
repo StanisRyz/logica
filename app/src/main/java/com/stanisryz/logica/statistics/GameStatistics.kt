@@ -21,6 +21,8 @@ internal data class GameStatistics(
     val word: WordStatistics,
     val sudoku: SudokuStatistics = SudokuStatistics.EMPTY,
     val game2048: Game2048Statistics = Game2048Statistics.EMPTY,
+    /** Block Sudoku shares 2048's shape: terminal attempts and solves per difficulty. */
+    val blockSudoku: Game2048Statistics = Game2048Statistics.EMPTY,
     /** Nonogram shares Sudoku's shape: terminal attempts, hints, and solves per difficulty. */
     val nonogram: SudokuStatistics = SudokuStatistics.EMPTY,
     val dailyMonth: DailyMonthHistory? = null,
@@ -155,6 +157,7 @@ internal object StatisticsAggregator {
                     sudoku = sudokuStatistics(results),
                     nonogram = sudokuStatistics(results, PuzzleType.NONOGRAM),
                     game2048 = game2048Statistics(results),
+                    blockSudoku = game2048Statistics(results, PuzzleType.BLOCK_SUDOKU),
                     dailyMonth = dailyMonth,
                     levelStars = bestLevelStars(solvedResults),
                 ),
@@ -194,8 +197,11 @@ internal object StatisticsAggregator {
         )
     }
 
-    private fun game2048Statistics(results: List<GameResult>): Game2048Statistics {
-        val gameResults = results.filter { it.puzzleType == PuzzleType.GAME_2048 }
+    private fun game2048Statistics(
+        results: List<GameResult>,
+        puzzleType: PuzzleType = PuzzleType.GAME_2048,
+    ): Game2048Statistics {
+        val gameResults = results.filter { it.puzzleType == puzzleType }
         val solvedResults = gameResults.filter { it.outcome == GameOutcome.SOLVED }
         return Game2048Statistics(
             played = gameResults.size,

@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.ui.components.catalogTitleResource
 import com.stanisryz.logica.ui.tutorial.BalanceTutorial
+import com.stanisryz.logica.ui.tutorial.BlockSudokuTutorial
 import com.stanisryz.logica.ui.tutorial.CrownsTutorial
 import com.stanisryz.logica.ui.tutorial.Game2048Tutorial
 import com.stanisryz.logica.ui.tutorial.NonogramTutorial
@@ -99,6 +100,7 @@ internal fun WebTutorialScreen(
             PuzzleType.GAME_2048 ->
                 Game2048Tutorial(onDone = onClose, modifier = modifier, hardwareKeys = LocalWebKeyboard.current?.keys)
             PuzzleType.NONOGRAM -> NonogramTutorial(onDone = onClose, modifier = modifier)
+            PuzzleType.BLOCK_SUDOKU -> BlockSudokuTutorial(onDone = onClose, modifier = modifier)
             else -> Unit
         }
     }

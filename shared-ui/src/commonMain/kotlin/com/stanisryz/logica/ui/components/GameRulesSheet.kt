@@ -31,6 +31,9 @@ import com.stanisryz.logica.shared.ui.generated.resources.rules_2048_3
 import com.stanisryz.logica.shared.ui.generated.resources.rules_balance_1
 import com.stanisryz.logica.shared.ui.generated.resources.rules_balance_2
 import com.stanisryz.logica.shared.ui.generated.resources.rules_balance_3
+import com.stanisryz.logica.shared.ui.generated.resources.rules_block_sudoku_1
+import com.stanisryz.logica.shared.ui.generated.resources.rules_block_sudoku_2
+import com.stanisryz.logica.shared.ui.generated.resources.rules_block_sudoku_3
 import com.stanisryz.logica.shared.ui.generated.resources.rules_crowns_1
 import com.stanisryz.logica.shared.ui.generated.resources.rules_crowns_2
 import com.stanisryz.logica.shared.ui.generated.resources.rules_crowns_3
@@ -113,6 +116,7 @@ private fun PuzzleType.ruleResources(): List<StringResource> =
         PuzzleType.GAME_2048 -> listOf(Res.string.rules_2048_1, Res.string.rules_2048_2, Res.string.rules_2048_3)
         PuzzleType.NONOGRAM ->
             listOf(Res.string.rules_nonogram_1, Res.string.rules_nonogram_2, Res.string.rules_nonogram_3, Res.string.rules_mistakes)
+        PuzzleType.BLOCK_SUDOKU -> listOf(Res.string.rules_block_sudoku_1, Res.string.rules_block_sudoku_2, Res.string.rules_block_sudoku_3)
         else -> emptyList()
     }
 

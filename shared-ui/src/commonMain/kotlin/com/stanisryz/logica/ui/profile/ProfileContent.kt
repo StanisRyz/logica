@@ -521,6 +521,13 @@ private fun profileGames(statistics: ProfileStatistics): List<ProfileGame> {
             statistics.nonogram.solvedByDifficulty,
             stars = stars.forGame(PuzzleType.NONOGRAM),
         ),
+        ProfileGame(
+            PuzzleType.BLOCK_SUDOKU,
+            statistics.blockSudoku.solved,
+            statistics.blockSudoku.played,
+            statistics.blockSudoku.failed,
+            statistics.blockSudoku.solvedByDifficulty,
+        ),
     )
 }
 
@@ -818,6 +825,7 @@ private fun PuzzleType.profileAccentColor(): Color =
         PuzzleType.BALANCE, PuzzleType.SUDOKU -> MaterialTheme.colorScheme.primary
         PuzzleType.CROWNS, PuzzleType.GAME_2048 -> MaterialTheme.colorScheme.tertiary
         PuzzleType.WORD, PuzzleType.NONOGRAM -> MaterialTheme.colorScheme.secondary
+        PuzzleType.BLOCK_SUDOKU -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.primary
     }
 

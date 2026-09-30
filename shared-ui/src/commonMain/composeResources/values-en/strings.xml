@@ -421,4 +421,17 @@
     <string name="quest_solve_sudoku">Solve a Sudoku</string>
     <string name="quest_solve_2048">Clear a 2048 level</string>
     <string name="quest_solve_nonogram">Solve a Nonogram</string>
+    <string name="game_title_block_sudoku">Block Sudoku</string>
+    <string name="block_sudoku_score">Score</string>
+    <string name="block_sudoku_target">Target</string>
+    <string name="block_sudoku_board_description">9 by 9 board, %1$d cells filled</string>
+    <string name="rules_block_sudoku_1">Drag pieces from the tray onto the 9 by 9 board, or tap a piece and then a board cell.</string>
+    <string name="rules_block_sudoku_2">A full row, column, or 3 by 3 box clears and scores. Several at once score much more.</string>
+    <string name="rules_block_sudoku_3">Reach the target score to clear the level. If no piece in the tray fits anywhere, the level is lost.</string>
+    <string name="block_sudoku_tutorial_play_title">Complete a row</string>
+    <string name="block_sudoku_tutorial_play_body">Drag the piece from the tray below onto the board so the row becomes full.</string>
+    <string name="block_sudoku_tutorial_solved">Great! The full row cleared and scored.</string>
+    <string name="block_sudoku_tutorial_rules_title">Rows, columns, and boxes</string>
+    <string name="achievement_block_sudoku">Block master</string>
+    <string name="achievement_block_sudoku_body">Clear 25 Block Sudoku levels</string>
 </resources>

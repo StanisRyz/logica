@@ -30,6 +30,7 @@ object CatalogLevelPackFormat {
             PuzzleType.SUDOKU -> 4
             PuzzleType.GAME_2048 -> 5
             PuzzleType.NONOGRAM -> 6
+            PuzzleType.BLOCK_SUDOKU -> 7
             else -> error("$puzzleType has no Catalog level pack.")
         }
 

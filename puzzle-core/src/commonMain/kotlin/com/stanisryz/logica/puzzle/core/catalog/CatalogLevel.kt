@@ -72,6 +72,7 @@ object CatalogLevelPacks {
             PuzzleType.SUDOKU,
             PuzzleType.GAME_2048,
             PuzzleType.NONOGRAM,
+            PuzzleType.BLOCK_SUDOKU,
         )
 }
 

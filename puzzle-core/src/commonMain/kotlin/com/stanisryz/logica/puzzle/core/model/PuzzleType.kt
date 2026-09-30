@@ -10,4 +10,5 @@ enum class PuzzleType {
     WATER_JUGS,
     WORD,
     NONOGRAM,
+    BLOCK_SUDOKU,
 }

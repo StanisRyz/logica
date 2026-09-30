@@ -206,6 +206,13 @@ fun main() {
             storeCoordinator,
             dailyCoordinator,
         )
+    val blockSudokuController =
+        WebBlockSudokuController.create(
+            controller.puzzleDataLoader,
+            progressCoordinator,
+            statisticsCoordinator,
+            economyCoordinator,
+        )
     val balanceController =
         WebBalanceController.create(
             controller.puzzleDataLoader,
@@ -259,6 +266,7 @@ fun main() {
             sudokuController,
             game2048Controller,
             nonogramController,
+            blockSudokuController,
             lifecycle,
             playerSession,
             dailyCoordinator,

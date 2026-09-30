@@ -33,6 +33,7 @@ internal fun PuzzleType.titleResource(): Int =
         PuzzleType.SUDOKU -> R.string.sudoku
         PuzzleType.GAME_2048 -> R.string.game_2048_title
         PuzzleType.NONOGRAM -> R.string.nonogram
+        PuzzleType.BLOCK_SUDOKU -> R.string.block_sudoku
         else -> error("$this has no user-facing title yet.")
     }
 
@@ -80,6 +81,7 @@ internal fun PuzzleArtwork(
                     PuzzleType.SUDOKU -> Icons.Rounded.Extension
                     PuzzleType.GAME_2048 -> Icons.Rounded.Grid4x4
                     PuzzleType.NONOGRAM -> Icons.Rounded.Brush
+                    PuzzleType.BLOCK_SUDOKU -> Icons.Rounded.Grid4x4
                     else -> Icons.Rounded.Extension
                 }
             Icon(icon, contentDescription = null, tint = accent, modifier = iconModifier)

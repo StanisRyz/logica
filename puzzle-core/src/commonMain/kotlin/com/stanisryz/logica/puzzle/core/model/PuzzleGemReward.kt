@@ -1,7 +1,7 @@
 package com.stanisryz.logica.puzzle.core.model
 
 /**
- * Gems one solved attempt earns, the one rule both hosts pay: 2048 and Sudoku pay 1 on Hard and 2
+ * Gems one solved attempt earns, the one rule both hosts pay: 2048, Block Sudoku, and Sudoku pay 1 on Hard and 2
  * on Expert, Crowns pays 1 on Expert, and every other game or difficulty pays nothing — solving it
  * is its own reward. The same table applies in the Catalog and the Daily.
  */
@@ -11,7 +11,7 @@ object PuzzleGemReward {
         difficulty: Difficulty,
     ): Int =
         when (puzzleType) {
-            PuzzleType.GAME_2048, PuzzleType.SUDOKU ->
+            PuzzleType.GAME_2048, PuzzleType.SUDOKU, PuzzleType.BLOCK_SUDOKU ->
                 when (difficulty) {
                     Difficulty.HARD -> 1
                     Difficulty.EXPERT -> 2

@@ -1,6 +1,8 @@
 package com.stanisryz.logica.puzzle.core.catalog.quality
 
 import com.stanisryz.logica.puzzle.core.balance.BalanceGeneratorV1
+import com.stanisryz.logica.puzzle.core.blocksudoku.BlockSudokuEngine
+import com.stanisryz.logica.puzzle.core.blocksudoku.BlockSudokuRules
 import com.stanisryz.logica.puzzle.core.catalog.BinaryCatalogLevelPack
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
@@ -109,6 +111,7 @@ object CatalogLevelPackBuilder {
                 PuzzleType.SUDOKU -> sudokuBucket(puzzleDataDirectory, difficulty, slots)
                 PuzzleType.GAME_2048 -> game2048Bucket(difficulty, slots)
                 PuzzleType.NONOGRAM -> nonogramBucket(difficulty, slots)
+                PuzzleType.BLOCK_SUDOKU -> blockSudokuBucket(difficulty, slots)
                 else -> error("$puzzleType has no Catalog level pack.")
             }
         check(bucket.seeds.size == slots) { "Expected $slots accepted seeds, found ${bucket.seeds.size}." }
@@ -337,6 +340,23 @@ object CatalogLevelPackBuilder {
         return Bucket(seeds.toList(), GeneratorVersion(Game2048GeneratorVersion.V2.value))
     }
 
+    /**
+     * Block Sudoku, like 2048, needs no search: every seed deals a playable game. Its slots freeze the
+     * seed so a level's whole deal sequence is fixed forever under Block Sudoku Rules V1.
+     */
+    private fun blockSudokuBucket(
+        difficulty: Difficulty,
+        slots: Int,
+    ): Bucket {
+        val stream = PuzzleRandomV1(PuzzleSeed(BLOCK_SUDOKU_STREAM_SEED + CatalogLevelPackFormat.difficultyCode(difficulty) - 1L))
+        val seeds = LinkedHashSet<Long>(slots * 2)
+        while (seeds.size < slots) seeds += stream.nextLong()
+        check(BlockSudokuEngine(PuzzleSeed(seeds.first()), difficulty).start().tray.all { it != null }) {
+            "The frozen Block Sudoku opening has no full tray."
+        }
+        return Bucket(seeds.toList(), BlockSudokuRules.VERSION)
+    }
+
     /** Nonogram reuses Generator V1: only seeds whose picture line logic completes enter the pack. */
     private fun nonogramBucket(
         difficulty: Difficulty,
@@ -446,4 +466,5 @@ object CatalogLevelPackBuilder {
     /** Consecutive repeats that mean a bucket's distinct content space is effectively used up. */
     private const val DUPLICATE_TOLERANCE = 24
     private const val GAME_2048_STREAM_SEED = 0x32303438L
+    private const val BLOCK_SUDOKU_STREAM_SEED = 0x424c4f434bL
 }

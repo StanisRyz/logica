@@ -44,6 +44,7 @@ import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material.icons.rounded.ViewModule
+import androidx.compose.material.icons.rounded.ViewQuilt
 import androidx.compose.material.icons.rounded.WorkspacePremium
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -79,6 +80,8 @@ import com.stanisryz.logica.shared.ui.generated.resources.achievement_all_games
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_all_games_body
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_balance
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_balance_body
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_block_sudoku
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_block_sudoku_body
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_crowns
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_crowns_body
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_daily_1
@@ -186,6 +189,14 @@ enum class Achievement(
     NONOGRAM("nonogram_25", Icons.Rounded.Brush, Res.string.achievement_nonogram, Res.string.achievement_nonogram_body, 25, {
         it.nonogram.solved
     }),
+    BLOCK_SUDOKU(
+        "block_sudoku_25",
+        Icons.Rounded.ViewQuilt,
+        Res.string.achievement_block_sudoku,
+        Res.string.achievement_block_sudoku_body,
+        25,
+        { it.blockSudoku.solved },
+    ),
     WORD_FIRST_TRY(
         "word_first_try",
         Icons.Rounded.AutoAwesome,
@@ -238,7 +249,7 @@ enum class Achievement(
         get() =
             when (this) {
                 FIRST_SOLVE, WORD_FIRST_TRY, EXPERT_1, DAILY_1 -> 2
-                BALANCE, CROWNS, SUDOKU, WORD, GAME_2048, NONOGRAM, SOLVER_50 -> 5
+                BALANCE, CROWNS, SUDOKU, WORD, GAME_2048, NONOGRAM, BLOCK_SUDOKU, SOLVER_50 -> 5
                 ALL_GAMES, SOLVER_250, EXPERT_25, STARS_100, PERFECT_25, STREAK_7 -> 10
                 SOLVER_1000, STARS_500, DAILY_30, STREAK_30 -> 20
             }
@@ -262,6 +273,7 @@ private fun expertSolved(statistics: ProfileStatistics): Long =
         statistics.sudoku.solvedByDifficulty,
         statistics.game2048.solvedByDifficulty,
         statistics.nonogram.solvedByDifficulty,
+        statistics.blockSudoku.solvedByDifficulty,
     ).sumOf { it[Difficulty.EXPERT] }
 
 /** Ids of every achievement [statistics] has reached, for hosts that announce new ones. */

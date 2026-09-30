@@ -117,6 +117,8 @@ import com.stanisryz.logica.ui.rating.GameRating
 import com.stanisryz.logica.ui.screens.AchievementsRoute
 import com.stanisryz.logica.ui.screens.BalanceGameRoute
 import com.stanisryz.logica.ui.screens.BalanceTutorialRoute
+import com.stanisryz.logica.ui.screens.BlockSudokuRoute
+import com.stanisryz.logica.ui.screens.BlockSudokuTutorialRoute
 import com.stanisryz.logica.ui.screens.CrownsGameRoute
 import com.stanisryz.logica.ui.screens.CrownsTutorialRoute
 import com.stanisryz.logica.ui.screens.Game2048Route
@@ -669,6 +671,24 @@ internal fun LogicaNavigation(
                                     onDone = { backStack.removeLastOrNull() },
                                 )
                             }
+                            entry<AppDestination.BlockSudokuStart> {
+                                PuzzleStartScreen(
+                                    puzzleType = PuzzleType.BLOCK_SUDOKU,
+                                    rating = levelRating(catalogLevelRepository, PuzzleType.BLOCK_SUDOKU),
+                                    economy = economy,
+                                    tutorialPending = !settings.tutorialCompleted(PuzzleType.BLOCK_SUDOKU),
+                                    onTutorialOffered = { onTutorialSeen(PuzzleType.BLOCK_SUDOKU) },
+                                    onOpenTutorial = { backStack.add(AppDestination.BlockSudokuTutorial) },
+                                    onStart = { difficulty -> openLevel(PuzzleType.BLOCK_SUDOKU, difficulty) },
+                                    onRestoreLife = onRestoreLife,
+                                )
+                            }
+                            entry<AppDestination.BlockSudokuTutorial> {
+                                BlockSudokuTutorialRoute(
+                                    settingsRepository = settingsRepository,
+                                    onDone = { backStack.removeLastOrNull() },
+                                )
+                            }
                             entry<AppDestination.BalanceGame> { destination ->
                                 // A replayed level pays no gems; its result card says so.
                                 CompositionLocalProvider(LocalLevelReplay provides destination.launch.isReplay) {
@@ -776,6 +796,21 @@ internal fun LogicaNavigation(
                                     )
                                 }
                             }
+                            entry<AppDestination.BlockSudokuGame> { destination ->
+                                BlockSudokuRoute(
+                                    launch = destination.launch,
+                                    attemptFactory = attemptFactory,
+                                    completionRepository = gameCompletionRepository,
+                                    economyRepository = economyRepository,
+                                    exitGuard = exitGuard,
+                                    hapticsEnabled = settings.hapticsEnabled,
+                                    onBack = goBack,
+                                    onNextLevel = { openNextLevel(PuzzleType.BLOCK_SUDOKU, destination.launch) },
+                                    onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                                    onTerminalAction = onTerminalAction,
+                                    onRestoreLife = onRestoreLife,
+                                )
+                            }
                         },
                 )
             }
@@ -828,6 +863,7 @@ private fun PuzzleType.gameDestination(launch: GameAttemptLaunch): AppDestinatio
         PuzzleType.SUDOKU -> AppDestination.SudokuGame(launch)
         PuzzleType.GAME_2048 -> AppDestination.Game2048Game(launch)
         PuzzleType.NONOGRAM -> AppDestination.NonogramGame(launch)
+        PuzzleType.BLOCK_SUDOKU -> AppDestination.BlockSudokuGame(launch)
         else -> error("$this is not a Catalog game.")
     }
 
@@ -839,6 +875,7 @@ private fun PuzzleType.startDestination(): AppDestination =
         PuzzleType.SUDOKU -> AppDestination.SudokuStart
         PuzzleType.GAME_2048 -> AppDestination.Game2048Start
         PuzzleType.NONOGRAM -> AppDestination.NonogramStart
+        PuzzleType.BLOCK_SUDOKU -> AppDestination.BlockSudokuStart
         else -> error("$this is not a Catalog game.")
     }
 
@@ -1015,6 +1052,8 @@ private fun destinationTitle(
             AppDestination.Game2048Tutorial -> R.string.game_2048_tutorial_title
             AppDestination.NonogramStart, is AppDestination.NonogramGame -> R.string.nonogram
             AppDestination.NonogramTutorial -> R.string.nonogram_tutorial_title
+            AppDestination.BlockSudokuStart, is AppDestination.BlockSudokuGame -> R.string.block_sudoku
+            AppDestination.BlockSudokuTutorial -> R.string.block_sudoku_tutorial_title
         },
     )
 

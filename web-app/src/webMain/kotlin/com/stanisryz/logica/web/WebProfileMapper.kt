@@ -55,6 +55,15 @@ internal fun WebStatisticsAggregate.toProfileStatistics(): ProfileStatistics {
                     solvedByDifficulty = solvedDifficultyCounts(PuzzleType.NONOGRAM),
                 )
             },
+        blockSudoku =
+            totals(PuzzleType.BLOCK_SUDOKU).let { blocks ->
+                Game2048ProfileStatistics(
+                    played = blocks.played,
+                    solved = blocks.solved,
+                    failed = blocks.failed,
+                    solvedByDifficulty = solvedDifficultyCounts(PuzzleType.BLOCK_SUDOKU),
+                )
+            },
     )
 }
 

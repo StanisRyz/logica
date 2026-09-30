@@ -56,6 +56,7 @@ class SettingsViewModel(
                 PuzzleType.SUDOKU -> repository.setSudokuTutorialCompleted(true)
                 PuzzleType.GAME_2048 -> repository.setGame2048TutorialCompleted(true)
                 PuzzleType.NONOGRAM -> repository.setNonogramTutorialCompleted(true)
+                PuzzleType.BLOCK_SUDOKU -> repository.setBlockSudokuTutorialCompleted(true)
                 else -> Unit
             }
         }

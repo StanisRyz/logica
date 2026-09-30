@@ -421,4 +421,17 @@
     <string name="quest_solve_sudoku">Bir Sudoku çöz</string>
     <string name="quest_solve_2048">Bir 2048 seviyesini geç</string>
     <string name="quest_solve_nonogram">Bir Nonogram çöz</string>
+    <string name="game_title_block_sudoku">Blok Sudoku</string>
+    <string name="block_sudoku_score">Puan</string>
+    <string name="block_sudoku_target">Hedef</string>
+    <string name="block_sudoku_board_description">9x9 tahta, dolu hücre: %1$d</string>
+    <string name="rules_block_sudoku_1">Parçaları tepsiden 9x9 tahtaya sürükleyin ya da bir parçaya, ardından tahtadaki bir hücreye dokunun.</string>
+    <string name="rules_block_sudoku_2">Dolan satır, sütun veya 3x3 kare silinir ve puan kazandırır. Aynı anda birkaçı çok daha fazla kazandırır.</string>
+    <string name="rules_block_sudoku_3">Seviyeyi geçmek için hedef puana ulaşın. Tepsideki hiçbir parça bir yere sığmazsa seviye kaybedilir.</string>
+    <string name="block_sudoku_tutorial_play_title">Bir satırı tamamlayın</string>
+    <string name="block_sudoku_tutorial_play_body">Aşağıdaki tepsiden parçayı tahtaya sürükleyerek satırı tamamen doldurun.</string>
+    <string name="block_sudoku_tutorial_solved">Harika! Dolan satır silindi ve puan kazandırdı.</string>
+    <string name="block_sudoku_tutorial_rules_title">Satırlar, sütunlar ve kareler</string>
+    <string name="achievement_block_sudoku">Blok ustası</string>
+    <string name="achievement_block_sudoku_body">25 Blok Sudoku seviyesini geçin</string>
 </resources>

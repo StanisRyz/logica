@@ -162,6 +162,7 @@ internal class WebLeaderboardController(
                 PuzzleType.WORD -> "rating_word"
                 PuzzleType.SUDOKU -> "rating_sudoku"
                 PuzzleType.NONOGRAM -> "rating_nonogram"
+                PuzzleType.BLOCK_SUDOKU -> "rating_block_sudoku"
                 PuzzleType.GAME_2048 -> "best_2048"
                 else -> error("$puzzleType has no rating leaderboard.")
             }

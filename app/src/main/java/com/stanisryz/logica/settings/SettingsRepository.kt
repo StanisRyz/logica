@@ -27,6 +27,8 @@ interface SettingsRepository {
 
     suspend fun setNonogramTutorialCompleted(completed: Boolean)
 
+    suspend fun setBlockSudokuTutorialCompleted(completed: Boolean)
+
     suspend fun setLastPlayed(
         puzzleType: PuzzleType,
         difficulty: Difficulty,

@@ -13,6 +13,7 @@ data class UserSettings(
     val sudokuTutorialCompleted: Boolean = false,
     val game2048TutorialCompleted: Boolean = false,
     val nonogramTutorialCompleted: Boolean = false,
+    val blockSudokuTutorialCompleted: Boolean = false,
     /** The last Catalog game and difficulty the player started, for the hub's Continue card. */
     val lastPlayedPuzzle: PuzzleType? = null,
     val lastPlayedDifficulty: Difficulty? = null,
@@ -29,6 +30,7 @@ fun UserSettings.tutorialCompleted(puzzleType: PuzzleType): Boolean =
         PuzzleType.SUDOKU -> sudokuTutorialCompleted
         PuzzleType.GAME_2048 -> game2048TutorialCompleted
         PuzzleType.NONOGRAM -> nonogramTutorialCompleted
+        PuzzleType.BLOCK_SUDOKU -> blockSudokuTutorialCompleted
         // Games without a shipped tutorial have nothing to offer.
         else -> true
     }

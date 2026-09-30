@@ -28,6 +28,7 @@ internal fun GameStatistics.toProfileStatistics(): ProfileStatistics {
     val sudokuProfile = sudoku.toProfileStatistics()
     val game2048Profile = game2048.toProfileStatistics()
     val nonogramProfile = nonogram.toProfileStatistics()
+    val blockSudokuProfile = blockSudoku.toProfileStatistics()
     return ProfileStatistics(
         totalSolved = totalCompletedResults.toLong(),
         totalHintsUsed = totalHintsUsed.toLong(),
@@ -36,13 +37,15 @@ internal fun GameStatistics.toProfileStatistics(): ProfileStatistics {
                 wordProfile.failed +
                 sudokuProfile.failed +
                 game2048Profile.failed +
-                nonogramProfile.failed,
+                nonogramProfile.failed +
+                blockSudokuProfile.failed,
         balance = requireNotNull(byPuzzleType[PuzzleType.BALANCE]).toProfileStatistics(),
         crowns = requireNotNull(byPuzzleType[PuzzleType.CROWNS]).toProfileStatistics(),
         sudoku = sudokuProfile,
         game2048 = game2048Profile,
         word = wordProfile,
         nonogram = nonogramProfile,
+        blockSudoku = blockSudokuProfile,
         dailyMetrics =
             DailyProfileMetrics(
                 completedCount = completedDailyCount.toLong(),

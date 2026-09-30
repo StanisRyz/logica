@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.platform.PlatformLifecycleState
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
+import com.stanisryz.logica.puzzle.core.blocksudoku.BlockSudokuStatus
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGameStatus
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
@@ -67,6 +68,7 @@ import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameStatus
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
 import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.block_sudoku_score
 import com.stanisryz.logica.shared.ui.generated.resources.daily_marker
 import com.stanisryz.logica.shared.ui.generated.resources.daily_start_error
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_easy
@@ -79,6 +81,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.primary_profile
 import com.stanisryz.logica.shared.ui.generated.resources.primary_store
 import com.stanisryz.logica.shared.ui.generated.resources.profile_achievements
 import com.stanisryz.logica.ui.balance.BalanceGameContent
+import com.stanisryz.logica.ui.blocksudoku.BlockSudokuContent
 import com.stanisryz.logica.ui.components.ContinueGameCard
 import com.stanisryz.logica.ui.components.DailyRewardsCard
 import com.stanisryz.logica.ui.components.DifficultySelector
@@ -157,6 +160,8 @@ private sealed interface WebRoute {
     data object Game2048 : WebRoute
 
     data object Nonogram : WebRoute
+
+    data object BlockSudoku : WebRoute
 }
 
 private fun routeHasActivePuzzle(
@@ -167,6 +172,7 @@ private fun routeHasActivePuzzle(
     sudokuState: WebSudokuState,
     game2048State: Web2048State,
     nonogramState: WebNonogramState,
+    blockSudokuState: WebBlockSudokuState,
 ): Boolean =
     when (route) {
         WebRoute.GameHub, WebRoute.Profile, WebRoute.Store -> false
@@ -188,6 +194,9 @@ private fun routeHasActivePuzzle(
         WebRoute.Nonogram ->
             nonogramState is WebNonogramState.Playing &&
                 nonogramState.game.status == NonogramGameStatus.IN_PROGRESS
+        WebRoute.BlockSudoku ->
+            blockSudokuState is WebBlockSudokuState.Playing &&
+                blockSudokuState.game.status == BlockSudokuStatus.IN_PROGRESS
     }
 
 /**
@@ -213,6 +222,7 @@ internal fun WebApp(
     sudokuController: WebSudokuController,
     game2048Controller: Web2048Controller,
     nonogramController: WebNonogramController,
+    blockSudokuController: WebBlockSudokuController,
     lifecycle: WebHostLifecycle,
     playerSession: WebPlayerSessionController,
     dailyCoordinator: WebDailyGameplayCoordinator,
@@ -249,6 +259,7 @@ internal fun WebApp(
                 sudokuController,
                 game2048Controller,
                 nonogramController,
+                blockSudokuController,
                 playerSession,
             ) {
                 onDispose {
@@ -259,6 +270,7 @@ internal fun WebApp(
                     sudokuController.dispose()
                     game2048Controller.dispose()
                     nonogramController.dispose()
+                    blockSudokuController.dispose()
                     playerSession.dispose()
                 }
             }
@@ -277,6 +289,7 @@ internal fun WebApp(
                             sudokuController = sudokuController,
                             game2048Controller = game2048Controller,
                             nonogramController = nonogramController,
+                            blockSudokuController = blockSudokuController,
                             playerSession = playerSession,
                             dailyCoordinator = dailyCoordinator,
                             storeProcessor = storeProcessor,
@@ -368,6 +381,7 @@ private fun ReadyContent(
     sudokuController: WebSudokuController,
     game2048Controller: Web2048Controller,
     nonogramController: WebNonogramController,
+    blockSudokuController: WebBlockSudokuController,
     playerSession: WebPlayerSessionController,
     dailyCoordinator: WebDailyGameplayCoordinator,
     storeProcessor: WebStoreProcessor,
@@ -400,13 +414,14 @@ private fun ReadyContent(
     val sudokuState = sudokuController.state
     val game2048State = game2048Controller.state
     val nonogramState = nonogramController.state
+    val blockSudokuState = blockSudokuController.state
     val accountChangeRevision = playerSession.accountChangeRevision
 
     // Fullscreen ads are part of the EFFECTIVE lifecycle: WebHostLifecycle owns the suppression
     // flag, so lifecycleState already reflects ad-driven inactivity for GameplayAPI and audio
     // consumers; closing an ad recomputes from real browser visibility/focus/Yandex state.
     val hasActivePuzzle =
-        routeHasActivePuzzle(route, balanceState, crownsState, wordState, sudokuState, game2048State, nonogramState)
+        routeHasActivePuzzle(route, balanceState, crownsState, wordState, sudokuState, game2048State, nonogramState, blockSudokuState)
     LaunchedEffect(route, hasActivePuzzle, storeSheetOpen, lifecycleState) {
         controller.setGameplayActive(
             hasActivePuzzle && !storeSheetOpen && lifecycleState == PlatformLifecycleState.ACTIVE,
@@ -449,6 +464,7 @@ private fun ReadyContent(
             sudokuController.showDifficultySelector()
             game2048Controller.showDifficultySelector()
             nonogramController.showDifficultySelector()
+            blockSudokuController.showDifficultySelector()
             storeSheetOpen = false
             tutorialFor = null
             route = WebRoute.GameHub
@@ -636,6 +652,10 @@ private fun ReadyContent(
                                         nonogramController.showDifficultySelector()
                                         WebRoute.Nonogram
                                     }
+                                    PuzzleType.BLOCK_SUDOKU -> {
+                                        blockSudokuController.showDifficultySelector()
+                                        WebRoute.BlockSudoku
+                                    }
                                     else -> error("$puzzleType has no Web game flow.")
                                 }
                         },
@@ -700,6 +720,8 @@ private fun ReadyContent(
                                                             WebRoute.Game2048.also { game2048Controller.selectDifficulty(difficulty) }
                                                         PuzzleType.NONOGRAM ->
                                                             WebRoute.Nonogram.also { nonogramController.selectDifficulty(difficulty) }
+                                                        PuzzleType.BLOCK_SUDOKU ->
+                                                            WebRoute.BlockSudoku.also { blockSudokuController.selectDifficulty(difficulty) }
                                                         else -> error("$puzzleType has no Web game flow.")
                                                     }
                                             }
@@ -873,6 +895,16 @@ private fun ReadyContent(
                     onSolvedNextLevel = runSolvedNextLevel,
                     onExitNonogram = {
                         nonogramController.showDifficultySelector()
+                        route = WebRoute.GameHub
+                    },
+                )
+            WebRoute.BlockSudoku ->
+                BlockSudokuFlow(
+                    state = blockSudokuState,
+                    controller = blockSudokuController,
+                    onSolvedNextLevel = runSolvedNextLevel,
+                    onExit = {
+                        blockSudokuController.showDifficultySelector()
                         route = WebRoute.GameHub
                     },
                 )
@@ -1350,6 +1382,77 @@ private fun NonogramFlow(
                     onBack = { transitionAd(controller::showDifficultySelector) },
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun BlockSudokuFlow(
+    state: WebBlockSudokuState,
+    controller: WebBlockSudokuController,
+    onSolvedNextLevel: (() -> Unit) -> Unit,
+    onExit: () -> Unit,
+) {
+    when (state) {
+        WebBlockSudokuState.DifficultySelection ->
+            DifficultyContent(
+                puzzleType = PuzzleType.BLOCK_SUDOKU,
+                onBack = onExit,
+                onStart = controller::selectDifficulty,
+            )
+        is WebBlockSudokuState.Loading ->
+            WebCatalogLoadingContent(
+                difficulty = state.difficulty,
+                levelNumber = state.levelNumber?.value,
+                onBack = controller::showDifficultySelector,
+                isDaily = false,
+            )
+        is WebBlockSudokuState.Error ->
+            WebCatalogLevelErrorContent(
+                levelNumber = state.levelNumber?.value,
+                detail = state.detail,
+                onRetry = controller::retryLoading,
+                onBack = controller::showDifficultySelector,
+                isDaily = false,
+            )
+        is WebBlockSudokuState.Playing -> {
+            val livesGuard = LocalWebLives.current.guard
+            val transitionAd = LocalWebTransitionAd.current
+            Column(Modifier.fillMaxSize()) {
+                WebGameplayHeader(
+                    puzzleType = PuzzleType.BLOCK_SUDOKU,
+                    isDaily = false,
+                    hasMeaningfulProgress = state.hasMeaningfulProgress,
+                    onExit = controller::showDifficultySelector,
+                )
+                BlockSudokuContent(
+                    state = state.game,
+                    difficulty = state.source.difficulty,
+                    levelNumber = state.source.catalogLevelNumberOrNull,
+                    gameplayEnabled = state.game.status == BlockSudokuStatus.IN_PROGRESS,
+                    onPlace = controller::place,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            WebCatalogSaveErrorBanner(
+                completion = controller.completionState,
+                onRetrySave = controller::retrySave,
+            )
+            val scoreDetail = "${stringResource(Res.string.block_sudoku_score)}: ${state.game.score}"
+            WebOrdinaryCatalogTerminalDialog(
+                puzzleType = PuzzleType.BLOCK_SUDOKU,
+                visible = state.game.status.isTerminal,
+                difficulty = state.source.difficulty,
+                levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
+                solved = state.game.status == BlockSudokuStatus.SOLVED,
+                solvedDetail = scoreDetail,
+                failedDetail = scoreDetail,
+                completion = controller.completionState,
+                onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },
+                onRetry = { livesGuard { transitionAd(controller::retry) } },
+                onRetrySave = controller::retrySave,
+                onBack = { transitionAd(controller::showDifficultySelector) },
+            )
         }
     }
 }

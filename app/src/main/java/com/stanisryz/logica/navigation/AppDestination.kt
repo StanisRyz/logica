@@ -65,6 +65,10 @@ internal sealed interface AppDestination {
 
     data object NonogramTutorial : AppDestination
 
+    data object BlockSudokuStart : AppDestination
+
+    data object BlockSudokuTutorial : AppDestination
+
     data class BalanceGame(
         val launch: GameAttemptLaunch,
     ) : AppDestination
@@ -88,6 +92,10 @@ internal sealed interface AppDestination {
     data class NonogramGame(
         val launch: GameAttemptLaunch,
     ) : AppDestination
+
+    data class BlockSudokuGame(
+        val launch: GameAttemptLaunch,
+    ) : AppDestination
 }
 
 /** The bottom navigation belongs to the primary tabs and to nothing else. */
@@ -109,12 +117,14 @@ internal fun AppDestination.showsWallet(): Boolean =
         AppDestination.SudokuStart,
         AppDestination.Game2048Start,
         AppDestination.NonogramStart,
+        AppDestination.BlockSudokuStart,
         is AppDestination.BalanceGame,
         is AppDestination.CrownsGame,
         is AppDestination.WordGame,
         is AppDestination.SudokuGame,
         is AppDestination.Game2048Game,
         is AppDestination.NonogramGame,
+        is AppDestination.BlockSudokuGame,
         -> true
         else -> false
     }
@@ -139,6 +149,7 @@ internal fun AppDestination.isGameplay(): Boolean =
         is AppDestination.SudokuGame,
         is AppDestination.Game2048Game,
         is AppDestination.NonogramGame,
+        is AppDestination.BlockSudokuGame,
         -> true
         else -> false
     }
@@ -152,6 +163,7 @@ internal fun AppDestination.gameplayPuzzleType(): PuzzleType? =
         is AppDestination.SudokuGame -> PuzzleType.SUDOKU
         is AppDestination.Game2048Game -> PuzzleType.GAME_2048
         is AppDestination.NonogramGame -> PuzzleType.NONOGRAM
+        is AppDestination.BlockSudokuGame -> PuzzleType.BLOCK_SUDOKU
         else -> null
     }
 
