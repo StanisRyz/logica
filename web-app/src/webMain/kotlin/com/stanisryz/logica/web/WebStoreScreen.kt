@@ -38,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -53,6 +54,8 @@ import com.stanisryz.logica.platform.PurchaseStatus
 import com.stanisryz.logica.platform.StoreItem
 import com.stanisryz.logica.platform.StoreRewardType
 import com.stanisryz.logica.ui.components.GemPriceButton
+import com.stanisryz.logica.ui.components.NoAdsRow
+import com.stanisryz.logica.ui.components.StarterPackCard
 import com.stanisryz.logica.ui.components.StoreBalanceCard
 import com.stanisryz.logica.ui.components.StoreItemRow
 import com.stanisryz.logica.ui.components.StoreSectionTitle
@@ -189,9 +192,28 @@ internal fun WebStoreScreen(
         // Real-money gem top-up (Yandex Payments): price/currency come from the Yandex catalog.
         if (paidCatalog is WebPaidCatalogState.Ready) {
             val entries = (paidCatalog as WebPaidCatalogState.Ready).entries
+            val ledger = playerSession.paymentsRepository?.let { key(it) { it.snapshot.collectAsState().value } }
+            // The starter pack is offered until the Player has bought it once.
+            entries.firstOrNull { it.product == WebPaidProduct.STARTER_PACK }?.let { entry ->
+                if (ledger != null && !ledger.owns(WebPaidProduct.STARTER_PACK)) {
+                    StarterPackCard(
+                        enabled = !purchaseState.isBusy,
+                        onBuy = { paymentsCoordinator.purchase(entry.product) },
+                        message = if (purchasingProduct == entry.product) paidPurchaseMessage(purchaseState) else null,
+                    ) { PaidPriceLabel(entry.details) }
+                }
+            }
             StoreSectionTitle(stringResource(WebRes.string.web_store_section_gems))
-            entries.forEach { entry ->
+            entries.filter { it.product in WebPaidProduct.GEM_PACKS }.forEach { entry ->
                 PaidGemTopUpCard(entry, purchaseState, rowReportsState = purchasingProduct == entry.product, paymentsCoordinator)
+            }
+            entries.firstOrNull { it.product == WebPaidProduct.NO_ADS }?.let { entry ->
+                NoAdsRow(
+                    owned = ledger?.owns(WebPaidProduct.NO_ADS) == true,
+                    enabled = ledger != null && !purchaseState.isBusy,
+                    onBuy = { paymentsCoordinator.purchase(entry.product) },
+                    message = if (purchasingProduct == entry.product) paidPurchaseMessage(purchaseState) else null,
+                ) { PaidPriceLabel(entry.details) }
             }
         }
 

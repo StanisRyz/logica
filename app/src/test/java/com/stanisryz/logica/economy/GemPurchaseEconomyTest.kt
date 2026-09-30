@@ -12,6 +12,24 @@ import org.junit.Test
  */
 class GemPurchaseEconomyTest {
     @Test
+    fun theStarterPackGrantsGemsHintsAndEveryLifeAndNoAdsIsAPermanentRow() =
+        runBlocking {
+            val dao = FakeEconomyDao(PlayerEconomy(gems = 7, lives = 2, hints = 1, nextLifeAtEpochMillis = NOW + INTERVAL))
+
+            val granted = dao.grantPurchasedGems("rustore:SP", "starter_pack", NOW) as EconomyGemPurchase.Granted
+            assertEquals(GemPack.STARTER_PACK, granted.pack)
+            assertEquals(7 + GemPack.STARTER_PACK.gems, granted.economy.gems)
+            assertEquals(1 + GemPack.STARTER_PACK.hints, granted.economy.hints)
+            assertEquals(EconomyRules.MAX_LIVES, granted.economy.lives)
+            assertEquals(null, granted.economy.nextLifeAtEpochMillis)
+            assertEquals(EconomyEventType.STARTER_PACK_PURCHASE.name, dao.events.getValue("rustore:SP").eventType)
+
+            assertTrue(dao.grantNoAds("rustore:NA", NOW))
+            assertTrue(!dao.grantNoAds("rustore:NA", NOW))
+            assertEquals(7 + GemPack.STARTER_PACK.gems, dao.wallet(NOW).gems)
+        }
+
+    @Test
     fun oneConfirmedPurchaseGrantsItsPackOnceAndAnUnknownProductGrantsNothing() =
         runBlocking {
             val dao = FakeEconomyDao(PlayerEconomy(gems = 7, lives = 3, nextLifeAtEpochMillis = NOW + INTERVAL))

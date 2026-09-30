@@ -1,5 +1,6 @@
 package com.stanisryz.logica.web
 
+import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.platform.PaymentProductSnapshot
 import com.stanisryz.logica.platform.PaymentPurchaseSnapshot
 import com.stanisryz.logica.platform.PaymentResult
@@ -9,15 +10,33 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/** The application-owned paid products, the same packs as on Android; the reward never depends on Yandex data. */
+/**
+ * The application-owned paid products, the same as on Android; the reward never depends on Yandex
+ * data. The starter pack also restocks hints and refills lives and is offered until bought once;
+ * «no ads» is [permanent]: never consumed, so every bind sees it again in `getPurchases()`.
+ */
 internal enum class WebPaidProduct(
     val yandexProductId: String,
     val gemReward: Int,
+    val hintReward: Int = 0,
+    val refillsLives: Boolean = false,
+    val permanent: Boolean = false,
 ) {
     GEMS_50("gems_50", 50),
     GEMS_150("gems_150", 150),
     GEMS_500("gems_500", 500),
+    STARTER_PACK("starter_pack", 100, hintReward = 5, refillsLives = true),
+    NO_ADS("no_ads", 0, permanent = true),
+    ;
+
+    companion object {
+        /** The ordinary gem packs, in the Store's order. */
+        val GEM_PACKS: List<WebPaidProduct> = listOf(GEMS_50, GEMS_150, GEMS_500)
+    }
 }
+
+/** The Store codec keeps each inventory count in one byte. */
+private const val MAX_INVENTORY_COUNT = 0xff
 
 internal fun paidProductFor(yandexProductId: String): WebPaidProduct? =
     WebPaidProduct.entries.firstOrNull { it.yandexProductId == yandexProductId }
@@ -39,6 +58,9 @@ internal data class WebPaymentsSnapshot(
     }
 
     fun isFulfilled(purchaseToken: String): Boolean = fulfilledTokens.containsKey(purchaseToken)
+
+    /** Whether any fulfilled purchase was [product]: the starter pack's once-only offer, «no ads». */
+    fun owns(product: WebPaidProduct): Boolean = fulfilledTokens.containsValue(product.yandexProductId)
 
     companion object {
         const val CURRENT_VERSION = 1
@@ -241,16 +263,18 @@ internal data class WebPendingPaymentFulfillment(
     val productId: String,
     val targetEconomy: WebEconomySnapshot,
     val targetPayments: WebPaymentsSnapshot,
+    /** The Store inventory after the purchase, for a product that restocks hints; else null. */
+    val targetStore: WebStoreSnapshot? = null,
 ) {
     init {
-        require(version == CURRENT_VERSION) { "Unsupported Web payment fulfillment $version." }
+        require(version in 1..CURRENT_VERSION) { "Unsupported Web payment fulfillment $version." }
         require(id.isNotEmpty()) { "A payment fulfillment needs a stable id." }
         require(purchaseToken.isNotBlank()) { "A payment fulfillment needs its purchase token." }
         require(productId.isNotBlank()) { "A payment fulfillment needs its product id." }
     }
 
     companion object {
-        const val CURRENT_VERSION = 1
+        const val CURRENT_VERSION = 2
     }
 }
 
@@ -302,11 +326,13 @@ internal object WebPendingPaymentFulfillmentCodec {
         require(productBytes.size in 1..MAX_ID_LENGTH)
         val economyPayload = WebEconomyCodec.encode(fulfillment.targetEconomy)
         val paymentsPayload = WebPaymentsCodec.encode(fulfillment.targetPayments)
+        // Version 2 always carries a Store child; an empty one means the purchase leaves the Store alone.
+        val storePayload = fulfillment.targetStore?.let(WebStoreCodec::encode) ?: ByteArray(0)
 
         var cursor = 4 + 1 + 1 + idBytes.size + 2 + tokenBytes.size + 1 + productBytes.size
-        val result = ByteArray(cursor + 4 + economyPayload.size + 4 + paymentsPayload.size)
+        val result = ByteArray(cursor + 4 + economyPayload.size + 4 + paymentsPayload.size + 4 + storePayload.size)
         magic.copyInto(result)
-        result[4] = fulfillment.version.toByte()
+        result[4] = WebPendingPaymentFulfillment.CURRENT_VERSION.toByte()
         result[5] = idBytes.size.toByte()
         idBytes.copyInto(result, 6)
         cursor = 6 + idBytes.size
@@ -321,6 +347,9 @@ internal object WebPendingPaymentFulfillmentCodec {
         cursor += 4 + economyPayload.size
         writeInt(result, cursor, paymentsPayload.size)
         paymentsPayload.copyInto(result, cursor + 4)
+        cursor += 4 + paymentsPayload.size
+        writeInt(result, cursor, storePayload.size)
+        storePayload.copyInto(result, cursor + 4)
         return result
     }
 
@@ -329,7 +358,7 @@ internal object WebPendingPaymentFulfillmentCodec {
             require(payload.size >= 8)
             require(magic.indices.all { payload[it] == magic[it] })
             val version = payload[4].toInt() and 0xff
-            require(version == WebPendingPaymentFulfillment.CURRENT_VERSION)
+            require(version in 1..WebPendingPaymentFulfillment.CURRENT_VERSION)
             val idLength = payload[5].toInt() and 0xff
             require(idLength in 1..MAX_ID_LENGTH && 6 + idLength <= payload.size)
             val id = payload.copyOfRange(6, 6 + idLength).decodeToString()
@@ -367,6 +396,14 @@ internal object WebPendingPaymentFulfillmentCodec {
                 targetPayments =
                     WebPaymentsCodec.decode(readChild())
                         ?: throw IllegalArgumentException("Corrupt payment fulfillment payments target."),
+                targetStore =
+                    if (version >= 2) {
+                        readChild().takeIf { it.isNotEmpty() }?.let {
+                            WebStoreCodec.decode(it) ?: throw IllegalArgumentException("Corrupt payment fulfillment store target.")
+                        }
+                    } else {
+                        null
+                    },
             )
         }.getOrNull()
 
@@ -497,6 +534,7 @@ internal data class WebPaidCatalogEntry(
 internal class WebPaymentsCoordinator(
     private val provider: WebPaymentsProvider,
     private val economyRepository: () -> WebPlayerEconomyRepository?,
+    private val storeRepository: () -> WebPlayerStoreRepository?,
     private val paymentsRepository: () -> WebPlayerPaymentsRepository?,
     private val journalStore: () -> WebPaymentsJournalStore?,
     private val revisions: () -> WebPlayerStateRevisions?,
@@ -600,8 +638,13 @@ internal class WebPaymentsCoordinator(
         if (localOutcome == WebPaymentOutcome.UnknownProduct || localOutcome == WebPaymentOutcome.PersistenceFailed) {
             return localOutcome // nothing to flush; journal/reconciliation owns recovery
         }
+        // A permanent product is never consumed: it stays in getPurchases() as the proof it is owned,
+        // so a purchase the ledger already knows needs no flush either.
+        val permanent = paidProductFor(purchase.productId)?.permanent == true
+        if (permanent && localOutcome == WebPaymentOutcome.AlreadyFulfilled) return localOutcome
         val flushed = unifiedSaveAccess()?.flushNow() == true
         if (!flushed) return WebPaymentOutcome.PendingRetry // keep reward + ledger, do NOT consume
+        if (permanent) return localOutcome
         if (provider.consume(purchase.purchaseToken)) return localOutcome
         return WebPaymentOutcome.PendingRetry // retried when getPurchases returns this token again
     }
@@ -619,10 +662,22 @@ internal class WebPaymentsCoordinator(
         // Primary duplicate-payment defense: a fulfilled token never pays again.
         if (payments.isFulfilled(purchase.purchaseToken)) return WebPaymentOutcome.AlreadyFulfilled
 
+        val store = if (product.hintReward > 0) storeRepository() ?: return WebPaymentOutcome.PersistenceFailed else null
         val revision = revisions().next()
         val currentEconomy = economy.currentSnapshot
         val targetEconomy =
-            currentEconomy.copy(gems = currentEconomy.gems + product.gemReward, revision = revision)
+            currentEconomy.copy(
+                gems = currentEconomy.gems + product.gemReward,
+                lives = if (product.refillsLives) EconomyPolicy.MAXIMUM_LIVES else currentEconomy.lives,
+                nextLifeRestoreAtEpochMs = if (product.refillsLives) null else currentEconomy.nextLifeRestoreAtEpochMs,
+                revision = revision,
+            )
+        val previousStore = store?.snapshot?.value
+        val targetStore =
+            previousStore?.let { current ->
+                val hints = ((current.inventory[STORE_INVENTORY_HINTS] ?: 0) + product.hintReward).coerceAtMost(MAX_INVENTORY_COUNT)
+                current.copy(inventory = current.inventory + (STORE_INVENTORY_HINTS to hints), revision = revision)
+            }
         val currentPayments = payments.snapshot.value
         val targetPayments =
             currentPayments.copy(
@@ -638,20 +693,28 @@ internal class WebPaymentsCoordinator(
                 productId = purchase.productId,
                 targetEconomy = targetEconomy,
                 targetPayments = targetPayments,
+                targetStore = targetStore,
             )
         if (runCatching { journal.save(fulfillment) }.isFailure) return WebPaymentOutcome.PersistenceFailed
 
-        // Atomic application-level pair: Economy first, Payments second; a failed second side
-        // rolls Economy back so only whole consistent pairs are ever observable/published.
+        // Atomic application-level group: Economy (with the Store as one pair when hints are part of
+        // the product) first, Payments second; a failed second side rolls the first back so only
+        // whole consistent states are ever observable/published.
         val previousEconomy = economy.currentSnapshot
-        when (economy.applyExternal(targetEconomy)) {
-            WebExternalRestoreResult.Applied, WebExternalRestoreResult.NoChange -> Unit
-            else -> return WebPaymentOutcome.PersistenceFailed // journal stays pending
-        }
+        val firstApplied =
+            if (store != null && targetStore != null) {
+                WebEconomyStorePairApply.apply(economy, store, targetEconomy, targetStore)
+            } else {
+                economy.applyExternal(targetEconomy).let {
+                    it == WebExternalRestoreResult.Applied || it == WebExternalRestoreResult.NoChange
+                }
+            }
+        if (!firstApplied) return WebPaymentOutcome.PersistenceFailed // journal stays pending
         when (payments.applyExternal(targetPayments)) {
             WebExternalRestoreResult.Applied, WebExternalRestoreResult.NoChange -> Unit
             else -> {
-                economy.applyExternal(previousEconomy) // keep the previous durable pair
+                economy.applyExternal(previousEconomy) // keep the previous durable state
+                if (store != null && previousStore != null) store.applyExternal(previousStore)
                 return WebPaymentOutcome.PersistenceFailed // journal stays pending
             }
         }
@@ -681,13 +744,20 @@ internal class WebPaymentsCoordinator(
         val pending = runCatching { journal.load() }.getOrNull() ?: return false
         val economy = economyRepository() ?: return false
         val payments = paymentsRepository() ?: return false
-        val economyApplied = economy.applyExternal(pending.targetEconomy)
-        if (economyApplied != WebExternalRestoreResult.Applied && economyApplied != WebExternalRestoreResult.NoChange) {
-            return false // journal stays pending; retried on the next bind
-        }
+        val targetStore = pending.targetStore
+        val firstApplied =
+            if (targetStore != null) {
+                val store = storeRepository() ?: return false
+                WebEconomyStorePairApply.apply(economy, store, pending.targetEconomy, targetStore)
+            } else {
+                economy.applyExternal(pending.targetEconomy).let {
+                    it == WebExternalRestoreResult.Applied || it == WebExternalRestoreResult.NoChange
+                }
+            }
+        if (!firstApplied) return false // journal stays pending; retried on the next bind
         val paymentsApplied = payments.applyExternal(pending.targetPayments)
         if (paymentsApplied != WebExternalRestoreResult.Applied && paymentsApplied != WebExternalRestoreResult.NoChange) {
-            return false // Economy target is idempotent; the next bind finishes Payments
+            return false // the first targets are idempotent; the next bind finishes Payments
         }
         runCatching { journal.clear() }
         return true

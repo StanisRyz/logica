@@ -409,4 +409,10 @@
     <string name="quest_different_games">%1$d farklı oyunda bulmaca çöz</string>
     <string name="achievements_rewards_waiting">Bekleyen ödül: %1$d</string>
     <string name="board_zoom_reset">Tüm tahtayı göster</string>
+    <string name="starter_pack_title">Başlangıç paketi</string>
+    <string name="starter_pack_subtitle">Tek seferlik teklif: normal paketlerden daha avantajlı</string>
+    <string name="starter_pack_lives_full">Tam</string>
+    <string name="no_ads_title">Reklamsız</string>
+    <string name="no_ads_subtitle">Seviyeler arası reklamları ve banner’ı kalıcı olarak kaldırır. Ödüllü reklamlar isteğe bağlı kalır</string>
+    <string name="no_ads_owned">Satın alındı: seviyeler arasında artık reklam yok</string>
 </resources>

@@ -5,11 +5,16 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.GemPack
+import com.stanisryz.logica.economy.OwnedPurchases
 import com.stanisryz.logica.platform.StoreGateway
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -27,6 +32,9 @@ internal sealed interface GemStoreState {
         val offers: List<GemPackOffer>,
         val purchasing: GemPack? = null,
         val outcome: GemPurchaseOutcome? = null,
+        val starterPack: GemPackOffer? = null,
+        val noAdsPriceLabel: String? = null,
+        val purchasingNoAds: Boolean = false,
     ) : GemStoreState
 
     /** The platform store is not usable here. The gem balance stays visible and retry is offered. */
@@ -47,9 +55,14 @@ internal sealed interface GemStoreState {
  */
 internal class GemStoreViewModel(
     private val purchases: GemPurchaseProcessor,
+    ownedPurchases: Flow<OwnedPurchases> = flowOf(OwnedPurchases()),
 ) : ViewModel() {
     private val _state = MutableStateFlow<GemStoreState>(GemStoreState.Loading)
     val state: StateFlow<GemStoreState> = _state.asStateFlow()
+
+    /** The starter pack is offered until bought; «no ads» shows as owned once it is. */
+    val owned: StateFlow<OwnedPurchases> =
+        ownedPurchases.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), OwnedPurchases())
 
     private var loadJob: Job? = null
     private var purchaseJob: Job? = null
@@ -66,10 +79,18 @@ internal class GemStoreViewModel(
             viewModelScope.launch {
                 runCatching { purchases.reconcile() }
                 _state.value =
-                    runCatching { purchases.offers() }
+                    runCatching { purchases.catalog() }
                         .fold(
-                            onSuccess = { offers ->
-                                if (offers.isEmpty()) GemStoreState.Unavailable else GemStoreState.Ready(offers)
+                            onSuccess = { catalog ->
+                                if (catalog.packs.isEmpty()) {
+                                    GemStoreState.Unavailable
+                                } else {
+                                    GemStoreState.Ready(
+                                        catalog.packs,
+                                        starterPack = catalog.starterPack,
+                                        noAdsPriceLabel = catalog.noAdsPriceLabel,
+                                    )
+                                }
                             },
                             onFailure = { GemStoreState.Unavailable },
                         )
@@ -82,13 +103,27 @@ internal class GemStoreViewModel(
      */
     fun buy(pack: GemPack) {
         val ready = _state.value as? GemStoreState.Ready ?: return
-        if (ready.purchasing != null || purchaseJob?.isActive == true) return
+        if (ready.purchasing != null || ready.purchasingNoAds || purchaseJob?.isActive == true) return
         _state.value = ready.copy(purchasing = pack, outcome = null)
         purchaseJob =
             viewModelScope.launch {
                 val outcome = runCatching { purchases.buy(pack) }.getOrDefault(GemPurchaseOutcome.Failed)
                 _state.update { current ->
                     if (current is GemStoreState.Ready) current.copy(purchasing = null, outcome = outcome) else current
+                }
+            }
+    }
+
+    /** Starts the one «no ads» payment; the same one-payment-at-a-time rule as the packs. */
+    fun buyNoAds() {
+        val ready = _state.value as? GemStoreState.Ready ?: return
+        if (ready.purchasing != null || ready.purchasingNoAds || purchaseJob?.isActive == true) return
+        _state.value = ready.copy(purchasingNoAds = true, outcome = null)
+        purchaseJob =
+            viewModelScope.launch {
+                val outcome = runCatching { purchases.buyNoAds() }.getOrDefault(GemPurchaseOutcome.Failed)
+                _state.update { current ->
+                    if (current is GemStoreState.Ready) current.copy(purchasingNoAds = false, outcome = outcome) else current
                 }
             }
     }
@@ -110,6 +145,6 @@ internal class GemStoreViewModelFactory(
         }
 
         @Suppress("UNCHECKED_CAST")
-        return GemStoreViewModel(GemPurchaseProcessor(gateway, products, economyRepository)) as T
+        return GemStoreViewModel(GemPurchaseProcessor(gateway, products, economyRepository), economyRepository.observeOwnedPurchases()) as T
     }
 }

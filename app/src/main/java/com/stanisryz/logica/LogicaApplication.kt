@@ -17,6 +17,7 @@ import com.stanisryz.logica.daily.RoomDailyChallengeRepository
 import com.stanisryz.logica.daily.RoomDailyResultRepository
 import com.stanisryz.logica.economy.DailyRewardsRepository
 import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.economy.OwnedPurchases
 import com.stanisryz.logica.economy.RoomEconomyRepository
 import com.stanisryz.logica.game2048.Game2048BestScore
 import com.stanisryz.logica.platform.android.AndroidPlatformComposition
@@ -30,6 +31,9 @@ import com.stanisryz.logica.statistics.StatisticsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 
 private val Context.userSettingsDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "user_settings",
@@ -124,6 +128,11 @@ internal class AppContainer(
 
     /** Application-lifetime work that must outlive the screen that started it. */
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /** Owned one-time and permanent purchases, kept current for the ad decisions outside any screen. */
+    val ownedPurchases: StateFlow<OwnedPurchases> by lazy {
+        economyRepository.observeOwnedPurchases().stateIn(applicationScope, SharingStarted.Eagerly, OwnedPurchases())
+    }
 
     val game2048BestScore: Game2048BestScore by lazy {
         Game2048BestScore(context.recordsDataStore, applicationScope)

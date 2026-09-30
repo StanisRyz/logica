@@ -1,6 +1,8 @@
 package com.stanisryz.logica.economy
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 /**
@@ -46,7 +48,19 @@ internal interface EconomyRepository {
         actionId: String,
         offer: HintOffer,
     ): EconomyHintPurchase
+
+    /** The one-time and permanent purchases the ledger holds. */
+    fun observeOwnedPurchases(): Flow<OwnedPurchases> = flowOf(OwnedPurchases())
+
+    /** Records the permanent «no ads» purchase for [transactionId]; false when it was already recorded. */
+    suspend fun grantNoAds(transactionId: String): Boolean = false
 }
+
+/** Purchases that change what the Store offers or whether ads show, derived from the ledger. */
+internal data class OwnedPurchases(
+    val starterPack: Boolean = false,
+    val noAds: Boolean = false,
+)
 
 internal class RoomEconomyRepository(
     private val dao: EconomyDao,
@@ -59,6 +73,14 @@ internal class RoomEconomyRepository(
         }
 
     override suspend fun refresh(): PlayerEconomy = dao.refresh(clock.nowEpochMillis())
+
+    override fun observeOwnedPurchases(): Flow<OwnedPurchases> =
+        combine(
+            dao.observeHasEventType(EconomyEventType.STARTER_PACK_PURCHASE.name),
+            dao.observeHasEventType(EconomyEventType.NO_ADS_PURCHASE.name),
+        ) { starter, noAds -> OwnedPurchases(starterPack = starter, noAds = noAds) }
+
+    override suspend fun grantNoAds(transactionId: String): Boolean = dao.grantNoAds(transactionId, clock.nowEpochMillis())
 
     override suspend fun refillLifeWithGems(actionId: String): EconomyRefill = dao.refillLifeWithGems(actionId, clock.nowEpochMillis())
 

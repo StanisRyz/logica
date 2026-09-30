@@ -35,6 +35,12 @@ internal enum class EconomyEventType {
 
     /** The one-time gem reward of one reached achievement. */
     ACHIEVEMENT_REWARD,
+
+    /** The one-time starter pack; its row is also what says it was bought. */
+    STARTER_PACK_PURCHASE,
+
+    /** The permanent «no ads» purchase; no deltas, its row is the ownership. */
+    NO_ADS_PURCHASE,
 }
 
 /**
@@ -177,9 +183,12 @@ internal fun PlayerEconomy.purchasedGems(
     pack: GemPack,
 ): EconomyEffect =
     effect(
-        updated = withGemsGranted(pack.gems),
+        updated =
+            withGemsGranted(pack.gems).withHintsGranted(pack.hints).let {
+                if (pack.refillsLives) it.copy(lives = EconomyRules.MAX_LIVES, nextLifeAtEpochMillis = null) else it
+            },
         eventId = EconomyEvent.purchaseEventId(transactionId),
-        type = EconomyEventType.RUSTORE_GEM_PURCHASE,
+        type = if (pack == GemPack.STARTER_PACK) EconomyEventType.STARTER_PACK_PURCHASE else EconomyEventType.RUSTORE_GEM_PURCHASE,
         sourceId = transactionId,
     )
 

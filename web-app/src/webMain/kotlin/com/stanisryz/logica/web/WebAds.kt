@@ -174,6 +174,8 @@ internal class WebInterstitialContinuationController(
     private val analytics: WebMonetizationAnalytics,
     private val fullscreenAdActivity: WebFullscreenAdActivity,
     private val currentTimeMs: () -> Long,
+    /** True once the bound Player owns «no ads»: every transition then continues with no ad. */
+    private val adsRemoved: () -> Boolean = { false },
 ) {
     private var nextSessionId = 0L
 
@@ -187,6 +189,10 @@ internal class WebInterstitialContinuationController(
         if (activeAttempt != null) {
             // A second tap while a transition is active is ignored: one user action must never
             // advance two Catalog levels.
+            return
+        }
+        if (runCatching(adsRemoved).getOrDefault(false)) {
+            continuation()
             return
         }
         val now = currentTimeMs()
@@ -248,13 +254,15 @@ internal interface WebStickyBannerBridge {
  */
 internal class WebStickyBannerController(
     private val bridge: WebStickyBannerBridge,
+    /** True once the bound Player owns «no ads»: the banner is then always hidden. */
+    private val adsRemoved: () -> Boolean = { false },
 ) {
     private var desiredVisible: Boolean? = null
     private var appliedVisible: Boolean? = null
 
     /** Requests a new platform-side visibility; failures remain retryable via [reconcile]. */
     fun applyVisibility(visible: Boolean) {
-        desiredVisible = visible
+        desiredVisible = visible && !runCatching(adsRemoved).getOrDefault(false)
         reconcile()
     }
 

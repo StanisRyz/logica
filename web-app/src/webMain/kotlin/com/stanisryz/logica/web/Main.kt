@@ -132,6 +132,13 @@ fun main() {
             life = rewardedController(WebRewardedPlacementController.LIFE_REWARD),
             secondChance = rewardedController(reward = null),
         )
+    // «No ads» is owned once the bound Player's payments ledger holds it (never consumed, synced).
+    val adsRemoved = {
+        playerSession.paymentsRepository
+            ?.snapshot
+            ?.value
+            ?.owns(WebPaidProduct.NO_ADS) == true
+    }
     val leaderboard = WebLeaderboardController(bridge, rememberMainScope())
     val interstitialController =
         WebInterstitialContinuationController(
@@ -140,13 +147,15 @@ fun main() {
             analytics = monetizationAnalytics,
             fullscreenAdActivity = lifecycle,
             currentTimeMs = ::currentTimeMillis,
+            adsRemoved = adsRemoved,
         )
-    val stickyBannerController = WebStickyBannerController(bridge)
+    val stickyBannerController = WebStickyBannerController(bridge, adsRemoved)
     // Real-money consumable pipeline (client-side Yandex Payments flow).
     val paymentsCoordinator =
         WebPaymentsCoordinator(
             provider = YandexPaymentsProvider(bridge),
             economyRepository = { playerSession.economyRepository },
+            storeRepository = { playerSession.storeRepository },
             paymentsRepository = { playerSession.paymentsRepository },
             journalStore = { playerSession.paymentsJournalStore },
             revisions = { playerSession.activeStateRevisions },

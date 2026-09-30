@@ -109,6 +109,7 @@ class WebPaymentsTest {
         WebPaymentsCoordinator(
             provider = provider,
             economyRepository = { economy },
+            storeRepository = { null },
             paymentsRepository = { payments },
             journalStore = { journal },
             revisions = { revisions },
@@ -267,4 +268,42 @@ class WebPaymentsTest {
             assertFalse(payments.isFulfilled("tok-unknown")) // never granted
             assertEquals(EconomyPolicy.STARTING_GEMS, economy.currentSnapshot.gems)
         }
+
+    @Test
+    fun noAdsIsOwnedOnceAndNeverConsumed() =
+        runTest {
+            val revisions = WebPlayerStateRevisions()
+            val economy = economyRepository(FakeEconomyStore(), revisions)
+            val payments = paymentsRepository(FakePaymentsStore())
+            val unified = FakeUnifiedSaveAccess()
+            val provider = FakePaymentsProvider()
+            provider.pending = listOf(PaymentPurchaseSnapshot("tok-na", "no_ads"))
+            val coordinator = coordinator(economy, payments, FakeJournalStore(), revisions, unified, provider)
+
+            coordinator.reconcilePendingPurchases()
+            assertTrue(payments.snapshot.value.owns(WebPaidProduct.NO_ADS))
+            assertEquals(EconomyPolicy.STARTING_GEMS, economy.currentSnapshot.gems)
+            assertTrue(provider.consumedTokens.isEmpty())
+            val flushes = unified.flushCalls
+
+            // Every later bind sees the permanent purchase again and changes nothing.
+            coordinator.reconcilePendingPurchases()
+            assertEquals(flushes, unified.flushCalls)
+            assertTrue(provider.consumedTokens.isEmpty())
+        }
+
+    @Test
+    fun aJournalWithAStoreTargetRoundTrips() {
+        val fulfillment =
+            WebPendingPaymentFulfillment(
+                id = "pay-2",
+                purchaseToken = "tok-sp",
+                productId = "starter_pack",
+                targetEconomy = WebEconomySnapshot(gems = 110, lives = 5, nextLifeRestoreAtEpochMs = null, revision = 4L),
+                targetPayments = WebPaymentsSnapshot(fulfilledTokens = mapOf("tok-sp" to "starter_pack")),
+                targetStore = WebStoreSnapshot(inventory = mapOf(STORE_INVENTORY_HINTS to 8), revision = 4L),
+            )
+        val decoded = WebPendingPaymentFulfillmentCodec.decode(WebPendingPaymentFulfillmentCodec.encode(fulfillment))
+        assertEquals(fulfillment.copy(version = WebPendingPaymentFulfillment.CURRENT_VERSION), decoded)
+    }
 }

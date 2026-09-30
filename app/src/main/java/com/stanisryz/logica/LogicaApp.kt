@@ -50,6 +50,8 @@ fun LogicaApp() {
     val statisticsRepository = application.container.statisticsRepository
     val dailyResultRepository = application.container.dailyResultRepository
     val economyRepository = application.container.economyRepository
+    // Read once at startup so the ledger is already being watched before the first ad decision.
+    val ownedPurchases = application.container.ownedPurchases
     val platform = application.container.platform
     val platformServices = platform.services
     val viewModelFactory =
@@ -76,6 +78,7 @@ fun LogicaApp() {
                 ads = platformServices.fullscreenAds,
                 opportunities = application.container.interstitialOpportunities,
                 cooldown = application.container.interstitialCooldownPolicy,
+                adsRemoved = { ownedPurchases.value.noAds },
             )
         }
     val interstitialController: InterstitialAdController = viewModel(factory = interstitialControllerFactory)

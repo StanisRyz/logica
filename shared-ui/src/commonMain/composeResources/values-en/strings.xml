@@ -409,4 +409,10 @@
     <string name="quest_different_games">Solve puzzles in %1$d different games</string>
     <string name="achievements_rewards_waiting">Rewards waiting: %1$d</string>
     <string name="board_zoom_reset">Show the whole board</string>
+    <string name="starter_pack_title">Starter pack</string>
+    <string name="starter_pack_subtitle">One-time offer: better value than regular packs</string>
+    <string name="starter_pack_lives_full">Full</string>
+    <string name="no_ads_title">No ads</string>
+    <string name="no_ads_subtitle">Removes ads between levels and the banner for good. Ads for rewards stay optional</string>
+    <string name="no_ads_owned">Purchased: no more ads between levels</string>
 </resources>

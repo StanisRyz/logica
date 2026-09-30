@@ -229,4 +229,5 @@
     <string name="store_rewarded_unavailable">Реклама сейчас недоступна.</string>
     <string name="nonogram">Нонограмма</string>
     <string name="nonogram_tutorial_title">Обучение «Нонограмма»</string>
+    <string name="gem_store_ads_removed">Реклама между уровнями отключена навсегда</string>
 </resources>

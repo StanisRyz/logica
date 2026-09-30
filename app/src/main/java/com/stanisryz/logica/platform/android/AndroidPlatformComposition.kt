@@ -31,6 +31,8 @@ internal class AndroidPlatformComposition(
                 GemPack.GEMS_150 to "gems_150",
                 GemPack.GEMS_500 to "gems_500",
             ),
+            starterPackProductId = "starter_pack",
+            noAdsProductId = "no_ads",
         )
 
     val services =

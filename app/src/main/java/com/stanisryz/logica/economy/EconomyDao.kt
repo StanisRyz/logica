@@ -70,6 +70,11 @@ internal sealed interface EconomyGemPurchase {
         override val economy: PlayerEconomy,
     ) : EconomyGemPurchase
 
+    /** The permanent «no ads» purchase is recorded; the wallet itself is unchanged. */
+    data class NoAdsGranted(
+        override val economy: PlayerEconomy,
+    ) : EconomyGemPurchase
+
     /** The store sold a product this build has no reward for; zero gems, and nothing is inferred. */
     data class UnsupportedProduct(
         override val economy: PlayerEconomy,
@@ -137,6 +142,22 @@ internal interface EconomyDao {
     /** Ledger rows whose ID starts with [prefix], such as one day's claimed quests. */
     @Query("SELECT event_id FROM economy_events WHERE event_id LIKE :prefix || '%'")
     fun observeEventIds(prefix: String): Flow<List<String>>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM economy_events WHERE event_type = :type)")
+    fun observeHasEventType(type: String): Flow<Boolean>
+
+    /**
+     * Records the permanent «no ads» purchase once: the row itself is the ownership, so a repeated
+     * callback or a later reconciliation of the same purchase adds nothing. False for a repeat.
+     */
+    @Transaction
+    suspend fun grantNoAds(
+        transactionId: String,
+        nowEpochMillis: Long,
+    ): Boolean {
+        val event = EconomyEvent(transactionId, EconomyEventType.NO_ADS_PURCHASE, transactionId, gemDelta = 0, lifeDelta = 0)
+        return insertEvent(event.toEntity(nowEpochMillis)) != -1L
+    }
 
     @Query("SELECT * FROM economy_events WHERE event_type = 'LOGIN_GIFT' ORDER BY created_at_epoch_millis DESC LIMIT 1")
     fun observeLastLoginGift(): Flow<EconomyEventEntity?>

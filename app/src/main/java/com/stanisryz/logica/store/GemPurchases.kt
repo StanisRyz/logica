@@ -33,7 +33,7 @@ internal class GemPurchaseProcessor(
                     // Already credited means the gems are in the wallet; from the player's side the
                     // pack simply arrived, so they are told the same thing either way.
                     is EconomyGemPurchase.AlreadyGranted -> GemPurchaseOutcome.Granted(pack)
-                    is EconomyGemPurchase.UnsupportedProduct -> GemPurchaseOutcome.Failed
+                    is EconomyGemPurchase.NoAdsGranted, is EconomyGemPurchase.UnsupportedProduct -> GemPurchaseOutcome.Failed
                 }
             // A payment that is still settling is finished by reconciliation, not by waiting here.
             PlatformPurchaseResult.Pending -> GemPurchaseOutcome.Processing
@@ -41,12 +41,30 @@ internal class GemPurchaseProcessor(
             is PlatformPurchaseResult.Failed -> GemPurchaseOutcome.Failed
         }
 
+    /** Buys the permanent «no ads» product; its ledger row is what turns the ads off. */
+    suspend fun buyNoAds(): GemPurchaseOutcome {
+        val productId = products.noAdsProductId ?: return GemPurchaseOutcome.Failed
+        return when (val result = gateway.purchase(productId)) {
+            is PlatformPurchaseResult.Confirmed ->
+                if (credit(result.purchase) is EconomyGemPurchase.NoAdsGranted) GemPurchaseOutcome.AdsRemoved else GemPurchaseOutcome.Failed
+            PlatformPurchaseResult.Pending -> GemPurchaseOutcome.Processing
+            PlatformPurchaseResult.Cancelled -> GemPurchaseOutcome.Cancelled
+            is PlatformPurchaseResult.Failed -> GemPurchaseOutcome.Failed
+        }
+    }
+
     /**
      * Credits one confirmed purchase and then closes it with the platform. A finalization failure is
      * deliberately swallowed: the gems are already durable, and the retry comes from the next
      * reconciliation rather than from a loop here.
      */
     suspend fun credit(purchase: PlatformPurchase): EconomyGemPurchase {
+        if (products.isNoAds(purchase.productId)) {
+            // A repeat (reconciliation sees a permanent purchase on every open) records nothing new.
+            economy.grantNoAds(purchase.transactionId)
+            runCatching { gateway.finalize(purchase.purchaseId) }
+            return EconomyGemPurchase.NoAdsGranted(economy.refresh())
+        }
         val pack = products.pack(purchase.productId)
         // An unknown platform product is deliberately converted to an unsupported application key;
         // the economy then returns its existing safe result without writing a ledger event.
@@ -69,13 +87,33 @@ internal class GemPurchaseProcessor(
     suspend fun reconcile(): List<EconomyGemPurchase> = gateway.unprocessedPurchases().map { credit(it) }
 
     /** The platform prices for the three known packs; a missing pack is simply not offered. */
-    suspend fun offers(): List<GemPackOffer> {
+    suspend fun offers(): List<GemPackOffer> = catalog().packs
+
+    /** Everything the store sells with its platform price; a product the store does not return is not offered. */
+    suspend fun catalog(): GemStoreCatalog {
         val priceLabels = gateway.products(products.productIds()).associate { it.productId to it.priceLabel }
-        return GemPack.CATALOG.mapNotNull { pack ->
-            priceLabels[products.productId(pack)]?.let { GemPackOffer(pack, it) }
-        }
+        return GemStoreCatalog(
+            packs =
+                GemPack.CATALOG.mapNotNull { pack ->
+                    priceLabels[products.productId(pack)]?.let { GemPackOffer(pack, it) }
+                },
+            starterPack =
+                if (products.hasStarterPack) {
+                    priceLabels[products.productId(GemPack.STARTER_PACK)]?.let { GemPackOffer(GemPack.STARTER_PACK, it) }
+                } else {
+                    null
+                },
+            noAdsPriceLabel = products.noAdsProductId?.let(priceLabels::get),
+        )
     }
 }
+
+/** The store's offers: the gem packs, the one-time starter pack, and «no ads», each with its price. */
+internal data class GemStoreCatalog(
+    val packs: List<GemPackOffer>,
+    val starterPack: GemPackOffer? = null,
+    val noAdsPriceLabel: String? = null,
+)
 
 /** One row of the Gem Store: this build's gem amount next to the platform's price. */
 internal data class GemPackOffer(
@@ -88,6 +126,9 @@ internal sealed interface GemPurchaseOutcome {
     data class Granted(
         val pack: GemPack,
     ) : GemPurchaseOutcome
+
+    /** «No ads» is owned: interstitials and banners stop for good. */
+    data object AdsRemoved : GemPurchaseOutcome
 
     /** Paid but not settled yet; the gems arrive once reconciliation sees it confirmed. */
     data object Processing : GemPurchaseOutcome

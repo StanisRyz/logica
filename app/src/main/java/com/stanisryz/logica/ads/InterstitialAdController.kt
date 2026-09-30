@@ -20,6 +20,8 @@ internal class InterstitialAdController(
     private val ads: FullscreenAdsGateway,
     private val opportunities: InterstitialOpportunities,
     private val cooldown: InterstitialCooldownPolicy,
+    /** True once «no ads» is owned: nothing preloads and every terminal action continues at once. */
+    private val adsRemoved: () -> Boolean = { false },
 ) : ViewModel() {
     private val coordinator = InterstitialAdCoordinator(cooldown)
 
@@ -30,6 +32,7 @@ internal class InterstitialAdController(
     private var pendingTerminalAction: (() -> Unit)? = null
 
     fun onGameplayStarted() {
+        if (adsRemoved()) return
         if (gameplayPreloadJob?.isActive == true) return
         gameplayPreloadJob =
             viewModelScope.launch {
@@ -50,6 +53,10 @@ internal class InterstitialAdController(
         onFinished: () -> Unit,
     ) {
         opportunities.consume(opportunity)
+        if (adsRemoved()) {
+            onFinished()
+            return
+        }
         viewModelScope.launch {
             pendingTerminalAction = onFinished
             val shown =
@@ -91,6 +98,7 @@ internal class InterstitialAdControllerFactory(
     private val ads: FullscreenAdsGateway,
     private val opportunities: InterstitialOpportunities,
     private val cooldown: InterstitialCooldownPolicy,
+    private val adsRemoved: () -> Boolean = { false },
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(InterstitialAdController::class.java)) {
@@ -98,6 +106,6 @@ internal class InterstitialAdControllerFactory(
         }
 
         @Suppress("UNCHECKED_CAST")
-        return InterstitialAdController(ads, opportunities, cooldown) as T
+        return InterstitialAdController(ads, opportunities, cooldown, adsRemoved) as T
     }
 }

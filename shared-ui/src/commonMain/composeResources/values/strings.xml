@@ -420,4 +420,10 @@
     <string name="quest_different_games">Решите головоломки в %1$d разных играх</string>
     <string name="achievements_rewards_waiting">Наград ждут: %1$d</string>
     <string name="board_zoom_reset">Показать всё поле</string>
+    <string name="starter_pack_title">Стартовый набор</string>
+    <string name="starter_pack_subtitle">Разовое предложение: выгоднее обычных пачек</string>
+    <string name="starter_pack_lives_full">Все</string>
+    <string name="no_ads_title">Без рекламы</string>
+    <string name="no_ads_subtitle">Навсегда убирает рекламу между уровнями и баннер. Реклама за награду остаётся по желанию</string>
+    <string name="no_ads_owned">Куплено: рекламы между уровнями больше нет</string>
 </resources>

@@ -46,6 +46,7 @@ import com.stanisryz.logica.economy.EconomyRules
 import com.stanisryz.logica.economy.GameplayHints
 import com.stanisryz.logica.economy.GemPack
 import com.stanisryz.logica.economy.HintOffer
+import com.stanisryz.logica.economy.OwnedPurchases
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.platform.StoreGateway
 import com.stanisryz.logica.store.GemPackOffer
@@ -55,7 +56,9 @@ import com.stanisryz.logica.store.GemStoreState
 import com.stanisryz.logica.store.GemStoreViewModel
 import com.stanisryz.logica.store.GemStoreViewModelFactory
 import com.stanisryz.logica.ui.components.GemPriceButton
+import com.stanisryz.logica.ui.components.NoAdsRow
 import com.stanisryz.logica.ui.components.ScreenColumn
+import com.stanisryz.logica.ui.components.StarterPackCard
 import com.stanisryz.logica.ui.components.StoreBalanceCard
 import com.stanisryz.logica.ui.components.StoreItemRow
 import com.stanisryz.logica.ui.components.StoreSectionTitle
@@ -85,6 +88,7 @@ internal fun StoreRoute(
         }
     val storeViewModel: GemStoreViewModel = viewModel(factory = factory)
     val state by storeViewModel.state.collectAsStateWithLifecycle()
+    val owned by storeViewModel.owned.collectAsStateWithLifecycle()
     // Hints are bought with gems already in the wallet, so no store provider is involved.
     val hints = remember(economyRepository) { GameplayHints(economyRepository) }
     val scope = rememberCoroutineScope()
@@ -95,6 +99,8 @@ internal fun StoreRoute(
         onOpen = storeViewModel::open,
         onBuy = storeViewModel::buy,
         onDismissOutcome = storeViewModel::dismissOutcome,
+        owned = owned,
+        onBuyNoAds = storeViewModel::buyNoAds,
         onBuyHints = { offer -> scope.launch { hints.buy(offer) } },
         modifier = modifier,
         rewarded = rewarded,
@@ -155,6 +161,8 @@ internal fun StoreScreen(
     modifier: Modifier = Modifier,
     onBuyHints: (HintOffer) -> Unit = {},
     rewarded: StoreRewardedOffers? = null,
+    owned: OwnedPurchases = OwnedPurchases(),
+    onBuyNoAds: () -> Unit = {},
 ) {
     // Opening the store is what reconciles anything paid for but not yet credited, and what loads
     // the prices. Leaving the tab clears the last purchase message rather than keeping it forever.
@@ -192,7 +200,7 @@ internal fun StoreScreen(
                 when (currentState) {
                     GemStoreState.Loading -> GemStoreLoading()
                     GemStoreState.Unavailable -> GemStoreUnavailable(onOpen)
-                    is GemStoreState.Ready -> GemStoreOffers(currentState, onBuy)
+                    is GemStoreState.Ready -> GemStoreOffers(currentState, onBuy, owned, onBuyNoAds)
                 }
             }
         }
@@ -275,16 +283,30 @@ private fun GemStoreUnavailable(onRetry: () -> Unit) {
 private fun GemStoreOffers(
     state: GemStoreState.Ready,
     onBuy: (GemPack) -> Unit,
+    owned: OwnedPurchases,
+    onBuyNoAds: () -> Unit,
 ) {
+    // One payment at a time: every Buy is disabled while any of them is running.
+    val idle = state.purchasing == null && !state.purchasingNoAds
     Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
+        // The starter pack is offered until it is bought once.
+        state.starterPack?.takeIf { !owned.starterPack }?.let { offer ->
+            StarterPackCard(enabled = idle, onBuy = { onBuy(offer.pack) }) {
+                Text(if (state.purchasing == offer.pack) stringResource(R.string.gem_store_purchasing) else offer.priceLabel)
+            }
+        }
         state.offers.forEach { offer ->
             GemPackRow(
                 offer = offer,
-                // One payment at a time: every Buy is disabled while any of them is running.
-                enabled = state.purchasing == null,
+                enabled = idle,
                 isPurchasing = state.purchasing == offer.pack,
                 onBuy = { onBuy(offer.pack) },
             )
+        }
+        state.noAdsPriceLabel?.let { price ->
+            NoAdsRow(owned = owned.noAds, enabled = idle, onBuy = onBuyNoAds) {
+                Text(if (state.purchasingNoAds) stringResource(R.string.gem_store_purchasing) else price)
+            }
         }
         AnimatedVisibility(
             visible = state.outcome != null,
@@ -323,6 +345,7 @@ private fun GemPurchaseMessage(outcome: GemPurchaseOutcome) {
             GemPurchaseOutcome.Processing -> stringResource(R.string.gem_store_processing)
             GemPurchaseOutcome.Cancelled -> stringResource(R.string.gem_store_cancelled)
             GemPurchaseOutcome.Failed -> stringResource(R.string.gem_store_failed)
+            GemPurchaseOutcome.AdsRemoved -> stringResource(R.string.gem_store_ads_removed)
         },
     )
 }

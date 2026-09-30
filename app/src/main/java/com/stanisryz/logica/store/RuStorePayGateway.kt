@@ -138,7 +138,7 @@ internal class RuStoreGemPayGateway(
                 .getProductInteractor()
                 .getProducts(productIds.map { ProductId(it) })
                 .await()
-                .filter { it.type == ProductType.CONSUMABLE_PRODUCT }
+                .filter { it.type == ProductType.CONSUMABLE_PRODUCT || it.type == ProductType.NON_CONSUMABLE_PRODUCT }
                 .map { RuStoreProduct(productId = it.productId.value, priceLabel = it.amountLabel.value) }
         }
 
@@ -191,12 +191,22 @@ internal class RuStoreGemPayGateway(
 
     override suspend fun unfinalizedPurchases(): List<RuStorePurchase> =
         guarded("unfinalized purchases") {
-            purchaseInteractor
-                .getPurchases(
-                    productType = ProductType.CONSUMABLE_PRODUCT,
-                    purchaseStatus = ProductPurchaseStatus.CONFIRMED,
-                    acknowledgementState = AcknowledgementState.PENDING,
-                ).await()
+            val consumables =
+                purchaseInteractor
+                    .getPurchases(
+                        productType = ProductType.CONSUMABLE_PRODUCT,
+                        purchaseStatus = ProductPurchaseStatus.CONFIRMED,
+                        acknowledgementState = AcknowledgementState.PENDING,
+                    ).await()
+            // A permanent product («no ads») is returned whatever its acknowledgement, so a reinstall
+            // restores it; its ledger row makes every later sighting a no-op.
+            val permanent =
+                purchaseInteractor
+                    .getPurchases(
+                        productType = ProductType.NON_CONSUMABLE_PRODUCT,
+                        purchaseStatus = ProductPurchaseStatus.CONFIRMED,
+                    ).await()
+            (consumables + permanent)
                 .filterIsInstance<ProductPurchase>()
                 .map { RuStorePurchase(purchaseId = it.purchaseId.value, productId = it.productId.value) }
         }
