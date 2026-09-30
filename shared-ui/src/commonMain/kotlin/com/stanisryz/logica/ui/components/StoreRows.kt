@@ -51,7 +51,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.store_no_ads
 import com.stanisryz.logica.shared.ui.generated.resources.store_starter_pack
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.DrawableResource
-import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.imageResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -187,7 +187,12 @@ fun StoreItemRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
         ) {
-            Image(painterResource(artwork.drawable), contentDescription = null, modifier = Modifier.size(ARTWORK))
+            Image(
+                imageResource(artwork.drawable),
+                contentDescription = null,
+                modifier = Modifier.size(ARTWORK),
+                filterQuality = ArtworkFilterQuality,
+            )
             Column(Modifier.weight(1f)) {
                 Text(text = title, style = MaterialTheme.typography.titleMedium)
                 // A blank subtitle would still take a line and push the title above the button.
@@ -244,8 +249,9 @@ fun StarterPackCard(
         Column(Modifier.padding(16.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Image(
-                    painterResource(StoreArtwork.STARTER_PACK.drawable),
+                    imageResource(StoreArtwork.STARTER_PACK.drawable),
                     contentDescription = null,
+                    filterQuality = ArtworkFilterQuality,
                     modifier = Modifier.size(STARTER_ARTWORK),
                 )
                 Column(Modifier.weight(1f)) {

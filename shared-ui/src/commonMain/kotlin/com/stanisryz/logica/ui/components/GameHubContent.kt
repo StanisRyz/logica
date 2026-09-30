@@ -68,7 +68,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.game_word
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
-import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.imageResource
 import org.jetbrains.compose.resources.stringResource
 
 /** The canonical six-game catalog order shared by Android and Web hosts. */
@@ -174,8 +174,9 @@ fun ContinueGameCard(
             horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
         ) {
             Image(
-                painter = painterResource(puzzleType.catalogArtworkResource()),
+                bitmap = imageResource(puzzleType.catalogArtworkResource()),
                 contentDescription = null,
+                filterQuality = ArtworkFilterQuality,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.size(CONTINUE_ARTWORK_SIZE).clip(MaterialTheme.shapes.medium),
             )
@@ -262,8 +263,9 @@ fun GameCatalogCard(
             contentAlignment = Alignment.CenterStart,
         ) {
             Image(
-                painter = painterResource(puzzleType.catalogArtworkResource()),
+                bitmap = imageResource(puzzleType.catalogArtworkResource()),
                 contentDescription = null,
+                filterQuality = ArtworkFilterQuality,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )

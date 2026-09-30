@@ -42,7 +42,7 @@ class BrowserPuzzleDataLoader {
     ) {
         val resourcePath = CatalogLevelPackFormat.assetPath(packVersion, puzzleType, difficulty)
         if (resourcePath in loadedResources) return
-        val bytes = fetchResponse(resourcePath.asRootPath()).arrayBuffer().await().toByteArray()
+        val bytes = fetchResponse(resourcePath).arrayBuffer().await().toByteArray()
         WebPuzzleData.installCatalogLevelPack(packVersion, puzzleType, difficulty, bytes)
         loadedResources += resourcePath
     }
@@ -53,20 +53,22 @@ class BrowserPuzzleDataLoader {
     ) {
         val resourcePath = "sudoku/v${version.value}/${difficulty.name.lowercase()}.sdk"
         if (resourcePath in loadedResources) return
-        val bytes = fetchResponse(resourcePath.asRootPath()).arrayBuffer().await().toByteArray()
+        val bytes = fetchResponse(resourcePath).arrayBuffer().await().toByteArray()
         WebPuzzleData.installSudokuDataset(version, difficulty, bytes)
         loadedResources += resourcePath
     }
 
     private suspend fun fetchResponse(resourcePath: String): BrowserFetchResponse {
-        val response = browserFetch(resourcePath.asRootPath()).await()
+        val response = browserFetch(resourcePath.relativeToPage()).await()
         check(response.ok) {
             "Unable to load $resourcePath: HTTP ${response.status}."
         }
         return response
     }
 
-    private fun String.asRootPath(): String = if (startsWith('/')) this else "/$this"
+    // Relative to the page, never to the site root: Yandex Games serves the game from a nested
+    // folder, where "/levels/..." would leave it and fail with 404.
+    private fun String.relativeToPage(): String = removePrefix("/")
 }
 
 private external interface BrowserFetchResponse : JsAny {

@@ -200,6 +200,11 @@ private fun webAudioPreload(url: String) {
             var C = globalThis.AudioContext || globalThis.webkitAudioContext;
             if (!C) return;
             a.ctx = new C();
+            // Mobile Safari starts audio only from inside a tap handler; sounds themselves are
+            // played later from state changes, so each tap resumes the context (play() still sounds
+            // nothing while the host lifecycle is inactive).
+            var unlock = function () { if (a.ctx && a.ctx.state !== 'running') a.ctx.resume(); };
+            ['pointerdown', 'touchend', 'keydown'].forEach(function (e) { globalThis.addEventListener(e, unlock, true); });
           }
           if (a.buffers[url] || a.pending[url]) return;
           a.pending[url] = true;

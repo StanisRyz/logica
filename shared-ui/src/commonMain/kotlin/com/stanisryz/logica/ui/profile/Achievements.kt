@@ -110,6 +110,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.achievements_rewards_w
 import com.stanisryz.logica.shared.ui.generated.resources.achievements_section_locked
 import com.stanisryz.logica.shared.ui.generated.resources.achievements_section_unlocked
 import com.stanisryz.logica.shared.ui.generated.resources.profile_achievements
+import com.stanisryz.logica.ui.components.ArtworkFilterQuality
 import com.stanisryz.logica.ui.components.GameIcon
 import com.stanisryz.logica.ui.components.GameIconImage
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
@@ -117,7 +118,7 @@ import com.stanisryz.logica.ui.theme.LogicaSpacing
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
-import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.imageResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -646,8 +647,9 @@ private fun AchievementArtwork(
     unlocked: Boolean,
 ) {
     Image(
-        painter = painterResource(achievement.artwork),
+        bitmap = imageResource(achievement.artwork),
         contentDescription = null,
+        filterQuality = ArtworkFilterQuality,
         modifier = Modifier.size(size).alpha(if (unlocked) 1f else LOCKED_ARTWORK_ALPHA),
         colorFilter = if (unlocked) null else LOCKED_ARTWORK_FILTER,
     )

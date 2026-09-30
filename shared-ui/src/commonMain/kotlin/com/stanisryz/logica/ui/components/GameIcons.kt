@@ -17,7 +17,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.icon_medal_bronze
 import com.stanisryz.logica.shared.ui.generated.resources.icon_medal_gold
 import com.stanisryz.logica.shared.ui.generated.resources.icon_medal_silver
 import org.jetbrains.compose.resources.DrawableResource
-import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.imageResource
 
 /**
  * The small coloured pictures of the game's currencies and ranks. They stand where a wallet,
@@ -57,7 +57,7 @@ fun GameIconImage(
     modifier: Modifier = Modifier,
     size: Dp = GAME_ICON_SIZE,
 ) {
-    Image(painterResource(icon.drawable), contentDescription = null, modifier = modifier.size(size))
+    Image(imageResource(icon.drawable), contentDescription = null, modifier = modifier.size(size), filterQuality = ArtworkFilterQuality)
 }
 
 /** A top-three place as its medal alone; the place number is left to screen readers. */

@@ -78,7 +78,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.rewards_claimed
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.DrawableResource
-import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.imageResource
 import org.jetbrains.compose.resources.stringResource
 
 /** One of the day's quests as the hub shows it. */
@@ -160,7 +160,12 @@ private fun GiftRow(
 ) {
     val colors = MaterialTheme.colorScheme
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
-        Image(painterResource(giftArtwork(state)), contentDescription = null, modifier = Modifier.size(GIFT_ARTWORK))
+        Image(
+            imageResource(giftArtwork(state)),
+            contentDescription = null,
+            modifier = Modifier.size(GIFT_ARTWORK),
+            filterQuality = ArtworkFilterQuality,
+        )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(stringResource(Res.string.login_gift_title), style = MaterialTheme.typography.titleMedium)
             Text(
@@ -203,7 +208,12 @@ private fun QuestRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
     ) {
-        Image(painterResource(questArtwork(state.quest)), contentDescription = null, modifier = Modifier.size(QUEST_ARTWORK))
+        Image(
+            imageResource(questArtwork(state.quest)),
+            contentDescription = null,
+            modifier = Modifier.size(QUEST_ARTWORK),
+            filterQuality = ArtworkFilterQuality,
+        )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(title, style = MaterialTheme.typography.bodyMedium)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

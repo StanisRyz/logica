@@ -23,8 +23,14 @@ internal class WebHostLifecycle :
     private var browserVisible = isBrowserDocumentVisible()
     private var browserFocused = browserDocumentHasFocus()
     private val visibilityCallback = { refreshBrowserState() }
-    private val focusCallback = { refreshBrowserState() }
-    private val blurCallback = { refreshBrowserState() }
+    private val focusCallback = { setBrowserFocused(true) }
+    private val blurCallback = { setBrowserFocused(false) }
+
+    // Inside the Yandex iframe the page can be played while `document.hasFocus()` stays false (the
+    // game canvas takes the pointer without moving focus), which would keep the host INACTIVE and
+    // every sound silent. A tap or key press inside the page is proof the player is here; a later
+    // blur or hidden document still makes it inactive.
+    private val interactionCallback = { setBrowserFocused(true) }
 
     fun start() {
         if (started) return
@@ -32,6 +38,9 @@ internal class WebHostLifecycle :
         addDocumentEventListener("visibilitychange", visibilityCallback)
         addWindowEventListener("focus", focusCallback)
         addWindowEventListener("blur", blurCallback)
+        addWindowCaptureListener("pointerdown", interactionCallback)
+        addWindowCaptureListener("keydown", interactionCallback)
+        browserFocused = browserDocumentHasFocus()
         refreshBrowserState()
     }
 
@@ -62,12 +71,18 @@ internal class WebHostLifecycle :
         removeDocumentEventListener("visibilitychange", visibilityCallback)
         removeWindowEventListener("focus", focusCallback)
         removeWindowEventListener("blur", blurCallback)
+        removeWindowCaptureListener("pointerdown", interactionCallback)
+        removeWindowCaptureListener("keydown", interactionCallback)
         mutableState.value = PlatformLifecycleState.INACTIVE
+    }
+
+    private fun setBrowserFocused(focused: Boolean) {
+        browserFocused = focused
+        refreshBrowserState()
     }
 
     private fun refreshBrowserState() {
         browserVisible = isBrowserDocumentVisible()
-        browserFocused = browserDocumentHasFocus()
         updateState()
     }
 
@@ -128,3 +143,13 @@ private fun removeWindowEventListener(
     eventName: String,
     callback: () -> Unit,
 ): Unit = js("globalThis.removeEventListener(eventName, callback)")
+
+private fun addWindowCaptureListener(
+    eventName: String,
+    callback: () -> Unit,
+): Unit = js("globalThis.addEventListener(eventName, callback, true)")
+
+private fun removeWindowCaptureListener(
+    eventName: String,
+    callback: () -> Unit,
+): Unit = js("globalThis.removeEventListener(eventName, callback, true)")

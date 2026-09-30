@@ -43,7 +43,7 @@ import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
-import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.imageResource
 import org.jetbrains.compose.resources.stringResource
 
 /** Four equal direct-launch difficulty cards shared by Android and Web. */
@@ -111,8 +111,9 @@ private fun DifficultyCard(
             contentAlignment = Alignment.CenterStart,
         ) {
             Image(
-                painter = painterResource(difficulty.artworkResource()),
+                bitmap = imageResource(difficulty.artworkResource()),
                 contentDescription = null,
+                filterQuality = ArtworkFilterQuality,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )

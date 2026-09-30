@@ -588,9 +588,9 @@ private external interface YandexPayments : JsAny {
 }
 
 private external interface YandexAdv : JsAny {
-    fun showRewardedVideo(callbacks: YandexRewardedVideoCallbacks)
+    fun showRewardedVideo(options: YandexAdvOptions)
 
-    fun showFullscreenAdv(callbacks: YandexFullscreenCallbacks)
+    fun showFullscreenAdv(options: YandexAdvOptions)
 
     @JsName("showBannerAdv")
     fun showBannerAdv(): Promise<JsAny>?
@@ -602,23 +602,8 @@ private external interface YandexAdv : JsAny {
     fun getBannerAdvStatus(): Promise<JsAny>?
 }
 
-private external interface YandexRewardedVideoCallbacks : JsAny {
-    fun onOpen()
-
-    fun onRewarded()
-
-    fun onClose()
-
-    fun onError(error: JsAny?)
-}
-
-private external interface YandexFullscreenCallbacks : JsAny {
-    fun onOpen()
-
-    fun onClose(wasShown: Boolean)
-
-    fun onError(error: JsAny?)
-}
+/** `{ callbacks: { onOpen, onClose, onError, … } }` — the SDK ignores callbacks passed bare. */
+private external interface YandexAdvOptions : JsAny
 
 private external interface YandexSdkEvents : JsAny {
     @JsName("ACCOUNT_SELECTION_DIALOG_OPENED")
@@ -684,27 +669,27 @@ private fun rewardedVideoCallbacksJs(
     onRewarded: () -> Unit,
     onClose: () -> Unit,
     onError: (JsAny?) -> Unit,
-): YandexRewardedVideoCallbacks =
+): YandexAdvOptions =
     js(
-        """({
+        """({ callbacks: {
             onOpen: () => onOpen(),
             onRewarded: () => onRewarded(),
             onClose: () => onClose(),
             onError: (error) => onError(error),
-        })""",
+        } })""",
     )
 
 private fun fullscreenCallbacksJs(
     onOpen: () -> Unit,
     onClose: (Boolean) -> Unit,
     onError: (JsAny?) -> Unit,
-): YandexFullscreenCallbacks =
+): YandexAdvOptions =
     js(
-        """({
+        """({ callbacks: {
             onOpen: () => onOpen(),
             onClose: (wasShown) => onClose(wasShown === true),
             onError: (error) => onError(error),
-        })""",
+        } })""",
     )
 
 private fun singleStringArray(value: String): JsArray<JsString> = js("[value]")

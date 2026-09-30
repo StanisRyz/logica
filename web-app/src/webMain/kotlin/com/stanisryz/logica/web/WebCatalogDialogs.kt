@@ -6,9 +6,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -61,9 +67,26 @@ internal fun WebCatalogLoadingContent(
             },
         )
         Spacer(Modifier.height(12.dp))
-        TextButton(onClick = onBack) {
-            Text(stringResource(if (isDaily) WebRes.string.web_to_games else WebRes.string.web_back_to_difficulty))
-        }
+        WebStateBackButton(
+            label = stringResource(if (isDaily) WebRes.string.web_to_games else WebRes.string.web_back_to_difficulty),
+            onClick = onBack,
+        )
+    }
+}
+
+/**
+ * The way back from a loading or failed level. Framed and with an arrow so it is there from the
+ * first frame even while its Web text resource is still loading.
+ */
+@Composable
+private fun WebStateBackButton(
+    label: String,
+    onClick: () -> Unit,
+) {
+    OutlinedButton(onClick = onClick) {
+        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(label)
     }
 }
 
@@ -98,9 +121,11 @@ internal fun WebCatalogLevelErrorContent(
         )
         Spacer(Modifier.height(20.dp))
         Button(onClick = onRetry) { Text(stringResource(WebRes.string.web_retry)) }
-        TextButton(onClick = onBack) {
-            Text(stringResource(if (isDaily) WebRes.string.web_to_games else WebRes.string.web_to_difficulty))
-        }
+        Spacer(Modifier.height(8.dp))
+        WebStateBackButton(
+            label = stringResource(if (isDaily) WebRes.string.web_to_games else WebRes.string.web_to_difficulty),
+            onClick = onBack,
+        )
     }
 }
 

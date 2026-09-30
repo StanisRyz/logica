@@ -91,12 +91,13 @@ import com.stanisryz.logica.shared.ui.generated.resources.retry
 import com.stanisryz.logica.shared.ui.generated.resources.share_daily_result
 import com.stanisryz.logica.shared.ui.generated.resources.share_daily_result_description
 import com.stanisryz.logica.shared.ui.generated.resources.total_hints_used
+import com.stanisryz.logica.ui.components.ArtworkFilterQuality
 import com.stanisryz.logica.ui.components.catalogArtworkResource
 import com.stanisryz.logica.ui.components.catalogTitleResource
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.StringResource
-import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.imageResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.abs
 
@@ -424,8 +425,9 @@ private fun DailyEntryCard(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Image(
-                    painter = painterResource(entry.puzzleType.catalogArtworkResource()),
+                    bitmap = imageResource(entry.puzzleType.catalogArtworkResource()),
                     contentDescription = null,
+                    filterQuality = ArtworkFilterQuality,
                     contentScale = ContentScale.Crop,
                     modifier =
                         Modifier

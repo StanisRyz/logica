@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.shared.ui.generated.resources.Res
@@ -14,7 +15,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.state_no_hints
 import com.stanisryz.logica.shared.ui.generated.resources.state_no_lives
 import com.stanisryz.logica.shared.ui.generated.resources.state_second_chance
 import org.jetbrains.compose.resources.DrawableResource
-import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.imageResource
 
 /** The pictures of empty states and dialogs; hosts pick one, while the drawables stay shared. */
 enum class StateArtwork(
@@ -35,10 +36,22 @@ fun StateArtworkImage(
     modifier: Modifier = Modifier,
     size: Dp = STATE_ARTWORK_SIZE,
 ) {
-    Image(painterResource(artwork.drawable), contentDescription = null, modifier = modifier.size(size))
+    Image(
+        imageResource(artwork.drawable),
+        contentDescription = null,
+        modifier = modifier.size(size),
+        filterQuality = ArtworkFilterQuality,
+    )
 }
 
 /** The size of a state picture in a dialog. */
 val STATE_ARTWORK_DIALOG_SIZE = 88.dp
 
 private val STATE_ARTWORK_SIZE = 120.dp
+
+/**
+ * Filtering for the generated artwork, which is always drawn well below its source size (a 128 px
+ * icon at 18 dp, a 400 px card at a third of it). The default filter samples without mipmaps and
+ * turns such pictures jagged on 1x desktop screens; mipmapped sampling keeps them smooth.
+ */
+val ArtworkFilterQuality: FilterQuality = FilterQuality.Medium
