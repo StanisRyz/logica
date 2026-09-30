@@ -86,13 +86,15 @@ fun NonogramBoard(
                         .then(
                             if (interactive) {
                                 Modifier.pointerInput(puzzle) {
-                                    val cellPx = this.size.width / (size + gutterCells)
-                                    val gutterPx = cellPx * gutterCells
-
+                                    // Measured on every press: the board is resized after this input starts
+                                    // (a desktop window, the wide layout settling), and a size read once would
+                                    // open a cell away from the pointer.
                                     fun cellAt(offset: Offset): NonogramPosition? {
+                                        val cellPx = this.size.width.toFloat() / (size + gutterCells)
+                                        val gutterPx = cellPx * gutterCells
+                                        if (offset.x < gutterPx || offset.y < gutterPx) return null
                                         val column = ((offset.x - gutterPx) / cellPx).toInt()
                                         val row = ((offset.y - gutterPx) / cellPx).toInt()
-                                        if (offset.x < gutterPx || offset.y < gutterPx) return null
                                         return if (row in 0 until size && column in 0 until size) NonogramPosition(row, column) else null
                                     }
                                     awaitEachGesture {

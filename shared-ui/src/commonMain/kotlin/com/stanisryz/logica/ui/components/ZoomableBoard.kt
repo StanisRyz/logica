@@ -73,9 +73,10 @@ fun ZoomableBoard(
             modifier
                 .clipToBounds()
                 .pointerInput(resetKey) {
-                    viewport = size
                     awaitEachGesture {
                         awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        // Read per gesture: a desktop window can resize the board after this input starts.
+                        viewport = size
                         while (true) {
                             val event = awaitPointerEvent(PointerEventPass.Initial)
                             val pressed = event.changes.filter { it.pressed }
