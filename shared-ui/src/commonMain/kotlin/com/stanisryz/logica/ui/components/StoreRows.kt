@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Diamond
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -27,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -84,11 +81,11 @@ fun StoreBalanceCard(
             verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text),
         ) {
             Row(Modifier.fillMaxWidth()) {
-                BalanceMetric(Icons.Rounded.Diamond, gems.toString(), stringResource(Res.string.profile_gems), Modifier.weight(1f))
-                BalanceMetric(Icons.Rounded.Favorite, "$lives/$maximumLives", stringResource(Res.string.profile_lives), Modifier.weight(1f))
+                BalanceMetric(GameIcon.GEM, gems.toString(), stringResource(Res.string.profile_gems), Modifier.weight(1f))
+                BalanceMetric(GameIcon.lives(lives), "$lives/$maximumLives", stringResource(Res.string.profile_lives), Modifier.weight(1f))
                 hints?.let {
                     BalanceMetric(
-                        Icons.Rounded.Lightbulb,
+                        GameIcon.HINT,
                         it.toString(),
                         stringResource(Res.string.profile_hints_short),
                         Modifier.weight(1f),
@@ -104,7 +101,7 @@ fun StoreBalanceCard(
 
 @Composable
 private fun BalanceMetric(
-    icon: ImageVector,
+    icon: GameIcon,
     value: String,
     label: String,
     modifier: Modifier = Modifier,
@@ -114,7 +111,7 @@ private fun BalanceMetric(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+            GameIconImage(icon, size = 22.dp)
             Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         }
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -262,19 +259,19 @@ fun StarterPackCard(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 PackTile(
-                    Icons.Rounded.Diamond,
+                    GameIcon.GEM,
                     "+${StarterPackContents.GEMS}",
                     stringResource(Res.string.profile_gems),
                     Modifier.weight(1f),
                 )
                 PackTile(
-                    Icons.Rounded.Lightbulb,
+                    GameIcon.HINT,
                     "+${StarterPackContents.HINTS}",
                     stringResource(Res.string.profile_hints_short),
                     Modifier.weight(1f),
                 )
                 PackTile(
-                    Icons.Rounded.Favorite,
+                    GameIcon.HEART,
                     stringResource(Res.string.starter_pack_lives_full),
                     stringResource(Res.string.profile_lives),
                     Modifier.weight(1f),
@@ -287,7 +284,7 @@ fun StarterPackCard(
 
 @Composable
 private fun PackTile(
-    icon: ImageVector,
+    icon: GameIcon,
     value: String,
     label: String,
     modifier: Modifier,
@@ -303,7 +300,7 @@ private fun PackTile(
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Icon(icon, contentDescription = null, tint = colors.primary, modifier = Modifier.size(18.dp))
+            GameIconImage(icon)
             Text(value, style = MaterialTheme.typography.titleMedium, color = colors.onSurface)
         }
         Text(label, style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)

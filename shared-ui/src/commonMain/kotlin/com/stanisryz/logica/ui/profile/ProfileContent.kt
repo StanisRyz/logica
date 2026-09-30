@@ -29,11 +29,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bolt
-import androidx.compose.material.icons.rounded.Diamond
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -98,6 +95,8 @@ import com.stanisryz.logica.shared.ui.generated.resources.word_attempt_bar_descr
 import com.stanisryz.logica.shared.ui.generated.resources.word_attempt_distribution
 import com.stanisryz.logica.shared.ui.generated.resources.word_percent_value
 import com.stanisryz.logica.shared.ui.generated.resources.word_win_rate
+import com.stanisryz.logica.ui.components.GameIcon
+import com.stanisryz.logica.ui.components.GameIconImage
 import com.stanisryz.logica.ui.components.StateArtwork
 import com.stanisryz.logica.ui.components.StateArtworkImage
 import com.stanisryz.logica.ui.components.catalogTitleResource
@@ -244,14 +243,14 @@ private fun SummaryCard(statistics: ProfileStatistics) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             statistics.economy?.let { economy ->
-                InlineMetric(Icons.Rounded.Diamond, economy.gems.toString(), stringResource(Res.string.profile_gems))
+                InlineMetric(GameIcon.GEM, economy.gems.toString(), stringResource(Res.string.profile_gems))
                 InlineMetric(
-                    Icons.Rounded.Favorite,
+                    GameIcon.lives(economy.lives.toInt()),
                     "${economy.lives}/${economy.maximumLives}",
                     stringResource(Res.string.profile_lives),
                 )
             }
-            InlineMetric(Icons.Rounded.Lightbulb, statistics.totalHintsUsed.toString(), stringResource(Res.string.total_hints_used))
+            InlineMetric(GameIcon.HINT, statistics.totalHintsUsed.toString(), stringResource(Res.string.total_hints_used))
         }
         statistics.economy?.restoreLabel?.let { restore ->
             SupportingText(restore, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
@@ -287,7 +286,7 @@ private fun SummaryMetric(
 
 @Composable
 private fun InlineMetric(
-    icon: ImageVector,
+    icon: GameIcon,
     value: String,
     description: String,
 ) {
@@ -296,7 +295,7 @@ private fun InlineMetric(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+        GameIconImage(icon)
         Text(value, style = MaterialTheme.typography.titleMedium)
     }
 }

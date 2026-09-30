@@ -390,10 +390,18 @@ private fun ResultTiles(
     val tiles =
         buildList {
             economy?.gemsEarned?.takeIf { it > 0 }?.let {
-                add(ResultTile(Icons.Rounded.Diamond, "+$it", stringResource(Res.string.result_reward), colors.primary))
+                add(ResultTile(Icons.Rounded.Diamond, "+$it", stringResource(Res.string.result_reward), colors.primary, GameIcon.GEM))
             }
             economy?.livesLost?.takeIf { it > 0 }?.let {
-                add(ResultTile(Icons.Rounded.HeartBroken, "−$it", stringResource(Res.string.result_life), colors.error))
+                add(
+                    ResultTile(
+                        Icons.Rounded.HeartBroken,
+                        "−$it",
+                        stringResource(Res.string.result_life),
+                        colors.error,
+                        GameIcon.HEART_BROKEN,
+                    ),
+                )
             }
             mistakesUsed?.let {
                 add(
@@ -406,7 +414,15 @@ private fun ResultTiles(
                 )
             }
             hintsUsed?.let {
-                add(ResultTile(Icons.Rounded.Lightbulb, "$it", stringResource(Res.string.result_hints), colors.onSurfaceVariant))
+                add(
+                    ResultTile(
+                        Icons.Rounded.Lightbulb,
+                        "$it",
+                        stringResource(Res.string.result_hints),
+                        colors.onSurfaceVariant,
+                        GameIcon.HINT,
+                    ),
+                )
             }
         }
     if (tiles.isEmpty()) return
@@ -426,7 +442,8 @@ private fun ResultTiles(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Icon(tile.icon, contentDescription = null, tint = tile.tint, modifier = Modifier.size(TILE_ICON_SIZE))
+                    tile.artwork?.let { GameIconImage(it, size = TILE_ICON_SIZE) }
+                        ?: Icon(tile.icon, contentDescription = null, tint = tile.tint, modifier = Modifier.size(TILE_ICON_SIZE))
                     Text(tile.value, style = MaterialTheme.typography.titleMedium, color = colors.onSurface)
                 }
                 Text(
@@ -440,11 +457,13 @@ private fun ResultTiles(
     }
 }
 
+/** A result tile: a picture for a currency ([artwork]), otherwise the tinted [icon]. */
 private class ResultTile(
     val icon: ImageVector,
     val value: String,
     val label: String,
     val tint: Color,
+    val artwork: GameIcon? = null,
 )
 
 private const val REWARD_SOUND_DELAY_MILLIS = 450L

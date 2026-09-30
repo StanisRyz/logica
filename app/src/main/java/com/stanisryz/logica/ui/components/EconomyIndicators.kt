@@ -38,6 +38,8 @@ import com.stanisryz.logica.ads.RewardedAdState
 import com.stanisryz.logica.economy.EconomyClock
 import com.stanisryz.logica.economy.EconomyRules
 import com.stanisryz.logica.economy.PlayerEconomy
+import com.stanisryz.logica.ui.components.GameIcon
+import com.stanisryz.logica.ui.components.GameIconImage
 import com.stanisryz.logica.ui.components.STATE_ARTWORK_DIALOG_SIZE
 import com.stanisryz.logica.ui.components.StateArtwork
 import com.stanisryz.logica.ui.components.StateArtworkImage
@@ -66,6 +68,7 @@ internal fun EconomyBar(
             stringResource(R.string.economy_lives_action_description, economy.lives, EconomyRules.MAX_LIVES)
         StatusChip(
             icon = if (economy.isGameplayAllowed) Icons.Rounded.Favorite else Icons.Rounded.HeartBroken,
+            artwork = GameIcon.lives(economy.lives),
             label = stringResource(R.string.economy_lives_short, economy.lives, EconomyRules.MAX_LIVES),
             contentColor =
                 if (economy.isGameplayAllowed) {
@@ -88,6 +91,7 @@ internal fun EconomyBar(
         val gemsDescription = stringResource(R.string.economy_gems_action_description, economy.gems)
         StatusChip(
             icon = Icons.Rounded.Diamond,
+            artwork = GameIcon.GEM,
             label = economy.gems.toString(),
             modifier =
                 Modifier
@@ -127,7 +131,7 @@ internal fun LivesDialog(
             if (economy.lives == 0) {
                 StateArtworkImage(StateArtwork.NO_LIVES, size = STATE_ARTWORK_DIALOG_SIZE)
             } else {
-                Icon(Icons.Rounded.Favorite, contentDescription = null)
+                GameIconImage(GameIcon.HEART, size = 40.dp)
             }
         },
         title = { Text(stringResource(R.string.economy_lives_title), textAlign = TextAlign.Center) },

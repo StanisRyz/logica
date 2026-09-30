@@ -22,6 +22,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.stanisryz.logica.ui.components.GameIcon
+import com.stanisryz.logica.ui.components.GameIconImage
 import com.stanisryz.logica.ui.theme.LogicaMotion
 
 /**
@@ -37,6 +39,7 @@ internal fun StatusChip(
     contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     animateLabel: Boolean = false,
     compact: Boolean = false,
+    artwork: GameIcon? = null,
 ) {
     Row(
         modifier =
@@ -50,12 +53,13 @@ internal fun StatusChip(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(if (compact) COMPACT_CHIP_ICON_SPACING else CHIP_ICON_SPACING),
     ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = contentColor,
-            modifier = Modifier.size(if (compact) COMPACT_CHIP_ICON_SIZE else CHIP_ICON_SIZE),
-        )
+        val iconSize = if (compact) COMPACT_CHIP_ICON_SIZE else CHIP_ICON_SIZE
+        // A currency chip shows its coloured picture; any other status keeps the tinted icon.
+        if (artwork != null) {
+            GameIconImage(artwork, size = iconSize + ARTWORK_EXTRA_SIZE)
+        } else {
+            Icon(icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(iconSize))
+        }
         if (animateLabel) {
             AnimatedContent(
                 targetState = label,
@@ -90,3 +94,6 @@ private val COMPACT_CHIP_HORIZONTAL_PADDING = 6.dp
 private val COMPACT_CHIP_VERTICAL_PADDING = 4.dp
 private val COMPACT_CHIP_ICON_SPACING = 3.dp
 private val COMPACT_CHIP_ICON_SIZE = 14.dp
+
+/** The pictures carry more air inside their square than the vector icons do. */
+private val ARTWORK_EXTRA_SIZE = 2.dp

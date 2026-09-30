@@ -257,7 +257,7 @@ private fun ClaimAction(
             }
         else ->
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(Icons.Rounded.Diamond, contentDescription = null, tint = colors.primary, modifier = Modifier.size(16.dp))
+                GameIconImage(GameIcon.GEM, size = 16.dp)
                 Text("+$gems", style = MaterialTheme.typography.labelLarge, color = colors.primary)
             }
     }

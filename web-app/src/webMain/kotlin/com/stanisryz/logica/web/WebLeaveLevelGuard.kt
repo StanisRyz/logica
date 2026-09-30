@@ -10,9 +10,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.HelpOutline
-import androidx.compose.material.icons.rounded.Diamond
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.HeartBroken
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,7 +27,6 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +40,8 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameState
 import com.stanisryz.logica.puzzle.core.word.WordGameState
+import com.stanisryz.logica.ui.components.GameIcon
+import com.stanisryz.logica.ui.components.GameIconImage
 import com.stanisryz.logica.ui.components.GameRulesSheet
 import com.stanisryz.logica.ui.components.LocalGameSounds
 import com.stanisryz.logica.ui.components.catalogTitleResource
@@ -218,17 +216,17 @@ internal fun WebGameplayWallet() {
     val openStore = LocalWebOpenStore.current
     Row(horizontalArrangement = Arrangement.spacedBy(WALLET_CHIP_GAP), verticalAlignment = Alignment.CenterVertically) {
         WalletChip(
-            icon = if (wallet.lives > 0) Icons.Rounded.Favorite else Icons.Rounded.HeartBroken,
+            icon = GameIcon.lives(wallet.lives),
             value = "${wallet.lives}",
             description = stringResource(WebRes.string.web_wallet_lives, wallet.lives, EconomyPolicy.MAXIMUM_LIVES),
-            tint = if (wallet.lives > 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
+            tint = if (wallet.lives > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error,
             onClick = openStore,
         )
         WalletChip(
-            icon = Icons.Rounded.Diamond,
+            icon = GameIcon.GEM,
             value = "${wallet.gems}",
             description = stringResource(WebRes.string.web_wallet_gems, wallet.gems),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = MaterialTheme.colorScheme.onSurface,
             onClick = openStore,
         )
     }
@@ -236,7 +234,7 @@ internal fun WebGameplayWallet() {
 
 @Composable
 private fun WalletChip(
-    icon: ImageVector,
+    icon: GameIcon,
     value: String,
     description: String,
     tint: Color,
@@ -253,8 +251,9 @@ private fun WalletChip(
             horizontalArrangement = Arrangement.spacedBy(WALLET_CHIP_GAP),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(WALLET_ICON_SIZE))
-            Text(value, style = MaterialTheme.typography.labelLarge)
+            GameIconImage(icon, size = WALLET_ICON_SIZE)
+            // At zero lives the number turns red too, beside the broken heart.
+            Text(value, style = MaterialTheme.typography.labelLarge, color = tint)
         }
     }
 }
@@ -265,4 +264,4 @@ internal val LocalWebOpenStore = staticCompositionLocalOf<() -> Unit> { {} }
 private val WALLET_CHIP_GAP = 4.dp
 private val WALLET_CHIP_PADDING = 10.dp
 private val WALLET_CHIP_VERTICAL_PADDING = 6.dp
-private val WALLET_ICON_SIZE = 16.dp
+private val WALLET_ICON_SIZE = 18.dp

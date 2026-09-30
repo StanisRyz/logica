@@ -2,6 +2,7 @@ package com.stanisryz.logica.web
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +26,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.ui.components.GameIcon
+import com.stanisryz.logica.ui.components.RankMedal
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.web.generated.resources.web_leaderboard_empty
 import com.stanisryz.logica.web.generated.resources.web_leaderboard_join
@@ -265,12 +268,17 @@ private fun LeaderboardRows(
                     .padding(horizontal = LogicaSpacing.item, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                entry.rank.toString(),
-                modifier = Modifier.width(36.dp),
-                style = MaterialTheme.typography.titleSmall,
-                color = if (mine) colors.onPrimaryContainer else colors.onSurfaceVariant,
-            )
+            val medal = GameIcon.medal(entry.rank)
+            if (medal != null) {
+                Box(Modifier.width(36.dp)) { RankMedal(medal, entry.rank) }
+            } else {
+                Text(
+                    entry.rank.toString(),
+                    modifier = Modifier.width(36.dp),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (mine) colors.onPrimaryContainer else colors.onSurfaceVariant,
+                )
+            }
             Text(
                 if (mine) {
                     stringResource(WebRes.string.web_leaderboard_you)

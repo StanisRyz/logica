@@ -110,6 +110,8 @@ import com.stanisryz.logica.shared.ui.generated.resources.achievements_rewards_w
 import com.stanisryz.logica.shared.ui.generated.resources.achievements_section_locked
 import com.stanisryz.logica.shared.ui.generated.resources.achievements_section_unlocked
 import com.stanisryz.logica.shared.ui.generated.resources.profile_achievements
+import com.stanisryz.logica.ui.components.GameIcon
+import com.stanisryz.logica.ui.components.GameIconImage
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import kotlinx.coroutines.delay
@@ -373,7 +375,7 @@ internal fun AchievementsEntryCard(
                 val claimable = rewards?.claimableCount(statistics) ?: 0
                 if (claimable > 0) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Icon(Icons.Rounded.Diamond, contentDescription = null, tint = colors.primary, modifier = Modifier.size(16.dp))
+                        GameIconImage(GameIcon.GEM, size = 16.dp)
                         Text(
                             stringResource(Res.string.achievements_rewards_waiting, claimable),
                             style = MaterialTheme.typography.labelLarge,
@@ -508,12 +510,7 @@ private fun AchievementRow(
                     Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = palette.success, modifier = Modifier.size(24.dp))
                 rewards != null ->
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Icon(
-                            Icons.Rounded.Diamond,
-                            contentDescription = null,
-                            tint = colors.onSurfaceVariant,
-                            modifier = Modifier.size(14.dp),
-                        )
+                        GameIconImage(GameIcon.GEM, size = 16.dp)
                         Text("+${achievement.gems}", style = MaterialTheme.typography.labelLarge, color = colors.onSurfaceVariant)
                     }
             }

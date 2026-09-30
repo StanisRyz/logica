@@ -40,6 +40,10 @@ SHEETS = [
         ["no_games", "no_lives", "second_chance"],
         ["no_hints", "load_failed", "empty_gallery"],
     ], {"size": 384}),
+    ("icons/sheet.png", "icon", [
+        ["gem", "heart", "heart_broken", "hint"],
+        ["medal_gold", "medal_silver", "medal_bronze"],
+    ], {"size": 128}),
 ]
 OUTPUT = ROOT / "shared-ui/src/commonMain/composeResources/drawable"
 SIZE = 192          # 48 dp at xxxhdpi, the largest the game shows
