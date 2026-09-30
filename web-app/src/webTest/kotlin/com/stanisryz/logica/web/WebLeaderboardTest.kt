@@ -93,8 +93,8 @@ class WebLeaderboardTest {
             val controller = WebLeaderboardController(bridge, scope)
             val sudoku = WebLeaderboardController.ratingLeaderboard(PuzzleType.SUDOKU)
             val best2048 = WebLeaderboardController.ratingLeaderboard(PuzzleType.GAME_2048)
-            assertEquals("rating_sudoku", sudoku)
-            assertEquals("best_2048", best2048)
+            assertEquals("ratingSudoku", sudoku)
+            assertEquals("best2048", best2048)
 
             controller.load(sudoku)
             scope.advanceUntilIdle()

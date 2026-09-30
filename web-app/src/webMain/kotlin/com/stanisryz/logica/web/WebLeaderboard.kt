@@ -160,13 +160,13 @@ internal class WebLeaderboardController(
         /** The rating table of [puzzleType]: points for cleared levels, or 2048's best score. */
         fun ratingLeaderboard(puzzleType: PuzzleType): String =
             when (puzzleType) {
-                PuzzleType.BALANCE -> "rating_balance"
-                PuzzleType.CROWNS -> "rating_crowns"
-                PuzzleType.WORD -> "rating_word"
-                PuzzleType.SUDOKU -> "rating_sudoku"
-                PuzzleType.NONOGRAM -> "rating_nonogram"
-                PuzzleType.BLOCK_SUDOKU -> "rating_block_sudoku"
-                PuzzleType.GAME_2048 -> "best_2048"
+                PuzzleType.BALANCE -> "ratingBalance"
+                PuzzleType.CROWNS -> "ratingCrowns"
+                PuzzleType.WORD -> "ratingWord"
+                PuzzleType.SUDOKU -> "ratingSudoku"
+                PuzzleType.NONOGRAM -> "ratingNonogram"
+                PuzzleType.BLOCK_SUDOKU -> "ratingBlockSudoku"
+                PuzzleType.GAME_2048 -> "best2048"
                 else -> error("$puzzleType has no rating leaderboard.")
             }
     }
