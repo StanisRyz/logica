@@ -99,18 +99,31 @@ fun NonogramBoard(
                                         val down = awaitFirstDown()
                                         val start = cellAt(down.position) ?: return@awaitEachGesture
                                         val mistakesAtStart = currentGame.mistakesUsed
-                                        focus = start
-                                        currentOnCell(start)
+                                        // The touched cell opens on release or once the drag leaves it, so a
+                                        // second finger (a pinch to zoom) can still cancel it untouched.
+                                        var committed = false
+
+                                        fun commitStart() {
+                                            if (committed) return
+                                            committed = true
+                                            focus = start
+                                            currentOnCell(start)
+                                        }
                                         var last = start
                                         var alongRow: Boolean? = null
                                         while (true) {
                                             val event = awaitPointerEvent()
+                                            if (event.changes.count { it.pressed } > 1 || event.changes.any { it.isConsumed }) break
                                             val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                                            if (!change.pressed) break
+                                            if (!change.pressed) {
+                                                commitStart()
+                                                break
+                                            }
                                             change.consume()
-                                            if (currentGame.mistakesUsed != mistakesAtStart || currentGame.status.isTerminal) continue
                                             val raw = cellAt(change.position) ?: continue
                                             if (raw == last) continue
+                                            commitStart()
+                                            if (currentGame.mistakesUsed != mistakesAtStart || currentGame.status.isTerminal) continue
                                             if (alongRow == null) alongRow = abs(raw.column - start.column) >= abs(raw.row - start.row)
                                             val target =
                                                 if (alongRow ==

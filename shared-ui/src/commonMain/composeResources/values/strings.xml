@@ -419,4 +419,5 @@
     <string name="quest_solve_daily">Решите задачу дня</string>
     <string name="quest_different_games">Решите головоломки в %1$d разных играх</string>
     <string name="achievements_rewards_waiting">Наград ждут: %1$d</string>
+    <string name="board_zoom_reset">Показать всё поле</string>
 </resources>

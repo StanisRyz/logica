@@ -33,6 +33,7 @@ import com.stanisryz.logica.ui.components.CellGameSounds
 import com.stanisryz.logica.ui.components.PuzzleTool
 import com.stanisryz.logica.ui.components.PuzzleToolBar
 import com.stanisryz.logica.ui.components.SquareGameLayout
+import com.stanisryz.logica.ui.components.ZoomableBoard
 import com.stanisryz.logica.ui.components.displayName
 import com.stanisryz.logica.ui.components.hintTool
 import org.jetbrains.compose.resources.stringResource
@@ -79,13 +80,15 @@ fun NonogramGameContent(
         },
         hostStatusContent = hostStatusContent,
         boardContent = {
-            NonogramBoard(
-                puzzle = puzzle,
-                game = game,
-                onCell = onCell,
-                enabled = gameplayEnabled,
-                modifier = Modifier.fillMaxSize(),
-            )
+            ZoomableBoard(resetKey = puzzle, modifier = Modifier.fillMaxSize()) {
+                NonogramBoard(
+                    puzzle = puzzle,
+                    game = game,
+                    onCell = onCell,
+                    enabled = gameplayEnabled,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         },
         toolContent = {
             NonogramToolBar(

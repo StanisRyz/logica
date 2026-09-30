@@ -37,6 +37,7 @@ import com.stanisryz.logica.ui.components.GameDock
 import com.stanisryz.logica.ui.components.GameSound
 import com.stanisryz.logica.ui.components.LocalGameSounds
 import com.stanisryz.logica.ui.components.LocalRoomyGameplayControls
+import com.stanisryz.logica.ui.components.ZoomableBoard
 import com.stanisryz.logica.ui.components.isRoomyPortrait
 import com.stanisryz.logica.ui.components.isWideGameplayLayout
 import com.stanisryz.logica.ui.theme.LogicaSpacing
@@ -126,13 +127,15 @@ fun SudokuGameContent(
                             .aspectRatio(1f, matchHeightConstraintsFirst = true),
                     contentAlignment = Alignment.Center,
                 ) {
-                    SudokuBoard(
-                        game = game,
-                        selectedCell = selectedCell,
-                        enabled = gameplayEnabled,
-                        onCellSelected = onCellSelected,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    ZoomableBoard(resetKey = game.puzzleId, modifier = Modifier.fillMaxSize()) {
+                        SudokuBoard(
+                            game = game,
+                            selectedCell = selectedCell,
+                            enabled = gameplayEnabled,
+                            onCellSelected = onCellSelected,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 }
                 Column(
                     modifier = Modifier.width(panelWidth),
@@ -205,13 +208,15 @@ fun SudokuGameContent(
                         }
                     },
                     board = {
-                        SudokuBoard(
-                            game = game,
-                            selectedCell = selectedCell,
-                            enabled = gameplayEnabled,
-                            onCellSelected = onCellSelected,
-                            modifier = Modifier.fillMaxSize(),
-                        )
+                        ZoomableBoard(resetKey = game.puzzleId, modifier = Modifier.fillMaxSize()) {
+                            SudokuBoard(
+                                game = game,
+                                selectedCell = selectedCell,
+                                enabled = gameplayEnabled,
+                                onCellSelected = onCellSelected,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
                     },
                     controls = {
                         // Tools and digits share the floating dock at the bottom edge, under the thumb.
