@@ -5,10 +5,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -22,30 +22,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.Balance
-import androidx.compose.material.icons.rounded.Bolt
-import androidx.compose.material.icons.rounded.Brush
-import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Diamond
-import androidx.compose.material.icons.rounded.EmojiEvents
-import androidx.compose.material.icons.rounded.EventAvailable
-import androidx.compose.material.icons.rounded.Extension
-import androidx.compose.material.icons.rounded.Grid4x4
-import androidx.compose.material.icons.rounded.LocalFireDepartment
-import androidx.compose.material.icons.rounded.MilitaryTech
-import androidx.compose.material.icons.rounded.Psychology
-import androidx.compose.material.icons.rounded.SortByAlpha
-import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material.icons.rounded.TaskAlt
-import androidx.compose.material.icons.rounded.Verified
-import androidx.compose.material.icons.rounded.ViewModule
-import androidx.compose.material.icons.rounded.ViewQuilt
-import androidx.compose.material.icons.rounded.WorkspacePremium
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -63,9 +43,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -97,6 +79,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.achievement_first_solv
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_first_solve_body
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_game2048
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_game2048_body
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_game_2048
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_nonogram
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_nonogram_body
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_perfect_25
@@ -130,7 +113,9 @@ import com.stanisryz.logica.shared.ui.generated.resources.profile_achievements
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import kotlinx.coroutines.delay
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -141,57 +126,94 @@ import org.jetbrains.compose.resources.stringResource
  */
 enum class Achievement(
     val id: String,
-    internal val icon: ImageVector,
+    internal val artwork: DrawableResource,
     internal val title: StringResource,
     internal val body: StringResource,
     val target: Long,
     private val progressOf: (ProfileStatistics) -> Long,
 ) {
-    FIRST_SOLVE("first_solve", Icons.Rounded.TaskAlt, Res.string.achievement_first_solve, Res.string.achievement_first_solve_body, 1, {
-        it.totalSolved
-    }),
-    ALL_GAMES("all_games", Icons.Rounded.ViewModule, Res.string.achievement_all_games, Res.string.achievement_all_games_body, 6, { stats ->
-        listOf(
-            stats.balance.totalSolved,
-            stats.crowns.totalSolved,
-            stats.sudoku.solved,
-            stats.word.solved,
-            stats.game2048.solved,
-            stats.nonogram.solved,
-        ).count { it > 0L }
-            .toLong()
-    }),
-    SOLVER_50("solver_50", Icons.Rounded.Psychology, Res.string.achievement_solver_50, Res.string.achievement_solver_50_body, 50, {
-        it.totalSolved
-    }),
-    SOLVER_250("solver_250", Icons.Rounded.MilitaryTech, Res.string.achievement_solver_250, Res.string.achievement_solver_250_body, 250, {
-        it.totalSolved
-    }),
+    FIRST_SOLVE(
+        "first_solve",
+        Res.drawable.achievement_first_solve,
+        Res.string.achievement_first_solve,
+        Res.string.achievement_first_solve_body,
+        1,
+        {
+            it.totalSolved
+        },
+    ),
+    ALL_GAMES(
+        "all_games",
+        Res.drawable.achievement_all_games,
+        Res.string.achievement_all_games,
+        Res.string.achievement_all_games_body,
+        6,
+        { stats ->
+            listOf(
+                stats.balance.totalSolved,
+                stats.crowns.totalSolved,
+                stats.sudoku.solved,
+                stats.word.solved,
+                stats.game2048.solved,
+                stats.nonogram.solved,
+            ).count { it > 0L }
+                .toLong()
+        },
+    ),
+    SOLVER_50(
+        "solver_50",
+        Res.drawable.achievement_solver_50,
+        Res.string.achievement_solver_50,
+        Res.string.achievement_solver_50_body,
+        50,
+        {
+            it.totalSolved
+        },
+    ),
+    SOLVER_250(
+        "solver_250",
+        Res.drawable.achievement_solver_250,
+        Res.string.achievement_solver_250,
+        Res.string.achievement_solver_250_body,
+        250,
+        {
+            it.totalSolved
+        },
+    ),
     SOLVER_1000(
         "solver_1000",
-        Icons.Rounded.EmojiEvents,
+        Res.drawable.achievement_solver_1000,
         Res.string.achievement_solver_1000,
         Res.string.achievement_solver_1000_body,
         1000,
         { it.totalSolved },
     ),
-    BALANCE("balance_50", Icons.Rounded.Balance, Res.string.achievement_balance, Res.string.achievement_balance_body, 50, {
+    BALANCE("balance_50", Res.drawable.achievement_balance, Res.string.achievement_balance, Res.string.achievement_balance_body, 50, {
         it.balance.totalSolved
     }),
-    CROWNS("crowns_50", Icons.Rounded.WorkspacePremium, Res.string.achievement_crowns, Res.string.achievement_crowns_body, 50, {
+    CROWNS("crowns_50", Res.drawable.achievement_crowns, Res.string.achievement_crowns, Res.string.achievement_crowns_body, 50, {
         it.crowns.totalSolved
     }),
-    SUDOKU("sudoku_50", Icons.Rounded.Grid4x4, Res.string.achievement_sudoku, Res.string.achievement_sudoku_body, 50, { it.sudoku.solved }),
-    WORD("word_50", Icons.Rounded.SortByAlpha, Res.string.achievement_word, Res.string.achievement_word_body, 50, { it.word.solved }),
-    GAME_2048("game2048_25", Icons.Rounded.Extension, Res.string.achievement_game2048, Res.string.achievement_game2048_body, 25, {
-        it.game2048.solved
+    SUDOKU("sudoku_50", Res.drawable.achievement_sudoku, Res.string.achievement_sudoku, Res.string.achievement_sudoku_body, 50, {
+        it.sudoku.solved
     }),
-    NONOGRAM("nonogram_25", Icons.Rounded.Brush, Res.string.achievement_nonogram, Res.string.achievement_nonogram_body, 25, {
+    WORD("word_50", Res.drawable.achievement_word, Res.string.achievement_word, Res.string.achievement_word_body, 50, { it.word.solved }),
+    GAME_2048(
+        "game2048_25",
+        Res.drawable.achievement_game_2048,
+        Res.string.achievement_game2048,
+        Res.string.achievement_game2048_body,
+        25,
+        {
+            it.game2048.solved
+        },
+    ),
+    NONOGRAM("nonogram_25", Res.drawable.achievement_nonogram, Res.string.achievement_nonogram, Res.string.achievement_nonogram_body, 25, {
         it.nonogram.solved
     }),
     BLOCK_SUDOKU(
         "block_sudoku_25",
-        Icons.Rounded.ViewQuilt,
+        Res.drawable.achievement_block_sudoku,
         Res.string.achievement_block_sudoku,
         Res.string.achievement_block_sudoku_body,
         25,
@@ -199,44 +221,79 @@ enum class Achievement(
     ),
     WORD_FIRST_TRY(
         "word_first_try",
-        Icons.Rounded.AutoAwesome,
+        Res.drawable.achievement_word_first_try,
         Res.string.achievement_word_first_try,
         Res.string.achievement_word_first_try_body,
         1,
         { it.word.solvedAttemptDistribution[1] },
     ),
-    EXPERT_1("expert_1", Icons.Rounded.Verified, Res.string.achievement_expert_1, Res.string.achievement_expert_1_body, 1, ::expertSolved),
+    EXPERT_1(
+        "expert_1",
+        Res.drawable.achievement_expert_1,
+        Res.string.achievement_expert_1,
+        Res.string.achievement_expert_1_body,
+        1,
+        ::expertSolved,
+    ),
     EXPERT_25(
         "expert_25",
-        Icons.Rounded.MilitaryTech,
+        Res.drawable.achievement_expert_25,
         Res.string.achievement_expert_25,
         Res.string.achievement_expert_25_body,
         25,
         ::expertSolved,
     ),
-    STARS_100("stars_100", Icons.Rounded.Star, Res.string.achievement_stars_100, Res.string.achievement_stars_100_body, 100, {
-        it.stars?.total
-            ?: 0L
-    }),
-    STARS_500("stars_500", Icons.Rounded.AutoAwesome, Res.string.achievement_stars_500, Res.string.achievement_stars_500_body, 500, {
-        it.stars?.total
-            ?: 0L
-    }),
-    PERFECT_25("perfect_25", Icons.Rounded.Verified, Res.string.achievement_perfect_25, Res.string.achievement_perfect_25_body, 25, {
-        it.stars?.perfectLevels ?: 0L
-    }),
-    DAILY_1("daily_1", Icons.Rounded.EventAvailable, Res.string.achievement_daily_1, Res.string.achievement_daily_1_body, 1, {
+    STARS_100(
+        "stars_100",
+        Res.drawable.achievement_stars_100,
+        Res.string.achievement_stars_100,
+        Res.string.achievement_stars_100_body,
+        100,
+        {
+            it.stars?.total
+                ?: 0L
+        },
+    ),
+    STARS_500(
+        "stars_500",
+        Res.drawable.achievement_stars_500,
+        Res.string.achievement_stars_500,
+        Res.string.achievement_stars_500_body,
+        500,
+        {
+            it.stars?.total
+                ?: 0L
+        },
+    ),
+    PERFECT_25(
+        "perfect_25",
+        Res.drawable.achievement_perfect_25,
+        Res.string.achievement_perfect_25,
+        Res.string.achievement_perfect_25_body,
+        25,
+        {
+            it.stars?.perfectLevels ?: 0L
+        },
+    ),
+    DAILY_1("daily_1", Res.drawable.achievement_daily_1, Res.string.achievement_daily_1, Res.string.achievement_daily_1_body, 1, {
         it.dailyMetrics?.completedCount ?: 0L
     }),
-    DAILY_30("daily_30", Icons.Rounded.CalendarMonth, Res.string.achievement_daily_30, Res.string.achievement_daily_30_body, 30, {
+    DAILY_30("daily_30", Res.drawable.achievement_daily_30, Res.string.achievement_daily_30, Res.string.achievement_daily_30_body, 30, {
         it.dailyMetrics?.completedCount ?: 0L
     }),
-    STREAK_7("streak_7", Icons.Rounded.Bolt, Res.string.achievement_streak_7, Res.string.achievement_streak_7_body, 7, {
+    STREAK_7("streak_7", Res.drawable.achievement_streak_7, Res.string.achievement_streak_7, Res.string.achievement_streak_7_body, 7, {
         it.dailyMetrics?.bestStreak ?: 0L
     }),
-    STREAK_30("streak_30", Icons.Rounded.LocalFireDepartment, Res.string.achievement_streak_30, Res.string.achievement_streak_30_body, 30, {
-        it.dailyMetrics?.bestStreak ?: 0L
-    }),
+    STREAK_30(
+        "streak_30",
+        Res.drawable.achievement_streak_30,
+        Res.string.achievement_streak_30,
+        Res.string.achievement_streak_30_body,
+        30,
+        {
+            it.dailyMetrics?.bestStreak ?: 0L
+        },
+    ),
     ;
 
     /** Progress toward [target], capped at it. */
@@ -308,12 +365,8 @@ internal fun AchievementsEntryCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(ENTRY_GAP),
         ) {
-            Box(
-                Modifier.size(ENTRY_MEDAL).clip(CircleShape).background(LocalLogicaPalette.current.star),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Rounded.EmojiEvents, contentDescription = null, tint = ACHIEVEMENT_ICON_INK, modifier = Modifier.size(26.dp))
-            }
+            // The trophy of the rarest solving goal stands for the whole collection.
+            AchievementArtwork(Achievement.SOLVER_1000, ENTRY_MEDAL, unlocked = true)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(stringResource(Res.string.profile_achievements), style = MaterialTheme.typography.titleMedium)
                 Text(countLabel, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
@@ -423,20 +476,7 @@ private fun AchievementRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(ENTRY_GAP),
         ) {
-            Box(
-                Modifier
-                    .size(ROW_MEDAL)
-                    .clip(CircleShape)
-                    .background(if (unlocked) palette.star else colors.surfaceContainerHighest),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    achievement.icon,
-                    contentDescription = null,
-                    tint = if (unlocked) ACHIEVEMENT_ICON_INK else colors.onSurfaceVariant,
-                    modifier = Modifier.size(ROW_MEDAL * 0.55f),
-                )
-            }
+            AchievementArtwork(achievement, ROW_MEDAL, unlocked)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(body, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
@@ -583,7 +623,7 @@ internal fun ResultCardAchievements() {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                AchievementMedal(achievement, 28.dp)
+                AchievementMedal(achievement, 36.dp)
                 Column {
                     Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(stringResource(achievement.title), style = MaterialTheme.typography.titleSmall)
@@ -598,18 +638,27 @@ private fun AchievementMedal(
     achievement: Achievement,
     size: Dp,
 ) {
-    Box(
-        Modifier.size(size).clip(CircleShape).background(LocalLogicaPalette.current.star),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(achievement.icon, contentDescription = null, tint = ACHIEVEMENT_ICON_INK, modifier = Modifier.size(size * 0.55f))
-    }
+    AchievementArtwork(achievement, size, unlocked = true)
+}
+
+/** The achievement's own picture; one not reached yet is shown grey and faded, so reached ones stand out. */
+@Composable
+private fun AchievementArtwork(
+    achievement: Achievement,
+    size: Dp,
+    unlocked: Boolean,
+) {
+    Image(
+        painter = painterResource(achievement.artwork),
+        contentDescription = null,
+        modifier = Modifier.size(size).alpha(if (unlocked) 1f else LOCKED_ARTWORK_ALPHA),
+        colorFilter = if (unlocked) null else LOCKED_ARTWORK_FILTER,
+    )
 }
 
 private const val BANNER_MILLIS = 3_200L
 private const val CLAIM_WINDOW_MILLIS = 700L
 private const val BANNER_EXIT_MILLIS = 400L
 private val BANNER_MAX_WIDTH = 480.dp
-private val ACHIEVEMENT_ICON_INK =
-    androidx.compose.ui.graphics
-        .Color(0xFF3A2A02)
+private const val LOCKED_ARTWORK_ALPHA = 0.6f
+private val LOCKED_ARTWORK_FILTER = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })

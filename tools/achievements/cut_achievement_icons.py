@@ -1,0 +1,97 @@
+"""Cuts the achievement icon sheets in art/achievements into the shared drawables.
+
+Each sheet is a grid of icons on a plain white background. Rows and then the icons inside each row
+are found from the empty white bands between them; the background reachable from a cell's border
+becomes transparent (with a soft, un-whitened edge), and every icon is fitted into the same square
+with the same margin. Rerun after replacing a sheet: python3 tools/achievements/cut_achievement_icons.py
+Needs Pillow, NumPy, and SciPy.
+"""
+
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+from scipy import ndimage
+
+ROOT = Path(__file__).resolve().parents[2]
+SHEETS = [
+    ("sheet1.png", [
+        ["first_solve", "all_games", "solver_50"],
+        ["solver_250", "solver_1000", "balance"],
+        ["crowns", "sudoku", "word"],
+        ["game_2048", "nonogram", "block_sudoku"],
+    ]),
+    ("sheet2.png", [
+        ["word_first_try", "expert_1", "expert_25", "stars_100", "stars_500"],
+        ["perfect_25", "daily_1", "daily_30", "streak_7", "streak_30"],
+    ]),
+]
+OUTPUT = ROOT / "shared-ui/src/commonMain/composeResources/drawable"
+SIZE = 192          # 48 dp at xxxhdpi, the largest the game shows
+MARGIN = 0.06       # empty border around every icon, as a share of SIZE
+INK = 14            # a channel this far from white counts as drawing, not background
+EDGE = 60           # up to this far from white an edge pixel is partly transparent
+
+
+def bands(ink: np.ndarray, count: int) -> list[tuple[int, int]]:
+    """The [start, end) runs of an ink profile, merged down to the expected number of objects."""
+    runs, start = [], None
+    for i, value in enumerate(ink > 2):
+        if value and start is None:
+            start = i
+        elif not value and start is not None:
+            runs.append((start, i))
+            start = None
+    if start is not None:
+        runs.append((start, len(ink)))
+    runs = [r for r in runs if r[1] - r[0] > 6]  # stray specks
+    while len(runs) > count:  # join the pair with the smallest gap
+        gaps = [runs[i + 1][0] - runs[i][1] for i in range(len(runs) - 1)]
+        i = int(np.argmin(gaps))
+        runs[i:i + 2] = [(runs[i][0], runs[i + 1][1])]
+    if len(runs) != count:
+        raise SystemExit(f"expected {count} objects, found {len(runs)}")
+    return runs
+
+
+def cut(cell: np.ndarray) -> Image.Image:
+    distance = np.abs(cell.astype(int) - 255).max(axis=2)
+    near_white = distance < INK
+    labels, _ = ndimage.label(near_white)
+    border = set(np.unique(np.concatenate([labels[0], labels[-1], labels[:, 0], labels[:, -1]]))) - {0}
+    background = np.isin(labels, list(border))
+    # Pixels next to the background fade out by how white they are, so no white fringe remains.
+    rim = ndimage.binary_dilation(background, iterations=2) & ~background
+    alpha = np.where(background, 0.0, 1.0)
+    alpha[rim] = np.clip(distance[rim] / EDGE, 0.0, 1.0)
+    rgb = cell.astype(float)
+    safe = np.maximum(alpha, 1e-3)[..., None]
+    rgb = np.where(alpha[..., None] > 0, (rgb - 255 * (1 - alpha[..., None])) / safe, 0)
+    rgba = np.dstack([np.clip(rgb, 0, 255), alpha * 255]).astype(np.uint8)
+    image = Image.fromarray(rgba, "RGBA")
+    return image.crop(image.getbbox())
+
+
+def fit(icon: Image.Image) -> Image.Image:
+    inner = round(SIZE * (1 - 2 * MARGIN))
+    scale = inner / max(icon.size)
+    icon = icon.resize((max(1, round(icon.width * scale)), max(1, round(icon.height * scale))), Image.LANCZOS)
+    square = Image.new("RGBA", (SIZE, SIZE))
+    square.alpha_composite(icon, ((SIZE - icon.width) // 2, (SIZE - icon.height) // 2))
+    return square
+
+
+def main() -> None:
+    for sheet, grid in SHEETS:
+        pixels = np.asarray(Image.open(ROOT / "art/achievements" / sheet).convert("RGB"))
+        drawn = np.abs(pixels.astype(int) - 255).max(axis=2) >= INK
+        for (top, bottom), names in zip(bands(drawn.sum(axis=1), len(grid)), grid):
+            for (left, right), name in zip(bands(drawn[top:bottom].sum(axis=0), len(names)), names):
+                pad = 4
+                cell = pixels[max(0, top - pad):bottom + pad, max(0, left - pad):right + pad]
+                fit(cut(cell)).save(OUTPUT / f"achievement_{name}.webp", "WEBP", quality=90, method=6)
+                print(f"achievement_{name}.webp")
+
+
+if __name__ == "__main__":
+    main()
