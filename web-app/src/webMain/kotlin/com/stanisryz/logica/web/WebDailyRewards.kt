@@ -23,6 +23,8 @@ internal data class WebDailyRewardsSnapshot(
     val claimedQuests: Int = 0,
     val lastGiftEpochDay: Long = NO_DAY,
     val giftStreakDay: Int = 0,
+    /** Achievements whose one-time gem reward was already paid; never cleared by a new day. */
+    val claimedAchievements: Set<String> = emptySet(),
 ) {
     fun activity(
         today: Long,
@@ -84,7 +86,11 @@ internal data class WebDailyRewardsSnapshot(
                 giftStreakDay >= other.giftStreakDay -> this
                 else -> other
             }
-        return quests.copy(lastGiftEpochDay = gift.lastGiftEpochDay, giftStreakDay = gift.giftStreakDay)
+        return quests.copy(
+            lastGiftEpochDay = gift.lastGiftEpochDay,
+            giftStreakDay = gift.giftStreakDay,
+            claimedAchievements = claimedAchievements + other.claimedAchievements,
+        )
     }
 
     companion object {
@@ -93,9 +99,13 @@ internal data class WebDailyRewardsSnapshot(
     }
 }
 
-/** A small text record: `LGDR1|day|played|hard|claimed|giftDay|giftStreak|TYPE=n,…`. */
+/**
+ * A small text record: `LGDR2|day|played|hard|claimed|giftDay|giftStreak|TYPE=n,…|achievement,…`.
+ * `LGDR1` records (no achievements field) still decode.
+ */
 internal object WebDailyRewardsCodec {
-    private const val HEADER = "LGDR1"
+    private const val HEADER = "LGDR2"
+    private const val LEGACY_HEADER = "LGDR1"
 
     fun encode(snapshot: WebDailyRewardsSnapshot): ByteArray =
         listOf(
@@ -107,12 +117,13 @@ internal object WebDailyRewardsCodec {
             snapshot.lastGiftEpochDay.toString(),
             snapshot.giftStreakDay.toString(),
             snapshot.solvedByType.entries.joinToString(",") { "${it.key.name}=${it.value}" },
+            snapshot.claimedAchievements.sorted().joinToString(","),
         ).joinToString("|").encodeToByteArray()
 
     fun decode(payload: ByteArray): WebDailyRewardsSnapshot? =
         runCatching {
             val parts = payload.decodeToString().split("|")
-            require(parts.size == 8 && parts[0] == HEADER)
+            require((parts.size == 9 && parts[0] == HEADER) || (parts.size == 8 && parts[0] == LEGACY_HEADER))
             val solvedByType =
                 parts[7].takeIf { it.isNotEmpty() }?.split(",")?.associate { entry ->
                     val (name, count) = entry.split("=")
@@ -126,6 +137,12 @@ internal object WebDailyRewardsCodec {
                 lastGiftEpochDay = parts[5].toLong(),
                 giftStreakDay = parts[6].toInt().also { require(it in 0..LoginGift.CYCLE_DAYS) },
                 solvedByType = solvedByType,
+                claimedAchievements =
+                    parts
+                        .getOrNull(8)
+                        ?.split(",")
+                        ?.filter { it.isNotEmpty() }
+                        ?.toSet() ?: emptySet(),
             )
         }.getOrNull()
 }

@@ -13,6 +13,7 @@ import com.stanisryz.logica.result.GameResultEntity
 import com.stanisryz.logica.result.GameResultScope
 import com.stanisryz.logica.ui.components.DailyRewardsUiState
 import com.stanisryz.logica.ui.components.dailyRewardsUiState
+import com.stanisryz.logica.ui.profile.Achievement
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -92,6 +93,23 @@ internal class DailyRewardsRepository(
         )
     }
 
+    /** Ids of the achievements whose reward was already paid. */
+    fun observeClaimedAchievements(): Flow<Set<String>> =
+        economyDao.observeEventIds("achievement:").map { ids -> ids.mapTo(mutableSetOf()) { it.removePrefix("achievement:") } }
+
+    /**
+     * Pays [achievement]'s reward once; the caller has checked it against the durable statistics,
+     * and the ledger row makes a repeat pay nothing.
+     */
+    suspend fun claimAchievement(achievement: Achievement): Boolean =
+        economyDao.grantDailyReward(
+            eventId = EconomyEvent.achievementEventId(achievement.id),
+            type = EconomyEventType.ACHIEVEMENT_REWARD,
+            sourceId = achievement.id,
+            gems = achievement.gems,
+            nowEpochMillis = clock.nowEpochMillis(),
+        )
+
     private fun observeActivity(epochDay: Long): Flow<DailyQuestActivity> {
         val date = LocalDate.ofEpochDay(epochDay)
         val from = date.atStartOfDay(zone()).toInstant().toEpochMilli()
@@ -155,6 +173,27 @@ internal class DailyRewardsViewModel(
     private companion object {
         const val STOP_TIMEOUT_MILLIS = 5_000L
     }
+}
+
+/** Achievement rewards for the Profile and the achievements screen. */
+internal class AchievementRewardsViewModel(
+    private val repository: DailyRewardsRepository,
+) : ViewModel() {
+    val claimed: StateFlow<Set<String>?> =
+        repository
+            .observeClaimedAchievements()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), null)
+
+    fun claim(achievement: Achievement) {
+        viewModelScope.launch { runCatching { repository.claimAchievement(achievement) } }
+    }
+}
+
+internal class AchievementRewardsViewModelFactory(
+    private val repository: DailyRewardsRepository,
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T = AchievementRewardsViewModel(repository) as T
 }
 
 internal class DailyRewardsViewModelFactory(

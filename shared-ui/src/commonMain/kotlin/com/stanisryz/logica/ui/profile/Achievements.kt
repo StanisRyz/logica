@@ -12,11 +12,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -29,6 +31,7 @@ import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Brush
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Diamond
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.EventAvailable
 import androidx.compose.material.icons.rounded.Extension
@@ -42,6 +45,7 @@ import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material.icons.rounded.ViewModule
 import androidx.compose.material.icons.rounded.WorkspacePremium
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -116,6 +120,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.achievement_word_body
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_word_first_try
 import com.stanisryz.logica.shared.ui.generated.resources.achievement_word_first_try_body
 import com.stanisryz.logica.shared.ui.generated.resources.achievements_count
+import com.stanisryz.logica.shared.ui.generated.resources.achievements_rewards_waiting
 import com.stanisryz.logica.shared.ui.generated.resources.achievements_section_locked
 import com.stanisryz.logica.shared.ui.generated.resources.achievements_section_unlocked
 import com.stanisryz.logica.shared.ui.generated.resources.profile_achievements
@@ -227,6 +232,27 @@ enum class Achievement(
     fun progress(statistics: ProfileStatistics): Long = progressOf(statistics).coerceIn(0L, target)
 
     fun isUnlocked(statistics: ProfileStatistics): Boolean = progress(statistics) >= target
+
+    /** The one-time gem reward a reached achievement pays once claimed; the harder, the more. */
+    val gems: Int
+        get() =
+            when (this) {
+                FIRST_SOLVE, WORD_FIRST_TRY, EXPERT_1, DAILY_1 -> 2
+                BALANCE, CROWNS, SUDOKU, WORD, GAME_2048, NONOGRAM, SOLVER_50 -> 5
+                ALL_GAMES, SOLVER_250, EXPERT_25, STARS_100, PERFECT_25, STREAK_7 -> 10
+                SOLVER_1000, STARS_500, DAILY_30, STREAK_30 -> 20
+            }
+}
+
+/**
+ * The host side of achievement rewards: which ids were already paid ([claimed]) and how to pay
+ * one ([onClaim]). Hosts pay each id once through their own durable ledger or record.
+ */
+class AchievementRewards(
+    val claimed: Set<String>,
+    val onClaim: (Achievement) -> Unit,
+) {
+    fun claimableCount(statistics: ProfileStatistics): Int = Achievement.entries.count { it.isUnlocked(statistics) && it.id !in claimed }
 }
 
 private fun expertSolved(statistics: ProfileStatistics): Long =
@@ -253,6 +279,7 @@ fun ProfileStatistics.unlockedAchievementIds(): Set<String> =
 internal fun AchievementsEntryCard(
     statistics: ProfileStatistics,
     onOpen: () -> Unit,
+    rewards: AchievementRewards? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val unlocked = Achievement.entries.count { it.isUnlocked(statistics) }
@@ -278,6 +305,17 @@ internal fun AchievementsEntryCard(
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(stringResource(Res.string.profile_achievements), style = MaterialTheme.typography.titleMedium)
                 Text(countLabel, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                val claimable = rewards?.claimableCount(statistics) ?: 0
+                if (claimable > 0) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(Icons.Rounded.Diamond, contentDescription = null, tint = colors.primary, modifier = Modifier.size(16.dp))
+                        Text(
+                            stringResource(Res.string.achievements_rewards_waiting, claimable),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = colors.primary,
+                        )
+                    }
+                }
                 LinearProgressIndicator(
                     progress = { unlocked.toFloat() / total },
                     modifier = Modifier.fillMaxWidth().height(6.dp),
@@ -299,6 +337,7 @@ internal fun AchievementsEntryCard(
 fun AchievementsScreenContent(
     statistics: ProfileStatistics,
     modifier: Modifier = Modifier,
+    rewards: AchievementRewards? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val (reached, ahead) =
@@ -327,11 +366,11 @@ fun AchievementsScreenContent(
         }
         if (reached.isNotEmpty()) {
             item { ListHeader(stringResource(Res.string.achievements_section_unlocked)) }
-            items(reached, key = { it.id }) { AchievementRow(it, statistics) }
+            items(reached, key = { it.id }) { AchievementRow(it, statistics, rewards) }
         }
         if (ahead.isNotEmpty()) {
             item { ListHeader(stringResource(Res.string.achievements_section_locked)) }
-            items(ahead, key = { it.id }) { AchievementRow(it, statistics) }
+            items(ahead, key = { it.id }) { AchievementRow(it, statistics, rewards) }
         }
     }
 }
@@ -350,6 +389,7 @@ private fun ListHeader(text: String) {
 private fun AchievementRow(
     achievement: Achievement,
     statistics: ProfileStatistics,
+    rewards: AchievementRewards?,
 ) {
     val colors = MaterialTheme.colorScheme
     val palette = LocalLogicaPalette.current
@@ -405,8 +445,25 @@ private fun AchievementRow(
                     }
                 }
             }
-            if (unlocked) {
-                Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = palette.success, modifier = Modifier.size(24.dp))
+            when {
+                rewards != null && unlocked && achievement.id !in rewards.claimed ->
+                    Button(onClick = { rewards.onClaim(achievement) }, contentPadding = PaddingValues(horizontal = 12.dp)) {
+                        Icon(Icons.Rounded.Diamond, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("+${achievement.gems}")
+                    }
+                unlocked ->
+                    Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = palette.success, modifier = Modifier.size(24.dp))
+                rewards != null ->
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Icon(
+                            Icons.Rounded.Diamond,
+                            contentDescription = null,
+                            tint = colors.onSurfaceVariant,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Text("+${achievement.gems}", style = MaterialTheme.typography.labelLarge, color = colors.onSurfaceVariant)
+                    }
             }
         }
     }

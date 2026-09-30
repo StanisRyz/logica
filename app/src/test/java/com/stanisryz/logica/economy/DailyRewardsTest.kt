@@ -5,6 +5,7 @@ import com.stanisryz.logica.puzzle.core.quest.DailyQuests
 import com.stanisryz.logica.puzzle.core.quest.LoginGift
 import com.stanisryz.logica.result.GameResultDao
 import com.stanisryz.logica.result.GameResultEntity
+import com.stanisryz.logica.ui.profile.Achievement
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -66,6 +67,18 @@ class DailyRewardsTest {
                     .quests[quest.index]
                     .claimed,
             )
+        }
+
+    @Test
+    fun anAchievementRewardPaysOnce() =
+        runBlocking {
+            val dao = FakeEconomyDao(PlayerEconomy(gems = 0))
+            val repository = DailyRewardsRepository(FakeResults(emptyList()), dao, { 1_000L }, { ZoneOffset.UTC })
+
+            assertTrue(repository.claimAchievement(Achievement.FIRST_SOLVE))
+            assertFalse(repository.claimAchievement(Achievement.FIRST_SOLVE))
+            assertEquals(Achievement.FIRST_SOLVE.gems, dao.wallet(1_000L).gems)
+            assertEquals(setOf(Achievement.FIRST_SOLVE.id), repository.observeClaimedAchievements().first())
         }
 
     private fun solved(

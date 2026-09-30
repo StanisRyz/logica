@@ -115,6 +115,7 @@ fun ProfileContent(
     onOpenGames: (() -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
     onOpenAchievements: () -> Unit = {},
+    achievementRewards: AchievementRewards? = null,
 ) {
     AnimatedContent(
         targetState = uiState,
@@ -131,7 +132,7 @@ fun ProfileContent(
                 ProfileUiState.Loading -> LoadingState(modifier)
                 ProfileUiState.Error -> ErrorState(onRetry, modifier)
                 ProfileUiState.Empty -> EmptyState(modifier, onOpenGames)
-                is ProfileUiState.Ready -> ReadyProfileContent(state.statistics, modifier, footer, onOpenAchievements)
+                is ProfileUiState.Ready -> ReadyProfileContent(state.statistics, modifier, footer, onOpenAchievements, achievementRewards)
             }
         }
     }
@@ -151,6 +152,7 @@ private fun ReadyProfileContent(
     modifier: Modifier,
     footer: (@Composable () -> Unit)?,
     onOpenAchievements: () -> Unit,
+    achievementRewards: AchievementRewards?,
 ) {
     Column(
         modifier =
@@ -172,7 +174,7 @@ private fun ReadyProfileContent(
                 ProfileSection(stringResource(Res.string.profile_recent_days)) { RecentDaysRow(days) }
             }
         }
-        AchievementsEntryCard(statistics, onOpenAchievements)
+        AchievementsEntryCard(statistics, onOpenAchievements, achievementRewards)
         ProfileSection(stringResource(Res.string.profile_games)) {
             ProfileCard(verticalSpacing = 0.dp) {
                 val games = profileGames(statistics)

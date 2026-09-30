@@ -407,4 +407,5 @@
     <string name="quest_solve_hard">Solve a puzzle on Hard or Expert</string>
     <string name="quest_solve_daily">Solve a daily puzzle</string>
     <string name="quest_different_games">Solve puzzles in %1$d different games</string>
+    <string name="achievements_rewards_waiting">Rewards waiting: %1$d</string>
 </resources>

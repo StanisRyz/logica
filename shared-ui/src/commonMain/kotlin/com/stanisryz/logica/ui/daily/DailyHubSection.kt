@@ -86,6 +86,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.retry
 import com.stanisryz.logica.shared.ui.generated.resources.share_daily_result
 import com.stanisryz.logica.shared.ui.generated.resources.share_daily_result_description
 import com.stanisryz.logica.shared.ui.generated.resources.total_hints_used
+import com.stanisryz.logica.ui.components.catalogArtworkResource
 import com.stanisryz.logica.ui.components.catalogTitleResource
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.StringResource
@@ -405,7 +406,7 @@ private fun DailyEntryCard(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Image(
-                painter = painterResource(entry.puzzleType.dailyArtworkResource()),
+                painter = painterResource(entry.puzzleType.catalogArtworkResource()),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier =

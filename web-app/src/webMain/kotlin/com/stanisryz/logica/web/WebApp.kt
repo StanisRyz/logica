@@ -104,6 +104,7 @@ import com.stanisryz.logica.ui.nonogram.NonogramGameContent
 import com.stanisryz.logica.ui.profile.Achievement
 import com.stanisryz.logica.ui.profile.AchievementAnnouncementHost
 import com.stanisryz.logica.ui.profile.AchievementAnnouncer
+import com.stanisryz.logica.ui.profile.AchievementRewards
 import com.stanisryz.logica.ui.profile.AchievementsScreenContent
 import com.stanisryz.logica.ui.profile.DailyProfileMetrics
 import com.stanisryz.logica.ui.profile.LocalAchievementAnnouncer
@@ -756,7 +757,10 @@ private fun ReadyContent(
                             val binding = playerSession.statisticsBinding.collectAsState().value
                             if (binding is WebStatisticsBinding.Ready) {
                                 key(binding.token) {
-                                    AchievementsScreenContent(webProfileStatistics(playerSession, binding, dailyDate))
+                                    AchievementsScreenContent(
+                                        webProfileStatistics(playerSession, binding, dailyDate),
+                                        rewards = webAchievementRewards(progressRepository, economyRepository),
+                                    )
                                 }
                             }
                         }
@@ -775,6 +779,7 @@ private fun ReadyContent(
                                 onRetry = playerSession::retryCurrentContext,
                                 onOpenGames = { route = WebRoute.GameHub },
                                 onOpenAchievements = { achievementsOpen = true },
+                                achievementRewards = webAchievementRewards(progressRepository, economyRepository),
                             )
                         }
                     }
@@ -1104,6 +1109,7 @@ private fun WebProfileRoute(
     onRetry: () -> Unit,
     onOpenGames: () -> Unit,
     onOpenAchievements: () -> Unit,
+    achievementRewards: AchievementRewards?,
 ) {
     when (binding) {
         WebStatisticsBinding.Loading ->
@@ -1124,8 +1130,28 @@ private fun WebProfileRoute(
                     onOpenGames = onOpenGames,
                     footer = if (leaderboard.isSupported) ({ WebLeaderboardCard(leaderboard) }) else null,
                     onOpenAchievements = onOpenAchievements,
+                    achievementRewards = achievementRewards,
                 )
             }
+    }
+}
+
+/**
+ * Achievement rewards for the bound Player: the paid ids live in the Player-scoped rewards record
+ * beside Catalog progress, and a claim is made durable there before its gems are paid.
+ */
+@Composable
+private fun webAchievementRewards(
+    progressRepository: WebCatalogProgressRepository?,
+    economyRepository: WebPlayerEconomyRepository?,
+): AchievementRewards? {
+    val repository = progressRepository ?: return null
+    val economy = economyRepository ?: return null
+    val rewards by key(repository) { repository.rewards.collectAsState() }
+    return remember(repository, economy, rewards.claimedAchievements) {
+        AchievementRewards(rewards.claimedAchievements) { achievement ->
+            if (repository.claimAchievement(achievement.id)) economy.grantGems(achievement.gems)
+        }
     }
 }
 

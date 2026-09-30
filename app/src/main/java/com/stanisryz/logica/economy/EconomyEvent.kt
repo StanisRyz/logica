@@ -32,6 +32,9 @@ internal enum class EconomyEventType {
 
     /** One claimed daily login gift, keyed by its day; the source carries its cycle day. */
     LOGIN_GIFT,
+
+    /** The one-time gem reward of one reached achievement. */
+    ACHIEVEMENT_REWARD,
 }
 
 /**
@@ -88,6 +91,9 @@ internal data class EconomyEvent(
 
         /** One login gift per local day. */
         fun loginGiftEventId(epochDay: Long): String = "login_gift:$epochDay"
+
+        /** One achievement pays once, ever. */
+        fun achievementEventId(achievementId: String): String = "achievement:$achievementId"
     }
 }
 

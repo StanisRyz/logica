@@ -493,6 +493,7 @@ internal fun LogicaNavigation(
                                                         PrimaryTab.PROFILE ->
                                                             ProfileRoute(
                                                                 statisticsRepository,
+                                                                dailyRewardsRepository,
                                                                 onOpenGames = { selectedTab = PrimaryTab.GAME },
                                                                 onOpenAchievements = { backStack.add(AppDestination.Achievements) },
                                                             )
@@ -512,7 +513,7 @@ internal fun LogicaNavigation(
                                 }
                             }
                             entry<AppDestination.Achievements> {
-                                AchievementsRoute(statisticsRepository)
+                                AchievementsRoute(statisticsRepository, dailyRewardsRepository)
                             }
                             entry<AppDestination.Settings> {
                                 SettingsScreen(settings, onThemeModeChanged, onSoundEnabledChanged, onHapticsEnabledChanged)

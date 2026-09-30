@@ -407,4 +407,5 @@
     <string name="quest_solve_hard">Zor veya Uzman seviyesinde bir bulmaca çöz</string>
     <string name="quest_solve_daily">Bir günlük bulmaca çöz</string>
     <string name="quest_different_games">%1$d farklı oyunda bulmaca çöz</string>
+    <string name="achievements_rewards_waiting">Bekleyen ödül: %1$d</string>
 </resources>

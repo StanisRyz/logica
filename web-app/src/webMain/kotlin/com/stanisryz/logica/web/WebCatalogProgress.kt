@@ -353,6 +353,13 @@ internal class WebCatalogProgressRepository(
         return if (saveRewards(current.copy(lastGiftEpochDay = today, giftStreakDay = day))) LoginGift.gemsFor(day) else null
     }
 
+    /** Marks [achievementId]'s reward paid; true only for the first, durable claim. */
+    fun claimAchievement(achievementId: String): Boolean {
+        val current = mutableRewards.value
+        if (achievementId in current.claimedAchievements) return false
+        return saveRewards(current.copy(claimedAchievements = current.claimedAchievements + achievementId))
+    }
+
     /** Day-aware merge with the cloud copy; true when the cloud lacks something local. */
     fun mergeCloudRewards(cloud: WebDailyRewardsSnapshot): Boolean {
         val local = mutableRewards.value
