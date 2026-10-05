@@ -1,6 +1,8 @@
 package com.stanisryz.logica.economy
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 /**
@@ -11,6 +13,29 @@ internal class GameplayHints(
     private val repository: EconomyRepository,
     private val actionIdFactory: () -> String = { UUID.randomUUID().toString() },
 ) {
+    /** True while a computed hint is being charged and shown; board input waits until it is over. */
+    var isCharging: Boolean = false
+        private set
+
+    /**
+     * Charges one hint for an already computed hint and shows it, as one step. Nothing is charged when
+     * [stillCurrent] says the board changed while the hint was computed. Once charging starts nothing can
+     * cancel it half-way — neither a board change nor leaving the screen — and the ViewModel ignores
+     * board input while [isCharging], so a charged hint is always shown and a shown hint always charged.
+     */
+    suspend fun chargeAndShow(
+        stillCurrent: () -> Boolean,
+        show: (paid: Boolean) -> Unit,
+    ) {
+        if (!stillCurrent()) return
+        isCharging = true
+        try {
+            withContext(NonCancellable) { show(spend()) }
+        } finally {
+            isCharging = false
+        }
+    }
+
     /** Spends one hint for a hint that is about to be shown; false leaves the board unchanged. */
     suspend fun spend(): Boolean =
         try {

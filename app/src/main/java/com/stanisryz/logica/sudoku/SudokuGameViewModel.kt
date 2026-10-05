@@ -121,6 +121,7 @@ internal class SudokuGameViewModel(
 
     fun inputDigit(digit: Int) {
         if (!economy.value.isGameplayAllowed) return
+        if (hints.isCharging) return
         val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
         val position = ready.selectedCell ?: return
         val gameEngine = engine ?: return
@@ -135,6 +136,7 @@ internal class SudokuGameViewModel(
 
     fun eraseSelectedCell() {
         if (!economy.value.isGameplayAllowed) return
+        if (hints.isCharging) return
         val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
         val position = ready.selectedCell ?: return
         val updated = engine?.eraseCell(ready.game, position) ?: return
@@ -143,6 +145,7 @@ internal class SudokuGameViewModel(
 
     fun undo() {
         if (!economy.value.isGameplayAllowed) return
+        if (hints.isCharging) return
         val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
         if (ready.game.status.isTerminal || undoHistory.isEmpty()) return
         val gameEngine = engine ?: return
@@ -183,21 +186,23 @@ internal class SudokuGameViewModel(
         }
         hintJob =
             viewModelScope.launch {
-                // A hint costs one hint from the consumable stock before it is shown.
-                val paid = hints.spend()
-                val current = mutableUiState.value as? SudokuGameUiState.Ready ?: return@launch
-                if (current.game != ready.game) return@launch
-                if (!paid) {
-                    mutableUiState.value = current.copy(hintsExhausted = true)
-                    return@launch
+                // Computed first; charged and shown as one step, and only on the board it was computed for.
+                hints.chargeAndShow(
+                    stillCurrent = { (mutableUiState.value as? SudokuGameUiState.Ready)?.game == ready.game },
+                ) { paid ->
+                    val current = mutableUiState.value as? SudokuGameUiState.Ready ?: return@chargeAndShow
+                    if (!paid) {
+                        mutableUiState.value = current.copy(hintsExhausted = true)
+                        return@chargeAndShow
+                    }
+                    updateGame(
+                        current,
+                        updated,
+                        updated.currentHint?.position ?: current.selectedCell,
+                        recordUndo = false,
+                        clearUndo = true,
+                    )
                 }
-                updateGame(
-                    current,
-                    updated,
-                    updated.currentHint?.position ?: current.selectedCell,
-                    recordUndo = false,
-                    clearUndo = true,
-                )
             }
     }
 

@@ -125,6 +125,7 @@ internal class NonogramGameViewModel(
 
     fun onCell(position: NonogramPosition) {
         if (!economy.value.isGameplayAllowed) return
+        if (hints.isCharging) return
         val ready = mutableUiState.value as? NonogramGameUiState.Ready ?: return
         val engine = gameEngine ?: return
         updateGame(ready, engine.mark(ready.game, position, ready.selectedTool))
@@ -143,11 +144,13 @@ internal class NonogramGameViewModel(
         if (hinted == ready.game) return
         hintJob =
             viewModelScope.launch {
-                // A produced hint costs one hint from the consumable stock before it is shown.
-                val paid = hints.spend()
-                val current = mutableUiState.value as? NonogramGameUiState.Ready ?: return@launch
-                if (current.game != ready.game) return@launch
-                if (paid) updateGame(current, hinted) else mutableUiState.value = current.copy(hintsExhausted = true)
+                // Computed first; charged and shown as one step, and only on the board it was computed for.
+                hints.chargeAndShow(
+                    stillCurrent = { (mutableUiState.value as? NonogramGameUiState.Ready)?.game == ready.game },
+                ) { paid ->
+                    val current = mutableUiState.value as? NonogramGameUiState.Ready ?: return@chargeAndShow
+                    if (paid) updateGame(current, hinted) else mutableUiState.value = current.copy(hintsExhausted = true)
+                }
             }
     }
 

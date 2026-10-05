@@ -182,15 +182,21 @@ internal class CrownsGameViewModel(
                     } catch (_: Exception) {
                         requestedGame
                     }
-                // A produced hint costs one hint from the consumable stock before it is shown.
-                val paid = hintedGame == requestedGame || hints.spend()
-                val current = mutableUiState.value
-                if (current is CrownsGameUiState.Ready && current.game == requestedGame) {
+                val current = mutableUiState.value as? CrownsGameUiState.Ready
+                if (hintedGame == requestedGame) {
+                    if (current?.game == requestedGame) mutableUiState.value = current.copy(isHintLoading = false)
+                    return@launch
+                }
+                // Computed first; charged and shown as one step, and only on the board it was computed for.
+                hints.chargeAndShow(
+                    stillCurrent = { (mutableUiState.value as? CrownsGameUiState.Ready)?.game == requestedGame },
+                ) { paid ->
+                    val shown = mutableUiState.value as? CrownsGameUiState.Ready ?: return@chargeAndShow
                     mutableUiState.value =
                         if (paid) {
-                            current.copy(game = hintedGame, isHintLoading = false)
+                            shown.copy(game = hintedGame, isHintLoading = false)
                         } else {
-                            current.copy(isHintLoading = false, hintsExhausted = true)
+                            shown.copy(isHintLoading = false, hintsExhausted = true)
                         }
                 }
             }
@@ -215,6 +221,8 @@ internal class CrownsGameViewModel(
 
     private fun updateGame(update: (CrownsGameEngine, CrownsGameState) -> CrownsGameState) {
         val engine = gameEngine ?: return
+        // A hint being charged is shown first; a board change only cancels one still being computed.
+        if (hints.isCharging) return
         hintJob?.cancel()
         val current = mutableUiState.value as? CrownsGameUiState.Ready ?: return
         val updatedGame = update(engine, current.game)
