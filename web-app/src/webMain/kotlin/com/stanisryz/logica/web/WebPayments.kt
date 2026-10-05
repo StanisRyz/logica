@@ -732,33 +732,67 @@ internal class WebPaymentsCoordinator(
     }
 
     /**
-     * Idempotent recovery of an interrupted paid fulfillment: establishes the exact recorded
-     * Economy + Payments targets, then clears the journal. Repeated recovery observes
-     * NoChange on both sides and can never add gems or duplicate the token twice.
+     * Recovery of an interrupted paid fulfillment. The purchase is paid for, so it is never
+     * dropped, but its absolute targets are applied only while nothing has changed since:
+     * - the token is already in the ledger: the reward landed, only the journal goes;
+     * - every wallet side is untouched since the journal (`cur < R`) or already at its target: the
+     *   journaled targets are applied (a side at its target is a no-op), then the ledger entry is
+     *   added by union, so a reward already in place is never given twice;
+     * - otherwise the journal is stale: the product's reward is granted again as a delta on top of
+     *   the current state with a fresh revision ([fulfillPurchase], itself journaled), exactly once
+     *   per token because the ledger records it.
      */
     fun recoverPendingFulfillment(): Boolean {
         val journal = journalStore() ?: return false
         val pending = runCatching { journal.load() }.getOrNull() ?: return false
         val economy = economyRepository() ?: return false
         val payments = paymentsRepository() ?: return false
+        val store = storeRepository()
+        // Keep this context's timeline ahead of the journal, whatever happens to it below.
+        revisions().raiseTo(pending.targetEconomy.revision)
+        if (payments.isFulfilled(pending.purchaseToken)) {
+            runCatching { journal.clear() }
+            return true
+        }
         val targetStore = pending.targetStore
+        val journalRevision = pending.targetEconomy.revision
+        val economyCurrent = economy.currentSnapshot
+        val storeCurrent = store?.snapshot?.value
+        val applicable =
+            journalSideApplicable(economyCurrent.revision, economyCurrent == pending.targetEconomy, journalRevision) &&
+                (
+                    targetStore == null ||
+                        (storeCurrent != null && journalSideApplicable(storeCurrent.revision, storeCurrent == targetStore, journalRevision))
+                )
+        if (!applicable) {
+            // Stale: a fresh, journaled delta grant replaces this journal (exactly once per token).
+            val outcome = fulfillPurchase(PaymentPurchaseSnapshot(pending.purchaseToken, pending.productId))
+            return outcome == WebPaymentOutcome.Fulfilled || outcome == WebPaymentOutcome.AlreadyFulfilled
+        }
         val firstApplied =
             if (targetStore != null) {
-                val store = storeRepository() ?: return false
-                WebEconomyStorePairApply.apply(economy, store, pending.targetEconomy, targetStore)
+                WebEconomyStorePairApply.apply(economy, store ?: return false, pending.targetEconomy, targetStore)
             } else {
                 economy.applyExternal(pending.targetEconomy).let {
                     it == WebExternalRestoreResult.Applied || it == WebExternalRestoreResult.NoChange
                 }
             }
         if (!firstApplied) return false // journal stays pending; retried on the next bind
-        val paymentsApplied = payments.applyExternal(pending.targetPayments)
-        if (paymentsApplied != WebExternalRestoreResult.Applied && paymentsApplied != WebExternalRestoreResult.NoChange) {
-            return false // the first targets are idempotent; the next bind finishes Payments
-        }
+        if (!recordFulfilled(payments, pending)) return false // the wallet target is in place; the ledger follows next time
+        economy.notifyDurableChange()
         runCatching { journal.clear() }
         return true
     }
+
+    /** Adds the journal's token to the ledger by union, never dropping a token recorded since. */
+    private fun recordFulfilled(
+        payments: WebPlayerPaymentsRepository,
+        pending: WebPendingPaymentFulfillment,
+    ): Boolean =
+        when (payments.mergeCloud(WebPaymentsSnapshot(fulfilledTokens = mapOf(pending.purchaseToken to pending.productId)))) {
+            WebExternalRestoreResult.Applied, WebExternalRestoreResult.NoChange -> true
+            else -> false
+        }
 
     /**
      * Mandatory pending-purchase reconciliation, run after Player bind/unified establishment:

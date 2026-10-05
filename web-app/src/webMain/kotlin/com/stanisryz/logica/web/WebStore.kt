@@ -770,21 +770,47 @@ internal object WebEconomyStorePairApply {
     }
 }
 
+/** A journaled side may still be applied when it is at its target or untouched since the journal. */
+internal fun journalSideApplicable(
+    currentRevision: Long,
+    atTarget: Boolean,
+    journalRevision: Long,
+): Boolean = atTarget || currentRevision < journalRevision
+
 /**
- * Idempotent finish of an interrupted purchase: re-establishes the journaled target Economy +
- * Store pair (durable-first, absolute snapshots), then clears the journal. Repeated recovery
- * observes NoChange on both sides and can never deduct gems or grant inventory twice.
+ * Finish of an interrupted gem purchase, decided by revisions rather than by trusting the stored
+ * absolute pair. Each side (Economy, Store) is either untouched since the journal (its revision
+ * is below the transaction's `R`), already at its target, or changed by something later:
+ * - both untouched (`cur < R`): nothing changed since, so the journaled pair is applied;
+ * - both at target (`cur == R`): it was already applied, only the journal goes;
+ * - one at target and the other untouched: a pair interrupted between its two writes is finished;
+ * - otherwise the journal is stale (later changes exist, and the player was told the purchase
+ *   failed): it is dropped without applying anything, so it can never roll the wallet back.
+ * A journal whose clearing fails is therefore harmless: the next recovery reads it as applied or
+ * stale and tries to clear it again.
  */
+
 internal object WebPurchaseTransactionRecovery {
+    /** True once the journal is resolved (applied, already applied, or stale); false if applying failed. */
     fun recover(
         transaction: WebPurchaseTransaction,
         economy: WebPlayerEconomyRepository,
         store: WebPlayerStoreRepository,
         journal: WebPurchaseTransactionStore,
     ): Boolean {
-        val recovered =
-            WebEconomyStorePairApply.apply(economy, store, transaction.targetEconomy, transaction.targetStore)
-        if (recovered) journal.clear()
-        return recovered
+        val economyCurrent = economy.currentSnapshot
+        val storeCurrent = store.snapshot.value
+        val atTarget = economyCurrent == transaction.targetEconomy && storeCurrent == transaction.targetStore
+        val applicable =
+            journalSideApplicable(economyCurrent.revision, economyCurrent == transaction.targetEconomy, transaction.revision) &&
+                journalSideApplicable(storeCurrent.revision, storeCurrent == transaction.targetStore, transaction.revision)
+        if (applicable && !atTarget) {
+            val applied = WebEconomyStorePairApply.apply(economy, store, transaction.targetEconomy, transaction.targetStore)
+            if (!applied) return false // the journal stays; the next bind decides again
+            economy.notifyDurableChange()
+        }
+        // Applied now, already applied, or stale: nothing more to apply either way.
+        runCatching { journal.clear() }
+        return true
     }
 }

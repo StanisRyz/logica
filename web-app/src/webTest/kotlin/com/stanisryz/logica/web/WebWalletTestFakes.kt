@@ -1,5 +1,10 @@
 package com.stanisryz.logica.web
 
+import com.stanisryz.logica.platform.PaymentProductSnapshot
+import com.stanisryz.logica.platform.PaymentPurchaseSnapshot
+import com.stanisryz.logica.platform.PaymentResult
+import kotlinx.coroutines.flow.MutableStateFlow
+
 /** In-memory wallet storage for stage 2.1 tests; [failSaves] makes every write throw. */
 internal class MemoryEconomyStore(
     var snapshot: WebEconomySnapshot = WebEconomySnapshot.DEFAULT,
@@ -71,4 +76,39 @@ internal class MemoryFulfillmentJournal : WebPaymentsJournalStore {
         check(!failClear) { "Local storage refused the write." }
         stored = null
     }
+}
+
+/** Payments provider for stage 2.1 tests: [pending] null means a failed `getPurchases()`. */
+internal class ScriptedPaymentsProvider : WebPaymentsProvider {
+    var pending: List<PaymentPurchaseSnapshot>? = emptyList()
+    var purchaseResult: PaymentResult = PaymentResult.Unavailable
+    val consumedTokens = mutableListOf<String>()
+
+    override suspend fun catalog(): List<PaymentProductSnapshot>? = null
+
+    override suspend fun purchase(productId: String): PaymentResult = purchaseResult
+
+    override suspend fun pendingPurchases(): List<PaymentPurchaseSnapshot>? = pending
+
+    override suspend fun consume(purchaseToken: String): Boolean {
+        consumedTokens += purchaseToken
+        return true
+    }
+}
+
+/** Unified save whose [flushNow] answers [flushSucceeds] and counts calls. */
+internal class ScriptedUnifiedSave : WebUnifiedSaveAccess {
+    override val unifiedSaveActive = true
+    override val saveStatus = MutableStateFlow(WebUnifiedSaveStatus.IDLE)
+    var flushSucceeds = true
+    var flushCalls = 0
+
+    override fun markDirty() = Unit
+
+    override suspend fun flushNow(): Boolean {
+        flushCalls += 1
+        return flushSucceeds
+    }
+
+    override fun invalidateContext() = Unit
 }

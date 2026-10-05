@@ -271,10 +271,25 @@ internal class WebPlayerSessionController(
     private fun unifiedSaveOwnsCloudWrites(): Boolean = unifiedSaveAccess?.unifiedSaveActive == true
 
     /**
-     * Idempotent finish of an interrupted coupled purchase, before any cloud merge: the journal
-     * is authoritative for intent, both absolute target snapshots are re-applied durably as one
-     * pair, and the journal clears only after both sides are durably established.
+     * Raises this context's timeline past both purchase journals, so every later mutation —
+     * including after a reload — is newer than any journal, then recovers the newer journal first:
+     * the older one then reads as stale against it instead of overwriting it.
      */
+    private suspend fun recoverJournals(revision: Long) {
+        val purchaseRevision = purchaseTransactionStore?.let { runCatching { it.load() }.getOrNull() }?.revision ?: 0L
+        val paymentRevision =
+            paymentsJournalStore?.let { runCatching { it.load() }.getOrNull() }?.targetEconomy?.revision ?: 0L
+        contextRevisions.raiseTo(maxOf(purchaseRevision, paymentRevision))
+        if (paymentRevision > purchaseRevision) {
+            pendingPaymentsRecoveryAction()
+            recoverPendingPurchase(revision)
+        } else {
+            recoverPendingPurchase(revision)
+            pendingPaymentsRecoveryAction()
+        }
+    }
+
+    /** Finishes or drops an interrupted gem purchase by revisions ([WebPurchaseTransactionRecovery]). */
     private fun recoverPendingPurchase(revision: Long) {
         val economyRepository = economyRepository ?: return
         val storeRepository = storeRepository ?: return
@@ -473,11 +488,10 @@ internal class WebPlayerSessionController(
             val scopedDaily = bindDailyLocal(revision, playerScope, identity)
             bindEconomyLocal(revision, playerScope, identity)
             bindStoreLocal(revision, playerScope, identity)
-            // Recover an interrupted coupled purchase BEFORE any cloud merge sees this context.
+            // Recover interrupted purchases BEFORE any cloud merge sees this context.
             purchaseTransactionStore = purchaseTransactionStoreFactory(playerScope)
-            recoverPendingPurchase(revision)
             bindPaymentsLocal(revision, playerScope, identity)
-            pendingPaymentsRecoveryAction()
+            recoverJournals(revision)
             if (!isCurrent(revision)) return
             synchronize(revision, identity, repository)
             if (scopedStatistics != null && isCurrent(revision)) {
@@ -511,9 +525,8 @@ internal class WebPlayerSessionController(
         bindStoreLocal(revision, standaloneScope, identity = null)
         // Standalone contexts get their own isolated revision timeline and journal scope.
         purchaseTransactionStore = purchaseTransactionStoreFactory(standaloneScope)
-        recoverPendingPurchase(revision)
         bindPaymentsLocal(revision, standaloneScope, identity = null)
-        pendingPaymentsRecoveryAction()
+        recoverJournals(revision)
         state = WebPlayerSessionState.LocalOnly
         mutableProgressBinding.value =
             WebCatalogProgressBinding.Ready(
