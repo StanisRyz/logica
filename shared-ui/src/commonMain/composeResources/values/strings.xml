@@ -266,6 +266,9 @@
     <string name="result_hints">Подсказки</string>
     <string name="result_next_level">Следующий уровень</string>
     <string name="result_retry">Повторить</string>
+    <string name="result_no_lives">Жизней нет — повторить можно с новой жизнью</string>
+    <string name="result_next_life_in">Следующая жизнь через %1$s</string>
+    <string name="result_life_for_ad">+1 жизнь за рекламу</string>
     <string name="result_retry_save">Сохранить ещё раз</string>
     <string name="result_saving">Сохраняем…</string>
     <string name="result_to_games">К играм</string>

@@ -1,9 +1,13 @@
 package com.stanisryz.logica.ui.components
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.res.stringResource
 import com.stanisryz.logica.R
+import com.stanisryz.logica.ads.RewardedAdState
+import com.stanisryz.logica.economy.EconomyClock
 import com.stanisryz.logica.economy.EconomyRules
+import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.result.CompletionPersistence
 
@@ -50,6 +54,39 @@ internal fun PuzzleTerminalDialog(
         hintsUsed = hintsUsed,
         retryAllowed = isRetryAllowed,
         stars = if (isSolved) starsForMistakes(mistakesUsed) else null,
+        lifeOffer = resultLifeOffer(),
+    )
+}
+
+/** The wallet and the rewarded life as the result card sees them; the shell provides it to every game. */
+internal class ResultLives(
+    val economy: PlayerEconomy,
+    val ad: RewardedAdState,
+    val watch: () -> Unit,
+    val retry: () -> Unit,
+)
+
+internal val LocalResultLives = compositionLocalOf<ResultLives?> { null }
+
+/**
+ * At zero lives the result card offers the next life's countdown and one life for a rewarded ad,
+ * the same `RewardedLifeController` path as the Lives dialog; with a life it offers nothing extra.
+ */
+@Composable
+internal fun resultLifeOffer(): GameResultLifeOffer? {
+    val lives = LocalResultLives.current ?: return null
+    if (lives.economy.isGameplayAllowed) return null
+    return GameResultLifeOffer(
+        nextLifeAtEpochMs = lives.economy.nextLifeAtEpochMillis,
+        nowEpochMs = EconomyClock.SYSTEM::nowEpochMillis,
+        ad =
+            when (lives.ad) {
+                RewardedAdState.READY -> ContinueAdAvailability.READY
+                RewardedAdState.UNAVAILABLE -> ContinueAdAvailability.UNAVAILABLE
+                else -> ContinueAdAvailability.LOADING
+            },
+        onWatchAd = lives.watch,
+        onRetryAd = lives.retry,
     )
 }
 

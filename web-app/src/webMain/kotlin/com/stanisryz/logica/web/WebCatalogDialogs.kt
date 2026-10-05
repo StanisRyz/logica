@@ -181,6 +181,7 @@ internal fun WebOrdinaryCatalogTerminalDialog(
         hintsUsed = hintsUsed,
         exitToDifficulty = true,
         stars = if (solved) stars ?: mistakesUsed?.let(::starsForMistakes) else null,
+        lifeOffer = webResultLifeOffer(),
     )
 }
 
@@ -234,6 +235,7 @@ internal fun WebDailyOrdinaryTerminalDialog(
         mistakesUsed = mistakesUsed,
         hintsUsed = hintsUsed,
         stars = if (solved) stars ?: mistakesUsed?.let(::starsForMistakes) else null,
+        lifeOffer = webResultLifeOffer(),
     )
 }
 

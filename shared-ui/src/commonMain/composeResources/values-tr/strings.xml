@@ -255,6 +255,9 @@
     <string name="result_hints">İpucu</string>
     <string name="result_next_level">Sonraki seviye</string>
     <string name="result_retry">Tekrar dene</string>
+    <string name="result_no_lives">Can kalmadı — yeni bir canla tekrar deneyebilirsin</string>
+    <string name="result_next_life_in">Sonraki can %1$s sonra</string>
+    <string name="result_life_for_ad">Reklamla +1 can</string>
     <string name="result_retry_save">Tekrar kaydet</string>
     <string name="result_saving">Kaydediliyor…</string>
     <string name="result_to_games">Oyunlara</string>

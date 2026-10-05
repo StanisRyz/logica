@@ -107,8 +107,10 @@ import com.stanisryz.logica.ui.components.GameRulesSheet
 import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.LevelMapSheet
 import com.stanisryz.logica.ui.components.LivesDialog
+import com.stanisryz.logica.ui.components.LocalResultLives
 import com.stanisryz.logica.ui.components.LocalSecondChanceAd
 import com.stanisryz.logica.ui.components.PuzzleStartScreen
+import com.stanisryz.logica.ui.components.ResultLives
 import com.stanisryz.logica.ui.components.SecondChanceAd
 import com.stanisryz.logica.ui.nonogram.DailyGalleryPicture
 import com.stanisryz.logica.ui.nonogram.NonogramGallerySheet
@@ -413,6 +415,13 @@ internal fun LogicaNavigation(
                         state = rewardedState,
                         setVisible = { secondChanceVisible = it },
                         watch = { onGranted -> activity?.let { onWatchContinueAd(it, onGranted) } },
+                        retry = onRetryRewardedAd,
+                    ),
+                LocalResultLives provides
+                    ResultLives(
+                        economy = economy,
+                        ad = rewardedState,
+                        watch = { activity?.let { onWatchRewardedAd(it, RewardedAdKind.LIFE) } },
                         retry = onRetryRewardedAd,
                     ),
             ) {

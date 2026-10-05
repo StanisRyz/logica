@@ -255,6 +255,9 @@
     <string name="result_hints">Hints</string>
     <string name="result_next_level">Next level</string>
     <string name="result_retry">Retry</string>
+    <string name="result_no_lives">No lives left — you can retry with a new one</string>
+    <string name="result_next_life_in">Next life in %1$s</string>
+    <string name="result_life_for_ad">+1 life for an ad</string>
     <string name="result_retry_save">Save again</string>
     <string name="result_saving">Saving…</string>
     <string name="result_to_games">To games</string>

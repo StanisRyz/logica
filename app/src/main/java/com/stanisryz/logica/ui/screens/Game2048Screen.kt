@@ -44,6 +44,7 @@ import com.stanisryz.logica.ui.components.RetryableErrorState
 import com.stanisryz.logica.ui.components.SecondChanceDialog
 import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.components.resultEconomy
+import com.stanisryz.logica.ui.components.resultLifeOffer
 import com.stanisryz.logica.ui.components.russianLabel
 import com.stanisryz.logica.ui.components.toResultSaveState
 import com.stanisryz.logica.ui.game2048.Game2048Content
@@ -302,6 +303,7 @@ private fun Game2048TerminalDialog(
         saveErrorDetail = stringResource(R.string.completion_save_error_body),
         economy = resultEconomy(solved, gemsEarned),
         retryAllowed = economy.isGameplayAllowed,
+        lifeOffer = resultLifeOffer(),
         // The board simply ran out of moves before the target: say that instead of a bare failure.
         title = if (solved) null else stringResource(R.string.game_2048_failed_title),
     )

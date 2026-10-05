@@ -27,6 +27,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.platform.EconomyState
+import com.stanisryz.logica.ui.components.ContinueAdAvailability
+import com.stanisryz.logica.ui.components.GameResultLifeOffer
 import com.stanisryz.logica.ui.components.STATE_ARTWORK_DIALOG_SIZE
 import com.stanisryz.logica.ui.components.StateArtwork
 import com.stanisryz.logica.ui.components.StateArtworkImage
@@ -52,7 +54,34 @@ import com.stanisryz.logica.web.generated.resources.Res as WebRes
 internal class WebLivesUi(
     val state: EconomyState?,
     val guard: (start: () -> Unit) -> Unit,
+    val rewardedLife: WebRewardedPlacementController? = null,
 )
+
+/**
+ * At zero lives the result card offers the next life's countdown and one life for a rewarded ad,
+ * through the same placement as the no-lives dialog; with a life it offers nothing extra.
+ */
+@Composable
+internal fun webResultLifeOffer(): GameResultLifeOffer? {
+    val lives = LocalWebLives.current
+    val placement = lives.rewardedLife
+    val adState = placement?.state?.collectAsState()?.value
+    val state = lives.state ?: return null
+    if (state.lives > 0) return null
+    return GameResultLifeOffer(
+        nextLifeAtEpochMs = state.nextLifeRestoreAtEpochMs,
+        nowEpochMs = webClock::now,
+        ad =
+            when (adState) {
+                null, WebRewardedAdState.Unavailable, WebRewardedAdState.Error, WebRewardedAdState.Cooldown ->
+                    ContinueAdAvailability.UNAVAILABLE
+                WebRewardedAdState.Showing -> ContinueAdAvailability.LOADING
+                else -> ContinueAdAvailability.READY
+            },
+        onWatchAd = { placement?.requestReward() },
+        onRetryAd = { placement?.requestReward() },
+    )
+}
 
 /** Without a bound wallet nothing is gated, matching the wallet's never-blocking foundation. */
 internal val LocalWebLives = compositionLocalOf { WebLivesUi(state = null, guard = { start -> start() }) }

@@ -613,10 +613,14 @@ private fun ReadyContent(
         )
     var showNoLives by remember { mutableStateOf(false) }
     val livesUi =
-        WebLivesUi(economyState) { start ->
-            economyRepository?.refresh()
-            if (economyRepository != null && economyRepository.state.value.lives <= 0) showNoLives = true else start()
-        }
+        WebLivesUi(
+            state = economyState,
+            guard = { start ->
+                economyRepository?.refresh()
+                if (economyRepository != null && economyRepository.state.value.lives <= 0) showNoLives = true else start()
+            },
+            rewardedLife = rewardedAds.life,
+        )
     if (showNoLives) {
         WebNoLivesDialog(
             state = economyState,

@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -22,10 +24,12 @@ import androidx.compose.material.icons.rounded.Diamond
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.HeartBroken
 import androidx.compose.material.icons.rounded.Lightbulb
+import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarOutline
 import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -33,7 +37,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,8 +69,11 @@ import com.stanisryz.logica.shared.ui.generated.resources.result_hints
 import com.stanisryz.logica.shared.ui.generated.resources.result_level_failed
 import com.stanisryz.logica.shared.ui.generated.resources.result_level_solved
 import com.stanisryz.logica.shared.ui.generated.resources.result_life
+import com.stanisryz.logica.shared.ui.generated.resources.result_life_for_ad
 import com.stanisryz.logica.shared.ui.generated.resources.result_mistakes
 import com.stanisryz.logica.shared.ui.generated.resources.result_next_level
+import com.stanisryz.logica.shared.ui.generated.resources.result_next_life_in
+import com.stanisryz.logica.shared.ui.generated.resources.result_no_lives
 import com.stanisryz.logica.shared.ui.generated.resources.result_retry
 import com.stanisryz.logica.shared.ui.generated.resources.result_retry_save
 import com.stanisryz.logica.shared.ui.generated.resources.result_reward
@@ -73,6 +83,9 @@ import com.stanisryz.logica.shared.ui.generated.resources.result_solved
 import com.stanisryz.logica.shared.ui.generated.resources.result_stars
 import com.stanisryz.logica.shared.ui.generated.resources.result_to_difficulty
 import com.stanisryz.logica.shared.ui.generated.resources.result_to_games
+import com.stanisryz.logica.shared.ui.generated.resources.second_chance_loading
+import com.stanisryz.logica.shared.ui.generated.resources.second_chance_retry
+import com.stanisryz.logica.shared.ui.generated.resources.second_chance_unavailable
 import com.stanisryz.logica.ui.profile.ResultCardAchievements
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
@@ -95,6 +108,49 @@ data class GameResultEconomy(
     val gemsEarned: Int = 0,
     val livesLost: Int = 0,
 )
+
+/**
+ * What the card offers instead of Retry or Next level when no life is left: the countdown to the
+ * next life ([nextLifeAtEpochMs] read against the host's own [nowEpochMs]) and one rewarded life,
+ * through the host's ordinary rewarded-life placement. Hosts pass it only at zero lives, so a life
+ * that comes back (by time or by the ad) turns the primary action back into Retry.
+ */
+class GameResultLifeOffer(
+    val nextLifeAtEpochMs: Long?,
+    val nowEpochMs: () -> Long,
+    val ad: ContinueAdAvailability,
+    val onWatchAd: () -> Unit,
+    val onRetryAd: () -> Unit,
+)
+
+/** The result card's one full-width primary action. */
+enum class GameResultPrimaryAction {
+    RETRY_SAVE,
+    SAVING,
+    RETRY,
+    NEXT_LEVEL,
+    LIFE_OFFER,
+    NONE,
+}
+
+/**
+ * The primary action follows the state: saving waits, a save error retries that save, a failure
+ * retries and a solved Catalog level moves on (both only with a life, otherwise the card offers
+ * one), and a solved Daily has nothing left but the exit.
+ */
+fun gameResultPrimaryAction(
+    saveState: GameResultSaveState,
+    solved: Boolean,
+    isDaily: Boolean,
+    livesOut: Boolean,
+): GameResultPrimaryAction =
+    when {
+        saveState == GameResultSaveState.ERROR -> GameResultPrimaryAction.RETRY_SAVE
+        saveState == GameResultSaveState.SAVING -> GameResultPrimaryAction.SAVING
+        !solved -> if (livesOut) GameResultPrimaryAction.LIFE_OFFER else GameResultPrimaryAction.RETRY
+        !isDaily -> if (livesOut) GameResultPrimaryAction.LIFE_OFFER else GameResultPrimaryAction.NEXT_LEVEL
+        else -> GameResultPrimaryAction.NONE
+    }
 
 /**
  * The one result card for every game on both platforms: an outcome mark, the level (or Daily)
@@ -127,6 +183,7 @@ fun GameResultCard(
     exitToDifficulty: Boolean = false,
     title: String? = null,
     stars: Int? = null,
+    lifeOffer: GameResultLifeOffer? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val palette = LocalLogicaPalette.current
@@ -212,24 +269,25 @@ fun GameResultCard(
                     hintsUsed = hintsUsed,
                 )
                 val primaryModifier = Modifier.fillMaxWidth().padding(top = LogicaSpacing.text)
-                when {
-                    saveError ->
+                when (gameResultPrimaryAction(saveState, solved, isDaily, livesOut = lifeOffer != null)) {
+                    GameResultPrimaryAction.RETRY_SAVE ->
                         Button(onClick = onRetrySave, modifier = primaryModifier) {
                             Text(stringResource(Res.string.result_retry_save))
                         }
-                    saveState == GameResultSaveState.SAVING ->
+                    GameResultPrimaryAction.SAVING ->
                         Button(onClick = {}, enabled = false, modifier = primaryModifier) {
                             Text(stringResource(Res.string.result_saving))
                         }
-                    !solved ->
+                    GameResultPrimaryAction.RETRY ->
                         Button(onClick = onRetry, enabled = retryAllowed, modifier = primaryModifier) {
                             Text(stringResource(Res.string.result_retry))
                         }
-                    !isDaily ->
+                    GameResultPrimaryAction.NEXT_LEVEL ->
                         Button(onClick = onNextLevel, modifier = primaryModifier) {
                             Text(stringResource(Res.string.result_next_level))
                         }
-                    else -> Unit
+                    GameResultPrimaryAction.LIFE_OFFER -> lifeOffer?.let { ResultLifeOffer(it, primaryModifier) }
+                    GameResultPrimaryAction.NONE -> Unit
                 }
                 val exitLabel = stringResource(if (exitToDifficulty) Res.string.result_to_difficulty else Res.string.result_to_games)
                 if (solved && isDaily && saveState == GameResultSaveState.SAVED) {
@@ -242,6 +300,78 @@ fun GameResultCard(
         }
     }
 }
+
+/** At zero lives: why the card cannot go on, the wait for the next life, and one life for an ad. */
+@Composable
+private fun ResultLifeOffer(
+    offer: GameResultLifeOffer,
+    modifier: Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    val dueAt = offer.nextLifeAtEpochMs
+    var now by remember(offer) { mutableLongStateOf(offer.nowEpochMs()) }
+    LaunchedEffect(offer, dueAt) {
+        while (dueAt != null) {
+            now = offer.nowEpochMs()
+            delay(COUNTDOWN_TICK_MILLIS)
+        }
+    }
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
+            GameIconImage(GameIcon.HEART_BROKEN, size = TILE_ICON_SIZE)
+            Text(
+                text = stringResource(Res.string.result_no_lives),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.error,
+                textAlign = TextAlign.Center,
+            )
+        }
+        dueAt?.let {
+            Text(
+                text = stringResource(Res.string.result_next_life_in, formatLifeCountdown(it - now)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.onSurfaceVariant,
+            )
+        }
+        when (offer.ad) {
+            ContinueAdAvailability.READY ->
+                Button(onClick = offer.onWatchAd, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Rounded.PlayCircle, contentDescription = null, modifier = Modifier.size(LIFE_AD_ICON_SIZE))
+                    Spacer(Modifier.width(LogicaSpacing.text))
+                    Text(stringResource(Res.string.result_life_for_ad))
+                }
+            ContinueAdAvailability.LOADING ->
+                Button(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth()) {
+                    CircularProgressIndicator(modifier = Modifier.size(LIFE_AD_ICON_SIZE), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(LogicaSpacing.text))
+                    Text(stringResource(Res.string.second_chance_loading))
+                }
+            ContinueAdAvailability.UNAVAILABLE -> {
+                Text(
+                    text = stringResource(Res.string.second_chance_unavailable),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant,
+                )
+                TextButton(onClick = offer.onRetryAd) { Text(stringResource(Res.string.second_chance_retry)) }
+            }
+        }
+    }
+}
+
+/** Minutes and seconds left, rounded up, like the lives dialogs. */
+internal fun formatLifeCountdown(remainingMillis: Long): String {
+    val totalSeconds = (remainingMillis.coerceAtLeast(0) + MILLIS_PER_SECOND - 1) / MILLIS_PER_SECOND
+    return "${totalSeconds / SECONDS_PER_MINUTE}:${(totalSeconds % SECONDS_PER_MINUTE).toString().padStart(2, '0')}"
+}
+
+private const val COUNTDOWN_TICK_MILLIS = 1_000L
+private const val MILLIS_PER_SECOND = 1_000L
+private const val SECONDS_PER_MINUTE = 60L
+private val LIFE_AD_ICON_SIZE = 20.dp
 
 /** One short confetti burst: pieces fly up and out from the stars, then fall and fade. */
 @Composable
@@ -351,6 +481,7 @@ fun GameResultDialog(
     exitToDifficulty: Boolean = false,
     title: String? = null,
     stars: Int? = null,
+    lifeOffer: GameResultLifeOffer? = null,
 ) {
     Dialog(
         onDismissRequest = {},
@@ -376,6 +507,7 @@ fun GameResultDialog(
             exitToDifficulty = exitToDifficulty,
             title = title,
             stars = stars,
+            lifeOffer = lifeOffer,
         )
     }
 }
