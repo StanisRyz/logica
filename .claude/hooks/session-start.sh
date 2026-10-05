@@ -43,8 +43,10 @@ allprojects {
     repositories.useMirror()
 }
 KTS
+# RuStore's Maven repository answers 404 to cloud machines, so :app builds here without its SDK.
 cat > "$GRADLE_HOME_DIR/gradle.properties" <<PROPS
 org.gradle.java.installations.paths=$JDK17_HOME
+logica.withoutRustore=true
 PROPS
 
 # 3. Android SDK for :app and the Android targets of the multiplatform modules.

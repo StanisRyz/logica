@@ -68,6 +68,13 @@ val rustoreConsoleAppId: String =
         if (it.isEmpty()) logger.warn("logica.rustoreConsoleAppId is not set: RuStore purchases will be unavailable.")
     }
 
+/**
+ * `logica.withoutRustore=true` (a Gradle property or `local.properties`) builds without the RuStore
+ * SDK, whose Maven repository some build machines cannot reach: `src/noRustore` replaces the real
+ * gateway in `src/rustore` and the Gem Store is simply unavailable. The default build is unchanged.
+ */
+val withoutRustore: Boolean = privateSetting("logica.withoutRustore")?.toBoolean() == true
+
 /** The deeplink scheme RuStore returns to after payment. A public identifier, not a credential. */
 val rustorePayScheme = "logicapay"
 
@@ -119,6 +126,8 @@ android {
 
     sourceSets {
         getByName("main").assets.srcDir(rootProject.file("puzzle-data"))
+        getByName("main").kotlin.srcDir(if (withoutRustore) "src/noRustore/java" else "src/rustore/java")
+        if (withoutRustore) getByName("test").kotlin.srcDir("src/testNoRustore/java")
     }
 }
 
@@ -146,8 +155,10 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.sqlite.bundled)
     implementation(libs.yandex.mobileads)
-    implementation(platform(libs.rustore.bom))
-    implementation(libs.rustore.pay)
+    if (!withoutRustore) {
+        implementation(platform(libs.rustore.bom))
+        implementation(libs.rustore.pay)
+    }
 
     ksp(libs.androidx.room.compiler)
 
