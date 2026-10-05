@@ -27,4 +27,5 @@
 
 | Этап | Задача | Статус |
 |---|---|---|
-| 1 | tasks/stage-01-web-cloud-save-integrity.md | выполнена, ждёт отчёта в reports/ и проверки |
+| 1 | tasks/stage-01-web-cloud-save-integrity.md | принята (e6ef660, 16a3b69) |
+| 1a | tasks/stage-01a-cloud-save-carry-forward.md | выдана |
