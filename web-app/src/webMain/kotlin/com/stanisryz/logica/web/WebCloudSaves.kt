@@ -8,7 +8,9 @@ import com.stanisryz.logica.platform.CloudSaveWriteResult
 import com.stanisryz.logica.platform.PlayerIdentity
 import com.stanisryz.logica.platform.PlayerProvider
 import com.stanisryz.logica.platform.SaveData
+import com.stanisryz.logica.platform.SaveLoadResult
 import com.stanisryz.logica.platform.SaveRepository
+import kotlinx.coroutines.CancellationException
 import kotlin.js.ExperimentalWasmJsInterop
 
 /** Provides the current Yandex Player identity through the existing SDK bridge; no login UI. */
@@ -77,6 +79,18 @@ internal object WebSaveCodec {
             SaveData(version = version, sections = sections)
         }.getOrNull()
 
+    /**
+     * Decodes a stored envelope into a load result: a corrupt envelope, or one written in a
+     * newer envelope version this build does not know, is [SaveLoadResult.Undecodable].
+     */
+    fun decodeForLoad(payload: ByteArray): SaveLoadResult {
+        val data = decode(payload) ?: return SaveLoadResult.Undecodable("Corrupt unified save envelope.")
+        if (data.version > SaveData.CURRENT_VERSION) {
+            return SaveLoadResult.Undecodable("Unknown unified save envelope version ${data.version}.")
+        }
+        return SaveLoadResult.Found(data)
+    }
+
     private fun writeInt(
         destination: ByteArray,
         offset: Int,
@@ -102,11 +116,12 @@ internal object WebSaveCodec {
 internal class YandexCloudSaveRepository(
     private val gateway: CloudSaveGateway,
 ) : SaveRepository {
-    override suspend fun load(): SaveData? =
+    override suspend fun load(): SaveLoadResult =
         when (val result = gateway.read()) {
-            is CloudSaveReadResult.Found -> WebSaveCodec.decode(result.payload)
-            CloudSaveReadResult.Missing, CloudSaveReadResult.Unsupported -> null
-            is CloudSaveReadResult.Failed -> null
+            is CloudSaveReadResult.Found -> WebSaveCodec.decodeForLoad(result.payload)
+            CloudSaveReadResult.Missing -> SaveLoadResult.Missing
+            CloudSaveReadResult.Unsupported -> SaveLoadResult.Unavailable
+            is CloudSaveReadResult.Failed -> SaveLoadResult.Failed(result.cause)
         }
 
     override suspend fun save(data: SaveData): Boolean =
@@ -127,11 +142,18 @@ internal class LocalSaveRepository(
 ) : SaveRepository {
     private var current: SaveData? = null
 
-    override suspend fun load(): SaveData? {
-        current?.let { return it }
-        val encoded = loadRaw(storageKey) ?: return null
-        val payload = WebBase64.decode(encoded) ?: return null
-        return WebSaveCodec.decode(payload)?.also { current = it }
+    override suspend fun load(): SaveLoadResult {
+        current?.let { return SaveLoadResult.Found(it) }
+        val encoded =
+            try {
+                loadRaw(storageKey)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                return SaveLoadResult.Failed(error)
+            } ?: return SaveLoadResult.Missing
+        val payload = WebBase64.decode(encoded) ?: return SaveLoadResult.Undecodable("Local save is not valid Base64.")
+        return WebSaveCodec.decodeForLoad(payload).also { if (it is SaveLoadResult.Found) current = it.data }
     }
 
     override suspend fun save(data: SaveData): Boolean {
@@ -155,12 +177,36 @@ internal interface WebSaveSection {
 
     fun export(): ByteArray?
 
-    fun apply(payload: ByteArray)
+    /**
+     * Merges one cloud payload through the domain's own semantics. Returns false only when the
+     * payload cannot be decoded by this section's codec, so restore never mistakes an unreadable
+     * section for an absent one; an unbound domain simply skips a decodable payload.
+     */
+    fun apply(payload: ByteArray): Boolean
 
-    /** Restore entry point receiving every owned section payload present in the cloud envelope. */
-    fun applyRestoring(payloads: Map<String, ByteArray>) {
-        payloads[id]?.let(::apply)
-    }
+    /**
+     * Restore entry point receiving every owned section payload present in the cloud envelope;
+     * false when any of them cannot be decoded.
+     */
+    fun applyRestoring(payloads: Map<String, ByteArray>): Boolean = payloads[id]?.let(::apply) ?: true
+}
+
+/** What [WebSaveManager.restore] learned about the stored unified save. */
+internal enum class WebSaveRestoreOutcome {
+    /** A save was read and every section in it was decoded and merged. */
+    RESTORED,
+
+    /** The storage definitely holds no save (or an envelope with no content). */
+    EMPTY,
+
+    /**
+     * The read failed, the envelope is undecodable, or a section in it is unreadable or unknown:
+     * whatever decoded was merged, but the stored save must not be overwritten.
+     */
+    UNRESOLVED,
+
+    /** This environment has no such storage; nothing is read from or written to it. */
+    UNAVAILABLE,
 }
 
 /**
@@ -225,9 +271,15 @@ internal class WebSaveManager(
     private val repository: SaveRepository,
     private val maxPayloadBytes: Int = DEFAULT_MAX_UNIFIED_PAYLOAD_BYTES,
 ) {
-    suspend fun restore(): Boolean {
-        val data = repository.load() ?: return false
-        if (!data.hasContent()) return false
+    suspend fun restore(): WebSaveRestoreOutcome {
+        val data =
+            when (val result = repository.load()) {
+                is SaveLoadResult.Found -> result.data
+                SaveLoadResult.Missing -> return WebSaveRestoreOutcome.EMPTY
+                SaveLoadResult.Unavailable -> return WebSaveRestoreOutcome.UNAVAILABLE
+                is SaveLoadResult.Failed, is SaveLoadResult.Undecodable -> return WebSaveRestoreOutcome.UNRESOLVED
+            }
+        if (!data.hasContent()) return WebSaveRestoreOutcome.EMPTY
         // Explicit coupled-group resolution: each section id maps to its owning section, and
         // every owner is invoked exactly once with all payloads it owns, regardless of the
         // order in which the section adapters were registered.
@@ -236,6 +288,9 @@ internal class WebSaveManager(
             ownerOf[section.id] = section
             section.coupledIds.forEach { coupledId -> ownerOf[coupledId] = section }
         }
+        // A section id this build does not know (written by a newer build) cannot be carried
+        // into a rewritten envelope, so its save stays unresolved rather than being dropped.
+        var resolved = data.sections.keys.all { it in ownerOf }
         val processed = HashSet<WebSaveSection>()
         sections.forEach { section ->
             val owner = ownerOf.getValue(section.id)
@@ -243,9 +298,10 @@ internal class WebSaveManager(
             val ownedIds = ownerOf.filterValues { it === owner }.keys
             val payloads =
                 ownedIds.mapNotNull { id -> data.section(id)?.let { id to it } }.toMap()
-            owner.applyRestoring(payloads)
+            // Decodable sections still merge (every merge is monotonic and safe to repeat).
+            if (!runCatching { owner.applyRestoring(payloads) }.getOrDefault(false)) resolved = false
         }
-        return true
+        return if (resolved) WebSaveRestoreOutcome.RESTORED else WebSaveRestoreOutcome.UNRESOLVED
     }
 
     suspend fun persist(): Boolean {
@@ -314,11 +370,12 @@ internal class WebSaveSections(
                     ?.value
                     ?.let { WebCatalogProgressCodec.encode(it) }
 
-            override fun apply(payload: ByteArray) {
+            override fun apply(payload: ByteArray): Boolean {
+                val cloud = WebCatalogProgressCodec.decode(payload) ?: return false
                 val repository =
-                    (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository ?: return
-                val cloud = WebCatalogProgressCodec.decode(payload) ?: return
+                    (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository ?: return true
                 repository.mergeCloud(cloud)
+                return true
             }
         }
 
@@ -335,11 +392,12 @@ internal class WebSaveSections(
                     ?.takeIf { it.levels.isNotEmpty() }
                     ?.let { WebCatalogStarsCodec.encode(it) }
 
-            override fun apply(payload: ByteArray) {
+            override fun apply(payload: ByteArray): Boolean {
+                val cloud = WebCatalogStarsCodec.decode(payload) ?: return false
                 val repository =
-                    (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository ?: return
-                val cloud = WebCatalogStarsCodec.decode(payload) ?: return
+                    (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository ?: return true
                 repository.mergeCloudStars(cloud)
+                return true
             }
         }
 
@@ -356,11 +414,12 @@ internal class WebSaveSections(
                     ?.takeIf { it > 0L }
                     ?.let(WebBestScoreCodec::encode)
 
-            override fun apply(payload: ByteArray) {
+            override fun apply(payload: ByteArray): Boolean {
+                val cloud = WebBestScoreCodec.decode(payload) ?: return false
                 val repository =
-                    (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository ?: return
-                val cloud = WebBestScoreCodec.decode(payload) ?: return
+                    (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository ?: return true
                 repository.mergeCloudBest2048(cloud)
+                return true
             }
         }
 
@@ -377,11 +436,12 @@ internal class WebSaveSections(
                     ?.takeIf { it != WebDailyRewardsSnapshot.EMPTY }
                     ?.let(WebDailyRewardsCodec::encode)
 
-            override fun apply(payload: ByteArray) {
+            override fun apply(payload: ByteArray): Boolean {
+                val cloud = WebDailyRewardsCodec.decode(payload) ?: return false
                 val repository =
-                    (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository ?: return
-                val cloud = WebDailyRewardsCodec.decode(payload) ?: return
+                    (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository ?: return true
                 repository.mergeCloudRewards(cloud)
+                return true
             }
         }
 
@@ -396,11 +456,12 @@ internal class WebSaveSections(
                     ?.value
                     ?.let { WebStatisticsCodec.encode(it) }
 
-            override fun apply(payload: ByteArray) {
+            override fun apply(payload: ByteArray): Boolean {
+                val cloud = WebStatisticsCodec.decode(payload) ?: return false
                 val repository =
-                    (playerSession.statisticsBinding.value as? WebStatisticsBinding.Ready)?.repository ?: return
-                val cloud = WebStatisticsCodec.decode(payload) ?: return
+                    (playerSession.statisticsBinding.value as? WebStatisticsBinding.Ready)?.repository ?: return true
                 runCatching { repository.mergeCloud(cloud) }
+                return true
             }
         }
 
@@ -415,11 +476,12 @@ internal class WebSaveSections(
                     ?.value
                     ?.let { WebDailyCodec.encode(it) }
 
-            override fun apply(payload: ByteArray) {
+            override fun apply(payload: ByteArray): Boolean {
+                val cloud = WebDailyCodec.decode(payload) ?: return false
                 val repository =
-                    (playerSession.dailyBinding.value as? WebDailyBinding.Ready)?.repository ?: return
-                val cloud = WebDailyCodec.decode(payload) ?: return
+                    (playerSession.dailyBinding.value as? WebDailyBinding.Ready)?.repository ?: return true
                 runCatching { repository.mergeCloud(cloud) }
+                return true
             }
         }
 
@@ -435,16 +497,19 @@ internal class WebSaveSections(
 
             override fun export(): ByteArray? = playerSession.economyRepository?.let { WebEconomyCodec.encode(it.currentSnapshot) }
 
-            override fun apply(payload: ByteArray) {
+            override fun apply(payload: ByteArray): Boolean {
                 // Never used: the coupled group always routes through applyRestoring.
                 error("Economy/Store sections must be restored through the coupled group.")
             }
 
-            override fun applyRestoring(payloads: Map<String, ByteArray>) {
-                val economyRepository = playerSession.economyRepository ?: return
-                val storeRepository = playerSession.storeRepository ?: return
-                val cloudEconomy = payloads[WebSaveSectionIds.ECONOMY]?.let(WebEconomyCodec::decode)
-                val cloudStore = payloads[WebSaveSectionIds.STORE]?.let(WebStoreCodec::decode)
+            override fun applyRestoring(payloads: Map<String, ByteArray>): Boolean {
+                val economyPayload = payloads[WebSaveSectionIds.ECONOMY]
+                val storePayload = payloads[WebSaveSectionIds.STORE]
+                val cloudEconomy = economyPayload?.let(WebEconomyCodec::decode)
+                val cloudStore = storePayload?.let(WebStoreCodec::decode)
+                if ((economyPayload != null && cloudEconomy == null) || (storePayload != null && cloudStore == null)) return false
+                val economyRepository = playerSession.economyRepository ?: return true
+                val storeRepository = playerSession.storeRepository ?: return true
                 val decision =
                     WebEconomyStoreCoupledRestore.resolve(
                         localEconomy = economyRepository.currentSnapshot,
@@ -452,11 +517,12 @@ internal class WebSaveSections(
                         cloudEconomy = cloudEconomy,
                         cloudStore = cloudStore,
                     )
-                val targetEconomy = decision.economy ?: return
-                val targetStore = decision.store ?: return
+                val targetEconomy = decision.economy ?: return true
+                val targetStore = decision.store ?: return true
                 // Pair-consistent application: if either side cannot be persisted durably,
                 // the previous local pair stays authoritative and observable.
                 WebEconomyStorePairApply.apply(economyRepository, storeRepository, targetEconomy, targetStore)
+                return true
             }
         }
 
@@ -466,7 +532,7 @@ internal class WebSaveSections(
 
             override fun export(): ByteArray? = playerSession.storeRepository?.let { WebStoreCodec.encode(it.snapshot.value) }
 
-            override fun apply(payload: ByteArray) {
+            override fun apply(payload: ByteArray): Boolean {
                 // Never used: restoration of both domains is owned by the economy section.
                 error("Economy/Store sections must be restored through the coupled group.")
             }
@@ -479,10 +545,11 @@ internal class WebSaveSections(
 
             override fun export(): ByteArray? = playerSession.paymentsRepository?.let { WebPaymentsCodec.encode(it.snapshot.value) }
 
-            override fun apply(payload: ByteArray) {
-                val repository = playerSession.paymentsRepository ?: return
-                val cloud = WebPaymentsCodec.decode(payload) ?: return
+            override fun apply(payload: ByteArray): Boolean {
+                val cloud = WebPaymentsCodec.decode(payload) ?: return false
+                val repository = playerSession.paymentsRepository ?: return true
                 repository.mergeCloud(cloud)
+                return true
             }
         }
 }
