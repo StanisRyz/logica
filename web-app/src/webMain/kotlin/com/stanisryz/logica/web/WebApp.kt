@@ -62,7 +62,6 @@ import com.stanisryz.logica.puzzle.core.crowns.hasMeaningfulProgress
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
 import com.stanisryz.logica.puzzle.core.daily.DailyDate
 import com.stanisryz.logica.puzzle.core.daily.toDailyEpochDay
-import com.stanisryz.logica.puzzle.core.game2048.Game2048Direction
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Status
 import com.stanisryz.logica.puzzle.core.game2048.hasMeaningfulProgress
 import com.stanisryz.logica.puzzle.core.model.Difficulty
@@ -646,9 +645,9 @@ private fun ReadyContent(
     LaunchedEffect(keyboard, route) {
         keyboard.keys.collect { key ->
             when (route) {
-                WebRoute.Game2048 -> key.game2048Direction()?.let(game2048Controller::move)
                 WebRoute.Sudoku -> sudokuController.onHardwareKey(key)
-                else -> Unit // Word edits its draft inside the shared presentation.
+                // Word edits its draft and 2048 buffers its moves inside the shared presentation.
+                else -> Unit
             }
         }
     }
@@ -2369,6 +2368,7 @@ private fun PlayingGame2048Content(
             onUndo = controller::undo,
             onMotionFinished = controller::finishMotion,
             modifier = Modifier.weight(1f),
+            hardwareKeys = LocalWebKeyboard.current?.keys,
         )
     }
 
@@ -2481,12 +2481,3 @@ private const val PORTRAIT_COLUMN_MAX_ASPECT = 0.8f
 private val MIN_DIFFICULTY_CARD_HEIGHT = 96.dp
 private val MAX_DIFFICULTY_CARD_HEIGHT = 152.dp
 private val MAX_WIDE_DIFFICULTY_CARD_HEIGHT = 260.dp
-
-private fun GameKey.game2048Direction(): Game2048Direction? =
-    when (this) {
-        GameKey.Up -> Game2048Direction.UP
-        GameKey.Down -> Game2048Direction.DOWN
-        GameKey.Left -> Game2048Direction.LEFT
-        GameKey.Right -> Game2048Direction.RIGHT
-        else -> null
-    }

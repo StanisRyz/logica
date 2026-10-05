@@ -54,6 +54,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.game_2048_undo
 import com.stanisryz.logica.shared.ui.generated.resources.tool_caption_undo
 import com.stanisryz.logica.ui.components.BoardTitle
 import com.stanisryz.logica.ui.components.CenteredBoardLayout
+import com.stanisryz.logica.ui.components.GameKey
 import com.stanisryz.logica.ui.components.GameSound
 import com.stanisryz.logica.ui.components.LocalGameSounds
 import com.stanisryz.logica.ui.components.LocalRoomyGameplayControls
@@ -63,6 +64,7 @@ import com.stanisryz.logica.ui.components.isRoomyPortrait
 import com.stanisryz.logica.ui.components.isWideGameplayLayout
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
+import kotlinx.coroutines.flow.Flow
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -83,6 +85,7 @@ fun Game2048Content(
     contextBadgeLabel: String? = null,
     modifier: Modifier = Modifier,
     hostStatusContent: @Composable ColumnScope.() -> Unit = {},
+    hardwareKeys: Flow<GameKey>? = null,
 ) {
     require(game.puzzleId.difficulty == difficulty) { "2048 difficulty must match the game identity." }
     val sounds = LocalGameSounds.current
@@ -120,6 +123,7 @@ fun Game2048Content(
             onMove = onMove,
             onMotionFinished = onMotionFinished,
             inputEnabled = gameplayEnabled,
+            hardwareKeys = hardwareKeys,
             modifier = Modifier.fillMaxSize(),
         )
     }

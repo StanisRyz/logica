@@ -13,7 +13,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -83,19 +82,6 @@ fun Game2048Tutorial(
         }
     }
 
-    // Arrow keys move exactly like a swipe, as the instruction promises on a computer.
-    LaunchedEffect(hardwareKeys) {
-        hardwareKeys?.collect { key ->
-            when (key) {
-                GameKey.Up -> move(Game2048Direction.UP)
-                GameKey.Down -> move(Game2048Direction.DOWN)
-                GameKey.Left -> move(Game2048Direction.LEFT)
-                GameKey.Right -> move(Game2048Direction.RIGHT)
-                else -> Unit
-            }
-        }
-    }
-
     val canContinue =
         when (step) {
             SWIPE_STEP -> moved
@@ -151,7 +137,8 @@ fun Game2048Tutorial(
                 onMove = ::move,
                 onMotionFinished = { revision -> if (revision == motionRevision) motionTrace = null },
                 modifier = Modifier.widthIn(max = TUTORIAL_BOARD_MAX_WIDTH).fillMaxWidth().aspectRatio(1f),
-                inputEnabled = motionTrace == null,
+                // Arrow keys move exactly like a swipe, as the instruction promises on a computer.
+                hardwareKeys = hardwareKeys,
             )
         }
     }

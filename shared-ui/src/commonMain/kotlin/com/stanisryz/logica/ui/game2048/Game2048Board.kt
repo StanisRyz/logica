@@ -23,6 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,8 +55,10 @@ import com.stanisryz.logica.shared.ui.generated.resources.game_2048_move_left
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_move_right
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_move_up
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_tile_description
+import com.stanisryz.logica.ui.components.GameKey
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
+import kotlinx.coroutines.flow.Flow
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -70,6 +73,7 @@ fun Game2048Board(
     onMotionFinished: (Long) -> Unit,
     modifier: Modifier = Modifier,
     inputEnabled: Boolean = !game.status.isTerminal,
+    hardwareKeys: Flow<GameKey>? = null,
 ) {
     require((motionRevision == null) == (motionTrace == null)) {
         "2048 motion revision and trace must either both be present or both be absent."
@@ -79,9 +83,26 @@ fun Game2048Board(
     val moveUp = stringResource(Res.string.game_2048_move_up)
     val moveDown = stringResource(Res.string.game_2048_move_down)
     val boardDescription = stringResource(Res.string.game_2048_board_description)
-    val enabled = inputEnabled && motionTrace == null && !game.status.isTerminal
+    val allowed = inputEnabled && !game.status.isTerminal
+    val animating = motionTrace != null
+    // The detector lives for the whole board: a move recognised during an animation waits in the
+    // buffer and runs right after it, instead of being lost while the detector restarts.
+    val buffer = remember { Game2048MoveBuffer() }
+    val currentOnMove by rememberUpdatedState(onMove)
+    val currentAllowed by rememberUpdatedState(allowed)
+    val currentAnimating by rememberUpdatedState(animating)
+    val requestMove: (Game2048Direction) -> Unit =
+        remember(buffer) {
+            { direction -> buffer.request(direction, currentAnimating, currentAllowed)?.let { currentOnMove(it) } }
+        }
+    LaunchedEffect(animating, allowed) {
+        buffer.release(animating, allowed)?.let { currentOnMove(it) }
+    }
+    LaunchedEffect(hardwareKeys) {
+        hardwareKeys?.collect { key -> key.game2048Direction()?.let(requestMove) }
+    }
     val actions =
-        if (enabled) {
+        if (allowed && !animating) {
             listOf(
                 semanticMove(moveLeft, Game2048Direction.LEFT, onMove),
                 semanticMove(moveRight, Game2048Direction.RIGHT, onMove),
@@ -131,7 +152,7 @@ fun Game2048Board(
                     .size(boardSize)
                     .clip(MaterialTheme.shapes.medium)
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                    .game2048Swipe(enabled, onMove)
+                    .game2048Swipe(requestMove)
                     .semantics {
                         contentDescription = boardDescription
                         customActions = actions
@@ -317,13 +338,10 @@ private fun Game2048TileSurface(
 }
 
 @Composable
-private fun Modifier.game2048Swipe(
-    enabled: Boolean,
-    onMove: (Game2048Direction) -> Unit,
-): Modifier {
+private fun Modifier.game2048Swipe(onMove: (Game2048Direction) -> Unit): Modifier {
     val threshold = with(LocalDensity.current) { MIN_SWIPE_DISTANCE.toPx() }
-    return pointerInput(enabled, threshold, onMove) {
-        if (!enabled) return@pointerInput
+    // Keyed only by what never changes during play, so an animation lock never restarts it.
+    return pointerInput(threshold, onMove) {
         var distance = Offset.Zero
         detectDragGestures(
             onDragStart = { distance = Offset.Zero },
@@ -355,6 +373,15 @@ private fun directionFor(
         if (distance.y > 0f) Game2048Direction.DOWN else Game2048Direction.UP
     }
 }
+
+private fun GameKey.game2048Direction(): Game2048Direction? =
+    when (this) {
+        GameKey.Up -> Game2048Direction.UP
+        GameKey.Down -> Game2048Direction.DOWN
+        GameKey.Left -> Game2048Direction.LEFT
+        GameKey.Right -> Game2048Direction.RIGHT
+        else -> null
+    }
 
 private fun semanticMove(
     label: String,
