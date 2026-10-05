@@ -119,6 +119,7 @@ import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.imageResource
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringArrayResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -841,7 +842,7 @@ private fun AttemptDistributionBars(distribution: ProfileAttemptDistribution) {
                     if (maximum == 0L) 0f else (count.toDouble() / maximum.toDouble()).toFloat(),
                     label = "attemptBar",
                 )
-            val description = stringResource(Res.string.word_attempt_bar_description, attempt, count)
+            val description = pluralStringResource(Res.plurals.word_attempt_bar_description, attempt, attempt, count)
             Row(
                 modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = description },
                 verticalAlignment = Alignment.CenterVertically,

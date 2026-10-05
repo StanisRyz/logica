@@ -125,9 +125,18 @@
     <string name="economy_lives_value">Can: %1$d / %2$d</string>
     <string name="economy_lives_full">Tüm canlar yenilendi.</string>
     <string name="economy_next_life_in">Sonraki can %1$s sonra.</string>
-    <string name="economy_refill_cost">Bir canı %1$d elmasla yenileyebilirsin.</string>
-    <string name="economy_not_enough_gems">%1$d elmas gerekli, sende %2$d var.</string>
-    <string name="economy_restore_for_gems">%1$d elmasla yenile</string>
+    <plurals name="economy_refill_cost">
+        <item quantity="one">Bir canı %1$d elmasla yenileyebilirsin.</item>
+        <item quantity="other">Bir canı %1$d elmasla yenileyebilirsin.</item>
+    </plurals>
+    <plurals name="economy_not_enough_gems">
+        <item quantity="one">%1$d elmas gerekli, sende %2$d var.</item>
+        <item quantity="other">%1$d elmas gerekli, sende %2$d var.</item>
+    </plurals>
+    <plurals name="economy_restore_for_gems">
+        <item quantity="one">%1$d elmasla yenile</item>
+        <item quantity="other">%1$d elmasla yenile</item>
+    </plurals>
     <string name="economy_no_lives_title">Canın kalmadı</string>
     <string name="economy_no_lives_body">En az bir can gelene kadar oyun işlemleri kullanılamaz. Kayıtlı ilerleme kaybolmaz.</string>
     <string name="economy_no_lives_short">Can yok: oyun işlemleri kullanılamaz.</string>
@@ -143,10 +152,16 @@
     <string name="economy_get_gems">Elmas al</string>
     <string name="gem_store_title">Elmas mağazası</string>
     <string name="gem_store_balance">%1$d elmasın var.</string>
-    <string name="gem_store_pack_gems">%1$d elmas</string>
+    <plurals name="gem_store_pack_gems">
+        <item quantity="one">%1$d elmas</item>
+        <item quantity="other">%1$d elmas</item>
+    </plurals>
     <string name="gem_store_loading">Teklifler yükleniyor…</string>
     <string name="gem_store_purchasing">Ödeniyor…</string>
-    <string name="gem_store_granted">+%1$d elmas</string>
+    <plurals name="gem_store_granted">
+        <item quantity="one">+%1$d elmas</item>
+        <item quantity="other">+%1$d elmas</item>
+    </plurals>
     <string name="gem_store_processing">Ödeme işleniyor. Tamamlanır tamamlanmaz elmaslar gelecek.</string>
     <string name="gem_store_cancelled">Satın alma iptal edildi.</string>
     <string name="gem_store_failed">Satın alma tamamlanamadı.</string>
@@ -193,7 +208,10 @@
     <string name="hints_exhausted_title">İpucun kalmadı</string>
     <string name="hints_exhausted_body">İpuçları Sudoku, Denge ve Taçlar için ortaktır. Elmasla daha fazla al — oyunun olduğu gibi kalır. Elmas: %1$d.</string>
     <string name="hints_offer_single">%1$d 💎 karşılığında 1 ipucu</string>
-    <string name="hints_offer_pack">%2$d 💎 karşılığında %1$d ipucu</string>
+    <plurals name="hints_offer_pack">
+        <item quantity="one">%2$d 💎 karşılığında %1$d ipucu</item>
+        <item quantity="other">%2$d 💎 karşılığında %1$d ipucu</item>
+    </plurals>
     <string name="hints_not_now">Şimdi değil</string>
     <string name="hints_open_store">Mağazaya</string>
     <string name="hints_store_title">İpuçları</string>

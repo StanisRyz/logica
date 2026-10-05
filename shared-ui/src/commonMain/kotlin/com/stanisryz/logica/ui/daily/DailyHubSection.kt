@@ -98,6 +98,7 @@ import com.stanisryz.logica.ui.theme.LogicaSpacing
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.imageResource
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.abs
 
@@ -163,7 +164,7 @@ private fun DailyContent(
 ) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
         val progressDescription =
-            stringResource(Res.string.daily_progress_description, content.completedCount, content.totalCount)
+            pluralStringResource(Res.plurals.daily_progress_description, content.totalCount, content.completedCount, content.totalCount)
         val progress by
             animateFloatAsState(
                 targetValue = completedFraction(content.completedCount, content.totalCount),

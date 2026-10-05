@@ -11,7 +11,10 @@
     <string name="daily_completed">Daily puzzle complete</string>
     <string name="daily_progress_short">%1$d / %2$d</string>
     <string name="daily_loading">Loading the daily puzzle…</string>
-    <string name="daily_progress_description">%1$d of %2$d daily puzzles done.</string>
+    <plurals name="daily_progress_description">
+        <item quantity="one">%1$d of %2$d daily puzzle done.</item>
+        <item quantity="other">%1$d of %2$d daily puzzles done.</item>
+    </plurals>
     <string name="daily_streak_hint">Solve any game to keep your streak</string>
     <string name="daily_streak_secured">Streak kept for today</string>
     <string name="daily_load_error">The daily puzzle could not be loaded.</string>
@@ -62,7 +65,10 @@
     <string name="word_win_rate">Win rate</string>
     <string name="word_percent_value">%1$d%</string>
     <string name="word_attempt_distribution">Guessed in N tries</string>
-    <string name="word_attempt_bar_description">Guessed in %1$d tries: %2$d</string>
+    <plurals name="word_attempt_bar_description">
+        <item quantity="one">Guessed in %1$d try: %2$d</item>
+        <item quantity="other">Guessed in %1$d tries: %2$d</item>
+    </plurals>
     <string name="catalog_level">Level %1$d</string>
     <string name="mistakes_label">Mistakes: %1$d of %2$d</string>
     <string name="mistakes_description">Mistakes: %1$d of %2$d</string>
@@ -359,7 +365,10 @@
     <string name="nonogram_tool_cross">Mark an empty cell</string>
     <string name="nonogram_caption_fill">Fill</string>
     <string name="nonogram_caption_cross">Cross</string>
-    <string name="nonogram_board_description">Board %1$d by %2$d: %3$d of %4$d filled cells found.</string>
+    <plurals name="nonogram_board_description">
+        <item quantity="one">Board %1$d by %2$d: %3$d of %4$d filled cell found.</item>
+        <item quantity="other">Board %1$d by %2$d: %3$d of %4$d filled cells found.</item>
+    </plurals>
     <string name="rules_nonogram_1">The numbers next to each row and above each column are the lengths of its filled runs, in order. There is at least one empty cell between runs.</string>
     <string name="rules_nonogram_2">Fill cells or cross out empty ones. Drag along a row or column to mark several cells at once.</string>
     <string name="rules_nonogram_3">Once every filled cell of a row or column is found, the rest of it is crossed out for you.</string>
@@ -380,7 +389,7 @@
     <string name="rating_levels_count">Levels: %1$s</string>
     <string name="rating_levels_explained">Every cleared level earns points: Easy +1, Medium +2, Hard +3, Expert +4. Replaying a level adds nothing.</string>
     <string name="rating_best_explained">Your best score in a single game — in levels, after the target, and in the Daily.</string>
-    <string name="rating_leaderboard">Top players</string>
+    <string name="rating_leaderboard">Leaderboard</string>
     <string name="gallery_action">Gallery</string>
     <string name="gallery_title">Picture gallery</string>
     <string name="gallery_count">Pictures: %1$s</string>
@@ -411,13 +420,20 @@
     <string name="rewards_claim">Claim</string>
     <string name="rewards_claimed">Claimed</string>
     <string name="rewards_clock_changed">The device time has changed — rewards will be available later</string>
-    <string name="quest_play_few">Play %1$d games</string>
-    <string name="quest_play_many">Play %1$d games</string>
-    <string name="quest_solve_few">Solve %1$d puzzles</string>
-    <string name="quest_solve_many">Solve %1$d puzzles</string>
+    <plurals name="quest_play">
+        <item quantity="one">Play %1$d game</item>
+        <item quantity="other">Play %1$d games</item>
+    </plurals>
+    <plurals name="quest_solve_count">
+        <item quantity="one">Solve %1$d puzzle</item>
+        <item quantity="other">Solve %1$d puzzles</item>
+    </plurals>
     <string name="quest_solve_hard">Solve a puzzle on Hard or Expert</string>
     <string name="quest_solve_daily">Solve a daily puzzle</string>
-    <string name="quest_different_games">Solve puzzles in %1$d different games</string>
+    <plurals name="quest_different_games">
+        <item quantity="one">Solve puzzles in %1$d different game</item>
+        <item quantity="other">Solve puzzles in %1$d different games</item>
+    </plurals>
     <string name="achievements_rewards_waiting">Rewards waiting: %1$d</string>
     <string name="board_zoom_reset">Show the whole board</string>
     <string name="starter_pack_title">Starter pack</string>

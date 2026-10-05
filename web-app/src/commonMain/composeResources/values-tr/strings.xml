@@ -5,7 +5,7 @@
     <string name="web_tab_elsewhere_body">Aynı anda yalnızca bir sekmede oynayabilirsin. İlerlemen burada devam eder.</string>
     <string name="web_tab_play_here">Burada oyna</string>
     <string name="web_fatal_title">Web sürümü başlatılamadı</string>
-    <string name="web_fatal_message">Yandex Oyunlar\'a bağlanılamadı. Sayfayı yenileyin.</string>
+    <string name="web_fatal_message">Yandex Oyunlar\'a bağlanılamadı. Sayfayı yenile.</string>
     <string name="web_init_timeout_title">Oyun başlatılamadı</string>
     <string name="web_init_timeout_body">Platform zamanında yanıt vermedi. Bağlantını kontrol et ve tekrar dene.</string>
     <string name="web_settings">Ayarlar</string>
@@ -33,10 +33,10 @@
     <string name="web_error_daily">Günün bulmacası açılamadı</string>
     <string name="web_error_level">Seviye %1$d açılamadı</string>
     <string name="web_error_progress">İlerleme yüklenemedi</string>
-    <string name="web_failure_data_load">Oyun verileri yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.</string>
-    <string name="web_failure_data_corrupt">Oyun verileri bozuk. Sayfayı yenileyin.</string>
-    <string name="web_failure_progress">İlerlemeniz şu anda kullanılamıyor. Tekrar deneyin.</string>
-    <string name="web_failure_unknown">Bir şeyler ters gitti. Tekrar deneyin.</string>
+    <string name="web_failure_data_load">Oyun verileri yüklenemedi. İnternet bağlantını kontrol edip tekrar dene.</string>
+    <string name="web_failure_data_corrupt">Oyun verileri bozuk. Sayfayı yenile.</string>
+    <string name="web_failure_progress">İlerlemen şu anda kullanılamıyor. Tekrar dene.</string>
+    <string name="web_failure_unknown">Bir şeyler ters gitti. Tekrar dene.</string>
     <string name="web_retry">Tekrar dene</string>
     <string name="web_save_error_catalog">Seviye çözüldü ama ilerleme kaydedilmedi.</string>
     <string name="web_save_error_daily">Oyun bitti ama günlük ilerleme kaydedilmedi.</string>

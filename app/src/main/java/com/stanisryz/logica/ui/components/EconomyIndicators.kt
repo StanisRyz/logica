@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -149,10 +150,15 @@ internal fun LivesDialog(
                                 appendLine(stringResource(R.string.economy_next_life_in, countdown.orEmpty()))
                                 append(
                                     if (economy.canRefillLifeWithGems) {
-                                        stringResource(R.string.economy_refill_cost, EconomyRules.LIFE_REFILL_GEM_COST)
+                                        pluralStringResource(
+                                            R.plurals.economy_refill_cost,
+                                            EconomyRules.LIFE_REFILL_GEM_COST,
+                                            EconomyRules.LIFE_REFILL_GEM_COST,
+                                        )
                                     } else {
-                                        stringResource(
-                                            R.string.economy_not_enough_gems,
+                                        pluralStringResource(
+                                            R.plurals.economy_not_enough_gems,
+                                            EconomyRules.LIFE_REFILL_GEM_COST,
                                             EconomyRules.LIFE_REFILL_GEM_COST,
                                             economy.gems,
                                         )
@@ -177,7 +183,13 @@ internal fun LivesDialog(
         confirmButton = {
             if (!economy.isFull) {
                 TextButton(onClick = onRestoreLife, enabled = economy.canRefillLifeWithGems) {
-                    Text(stringResource(R.string.economy_restore_for_gems, EconomyRules.LIFE_REFILL_GEM_COST))
+                    Text(
+                        pluralStringResource(
+                            R.plurals.economy_restore_for_gems,
+                            EconomyRules.LIFE_REFILL_GEM_COST,
+                            EconomyRules.LIFE_REFILL_GEM_COST,
+                        ),
+                    )
                 }
             }
         },
@@ -259,8 +271,9 @@ internal fun ZeroLivesCard(
         if (!economy.canRefillLifeWithGems) {
             Text(
                 text =
-                    stringResource(
-                        R.string.economy_not_enough_gems,
+                    pluralStringResource(
+                        R.plurals.economy_not_enough_gems,
+                        EconomyRules.LIFE_REFILL_GEM_COST,
                         EconomyRules.LIFE_REFILL_GEM_COST,
                         economy.gems,
                     ),
@@ -268,7 +281,13 @@ internal fun ZeroLivesCard(
             )
         }
         Button(onClick = onRestoreLife, enabled = economy.canRefillLifeWithGems) {
-            Text(stringResource(R.string.economy_restore_for_gems, EconomyRules.LIFE_REFILL_GEM_COST))
+            Text(
+                pluralStringResource(
+                    R.plurals.economy_restore_for_gems,
+                    EconomyRules.LIFE_REFILL_GEM_COST,
+                    EconomyRules.LIFE_REFILL_GEM_COST,
+                ),
+            )
         }
     }
 }

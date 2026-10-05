@@ -128,9 +128,24 @@
     <string name="economy_lives_value">Жизни: %1$d из %2$d</string>
     <string name="economy_lives_full">Все жизни восстановлены.</string>
     <string name="economy_next_life_in">Следующая жизнь через %1$s.</string>
-    <string name="economy_refill_cost">Можно восстановить одну жизнь за %1$d кристаллов.</string>
-    <string name="economy_not_enough_gems">Нужно %1$d кристаллов, сейчас у вас %2$d.</string>
-    <string name="economy_restore_for_gems">Восстановить за %1$d кристаллов</string>
+    <plurals name="economy_refill_cost">
+        <item quantity="one">Можно восстановить одну жизнь за %1$d кристалл.</item>
+        <item quantity="few">Можно восстановить одну жизнь за %1$d кристалла.</item>
+        <item quantity="many">Можно восстановить одну жизнь за %1$d кристаллов.</item>
+        <item quantity="other">Можно восстановить одну жизнь за %1$d кристалла.</item>
+    </plurals>
+    <plurals name="economy_not_enough_gems">
+        <item quantity="one">Нужен %1$d кристалл, сейчас у вас %2$d.</item>
+        <item quantity="few">Нужно %1$d кристалла, сейчас у вас %2$d.</item>
+        <item quantity="many">Нужно %1$d кристаллов, сейчас у вас %2$d.</item>
+        <item quantity="other">Нужно %1$d кристалла, сейчас у вас %2$d.</item>
+    </plurals>
+    <plurals name="economy_restore_for_gems">
+        <item quantity="one">Восстановить за %1$d кристалл</item>
+        <item quantity="few">Восстановить за %1$d кристалла</item>
+        <item quantity="many">Восстановить за %1$d кристаллов</item>
+        <item quantity="other">Восстановить за %1$d кристалла</item>
+    </plurals>
     <string name="economy_no_lives_title">Жизни закончились</string>
     <string name="economy_no_lives_body">Игровые действия недоступны, пока не появится хотя бы одна жизнь. Сохранённый прогресс не потерян.</string>
     <string name="economy_no_lives_short">Нет жизней: игровые действия недоступны.</string>
@@ -152,10 +167,20 @@
     <string name="economy_get_gems">Пополнить кристаллы</string>
     <string name="gem_store_title">Магазин кристаллов</string>
     <string name="gem_store_balance">Сейчас у вас %1$d кристаллов.</string>
-    <string name="gem_store_pack_gems">%1$d кристаллов</string>
+    <plurals name="gem_store_pack_gems">
+        <item quantity="one">%1$d кристалл</item>
+        <item quantity="few">%1$d кристалла</item>
+        <item quantity="many">%1$d кристаллов</item>
+        <item quantity="other">%1$d кристалла</item>
+    </plurals>
     <string name="gem_store_loading">Загружаем предложения…</string>
     <string name="gem_store_purchasing">Оплата…</string>
-    <string name="gem_store_granted">+%1$d кристаллов</string>
+    <plurals name="gem_store_granted">
+        <item quantity="one">+%1$d кристалл</item>
+        <item quantity="few">+%1$d кристалла</item>
+        <item quantity="many">+%1$d кристаллов</item>
+        <item quantity="other">+%1$d кристалла</item>
+    </plurals>
     <string name="gem_store_processing">Платёж обрабатывается. Кристаллы придут, как только он завершится.</string>
     <string name="gem_store_cancelled">Покупка отменена.</string>
     <string name="gem_store_failed">Не удалось завершить покупку.</string>
@@ -203,7 +228,12 @@
     <string name="hints_exhausted_title">Подсказки закончились</string>
     <string name="hints_exhausted_body">Подсказки общие для Судоку, Баланса и Корон. Докупите их за кристаллы — партия останется на месте. Кристаллов: %1$d.</string>
     <string name="hints_offer_single">1 подсказка за %1$d 💎</string>
-    <string name="hints_offer_pack">%1$d подсказки за %2$d 💎</string>
+    <plurals name="hints_offer_pack">
+        <item quantity="one">%1$d подсказка за %2$d 💎</item>
+        <item quantity="few">%1$d подсказки за %2$d 💎</item>
+        <item quantity="many">%1$d подсказок за %2$d 💎</item>
+        <item quantity="other">%1$d подсказки за %2$d 💎</item>
+    </plurals>
     <string name="hints_not_now">Не сейчас</string>
     <string name="hints_open_store">В магазин</string>
     <string name="hints_store_title">Подсказки</string>

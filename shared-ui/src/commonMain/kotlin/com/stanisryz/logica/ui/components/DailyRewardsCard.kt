@@ -56,16 +56,14 @@ import com.stanisryz.logica.shared.ui.generated.resources.achievement_word
 import com.stanisryz.logica.shared.ui.generated.resources.login_gift_day
 import com.stanisryz.logica.shared.ui.generated.resources.login_gift_title
 import com.stanisryz.logica.shared.ui.generated.resources.quest_different_games
-import com.stanisryz.logica.shared.ui.generated.resources.quest_play_few
-import com.stanisryz.logica.shared.ui.generated.resources.quest_play_many
+import com.stanisryz.logica.shared.ui.generated.resources.quest_play
 import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_2048
 import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_balance
 import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_block_sudoku
+import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_count
 import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_crowns
 import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_daily
-import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_few
 import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_hard
-import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_many
 import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_nonogram
 import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_sudoku
 import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_word
@@ -81,6 +79,7 @@ import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.imageResource
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /** One of the day's quests as the hub shows it. */
@@ -294,9 +293,9 @@ private fun ClaimAction(
 private fun questTitle(quest: DailyQuest): String =
     when (quest.kind) {
         DailyQuestKind.PLAY ->
-            stringResource(if (quest.target.isFewForm()) Res.string.quest_play_few else Res.string.quest_play_many, quest.target)
+            pluralStringResource(Res.plurals.quest_play, quest.target, quest.target)
         DailyQuestKind.SOLVE ->
-            stringResource(if (quest.target.isFewForm()) Res.string.quest_solve_few else Res.string.quest_solve_many, quest.target)
+            pluralStringResource(Res.plurals.quest_solve_count, quest.target, quest.target)
         DailyQuestKind.SOLVE_GAME ->
             stringResource(
                 when (quest.puzzleType) {
@@ -311,14 +310,13 @@ private fun questTitle(quest: DailyQuest): String =
             )
         DailyQuestKind.SOLVE_HARD -> stringResource(Res.string.quest_solve_hard)
         DailyQuestKind.SOLVE_DAILY -> stringResource(Res.string.quest_solve_daily)
-        DailyQuestKind.DIFFERENT_GAMES -> stringResource(Res.string.quest_different_games, quest.target)
+        DailyQuestKind.DIFFERENT_GAMES -> pluralStringResource(Res.plurals.quest_different_games, quest.target, quest.target)
     }
 
 /**
  * Russian counts ending in 2–4 (but not 12–14) take the "few" form; English and Turkish give both
  * forms the same text, so this picks correctly in every language the app ships.
  */
-private fun Int.isFewForm(): Boolean = this % 10 in 2..4 && this % 100 !in 12..14
 
 private val CARD_PADDING = 16.dp
 

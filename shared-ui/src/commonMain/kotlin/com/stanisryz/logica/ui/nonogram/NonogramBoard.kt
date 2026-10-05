@@ -40,7 +40,7 @@ import com.stanisryz.logica.puzzle.core.nonogram.NonogramPosition
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramPuzzle
 import com.stanisryz.logica.shared.ui.generated.resources.Res
 import com.stanisryz.logica.shared.ui.generated.resources.nonogram_board_description
-import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.pluralStringResource
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -67,7 +67,8 @@ fun NonogramBoard(
     val maxColumnRuns = max(1, puzzle.columnClues.maxOf { it.size })
     // The clue gutter is the same on both sides so the whole board stays square.
     val gutterCells = max(maxRowRuns * ROW_CLUE_WIDTH, maxColumnRuns * COLUMN_CLUE_HEIGHT).coerceAtLeast(MIN_GUTTER_CELLS)
-    val description = stringResource(Res.string.nonogram_board_description, size, size, game.filledFound, puzzle.filledCount)
+    val description =
+        pluralStringResource(Res.plurals.nonogram_board_description, puzzle.filledCount, size, size, game.filledFound, puzzle.filledCount)
     // The last cell the player touched: its row and column light up with their clues. Presentation only.
     var focus by remember(puzzle) { mutableStateOf<NonogramPosition?>(null) }
     val clueFont = MaterialTheme.typography.titleMedium.fontFamily

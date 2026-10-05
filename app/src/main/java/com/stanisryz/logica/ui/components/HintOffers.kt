@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import com.stanisryz.logica.R
@@ -71,7 +72,7 @@ internal fun HintOfferButtons(
             Text(
                 when (offer) {
                     HintOffer.SINGLE -> stringResource(R.string.hints_offer_single, offer.gemCost)
-                    HintOffer.PACK -> stringResource(R.string.hints_offer_pack, offer.hints, offer.gemCost)
+                    HintOffer.PACK -> pluralStringResource(R.plurals.hints_offer_pack, offer.hints, offer.hints, offer.gemCost)
                 },
             )
         }

@@ -12,7 +12,12 @@
     <string name="daily_completed">Задача дня выполнена</string>
     <string name="daily_progress_short">%1$d / %2$d</string>
     <string name="daily_loading">Загружаем задачу дня…</string>
-    <string name="daily_progress_description">Выполнено %1$d из %2$d головоломок дня.</string>
+    <plurals name="daily_progress_description">
+        <item quantity="one">Выполнено %1$d из %2$d головоломки дня.</item>
+        <item quantity="few">Выполнено %1$d из %2$d головоломок дня.</item>
+        <item quantity="many">Выполнено %1$d из %2$d головоломок дня.</item>
+        <item quantity="other">Выполнено %1$d из %2$d головоломок дня.</item>
+    </plurals>
     <string name="daily_streak_hint">Решите любую игру, чтобы сохранить серию</string>
     <string name="daily_streak_secured">Серия сохранена на сегодня</string>
     <string name="daily_load_error">Не удалось загрузить задачу дня.</string>
@@ -67,7 +72,12 @@
     <string name="word_win_rate">Доля побед</string>
     <string name="word_percent_value">%1$d %</string>
     <string name="word_attempt_distribution">Отгадано за N попыток</string>
-    <string name="word_attempt_bar_description">Отгадано за %1$d попыток: %2$d</string>
+    <plurals name="word_attempt_bar_description">
+        <item quantity="one">Отгадано за %1$d попытку: %2$d</item>
+        <item quantity="few">Отгадано за %1$d попытки: %2$d</item>
+        <item quantity="many">Отгадано за %1$d попыток: %2$d</item>
+        <item quantity="other">Отгадано за %1$d попытки: %2$d</item>
+    </plurals>
     <string name="catalog_level">Уровень %1$d</string>
     <string name="mistakes_label">Ошибки: %1$d из %2$d</string>
     <string name="mistakes_description">Ошибок: %1$d из %2$d</string>
@@ -370,7 +380,12 @@
     <string name="nonogram_tool_cross">Отметить пустую клетку</string>
     <string name="nonogram_caption_fill">Закрасить</string>
     <string name="nonogram_caption_cross">Крестик</string>
-    <string name="nonogram_board_description">Поле %1$d на %2$d: найдено %3$d из %4$d закрашенных клеток.</string>
+    <plurals name="nonogram_board_description">
+        <item quantity="one">Поле %1$d на %2$d: найдено %3$d из %4$d закрашенной клетки.</item>
+        <item quantity="few">Поле %1$d на %2$d: найдено %3$d из %4$d закрашенных клеток.</item>
+        <item quantity="many">Поле %1$d на %2$d: найдено %3$d из %4$d закрашенных клеток.</item>
+        <item quantity="other">Поле %1$d на %2$d: найдено %3$d из %4$d закрашенных клеток.</item>
+    </plurals>
     <string name="rules_nonogram_1">Нонограмма — это японский кроссворд. Числа слева от строки и над столбцом — длины закрашенных отрезков по порядку. Между отрезками есть хотя бы одна пустая клетка.</string>
     <string name="rules_nonogram_2">Закрашивайте клетки или отмечайте пустые крестиком. Проведите пальцем по строке или столбцу, чтобы отметить сразу несколько клеток.</string>
     <string name="rules_nonogram_3">Когда все закрашенные клетки строки или столбца найдены, остальные отмечаются сами.</string>
@@ -422,13 +437,26 @@
     <string name="rewards_claim">Забрать</string>
     <string name="rewards_claimed">Получено</string>
     <string name="rewards_clock_changed">Время на устройстве изменилось — награды станут доступны позже</string>
-    <string name="quest_play_few">Сыграйте %1$d партии</string>
-    <string name="quest_play_many">Сыграйте %1$d партий</string>
-    <string name="quest_solve_few">Решите %1$d головоломки</string>
-    <string name="quest_solve_many">Решите %1$d головоломок</string>
+    <plurals name="quest_play">
+        <item quantity="one">Сыграйте %1$d партию</item>
+        <item quantity="few">Сыграйте %1$d партии</item>
+        <item quantity="many">Сыграйте %1$d партий</item>
+        <item quantity="other">Сыграйте %1$d партии</item>
+    </plurals>
+    <plurals name="quest_solve_count">
+        <item quantity="one">Решите %1$d головоломку</item>
+        <item quantity="few">Решите %1$d головоломки</item>
+        <item quantity="many">Решите %1$d головоломок</item>
+        <item quantity="other">Решите %1$d головоломки</item>
+    </plurals>
     <string name="quest_solve_hard">Решите головоломку на сложности «Сложно» или «Эксперт»</string>
     <string name="quest_solve_daily">Решите задачу дня</string>
-    <string name="quest_different_games">Решите головоломки в %1$d разных играх</string>
+    <plurals name="quest_different_games">
+        <item quantity="one">Решите головоломки в %1$d разной игре</item>
+        <item quantity="few">Решите головоломки в %1$d разных играх</item>
+        <item quantity="many">Решите головоломки в %1$d разных играх</item>
+        <item quantity="other">Решите головоломки в %1$d разных играх</item>
+    </plurals>
     <string name="achievements_rewards_waiting">Наград ждут: %1$d</string>
     <string name="board_zoom_reset">Показать всё поле</string>
     <string name="starter_pack_title">Стартовый набор</string>

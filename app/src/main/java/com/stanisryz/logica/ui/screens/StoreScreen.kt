@@ -324,7 +324,7 @@ private fun GemPackRow(
 ) {
     StoreItemRow(
         artwork = StoreArtwork.forGemPack(offer.pack.gems),
-        title = stringResource(R.string.gem_store_pack_gems, offer.pack.gems),
+        title = pluralStringResource(R.plurals.gem_store_pack_gems, offer.pack.gems, offer.pack.gems),
         subtitle = null,
     ) {
         Button(onClick = onBuy, enabled = enabled) {
@@ -338,7 +338,7 @@ private fun GemPackRow(
 private fun GemPurchaseMessage(outcome: GemPurchaseOutcome) {
     SupportingText(
         when (outcome) {
-            is GemPurchaseOutcome.Granted -> stringResource(R.string.gem_store_granted, outcome.pack.gems)
+            is GemPurchaseOutcome.Granted -> pluralStringResource(R.plurals.gem_store_granted, outcome.pack.gems, outcome.pack.gems)
             GemPurchaseOutcome.Processing -> stringResource(R.string.gem_store_processing)
             GemPurchaseOutcome.Cancelled -> stringResource(R.string.gem_store_cancelled)
             GemPurchaseOutcome.Failed -> stringResource(R.string.gem_store_failed)

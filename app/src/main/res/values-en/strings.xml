@@ -125,9 +125,18 @@
     <string name="economy_lives_value">Lives: %1$d of %2$d</string>
     <string name="economy_lives_full">All lives are restored.</string>
     <string name="economy_next_life_in">Next life in %1$s.</string>
-    <string name="economy_refill_cost">You can restore one life for %1$d gems.</string>
-    <string name="economy_not_enough_gems">You need %1$d gems and have %2$d.</string>
-    <string name="economy_restore_for_gems">Restore for %1$d gems</string>
+    <plurals name="economy_refill_cost">
+        <item quantity="one">You can restore one life for %1$d gem.</item>
+        <item quantity="other">You can restore one life for %1$d gems.</item>
+    </plurals>
+    <plurals name="economy_not_enough_gems">
+        <item quantity="one">You need %1$d gem and have %2$d.</item>
+        <item quantity="other">You need %1$d gems and have %2$d.</item>
+    </plurals>
+    <plurals name="economy_restore_for_gems">
+        <item quantity="one">Restore for %1$d gem</item>
+        <item quantity="other">Restore for %1$d gems</item>
+    </plurals>
     <string name="economy_no_lives_title">Out of lives</string>
     <string name="economy_no_lives_body">Game actions are unavailable until at least one life returns. Saved progress is not lost.</string>
     <string name="economy_no_lives_short">No lives: game actions are unavailable.</string>
@@ -143,10 +152,16 @@
     <string name="economy_get_gems">Get gems</string>
     <string name="gem_store_title">Gem store</string>
     <string name="gem_store_balance">You have %1$d gems.</string>
-    <string name="gem_store_pack_gems">%1$d gems</string>
+    <plurals name="gem_store_pack_gems">
+        <item quantity="one">%1$d gem</item>
+        <item quantity="other">%1$d gems</item>
+    </plurals>
     <string name="gem_store_loading">Loading offers…</string>
     <string name="gem_store_purchasing">Paying…</string>
-    <string name="gem_store_granted">+%1$d gems</string>
+    <plurals name="gem_store_granted">
+        <item quantity="one">+%1$d gem</item>
+        <item quantity="other">+%1$d gems</item>
+    </plurals>
     <string name="gem_store_processing">The payment is processing. Gems arrive as soon as it completes.</string>
     <string name="gem_store_cancelled">Purchase cancelled.</string>
     <string name="gem_store_failed">The purchase could not be completed.</string>
@@ -193,7 +208,10 @@
     <string name="hints_exhausted_title">Out of hints</string>
     <string name="hints_exhausted_body">Hints are shared by Sudoku, Balance, and Crowns. Buy more with gems — your game stays as it is. Gems: %1$d.</string>
     <string name="hints_offer_single">1 hint for %1$d 💎</string>
-    <string name="hints_offer_pack">%1$d hints for %2$d 💎</string>
+    <plurals name="hints_offer_pack">
+        <item quantity="one">%1$d hint for %2$d 💎</item>
+        <item quantity="other">%1$d hints for %2$d 💎</item>
+    </plurals>
     <string name="hints_not_now">Not now</string>
     <string name="hints_open_store">To store</string>
     <string name="hints_store_title">Hints</string>
