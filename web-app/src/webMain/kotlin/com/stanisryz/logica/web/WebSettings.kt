@@ -213,6 +213,20 @@ private fun SettingSwitch(
 
 private const val SETTINGS_KEY = "logica_settings_v1"
 
+/** Fades out and removes the `index.html` loader once Compose has drawn its first frame. */
+internal fun removeStartupLoader() {
+    js(
+        """
+        (function () {
+          var loader = globalThis.document && document.getElementById('logica-loader');
+          if (!loader) return;
+          loader.style.opacity = '0';
+          setTimeout(function () { if (loader.parentNode) loader.parentNode.removeChild(loader); }, 300);
+        })()
+        """,
+    )
+}
+
 private fun settingsStorageGet(key: String): String? = js("globalThis.localStorage.getItem(key)")
 
 private fun settingsStorageSet(

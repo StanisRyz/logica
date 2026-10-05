@@ -8,6 +8,14 @@
     <!-- Relative paths: Yandex serves the game from a nested folder. Made by tools/art/make_app_icon.py. -->
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="favicon-192.png">
+    <script>
+        // The theme the player picked in the Web settings (logica_settings_v1, never changed here).
+        try {
+            var stored = localStorage.getItem("logica_settings_v1") || "";
+            var theme = /(?:^|;)theme=(LIGHT|DARK)(?:;|$)/.exec(stored);
+            if (theme) document.documentElement.className = "theme-" + theme[1].toLowerCase();
+        } catch (e) {}
+    </script>
     <style>
         html, body, #ComposeApp {
             width: 100%;
@@ -18,24 +26,102 @@
             overscroll-behavior: none;
         }
 
-        /* The theme's background, so the page does not flash another color before the first frame. */
+        /*
+         * The theme's background, so the page does not flash another color before the first frame:
+         * the device preference, unless the player picked a theme in the settings (the script above
+         * sets theme-light or theme-dark on <html> from logica_settings_v1).
+         */
         body {
             background: #f7f3ea;
+            color: #252822;
         }
 
         @media (prefers-color-scheme: dark) {
-            body {
+            html:not(.theme-light) body {
                 background: #171a17;
+                color: #e8e7de;
             }
+        }
+
+        html.theme-dark body {
+            background: #171a17;
+            color: #e8e7de;
         }
 
         canvas {
             display: block;
         }
+
+        /* A light loader while the game downloads; removed once Compose has drawn its first frame. */
+        #logica-loader {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            pointer-events: none;
+            transition: opacity 0.25s ease-out;
+        }
+
+        #logica-loader .title {
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        #logica-loader .bar {
+            width: 120px;
+            height: 4px;
+            border-radius: 2px;
+            overflow: hidden;
+            background: rgba(49, 91, 75, 0.18);
+        }
+
+        #logica-loader .bar::after {
+            content: "";
+            display: block;
+            width: 40%;
+            height: 100%;
+            border-radius: 2px;
+            background: #315b4b;
+            animation: logica-loading 1.2s ease-in-out infinite;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            html:not(.theme-light) #logica-loader .bar { background: rgba(183, 216, 196, 0.2); }
+            html:not(.theme-light) #logica-loader .bar::after { background: #b7d8c4; }
+        }
+
+        html.theme-dark #logica-loader .bar { background: rgba(183, 216, 196, 0.2); }
+        html.theme-dark #logica-loader .bar::after { background: #b7d8c4; }
+
+        @keyframes logica-loading {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(250%); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #logica-loader .bar::after { animation: none; width: 100%; opacity: 0.6; }
+        }
     </style>
 </head>
 <body>
 <div id="ComposeApp"></div>
+<div id="logica-loader" aria-hidden="true">
+    <div class="title">Логика</div>
+    <div class="bar"></div>
+</div>
+<script>
+    // The loader speaks the page's probable language; the SDK's own language is known only later.
+    try {
+        var lang = (new URLSearchParams(location.search).get("lang") || navigator.language || "ru").slice(0, 2).toLowerCase();
+        if (["ru", "be", "kk", "uk", "uz"].indexOf(lang) < 0) document.querySelector("#logica-loader .title").textContent = "Logica";
+    } catch (e) {}
+</script>
 <script src="/sdk.js"></script>
 <script src="logica-web.js"></script>
 </body>

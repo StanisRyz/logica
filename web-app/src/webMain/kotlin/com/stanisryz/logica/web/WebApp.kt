@@ -270,6 +270,7 @@ internal fun WebApp(
             LaunchedEffect(controller) {
                 withFrameNanos { }
                 controller.onComposeRootRendered()
+                runCatching { removeStartupLoader() }
             }
             DisposableEffect(
                 controller,
