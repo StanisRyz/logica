@@ -5,8 +5,15 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,6 +39,7 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramCell
@@ -39,8 +47,17 @@ import com.stanisryz.logica.puzzle.core.nonogram.NonogramGameState
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramPosition
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramPuzzle
 import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.board_cell_state_description
 import com.stanisryz.logica.shared.ui.generated.resources.nonogram_board_description
+import com.stanisryz.logica.shared.ui.generated.resources.nonogram_cell_crossed
+import com.stanisryz.logica.shared.ui.generated.resources.nonogram_cell_filled
+import com.stanisryz.logica.shared.ui.generated.resources.nonogram_cell_unknown
+import com.stanisryz.logica.shared.ui.generated.resources.nonogram_column_clue
+import com.stanisryz.logica.shared.ui.generated.resources.nonogram_open_cell
+import com.stanisryz.logica.shared.ui.generated.resources.nonogram_row_clue
+import com.stanisryz.logica.ui.components.SemanticCellGrid
 import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -185,8 +202,67 @@ fun NonogramBoard(
                         ),
                 )
             }
+            NonogramSemantics(
+                puzzle = puzzle,
+                game = game,
+                gutter = side * gutterCells / (size + gutterCells),
+                onCell = if (interactive) ({ position -> currentOnCell(position) }) else null,
+            )
         }
     }
+}
+
+/**
+ * What a screen reader finds on the canvas board: each column's and row's clue, then every cell
+ * with its state, and an unopened cell opens with the selected tool like a tap.
+ */
+@Composable
+private fun NonogramSemantics(
+    puzzle: NonogramPuzzle,
+    game: NonogramGameState,
+    gutter: Dp,
+    onCell: ((NonogramPosition) -> Unit)?,
+) {
+    val size = puzzle.size
+    Row(Modifier.padding(start = gutter).height(gutter).fillMaxWidth()) {
+        repeat(size) { column ->
+            val clue =
+                stringResource(
+                    Res.string.nonogram_column_clue,
+                    column + 1,
+                    puzzle.columnClues[column].ifEmpty { listOf(0) }.joinToString(", "),
+                )
+            Box(Modifier.weight(1f).fillMaxHeight().semantics { contentDescription = clue })
+        }
+    }
+    Column(Modifier.padding(top = gutter).width(gutter).fillMaxHeight()) {
+        repeat(size) { row ->
+            val clue = stringResource(Res.string.nonogram_row_clue, row + 1, puzzle.rowClues[row].ifEmpty { listOf(0) }.joinToString(", "))
+            Box(Modifier.weight(1f).fillMaxWidth().semantics { contentDescription = clue })
+        }
+    }
+    val filled = stringResource(Res.string.nonogram_cell_filled)
+    val crossed = stringResource(Res.string.nonogram_cell_crossed)
+    val unknown = stringResource(Res.string.nonogram_cell_unknown)
+    SemanticCellGrid(
+        size = size,
+        modifier = Modifier.padding(start = gutter, top = gutter).fillMaxSize(),
+        cellDescription = { row, column ->
+            val state =
+                when (game.cells[row * size + column]) {
+                    NonogramCell.FILLED -> filled
+                    NonogramCell.CROSSED -> crossed
+                    NonogramCell.UNKNOWN -> unknown
+                }
+            stringResource(Res.string.board_cell_state_description, row + 1, column + 1, state)
+        },
+        actionLabel = stringResource(Res.string.nonogram_open_cell),
+        cellAction = { row, column ->
+            onCell?.takeIf { game.cells[row * size + column] == NonogramCell.UNKNOWN }?.let { open ->
+                { open(NonogramPosition(row, column)) }
+            }
+        },
+    )
 }
 
 private class BoardColors(

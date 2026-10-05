@@ -477,6 +477,23 @@
     <string name="block_sudoku_score">Очки</string>
     <string name="block_sudoku_target">Цель</string>
     <string name="block_sudoku_board_description">Поле 9 на 9, занято клеток: %1$d</string>
+    <string name="board_cell_state_description">Строка %1$d, столбец %2$d: %3$s</string>
+    <string name="nonogram_cell_filled">закрашена</string>
+    <string name="nonogram_cell_crossed">крест</string>
+    <string name="nonogram_cell_unknown">пусто</string>
+    <string name="nonogram_row_clue">Строка %1$d: %2$s</string>
+    <string name="nonogram_column_clue">Столбец %1$d: %2$s</string>
+    <string name="nonogram_open_cell">Открыть клетку</string>
+    <string name="block_sudoku_cell_filled">занята</string>
+    <string name="block_sudoku_cell_free">свободна</string>
+    <string name="block_sudoku_place_here">Поставить сюда</string>
+    <string name="block_sudoku_piece_unfit">%1$s — не помещается</string>
+    <plurals name="block_sudoku_piece_description">
+        <item quantity="one">Фигура: %1$d клетка, %2$d на %3$d</item>
+        <item quantity="few">Фигура: %1$d клетки, %2$d на %3$d</item>
+        <item quantity="many">Фигура: %1$d клеток, %2$d на %3$d</item>
+        <item quantity="other">Фигура: %1$d клетки, %2$d на %3$d</item>
+    </plurals>
     <string name="rules_block_sudoku_1">Перетаскивайте фигуры из лотка на поле 9 на 9 — или коснитесь фигуры, а затем клетки поля.</string>
     <string name="rules_block_sudoku_2">Заполненная строка, столбец или квадрат 3 на 3 исчезает и приносит очки. Несколько сразу — гораздо больше.</string>
     <string name="rules_block_sudoku_3">Наберите целевые очки, чтобы пройти уровень. Если ни одна фигура из лотка никуда не помещается, уровень проигран.</string>

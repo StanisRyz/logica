@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -45,8 +46,12 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -58,8 +63,14 @@ import com.stanisryz.logica.puzzle.core.blocksudoku.BlockSudokuStatus
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.shared.ui.generated.resources.Res
 import com.stanisryz.logica.shared.ui.generated.resources.block_sudoku_board_description
+import com.stanisryz.logica.shared.ui.generated.resources.block_sudoku_cell_filled
+import com.stanisryz.logica.shared.ui.generated.resources.block_sudoku_cell_free
+import com.stanisryz.logica.shared.ui.generated.resources.block_sudoku_piece_description
+import com.stanisryz.logica.shared.ui.generated.resources.block_sudoku_piece_unfit
+import com.stanisryz.logica.shared.ui.generated.resources.block_sudoku_place_here
 import com.stanisryz.logica.shared.ui.generated.resources.block_sudoku_score
 import com.stanisryz.logica.shared.ui.generated.resources.block_sudoku_target
+import com.stanisryz.logica.shared.ui.generated.resources.board_cell_state_description
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_easy
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_expert
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_hard
@@ -69,10 +80,12 @@ import com.stanisryz.logica.ui.components.CenteredBoardLayout
 import com.stanisryz.logica.ui.components.GameDock
 import com.stanisryz.logica.ui.components.GameSound
 import com.stanisryz.logica.ui.components.LocalGameSounds
+import com.stanisryz.logica.ui.components.SemanticCellGrid
 import com.stanisryz.logica.ui.components.isWideGameplayLayout
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -159,6 +172,7 @@ fun BlockSudokuContent(
         BlockBoard(
             state = state,
             preview = preview,
+            placeEnabled = interactive && selected?.let { state.tray.getOrNull(it) } != null,
             onTapCell = { cell ->
                 val index = selected ?: return@BlockBoard
                 val piece = currentState.tray.getOrNull(index) ?: return@BlockBoard
@@ -287,6 +301,7 @@ private fun dragTopLeft(
 private fun BlockBoard(
     state: BlockSudokuState,
     preview: Pair<BlockPiece, BlockCell>?,
+    placeEnabled: Boolean,
     onTapCell: (BlockCell) -> Unit,
     modifier: Modifier,
 ) {
@@ -365,6 +380,23 @@ private fun BlockBoard(
                 drawLine(color, Offset(0f, line * cell), Offset(this.size.width, line * cell), stroke, StrokeCap.Square)
             }
         }
+        // Each cell for a screen reader, and with a selected piece a «place here» action like a tap.
+        val taken = stringResource(Res.string.block_sudoku_cell_filled)
+        val free = stringResource(Res.string.block_sudoku_cell_free)
+        SemanticCellGrid(
+            size = BlockSudokuRules.SIZE,
+            modifier = Modifier.size(side),
+            cellDescription = { row, column ->
+                stringResource(
+                    Res.string.board_cell_state_description,
+                    row + 1,
+                    column + 1,
+                    if (state.isFilled(row, column)) taken else free,
+                )
+            },
+            actionLabel = stringResource(Res.string.block_sudoku_place_here),
+            cellAction = { row, column -> if (placeEnabled) ({ currentOnTap(BlockCell(row, column)) }) else null },
+        )
     }
 }
 
@@ -396,6 +428,13 @@ private fun TraySlot(
     val currentOnDrag by rememberUpdatedState(onDrag)
     val currentOnDrop by rememberUpdatedState(onDrop)
     val currentOnTap by rememberUpdatedState(onTap)
+    val pieceDescription =
+        piece
+            ?.let {
+                val shape =
+                    pluralStringResource(Res.plurals.block_sudoku_piece_description, it.cells.size, it.cells.size, it.width, it.height)
+                if (fits) shape else stringResource(Res.string.block_sudoku_piece_unfit, shape)
+            }.orEmpty()
     val alpha by animateFloatAsState(
         if (piece == null || hidden) {
             0f
@@ -410,8 +449,20 @@ private fun TraySlot(
             .clip(MaterialTheme.shapes.medium)
             .background(if (selected) colors.primaryContainer else Color.Transparent)
             .onGloballyPositioned { origin = it.boundsInRoot().topLeft }
-            .clearAndSetSemantics { }
-            .then(
+            .clearAndSetSemantics {
+                // A piece is a button that selects it for «tap a cell to place»; an empty slot says nothing.
+                if (piece != null && !hidden) {
+                    contentDescription = pieceDescription
+                    this.selected = selected
+                    role = Role.Button
+                    if (enabled && fits) {
+                        onClick {
+                            currentOnTap()
+                            true
+                        }
+                    }
+                }
+            }.then(
                 if (enabled && piece != null && fits) {
                     Modifier.pointerInput(piece) {
                         val lift = FINGER_GAP.toPx()

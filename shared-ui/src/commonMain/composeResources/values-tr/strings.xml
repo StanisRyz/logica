@@ -454,6 +454,21 @@
     <string name="block_sudoku_score">Puan</string>
     <string name="block_sudoku_target">Hedef</string>
     <string name="block_sudoku_board_description">9x9 tahta, dolu hücre: %1$d</string>
+    <string name="board_cell_state_description">Satır %1$d, sütun %2$d: %3$s</string>
+    <string name="nonogram_cell_filled">boyalı</string>
+    <string name="nonogram_cell_crossed">çarpı</string>
+    <string name="nonogram_cell_unknown">boş</string>
+    <string name="nonogram_row_clue">Satır %1$d: %2$s</string>
+    <string name="nonogram_column_clue">Sütun %1$d: %2$s</string>
+    <string name="nonogram_open_cell">Hücreyi aç</string>
+    <string name="block_sudoku_cell_filled">dolu</string>
+    <string name="block_sudoku_cell_free">boş</string>
+    <string name="block_sudoku_place_here">Buraya koy</string>
+    <string name="block_sudoku_piece_unfit">%1$s — sığmıyor</string>
+    <plurals name="block_sudoku_piece_description">
+        <item quantity="one">Parça: %1$d hücre, %2$d x %3$d</item>
+        <item quantity="other">Parça: %1$d hücre, %2$d x %3$d</item>
+    </plurals>
     <string name="rules_block_sudoku_1">Parçaları tepsiden 9x9 tahtaya sürükle ya da bir parçaya, ardından tahtadaki bir hücreye dokun.</string>
     <string name="rules_block_sudoku_2">Dolan satır, sütun veya 3x3 kare silinir ve puan kazandırır. Aynı anda birkaçı çok daha fazla kazandırır.</string>
     <string name="rules_block_sudoku_3">Seviyeyi geçmek için hedef puana ulaş. Tepsideki hiçbir parça bir yere sığmazsa seviye kaybedilir.</string>

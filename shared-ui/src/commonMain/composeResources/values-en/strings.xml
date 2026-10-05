@@ -454,6 +454,21 @@
     <string name="block_sudoku_score">Score</string>
     <string name="block_sudoku_target">Target</string>
     <string name="block_sudoku_board_description">9 by 9 board, %1$d cells filled</string>
+    <string name="board_cell_state_description">Row %1$d, column %2$d: %3$s</string>
+    <string name="nonogram_cell_filled">filled</string>
+    <string name="nonogram_cell_crossed">crossed out</string>
+    <string name="nonogram_cell_unknown">empty</string>
+    <string name="nonogram_row_clue">Row %1$d: %2$s</string>
+    <string name="nonogram_column_clue">Column %1$d: %2$s</string>
+    <string name="nonogram_open_cell">Open the cell</string>
+    <string name="block_sudoku_cell_filled">taken</string>
+    <string name="block_sudoku_cell_free">free</string>
+    <string name="block_sudoku_place_here">Place here</string>
+    <string name="block_sudoku_piece_unfit">%1$s — does not fit</string>
+    <plurals name="block_sudoku_piece_description">
+        <item quantity="one">Piece: %1$d cell, %2$d by %3$d</item>
+        <item quantity="other">Piece: %1$d cells, %2$d by %3$d</item>
+    </plurals>
     <string name="rules_block_sudoku_1">Drag pieces from the tray onto the 9 by 9 board, or tap a piece and then a board cell.</string>
     <string name="rules_block_sudoku_2">A full row, column, or 3 by 3 box clears and scores. Several at once score much more.</string>
     <string name="rules_block_sudoku_3">Reach the target score to clear the level. If no piece in the tray fits anywhere, the level is lost.</string>
