@@ -169,7 +169,7 @@ Production-пакет `:web-app:packageYandexDistribution` в этой песо�
 | `OLD_SAFARI=1 node tools/web/check_sounds.mjs <dev-сборка>` | 14/14 |
 | `./gradlew :web-app:packageYandexDistribution` | Здесь не собирается: 403 на Karma при `kotlinNpmInstall`, окружение. Проверяется в CI (`web-distribution`) |
 
-CI прошлого пуша (`3aca12c`): зелёный, https://github.com/StanisRyz/logica/actions/runs/37350202607. Ссылку на CI этого этапа допишу следующим коммитом.
+CI прошлого пуша (`3aca12c`): зелёный, https://github.com/StanisRyz/logica/actions/runs/37350202607. CI этого этапа (`4a85fbf`): зелёный, включая `web-distribution` (`packageYandexDistribution`), https://github.com/StanisRyz/logica/actions/runs/37353123180 (дописано вместе с этапом 5.2).
 
 ## 5. Отклонения и что осталось непроверенным
 
