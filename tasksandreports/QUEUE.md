@@ -35,3 +35,4 @@
 5. `tasks/stage-07-3-text-layout-a11y.md`
 6. `tasks/stage-08-1-web-performance.md`
 7. `tasks/stage-08-2-refactor.md`
+8. `tasks/stage-08-1a-font-subset-coverage.md` (доработка 8.1: шрифт потерял казахские и узбекские буквы)
