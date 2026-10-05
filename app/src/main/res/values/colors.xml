@@ -2,4 +2,6 @@
 <resources>
     <!-- The light background of LogicaTheme, behind the launcher icon's foreground. -->
     <color name="ic_launcher_background">#F7F3EA</color>
+    <!-- The window and splash behind the first frame: LogicaTheme's light background. -->
+    <color name="window_background">#F7F3EA</color>
 </resources>

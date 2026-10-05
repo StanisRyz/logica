@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Logica" parent="android:style/Theme.DeviceDefault.NoActionBar" />
+    <!--
+        The window behind the first frame takes the app's background, so a light device never shows a
+        dark window first. It follows the system night mode, not the in-app theme choice, which is
+        unknown until DataStore loads.
+    -->
+    <style name="Theme.Logica" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
 </resources>
