@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.shared.ui.generated.resources.Res
 import com.stanisryz.logica.shared.ui.generated.resources.continue_level
+import com.stanisryz.logica.shared.ui.generated.resources.continue_no_lives
 import com.stanisryz.logica.shared.ui.generated.resources.continue_title
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048
 import com.stanisryz.logica.shared.ui.generated.resources.game_balance
@@ -157,9 +158,13 @@ fun ContinueGameCard(
     enabled: Boolean,
     onContinue: () -> Unit,
     modifier: Modifier = Modifier,
+    noLives: Boolean = false,
 ) {
     val colors = MaterialTheme.colorScheme
     val title = stringResource(puzzleType.catalogTitleResource())
+    // At zero lives the card stays tappable (the host opens the lives dialog) but says why it cannot
+    // start: a broken heart instead of Play and a line of text, not only a paler colour.
+    val ready = enabled && !noLives
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLow, contentColor = colors.onSurface),
@@ -194,20 +199,31 @@ fun ContinueGameCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.onSurfaceVariant,
                 )
+                if (noLives) {
+                    Text(
+                        text = stringResource(Res.string.continue_no_lives),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.error,
+                    )
+                }
             }
             Box(
                 modifier =
                     Modifier
                         .size(CONTINUE_PLAY_SIZE)
                         .clip(CircleShape)
-                        .background(if (enabled) colors.primary else colors.surfaceContainerHighest),
+                        .background(if (ready) colors.primary else colors.surfaceContainerHighest),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
-                    contentDescription = null,
-                    tint = if (enabled) colors.onPrimary else colors.onSurfaceVariant,
-                )
+                if (noLives) {
+                    GameIconImage(GameIcon.HEART_BROKEN, size = CONTINUE_NO_LIVES_ICON_SIZE)
+                } else {
+                    Icon(
+                        imageVector = Icons.Rounded.PlayArrow,
+                        contentDescription = null,
+                        tint = if (enabled) colors.onPrimary else colors.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
@@ -216,6 +232,7 @@ fun ContinueGameCard(
 private val CONTINUE_PADDING = 12.dp
 private val CONTINUE_ARTWORK_SIZE = 56.dp
 private val CONTINUE_PLAY_SIZE = 44.dp
+private val CONTINUE_NO_LIVES_ICON_SIZE = 26.dp
 
 /** A full-width Catalog artwork card shared by Android and Web. */
 @Composable

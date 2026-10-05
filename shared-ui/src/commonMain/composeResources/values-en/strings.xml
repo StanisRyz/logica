@@ -275,6 +275,7 @@
     <string name="profile_to_games">To games</string>
     <string name="continue_title">Continue</string>
     <string name="continue_level">%1$s · level %2$d</string>
+    <string name="continue_no_lives">No lives — tap to get one back</string>
     <string name="profile_achievements">Achievements</string>
     <string name="achievements_count">%1$d of %2$d unlocked</string>
     <string name="achievement_unlocked">New achievement</string>

@@ -156,6 +156,7 @@ internal fun GameHubRoute(
                         levelNumber = continueLevel,
                         enabled = true,
                         onContinue = { onContinue(puzzle, difficulty) },
+                        noLives = !economy.isGameplayAllowed,
                     )
                 }
             },

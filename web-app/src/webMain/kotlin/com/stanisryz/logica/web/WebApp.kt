@@ -756,6 +756,7 @@ private fun ReadyContent(
                                         difficultyLabel = stringResource(difficulty.hubLabelResource()),
                                         levelNumber = level,
                                         enabled = ready != null,
+                                        noLives = livesUi.state?.let { it.lives <= 0 } == true,
                                         onContinue = {
                                             livesUi.guard {
                                                 route =

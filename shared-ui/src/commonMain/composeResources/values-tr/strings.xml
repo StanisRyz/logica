@@ -275,6 +275,7 @@
     <string name="profile_to_games">Oyunlara</string>
     <string name="continue_title">Devam et</string>
     <string name="continue_level">%1$s · seviye %2$d</string>
+    <string name="continue_no_lives">Can yok — geri almak için dokun</string>
     <string name="profile_achievements">Başarılar</string>
     <string name="achievements_count">%2$d başarıdan %1$d kazanıldı</string>
     <string name="achievement_unlocked">Yeni başarı</string>
