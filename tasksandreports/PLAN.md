@@ -32,5 +32,6 @@
 | 2.1 | tasks/stage-02-1-web-tabs-journals-payments.md | принята (67901dd…aff5cd2) |
 | 2.2 | tasks/stage-02-2-web-time-stats-startup.md | принята (6bb7378…3eb7481) |
 | 2.2a | tasks/stage-02-2a-web-clock-cloud-timeouts.md | принята (c3b22e9, 6f69871); SDK `serverTime()` монотонный, своё время не вводим |
-| 3 | tasks/stage-03-android-release.md | выдана |
+| 3 | tasks/stage-03-android-release.md | на проверке |
+| 4.1 | tasks/stage-04-1-ci-migrations-golden.md | готова, выдать после приёмки 3 |
 
