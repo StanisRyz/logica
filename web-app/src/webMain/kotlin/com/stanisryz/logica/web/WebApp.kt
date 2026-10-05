@@ -62,7 +62,6 @@ import com.stanisryz.logica.puzzle.core.crowns.hasMeaningfulProgress
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
 import com.stanisryz.logica.puzzle.core.daily.DailyDate
 import com.stanisryz.logica.puzzle.core.daily.toDailyEpochDay
-import com.stanisryz.logica.puzzle.core.game2048.Game2048Status
 import com.stanisryz.logica.puzzle.core.game2048.hasMeaningfulProgress
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
@@ -206,8 +205,7 @@ private fun routeHasActivePuzzle(
             sudokuState is WebSudokuState.Playing &&
                 sudokuState.game.status == SudokuGameStatus.IN_PROGRESS
         WebRoute.Game2048 ->
-            game2048State is Web2048State.Playing &&
-                game2048State.game.status == Game2048Status.IN_PROGRESS
+            game2048State is Web2048State.Playing && !game2048State.isOver
         WebRoute.Nonogram ->
             nonogramState is WebNonogramState.Playing &&
                 nonogramState.game.status == NonogramGameStatus.IN_PROGRESS
@@ -2337,10 +2335,11 @@ private fun PlayingGame2048Content(
             puzzleType = PuzzleType.GAME_2048,
             isDaily = state.source.isDaily,
             hasMeaningfulProgress =
-                state.game.hasMeaningfulProgress(
-                    levelCleared = !state.source.isDaily && state.game.goalReached,
-                    completionSaved = controller.completionState is WebCatalogCompletionState.Saved,
-                ),
+                !state.finishedByPlayer &&
+                    state.game.hasMeaningfulProgress(
+                        levelCleared = !state.source.isDaily && state.game.goalReached,
+                        completionSaved = controller.completionState is WebCatalogCompletionState.Saved,
+                    ),
             onExit = if (state.source.isDaily) onExitGame2048 else controller::showDifficultySelector,
         )
         // Catalog-only: the save banner and cleared marker belong to Catalog progression.
@@ -2358,20 +2357,21 @@ private fun PlayingGame2048Content(
             levelCleared = !state.source.isDaily && controller.completionState is WebCatalogCompletionState.Saved,
             motionRevision = state.motionRevision,
             motionTrace = state.motionTrace,
-            gameplayEnabled = state.game.status == Game2048Status.IN_PROGRESS,
+            gameplayEnabled = !state.isOver,
             canUndo = controller.canUndo,
             onMove = controller::move,
             onUndo = controller::undo,
             onMotionFinished = controller::finishMotion,
             modifier = Modifier.weight(1f),
             hardwareKeys = LocalWebKeyboard.current?.keys,
+            onFinish = if (state.finishedByPlayer) null else controller::finish,
         )
     }
 
     if (state.source.isDaily) {
         WebDailyOrdinaryTerminalDialog(
             puzzleType = PuzzleType.GAME_2048,
-            visible = state.game.status.isTerminal && state.motionTrace == null,
+            visible = state.isOver && state.motionTrace == null,
             difficulty = state.source.difficulty,
             solved = state.game.goalReached,
             scoreDetail = stringResource(WebRes.string.web_score_final, formatGame2048Number(state.game.score)),
@@ -2382,7 +2382,7 @@ private fun PlayingGame2048Content(
         )
     } else {
         Web2048CatalogTerminalDialog(
-            visible = state.game.status.isTerminal && state.motionTrace == null,
+            visible = state.isOver && state.motionTrace == null,
             difficulty = state.source.difficulty,
             levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
             goalReached = state.game.goalReached,

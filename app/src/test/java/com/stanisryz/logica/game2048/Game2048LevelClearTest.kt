@@ -145,6 +145,40 @@ class Game2048LevelClearTest {
             assertTrue(completions.recorded.none { it.outcome == GameOutcome.FAILED })
         }
 
+    @Test
+    fun finishAfterTheClearEndsFreeplayWithoutASecondRecord() =
+        runBlocking {
+            val saveGate = CompletableDeferred<Unit>().apply { complete(Unit) }
+            val completions = RecordingCompletions(saveGate)
+            val viewModel =
+                Game2048ViewModel(
+                    launch = GameAttemptLaunch.Level(levelId),
+                    attemptFactory = GameAttemptFactory(FrozenLevel(seedThatClearsThenDies())) { ATTEMPT_ID },
+                    completionRepository = completions,
+                    economyRepository = FullWallet,
+                )
+            var ready = viewModel.uiState.first { it !is Game2048UiState.Loading } as Game2048UiState.Ready
+            // Nothing to finish before the target.
+            viewModel.finishGame()
+            assertFalse(viewModel.ready().isOver)
+            while (!ready.levelCleared) {
+                viewModel.play(nextDirection(ready.game))
+                ready = viewModel.ready()
+            }
+
+            viewModel.finishGame()
+
+            val finished = viewModel.ready()
+            assertTrue(finished.isOver)
+            assertEquals(Game2048Status.IN_PROGRESS, finished.game.status)
+            assertFalse(finished.hasMeaningfulProgress)
+            assertEquals(1, completions.calls)
+            // The board is over: a move changes nothing and records nothing.
+            viewModel.move(nextDirection(finished.game))
+            assertEquals(finished, viewModel.ready())
+            assertEquals(1, completions.calls)
+        }
+
     /**
      * A seed whose deterministic corner-strategy playthrough crosses the EASY target and then runs
      * out of moves, so the test exercises both halves of the contract without depending on the

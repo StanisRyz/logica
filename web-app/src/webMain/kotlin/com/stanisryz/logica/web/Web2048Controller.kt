@@ -43,7 +43,13 @@ internal sealed interface Web2048State {
         val game: Game2048State,
         val motionRevision: Long? = null,
         val motionTrace: Game2048MoveTrace? = null,
-    ) : Web2048State
+        /** The player ended the game with «Finish» after reaching the target: it is over like a game over. */
+        val finishedByPlayer: Boolean = false,
+    ) : Web2048State {
+        /** Over for the player: no move is left, or they finished after the target. */
+        val isOver: Boolean
+            get() = game.status.isTerminal || finishedByPlayer
+    }
 
     data class Error(
         val difficulty: Difficulty,
@@ -112,7 +118,7 @@ internal class Web2048Controller(
         get() =
             undoHistory.isNotEmpty() &&
                 (state as? Web2048State.Playing)?.let {
-                    it.game.status == Game2048Status.IN_PROGRESS && it.motionTrace == null
+                    !it.isOver && it.motionTrace == null
                 } == true
 
     fun selectDifficulty(difficulty: Difficulty) {
@@ -254,7 +260,7 @@ internal class Web2048Controller(
 
     fun move(direction: Game2048Direction) {
         val playing = state as? Web2048State.Playing ?: return
-        if (playing.game.status.isTerminal || playing.motionTrace != null) return
+        if (playing.isOver || playing.motionTrace != null) return
         val transition = engine?.moveWithTrace(playing.game, direction) ?: return
         val trace = transition.trace ?: return
         val catalogGoalCrossing =
@@ -329,9 +335,30 @@ internal class Web2048Controller(
 
     fun undo() {
         val playing = state as? Web2048State.Playing ?: return
-        if (playing.game.status.isTerminal || playing.motionTrace != null || undoHistory.isEmpty()) return
+        if (playing.isOver || playing.motionTrace != null || undoHistory.isEmpty()) return
         val previous = undoHistory.removeAt(undoHistory.lastIndex)
         state = playing.copy(game = previous, motionRevision = null, motionTrace = null)
+    }
+
+    /**
+     * «Finish» after the target: the game ends with its current score. A Daily entry records its one
+     * SOLVED Daily and Statistics result now, exactly as a game over after the target would; a
+     * Catalog level was already cleared at the crossing, so this only ends its freeplay and shows the
+     * result card. Ending is not leaving the game, so it never brings an ad.
+     */
+    fun finish() {
+        val playing = state as? Web2048State.Playing ?: return
+        if (!playing.game.goalReached || playing.isOver || playing.motionTrace != null) return
+        undoHistory.clear()
+        state = playing.copy(finishedByPlayer = true)
+        progression.publishBest2048()
+        val source = playing.source as? WebGameplaySource.DailyChallenge ?: return
+        statisticsAttempt?.let { statistics.recordTerminalResult(it, WebStatisticsTerminalOutcome.SOLVED) }
+        dailyCompletion.saveTerminal(source.attempt, WebStatisticsTerminalOutcome.SOLVED)
+        economy.recordTerminalResult(
+            solved = true,
+            gemsEarned = WebEconomyProcessor.dailyGemsFor(PuzzleType.GAME_2048, source.difficulty, stars = null),
+        )
     }
 
     fun finishMotion(revision: Long) {
@@ -373,7 +400,7 @@ internal class Web2048Controller(
     fun nextLevel() {
         progression.publishBest2048()
         val playing = state as? Web2048State.Playing ?: return
-        if (!playing.game.status.isTerminal) return
+        if (!playing.isOver) return
         val source = playing.source as? WebGameplaySource.CatalogLevel ?: return
         if (completion.state !is WebCatalogCompletionState.Saved) return
         selectDifficulty(source.attempt.levelId.difficulty)

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Undo
+import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -45,12 +46,14 @@ import com.stanisryz.logica.shared.ui.generated.resources.difficulty_easy
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_expert
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_hard
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_medium
+import com.stanisryz.logica.shared.ui.generated.resources.game_2048_finish
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_goal_reached
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_level_cleared
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_score
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_target
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_target_reached
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_undo
+import com.stanisryz.logica.shared.ui.generated.resources.tool_caption_finish
 import com.stanisryz.logica.shared.ui.generated.resources.tool_caption_undo
 import com.stanisryz.logica.ui.components.BoardTitle
 import com.stanisryz.logica.ui.components.CenteredBoardLayout
@@ -86,6 +89,7 @@ fun Game2048Content(
     modifier: Modifier = Modifier,
     hostStatusContent: @Composable ColumnScope.() -> Unit = {},
     hardwareKeys: Flow<GameKey>? = null,
+    onFinish: (() -> Unit)? = null,
 ) {
     require(game.puzzleId.difficulty == difficulty) { "2048 difficulty must match the game identity." }
     val sounds = LocalGameSounds.current
@@ -127,10 +131,24 @@ fun Game2048Content(
             modifier = Modifier.fillMaxSize(),
         )
     }
+    // Once the target is reached the player may end the game with its current score instead of
+    // playing on until no move is left; the host decides what ending means for its scope.
+    val finishTool =
+        onFinish?.takeIf { game.goalReached && !game.status.isTerminal }?.let { finish ->
+            PuzzleTool(
+                label = stringResource(Res.string.game_2048_finish),
+                stateDescription = null,
+                selected = null,
+                enabled = true,
+                onClick = finish,
+                symbol = { Icon(Icons.Rounded.Flag, contentDescription = null) },
+                caption = stringResource(Res.string.tool_caption_finish),
+            )
+        }
     val controls: @Composable () -> Unit = {
         PuzzleToolBar(
             tools =
-                listOf(
+                listOfNotNull(
                     PuzzleTool(
                         label = stringResource(Res.string.game_2048_undo),
                         stateDescription = null,
@@ -141,6 +159,7 @@ fun Game2048Content(
                         symbol = { Icon(Icons.AutoMirrored.Rounded.Undo, contentDescription = null) },
                         caption = stringResource(Res.string.tool_caption_undo),
                     ),
+                    finishTool,
                 ),
             enabled = gameplayEnabled,
         )

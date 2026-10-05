@@ -87,6 +87,7 @@ internal fun Game2048Route(
         levelNumber = launch.levelNumberOrNull(),
         onMove = gameViewModel::move,
         onUndo = gameViewModel::undo,
+        onFinish = gameViewModel::finishGame,
         onMotionFinished = gameViewModel::finishMotion,
         onRetryLevel = { onTerminalAction(gameViewModel::retry) },
         onRetryCompletion = gameViewModel::retryCompletion,
@@ -105,7 +106,8 @@ internal fun game2048BackBehavior(
     ready: Game2048UiState.Ready?,
 ): Game2048BackBehavior =
     when {
-        ready?.levelCleared == true && ready.completionPersistence == CompletionPersistence.Saving ->
+        (ready?.levelCleared == true || ready?.finishedByPlayer == true) &&
+            ready.completionPersistence == CompletionPersistence.Saving ->
             Game2048BackBehavior.BLOCKED_SAVING
         launch is GameAttemptLaunch.Level &&
             ready?.levelCleared == true &&
@@ -128,6 +130,7 @@ private fun Game2048Screen(
     levelNumber: Int?,
     onMove: (Game2048Direction) -> Unit,
     onUndo: () -> Unit,
+    onFinish: () -> Unit,
     onMotionFinished: (Long) -> Unit,
     onRetryLevel: () -> Unit,
     onRetryCompletion: () -> Unit,
@@ -157,6 +160,7 @@ private fun Game2048Screen(
                 levelNumber = levelNumber,
                 onMove = onMove,
                 onUndo = onUndo,
+                onFinish = onFinish,
                 onMotionFinished = onMotionFinished,
                 onRetryLevel = onRetryLevel,
                 onRetryCompletion = onRetryCompletion,
@@ -177,6 +181,7 @@ private fun Game2048ReadyState(
     levelNumber: Int?,
     onMove: (Game2048Direction) -> Unit,
     onUndo: () -> Unit,
+    onFinish: () -> Unit,
     onMotionFinished: (Long) -> Unit,
     onRetryLevel: () -> Unit,
     onRetryCompletion: () -> Unit,
@@ -206,6 +211,7 @@ private fun Game2048ReadyState(
         canUndo = uiState.canUndo,
         onMove = onMove,
         onUndo = onUndo,
+        onFinish = onFinish.takeUnless { uiState.finishedByPlayer },
         onMotionFinished = { revision ->
             if (hapticsEnabled && game.status.isTerminal) {
                 view.performHapticFeedback(
@@ -235,7 +241,7 @@ private fun Game2048ReadyState(
             ZeroLivesCard(economy, onRestoreLife)
         },
     )
-    if (game.status.isTerminal && motionEvent == null) {
+    if (uiState.isOver && motionEvent == null) {
         Game2048TerminalDialog(
             game = game,
             completionPersistence = uiState.completionPersistence,
@@ -244,6 +250,7 @@ private fun Game2048ReadyState(
             isDaily = isDaily,
             levelNumber = levelNumber,
             levelCleared = uiState.levelCleared,
+            finishedByPlayer = uiState.finishedByPlayer,
             onRetryLevel = onRetryLevel,
             onRetryCompletion = onRetryCompletion,
             onNextLevel = onNextLevel,
@@ -261,14 +268,15 @@ private fun Game2048TerminalDialog(
     isDaily: Boolean,
     levelNumber: Int?,
     levelCleared: Boolean,
+    finishedByPlayer: Boolean,
     onRetryLevel: () -> Unit,
     onRetryCompletion: () -> Unit,
     onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
 ) {
     // A Catalog level that was already cleared at its score target is never a failure afterwards,
-    // however the freeplay board ends.
-    val solved = levelCleared || game.status == Game2048Status.SOLVED
+    // however the freeplay board ends; a game finished after its target is a solve too.
+    val solved = levelCleared || finishedByPlayer || game.status == Game2048Status.SOLVED
     val difficulty = game.puzzleId.difficulty
     GameResultDialog(
         solved = solved,
@@ -312,6 +320,7 @@ private fun Game2048Preview() {
             levelNumber = 7,
             onMove = {},
             onUndo = {},
+            onFinish = {},
             onMotionFinished = {},
             onRetryLevel = {},
             onRetryCompletion = {},

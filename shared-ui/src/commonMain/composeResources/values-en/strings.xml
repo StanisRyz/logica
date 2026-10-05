@@ -97,6 +97,7 @@
     <string name="tool_caption_mark">Mark</string>
     <string name="tool_caption_erase">Erase</string>
     <string name="tool_caption_undo">Undo</string>
+    <string name="tool_caption_finish">Finish</string>
     <string name="tool_selected">Selected</string>
     <string name="tool_not_selected">Not selected</string>
     <string name="tool_on">On</string>
@@ -167,6 +168,7 @@
     <string name="board_progress_description">Progress: %1$d of %2$d</string>
     <string name="sudoku_mistakes_short">Mistakes %1$d/%2$d</string>
     <string name="game_2048_undo">Undo move</string>
+    <string name="game_2048_finish">Finish the game</string>
     <string name="sudoku_hint_naked_single">Only %3$d fits in cell %1$d:%2$d.</string>
     <string name="sudoku_hint_hidden_row">In row %2$d, %1$d can only go in column %3$d.</string>
     <string name="sudoku_hint_hidden_column">In column %2$d, %1$d can only go in row %3$d.</string>

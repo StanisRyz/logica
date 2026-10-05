@@ -246,4 +246,75 @@ class WebDailyGame2048ControllerTest {
                 )
             assertEquals(4, current.attempt.levelId.levelNumber.value)
         }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test
+    fun finishAfterTheTargetRecordsTheOneSolvedResultAndEndsTheGame() =
+        runTest {
+            val store = FakeDailyStore()
+            val repository =
+                WebDailyRepository(WebCatalogProgressScope.STANDALONE, store) { today }.also { it.loadLocal() }
+            val session =
+                object : WebDailySessionAccess {
+                    override val dailyBinding =
+                        MutableStateFlow<WebDailyBinding>(
+                            WebDailyBinding.Ready(WebPlayerContextToken(7L), repository, null, WebDailyCloudSyncStatus.LOCAL_ONLY),
+                        )
+
+                    override fun requestDailyCloudSynchronization(binding: WebDailyBinding.Ready) = Unit
+                }
+            val coordinator = WebDailyGameplayCoordinator(session) { today }
+            val statistics = RecordingStatistics()
+            val attempt = assertIs<WebDailyStartResult.Started>(coordinator.start(PuzzleType.GAME_2048)).attempt
+            val controller =
+                Web2048Controller(
+                    loadPack = {},
+                    progression = FakeWebCatalogProgressAccess(initialLevel = 1),
+                    engineFactory = { puzzleId ->
+                        val start = Game2048Engine(puzzleId).start()
+                        ScriptedEngine(
+                            puzzleId,
+                            firstScript =
+                                listOf(
+                                    start.copy(score = 12_000L, status = Game2048Status.IN_PROGRESS),
+                                    start.copy(score = 31_000L, status = Game2048Status.IN_PROGRESS),
+                                    start.copy(score = 32_000L, status = Game2048Status.IN_PROGRESS),
+                                ),
+                            retryScript = emptyList(),
+                        )
+                    },
+                    statistics = statistics,
+                    daily = coordinator,
+                    scope = this,
+                )
+            controller.startDaily(attempt)
+            advanceUntilIdle()
+
+            // Before the target there is nothing to finish.
+            controller.move(Game2048Direction.LEFT)
+            controller.finishMotion(assertNotNull((controller.state as Web2048State.Playing).motionRevision))
+            controller.finish()
+            assertFalse((controller.state as Web2048State.Playing).isOver)
+
+            controller.move(Game2048Direction.LEFT)
+            controller.finishMotion(assertNotNull((controller.state as Web2048State.Playing).motionRevision))
+            controller.finish()
+            val finished = assertIs<Web2048State.Playing>(controller.state)
+            assertTrue(finished.isOver)
+            assertEquals(31_000L, finished.game.score)
+            assertEquals(listOf(WebStatisticsTerminalOutcome.SOLVED), statistics.outcomes)
+            assertTrue(
+                repository.snapshot.value.days
+                    .getValue(today)
+                    .facts(PuzzleType.GAME_2048)
+                    .solved,
+            )
+            assertIs<WebDailyCompletionState.Saved>(controller.dailyCompletionState)
+
+            // Finishing again or moving on records nothing more.
+            controller.finish()
+            controller.move(Game2048Direction.LEFT)
+            assertEquals(finished, controller.state)
+            assertEquals(listOf(WebStatisticsTerminalOutcome.SOLVED), statistics.outcomes)
+        }
 }

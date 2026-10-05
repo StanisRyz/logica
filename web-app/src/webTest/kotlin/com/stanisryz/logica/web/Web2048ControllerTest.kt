@@ -26,6 +26,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class Web2048ControllerTest {
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -152,6 +153,39 @@ class Web2048ControllerTest {
             advanceUntilIdle()
             failedController.move(Game2048Direction.LEFT)
             assertEquals(listOf(WebStatisticsTerminalOutcome.FAILED), failedStatistics.outcomes)
+        }
+
+    @Test
+    fun finishingACatalogFreeplayShowsTheClearedLevelAndRecordsNothingMore() =
+        runTest {
+            val progression = FakeWebCatalogProgressAccess()
+            val statistics = RecordingGameplayStatistics()
+            val controller =
+                Web2048Controller(
+                    loadPack = {},
+                    progression = progression,
+                    levelPack = fixedMediumLevelOne,
+                    engineFactory = { puzzleId -> scriptedV2Engine(puzzleId) },
+                    statistics = statistics,
+                    scope = this,
+                )
+            controller.selectDifficulty(Difficulty.MEDIUM)
+            advanceUntilIdle()
+            controller.move(Game2048Direction.LEFT)
+            controller.finishMotion(assertNotNull(assertIs<Web2048State.Playing>(controller.state).motionRevision))
+
+            controller.finish()
+
+            val finished = assertIs<Web2048State.Playing>(controller.state)
+            assertTrue(finished.isOver)
+            assertEquals(Game2048Status.IN_PROGRESS, finished.game.status)
+            // The level was cleared at the crossing; finishing writes nothing a second time.
+            assertEquals(1, progression.advanceCalls)
+            assertEquals(listOf(WebStatisticsTerminalOutcome.SOLVED), statistics.outcomes)
+            controller.move(Game2048Direction.RIGHT)
+            assertEquals(finished, controller.state)
+            // The card offers Next Level from the saved clear, exactly as after a game over.
+            assertEquals(2, assertIs<WebCatalogCompletionState.Saved>(controller.completionState).nextLevel.levelNumber.value)
         }
 
     private fun scriptedV2Engine(puzzleId: Game2048PuzzleId): Web2048GameEngine {

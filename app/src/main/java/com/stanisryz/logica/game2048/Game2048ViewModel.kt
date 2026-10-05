@@ -45,10 +45,18 @@ internal sealed interface Game2048UiState {
          */
         val levelCleared: Boolean = false,
         val canUndo: Boolean = false,
+        /** The player ended the game with «Finish» after reaching the target: it is over like a game over. */
+        val finishedByPlayer: Boolean = false,
     ) : Game2048UiState {
         /** A reached target stays guarded until its completion transaction is actually durable. */
         val hasMeaningfulProgress: Boolean
-            get() = game.hasMeaningfulProgress(levelCleared, completionSaved = completionPersistence == CompletionPersistence.Saved)
+            get() =
+                !finishedByPlayer &&
+                    game.hasMeaningfulProgress(levelCleared, completionSaved = completionPersistence == CompletionPersistence.Saved)
+
+        /** Over for the player: no move is left, or they finished after the target. */
+        val isOver: Boolean
+            get() = game.status.isTerminal || finishedByPlayer
     }
 
     data class Error(
@@ -130,7 +138,7 @@ internal class Game2048ViewModel(
     fun move(direction: Game2048Direction) {
         if (!economy.value.isGameplayAllowed) return
         val current = mutableUiState.value as? Game2048UiState.Ready ?: return
-        if (current.motionEvent != null) return
+        if (current.motionEvent != null || current.finishedByPlayer) return
         val transition = engine?.moveWithTrace(current.game, direction) ?: return
         val trace = transition.trace ?: return
         val catalogGoalCrossing = attempt?.isCatalog == true && !current.game.goalReached && transition.state.goalReached
@@ -155,7 +163,7 @@ internal class Game2048ViewModel(
     fun undo() {
         if (!economy.value.isGameplayAllowed) return
         val current = mutableUiState.value as? Game2048UiState.Ready ?: return
-        if (current.game.status.isTerminal || current.motionEvent != null || undoHistory.isEmpty()) return
+        if (current.isOver || current.motionEvent != null || undoHistory.isEmpty()) return
         val previous = undoHistory.removeAt(undoHistory.lastIndex)
         mutableUiState.value =
             current.copy(
@@ -163,6 +171,21 @@ internal class Game2048ViewModel(
                 motionEvent = null,
                 canUndo = undoHistory.isNotEmpty(),
             )
+    }
+
+    /**
+     * «Finish» after the target: the game ends with its current score. A Daily entry records its one
+     * SOLVED result now, exactly as a game over after the target would; a Catalog level was already
+     * cleared at the crossing, so this only ends its freeplay and shows the result card. Ending is
+     * not leaving the game, so it never brings an ad.
+     */
+    fun finishGame() {
+        val current = mutableUiState.value as? Game2048UiState.Ready ?: return
+        if (!current.game.goalReached || current.isOver || current.motionEvent != null) return
+        undoHistory.clear()
+        mutableUiState.value = current.copy(finishedByPlayer = true, canUndo = false)
+        bestScore?.offer(current.game.score)
+        if (attempt?.isCatalog != true) persistCompletion(current.game, GameOutcome.SOLVED)
     }
 
     fun finishMotion(revision: Long) {
@@ -187,8 +210,8 @@ internal class Game2048ViewModel(
 
     fun retryCompletion() {
         val current = mutableUiState.value as? Game2048UiState.Ready ?: return
-        // A cleared level is a solve however the freeplay board stands right now.
-        if (current.levelCleared) {
+        // A cleared level, or a game finished after its target, is a solve however the board stands.
+        if (current.levelCleared || current.finishedByPlayer) {
             persistCompletion(current.game, GameOutcome.SOLVED)
         } else if (current.game.status.isTerminal) {
             persistCompletion(current.game)

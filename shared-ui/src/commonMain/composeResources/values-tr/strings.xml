@@ -97,6 +97,7 @@
     <string name="tool_caption_mark">İşaret</string>
     <string name="tool_caption_erase">Sil</string>
     <string name="tool_caption_undo">Geri al</string>
+    <string name="tool_caption_finish">Bitir</string>
     <string name="tool_selected">Seçili</string>
     <string name="tool_not_selected">Seçili değil</string>
     <string name="tool_on">Açık</string>
@@ -167,6 +168,7 @@
     <string name="board_progress_description">İlerleme: %1$d / %2$d</string>
     <string name="sudoku_mistakes_short">Hata %1$d/%2$d</string>
     <string name="game_2048_undo">Hamleyi geri al</string>
+    <string name="game_2048_finish">Oyunu bitir</string>
     <string name="sudoku_hint_naked_single">%1$d:%2$d hücresine yalnızca %3$d uyar.</string>
     <string name="sudoku_hint_hidden_row">%2$d. satırda %1$d yalnızca %3$d. sütuna gelebilir.</string>
     <string name="sudoku_hint_hidden_column">%2$d. sütunda %1$d yalnızca %3$d. satıra gelebilir.</string>

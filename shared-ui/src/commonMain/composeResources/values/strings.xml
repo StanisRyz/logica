@@ -105,6 +105,7 @@
     <string name="tool_caption_mark">Метка</string>
     <string name="tool_caption_erase">Стереть</string>
     <string name="tool_caption_undo">Отмена</string>
+    <string name="tool_caption_finish">Завершить</string>
     <string name="tool_selected">Выбрано</string>
     <string name="tool_not_selected">Не выбрано</string>
     <string name="tool_on">Включён</string>
@@ -178,6 +179,7 @@
     <string name="board_progress_description">Прогресс: %1$d из %2$d</string>
     <string name="sudoku_mistakes_short">Ошибки %1$d/%2$d</string>
     <string name="game_2048_undo">Отменить ход</string>
+    <string name="game_2048_finish">Завершить игру</string>
     <string name="sudoku_hint_naked_single">В клетке %1$d:%2$d подходит только число %3$d.</string>
     <string name="sudoku_hint_hidden_row">Число %1$d может стоять только в столбце %3$d строки %2$d.</string>
     <string name="sudoku_hint_hidden_column">Число %1$d может стоять только в строке %3$d столбца %2$d.</string>
