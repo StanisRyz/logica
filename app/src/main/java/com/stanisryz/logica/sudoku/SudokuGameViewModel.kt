@@ -201,8 +201,9 @@ internal class SudokuGameViewModel(
                         current,
                         updated,
                         updated.currentHint?.position ?: current.selectedCell,
+                        // The hint keeps the undo history and adds no frame of its own: its cell is
+                        // correct, so undo never takes it back, and its count never comes back either.
                         recordUndo = false,
-                        clearUndo = true,
                     )
                 }
             }
@@ -274,12 +275,9 @@ internal class SudokuGameViewModel(
         updated: SudokuGameState,
         selectedCell: SudokuPosition? = ready.selectedCell,
         recordUndo: Boolean = true,
-        clearUndo: Boolean = false,
     ) {
         if (updated == ready.game) return
-        if (clearUndo) {
-            undoHistory.clear()
-        } else if (recordUndo && updated.status == SudokuGameStatus.IN_PROGRESS) {
+        if (recordUndo && updated.status == SudokuGameStatus.IN_PROGRESS) {
             undoHistory += UndoFrame(ready.game, ready.selectedCell)
             if (undoHistory.size > MAX_UNDO_HISTORY) undoHistory.removeAt(0)
         }

@@ -372,8 +372,9 @@ internal class WebSudokuController(
             playing,
             updated,
             updated.currentHint?.position ?: playing.selectedCell,
+            // The hint keeps the undo history and adds no frame of its own: its cell is correct,
+            // so undo never takes it back, and its count never comes back either.
             recordUndo = false,
-            clearUndo = true,
         )
     }
 
@@ -466,12 +467,9 @@ internal class WebSudokuController(
         updated: SudokuGameState,
         selectedCell: SudokuPosition? = playing.selectedCell,
         recordUndo: Boolean = true,
-        clearUndo: Boolean = false,
     ) {
         if (updated == playing.game) return
-        if (clearUndo) {
-            undoHistory.clear()
-        } else if (recordUndo && updated.status == SudokuGameStatus.IN_PROGRESS) {
+        if (recordUndo && updated.status == SudokuGameStatus.IN_PROGRESS) {
             undoHistory += UndoFrame(playing.game, playing.selectedCell)
             if (undoHistory.size > MAX_UNDO_HISTORY) undoHistory.removeAt(0)
         }

@@ -140,6 +140,52 @@ class WebSudokuControllerTest {
             assertEquals(SudokuPosition(1, 0), assertIs<WebSudokuState.Playing>(controller.state).selectedCell)
         }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun aHintKeepsTheUndoHistoryAndUndoLeavesItsCellAndCount() =
+        runTest {
+            val controller = playingController()
+            // Two reversible moves: pencil marks in (0, 0) and (0, 2).
+            controller.togglePencilMode()
+            controller.selectCell(SudokuPosition(0, 0))
+            controller.inputDigit(3)
+            controller.selectCell(SudokuPosition(0, 2))
+            controller.inputDigit(3)
+            controller.togglePencilMode()
+            // The hint opens the selected empty (0, 4), whose answer is 2.
+            controller.selectCell(SudokuPosition(0, 4))
+            controller.requestHint()
+            assertTrue(controller.canUndo)
+
+            controller.undo()
+
+            val game = assertIs<WebSudokuState.Playing>(controller.state).game
+            assertFalse(game.cellAt(SudokuPosition(0, 2)).candidates.contains(3))
+            assertTrue(game.cellAt(SudokuPosition(0, 0)).candidates.contains(3))
+            assertEquals(2, game.cellAt(SudokuPosition(0, 4)).value)
+            assertEquals(1, game.hintsUsed)
+            assertTrue(controller.canUndo)
+        }
+
+    private fun kotlinx.coroutines.test.TestScope.playingController(): WebSudokuController {
+        val controller =
+            WebSudokuController(
+                loadPack = {},
+                loadDataset = { _, _ -> },
+                progression = FakeWebCatalogProgressAccess(),
+                store =
+                    object : WebGameplayStore {
+                        override fun tryConsumeHint(): Boolean = true
+                    },
+                levelPack = fixedMediumLevelOne,
+                dataset = fixedDataset,
+                scope = this,
+            )
+        controller.selectDifficulty(Difficulty.MEDIUM)
+        testScheduler.advanceUntilIdle()
+        return controller
+    }
+
     private val fixedMediumLevelOne =
         object : CatalogLevelPack {
             override fun resolve(levelId: CatalogLevelId): CatalogLevelPackResult<CatalogLevelDefinition> {
