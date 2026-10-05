@@ -11,15 +11,18 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -34,6 +37,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -55,12 +60,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -139,6 +146,7 @@ import com.stanisryz.logica.ui.screens.SudokuTutorialRoute
 import com.stanisryz.logica.ui.screens.WordGameRoute
 import com.stanisryz.logica.ui.screens.WordTutorialRoute
 import com.stanisryz.logica.ui.theme.LogicaMotion
+import com.stanisryz.logica.ui.theme.LogicaSpacing
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -445,90 +453,104 @@ internal fun LogicaNavigation(
                     entryProvider =
                         entryProvider {
                             entry<AppDestination.Home> {
-                                Box(Modifier.fillMaxSize()) {
-                                    Box(
-                                        Modifier
-                                            .fillMaxSize()
-                                            .padding(bottom = primaryNavigationBarHeight),
-                                    ) {
-                                        AnimatedContent(
-                                            targetState = selectedTab,
-                                            modifier =
-                                                Modifier
-                                                    .fillMaxSize()
-                                                    .clipToBounds()
-                                                    .background(MaterialTheme.colorScheme.background),
-                                            transitionSpec = {
-                                                val direction = if (targetState.ordinal >= initialState.ordinal) 1 else -1
-                                                horizontalSlideTransition(
-                                                    incomingDirection = direction,
-                                                    outgoingDirection = -direction,
-                                                )
-                                            },
-                                            label = "primaryTab",
-                                        ) { tab ->
-                                            Box(
-                                                Modifier
-                                                    .fillMaxSize()
-                                                    .background(MaterialTheme.colorScheme.background)
-                                                    .semantics { if (tab != selectedTab) hideFromAccessibility() },
-                                            ) {
-                                                tabStateHolder.SaveableStateProvider(tab) {
-                                                    when (tab) {
-                                                        PrimaryTab.GAME ->
-                                                            GameHubRoute(
-                                                                dailyChallengeRepository = dailyChallengeRepository,
-                                                                statisticsRepository = statisticsRepository,
-                                                                dailyResultRepository = dailyResultRepository,
-                                                                dailyRewardsRepository = dailyRewardsRepository,
-                                                                catalog = GAME_CATALOG_PUZZLE_TYPES,
-                                                                economy = economy,
-                                                                onGameSelected = onGameSelected,
-                                                                onOpenDaily = openDaily,
-                                                                onRestoreLife = onRestoreLife,
-                                                                continueGame =
-                                                                    settings.lastPlayedPuzzle?.let { puzzle ->
-                                                                        settings.lastPlayedDifficulty?.let { puzzle to it }
+                                // A tablet or a landscape window of 720 dp and more keeps the tabs in a rail on the
+                                // left, like the Web host; the tabs, their back-stack entry and state are unchanged.
+                                BoxWithConstraints(Modifier.fillMaxSize()) {
+                                    val wide = maxWidth >= WIDE_LAYOUT_MIN_WIDTH
+                                    LaunchedEffect(wide) { if (wide) primaryNavigationBarSize = IntSize.Zero }
+                                    Row(Modifier.fillMaxSize()) {
+                                        if (wide) AppNavigationRail(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
+                                        Box(
+                                            Modifier
+                                                .weight(1f)
+                                                .fillMaxHeight()
+                                                .padding(bottom = if (wide) 0.dp else primaryNavigationBarHeight),
+                                        ) {
+                                            AnimatedContent(
+                                                targetState = selectedTab,
+                                                modifier =
+                                                    Modifier
+                                                        .fillMaxSize()
+                                                        .clipToBounds()
+                                                        .background(MaterialTheme.colorScheme.background),
+                                                transitionSpec = {
+                                                    val direction = if (targetState.ordinal >= initialState.ordinal) 1 else -1
+                                                    horizontalSlideTransition(
+                                                        incomingDirection = direction,
+                                                        outgoingDirection = -direction,
+                                                    )
+                                                },
+                                                label = "primaryTab",
+                                            ) { tab ->
+                                                Box(
+                                                    Modifier
+                                                        .fillMaxSize()
+                                                        .background(MaterialTheme.colorScheme.background)
+                                                        .semantics { if (tab != selectedTab) hideFromAccessibility() },
+                                                ) {
+                                                    tabStateHolder.SaveableStateProvider(tab) {
+                                                        when (tab) {
+                                                            PrimaryTab.GAME ->
+                                                                GameHubRoute(
+                                                                    dailyChallengeRepository = dailyChallengeRepository,
+                                                                    statisticsRepository = statisticsRepository,
+                                                                    dailyResultRepository = dailyResultRepository,
+                                                                    dailyRewardsRepository = dailyRewardsRepository,
+                                                                    catalog = GAME_CATALOG_PUZZLE_TYPES,
+                                                                    economy = economy,
+                                                                    onGameSelected = onGameSelected,
+                                                                    onOpenDaily = openDaily,
+                                                                    onRestoreLife = onRestoreLife,
+                                                                    continueGame =
+                                                                        settings.lastPlayedPuzzle?.let { puzzle ->
+                                                                            settings.lastPlayedDifficulty?.let { puzzle to it }
+                                                                        },
+                                                                    catalogLevelRepository = catalogLevelRepository,
+                                                                    onContinue = { puzzle, difficulty ->
+                                                                        if (economy.isGameplayAllowed) {
+                                                                            openLevel(puzzle, difficulty)
+                                                                        } else {
+                                                                            showLivesDialog =
+                                                                                true
+                                                                        }
                                                                     },
-                                                                catalogLevelRepository = catalogLevelRepository,
-                                                                onContinue = { puzzle, difficulty ->
-                                                                    if (economy.isGameplayAllowed) {
-                                                                        openLevel(puzzle, difficulty)
-                                                                    } else {
-                                                                        showLivesDialog =
-                                                                            true
-                                                                    }
-                                                                },
-                                                            )
-                                                        PrimaryTab.STORE ->
-                                                            StoreRoute(
-                                                                economy = economy,
-                                                                economyRepository = economyRepository,
-                                                                storeGateway = storeGateway,
-                                                                storeProducts = storeProducts,
-                                                                rewarded = storeRewardedOffers,
-                                                            )
-                                                        PrimaryTab.PROFILE ->
-                                                            ProfileRoute(
-                                                                statisticsRepository,
-                                                                dailyRewardsRepository,
-                                                                onOpenGames = { selectedTab = PrimaryTab.GAME },
-                                                                onOpenAchievements = { backStack.add(AppDestination.Achievements) },
-                                                                onOpenPage = { backStack.add(AppDestination.ProfileSection(it)) },
-                                                            )
+                                                                )
+                                                            PrimaryTab.STORE ->
+                                                                ReadableWidth(wide, STORE_MAX_WIDTH) {
+                                                                    StoreRoute(
+                                                                        economy = economy,
+                                                                        economyRepository = economyRepository,
+                                                                        storeGateway = storeGateway,
+                                                                        storeProducts = storeProducts,
+                                                                        rewarded = storeRewardedOffers,
+                                                                    )
+                                                                }
+                                                            PrimaryTab.PROFILE ->
+                                                                ReadableWidth(wide, PROFILE_MAX_WIDTH) {
+                                                                    ProfileRoute(
+                                                                        statisticsRepository,
+                                                                        dailyRewardsRepository,
+                                                                        onOpenGames = { selectedTab = PrimaryTab.GAME },
+                                                                        onOpenAchievements = { backStack.add(AppDestination.Achievements) },
+                                                                        onOpenPage = { backStack.add(AppDestination.ProfileSection(it)) },
+                                                                    )
+                                                                }
+                                                        }
                                                     }
                                                 }
                                             }
                                         }
                                     }
-                                    AppBottomBar(
-                                        selectedTab = selectedTab,
-                                        onTabSelected = { selectedTab = it },
-                                        modifier =
-                                            Modifier
-                                                .align(Alignment.BottomCenter)
-                                                .onSizeChanged { primaryNavigationBarSize = it },
-                                    )
+                                    if (!wide) {
+                                        AppBottomBar(
+                                            selectedTab = selectedTab,
+                                            onTabSelected = { selectedTab = it },
+                                            modifier =
+                                                Modifier
+                                                    .align(Alignment.BottomCenter)
+                                                    .onSizeChanged { primaryNavigationBarSize = it },
+                                        )
+                                    }
                                 }
                             }
                             entry<AppDestination.Achievements> {
@@ -944,6 +966,52 @@ private fun navigationSlideSpec() =
         easing = FastOutSlowInEasing,
     )
 
+/** The primary tabs as a rail on the left of a wide window, the same three tabs as the bottom bar. */
+@Composable
+private fun AppNavigationRail(
+    selectedTab: PrimaryTab,
+    onTabSelected: (PrimaryTab) -> Unit,
+) {
+    NavigationRail(modifier = Modifier.fillMaxHeight(), windowInsets = WindowInsets(0, 0, 0, 0)) {
+        Spacer(Modifier.height(LogicaSpacing.section))
+        PrimaryTab.entries.forEach { tab ->
+            NavigationRailItem(
+                selected = selectedTab == tab,
+                onClick = { onTabSelected(tab) },
+                icon = { Icon(tab.icon(), null) },
+                label = { Text(stringResource(tab.titleResource)) },
+            )
+        }
+    }
+}
+
+/** Profile and Store keep a readable width in a wide window, centred like on the Web. */
+@Composable
+private fun ReadableWidth(
+    wide: Boolean,
+    maxWidth: Dp,
+    content: @Composable () -> Unit,
+) {
+    if (!wide) {
+        content()
+        return
+    }
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        Box(Modifier.widthIn(max = maxWidth).fillMaxHeight()) { content() }
+    }
+}
+
+private fun PrimaryTab.icon(): ImageVector =
+    when (this) {
+        PrimaryTab.GAME -> Icons.Rounded.SportsEsports
+        PrimaryTab.STORE -> Icons.Rounded.Storefront
+        PrimaryTab.PROFILE -> Icons.Rounded.Person
+    }
+
+private val WIDE_LAYOUT_MIN_WIDTH = 720.dp
+private val PROFILE_MAX_WIDTH = 720.dp
+private val STORE_MAX_WIDTH = 640.dp
+
 @Composable
 private fun AppBottomBar(
     selectedTab: PrimaryTab,
@@ -958,13 +1026,7 @@ private fun AppBottomBar(
             NavigationBarItem(
                 selected = selectedTab == tab,
                 onClick = { onTabSelected(tab) },
-                icon = {
-                    when (tab) {
-                        PrimaryTab.GAME -> Icon(Icons.Rounded.SportsEsports, null)
-                        PrimaryTab.STORE -> Icon(Icons.Rounded.Storefront, null)
-                        PrimaryTab.PROFILE -> Icon(Icons.Rounded.Person, null)
-                    }
-                },
+                icon = { Icon(tab.icon(), null) },
                 label = { Text(stringResource(tab.titleResource)) },
             )
         }
