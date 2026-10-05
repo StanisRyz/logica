@@ -2,6 +2,7 @@ package com.stanisryz.logica
 
 import android.app.Application
 import android.content.Context
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
@@ -21,6 +22,7 @@ import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.OwnedPurchases
 import com.stanisryz.logica.economy.RoomEconomyRepository
 import com.stanisryz.logica.game2048.Game2048BestScore
+import com.stanisryz.logica.platform.AppLog
 import com.stanisryz.logica.platform.android.AndroidPlatformComposition
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.result.RoomGameCompletionRepository
@@ -61,6 +63,11 @@ private val Context.recordsDataStore: DataStore<Preferences> by preferencesDataS
 class LogicaApplication : Application() {
     internal val container: AppContainer by lazy {
         AppContainer(this)
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        AppLog.sink = AppLog.Sink { tag, message, throwable -> Log.w(tag, message, throwable) }
     }
 }
 

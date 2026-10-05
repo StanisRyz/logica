@@ -3,6 +3,7 @@ package com.stanisryz.logica.economy
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.stanisryz.logica.platform.AppLog
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.quest.DailyQuestActivity
@@ -183,12 +184,16 @@ internal class DailyRewardsViewModel(
 
     fun claimLoginGift() {
         val today = refreshes.value.epochDay
-        viewModelScope.launch { runCatchingCancellable { repository.claimLoginGift(today) } }
+        viewModelScope.launch {
+            runCatchingCancellable { repository.claimLoginGift(today) }.onFailure { AppLog.warn(TAG, "The login gift claim failed.", it) }
+        }
     }
 
     fun claimQuest(index: Int) {
         val today = refreshes.value.epochDay
-        viewModelScope.launch { runCatchingCancellable { repository.claimQuest(today, index) } }
+        viewModelScope.launch {
+            runCatchingCancellable { repository.claimQuest(today, index) }.onFailure { AppLog.warn(TAG, "A quest claim failed.", it) }
+        }
     }
 
     private companion object {
@@ -206,7 +211,10 @@ internal class AchievementRewardsViewModel(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), null)
 
     fun claim(achievement: Achievement) {
-        viewModelScope.launch { runCatchingCancellable { repository.claimAchievement(achievement) } }
+        viewModelScope.launch {
+            runCatchingCancellable { repository.claimAchievement(achievement) }
+                .onFailure { AppLog.warn(TAG, "An achievement reward claim failed.", it) }
+        }
     }
 }
 
@@ -223,3 +231,5 @@ internal class DailyRewardsViewModelFactory(
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T = DailyRewardsViewModel(repository) as T
 }
+
+private const val TAG = "DailyRewards"

@@ -3,6 +3,7 @@ package com.stanisryz.logica.store
 import com.stanisryz.logica.economy.EconomyGemPurchase
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.GemPack
+import com.stanisryz.logica.platform.AppLog
 import com.stanisryz.logica.platform.PlatformPurchase
 import com.stanisryz.logica.platform.PlatformPurchaseResult
 import com.stanisryz.logica.platform.StoreGateway
@@ -64,6 +65,7 @@ internal class GemPurchaseProcessor(
             // A repeat (reconciliation sees a permanent purchase on every open) records nothing new.
             economy.grantNoAds(purchase.transactionId)
             runCatchingCancellable { gateway.finalize(purchase.purchaseId) }
+                .onFailure { AppLog.warn(TAG, "Finalizing a credited purchase failed; the next store open retries it.", it) }
             return EconomyGemPurchase.NoAdsGranted(economy.refresh())
         }
         val pack = products.pack(purchase.productId)
@@ -76,6 +78,7 @@ internal class GemPurchaseProcessor(
         // acknowledging a purchase nothing was delivered for.
         if (granted !is EconomyGemPurchase.UnsupportedProduct) {
             runCatchingCancellable { gateway.finalize(purchase.purchaseId) }
+                .onFailure { AppLog.warn(TAG, "Finalizing a credited purchase failed; the next store open retries it.", it) }
         }
         return granted
     }
@@ -138,3 +141,5 @@ internal sealed interface GemPurchaseOutcome {
 
     data object Failed : GemPurchaseOutcome
 }
+
+private const val TAG = "GemPurchases"

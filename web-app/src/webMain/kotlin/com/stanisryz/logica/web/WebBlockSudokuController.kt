@@ -132,7 +132,7 @@ internal class WebBlockSudokuController(
                         WebBlockSudokuState.Error(
                             difficulty,
                             levelNumber,
-                            exception.toWebLoadFailure(),
+                            exception.toLoggedWebLoadFailure("Block Sudoku level"),
                             launch = launch,
                         )
                 }
@@ -173,7 +173,7 @@ internal class WebBlockSudokuController(
                 WebBlockSudokuState.Error(
                     entry.difficulty,
                     null,
-                    exception.toWebLoadFailure(),
+                    exception.toLoggedWebLoadFailure("Block Sudoku Daily"),
                     launch = launch,
                 )
         }

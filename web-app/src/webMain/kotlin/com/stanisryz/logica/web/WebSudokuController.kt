@@ -188,7 +188,7 @@ internal class WebSudokuController(
                         WebSudokuState.Error(
                             difficulty,
                             levelNumber,
-                            exception.toWebLoadFailure(),
+                            exception.toLoggedWebLoadFailure("Sudoku level"),
                             progressionUnavailable = false,
                             launch = WebGameLaunch.Catalog(PuzzleType.SUDOKU, difficulty),
                         )
@@ -251,7 +251,7 @@ internal class WebSudokuController(
                         WebSudokuState.Error(
                             dailyAttempt.entry.difficulty,
                             null,
-                            exception.toWebLoadFailure(),
+                            exception.toLoggedWebLoadFailure("Sudoku Daily"),
                             progressionUnavailable = false,
                             launch = launch,
                         )

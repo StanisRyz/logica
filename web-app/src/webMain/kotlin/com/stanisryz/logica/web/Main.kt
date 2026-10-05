@@ -5,6 +5,7 @@ package com.stanisryz.logica.web
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport
 import com.stanisryz.logica.platform.AdRewardDefinition
+import com.stanisryz.logica.platform.AppLog
 import com.stanisryz.logica.puzzle.core.daily.toDailyEpochDay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,6 +14,7 @@ import kotlin.js.ExperimentalWasmJsInterop
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
+    AppLog.sink = AppLog.Sink { tag, message, throwable -> consoleWarn(webLogLine(tag, message, throwable)) }
     val lifecycle = WebHostLifecycle()
     val bridge = YandexGamesBridge()
     val controller =
@@ -322,3 +324,11 @@ private const val UNIFIED_SAVE_STATE_KEY = "logica_unified_save_v1"
 private const val STANDALONE_UNIFIED_SAVE_KEY = "logica_unified_save_standalone_v1"
 
 private fun rememberMainScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+private fun webLogLine(
+    tag: String,
+    message: String,
+    throwable: Throwable?,
+): String = if (throwable == null) "[$tag] $message" else "[$tag] $message\n${throwable.stackTraceToString()}"
+
+private fun consoleWarn(line: String): Unit = js("console.warn(line)")

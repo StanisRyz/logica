@@ -184,7 +184,7 @@ internal class Web2048Controller(
                         Web2048State.Error(
                             difficulty,
                             levelNumber,
-                            exception.toWebLoadFailure(),
+                            exception.toLoggedWebLoadFailure("2048 level"),
                             progressionUnavailable = false,
                             launch = WebGameLaunch.Catalog(PuzzleType.GAME_2048, difficulty),
                         )
@@ -244,7 +244,7 @@ internal class Web2048Controller(
                         Web2048State.Error(
                             dailyAttempt.entry.difficulty,
                             null,
-                            exception.toWebLoadFailure(),
+                            exception.toLoggedWebLoadFailure("2048 Daily"),
                             progressionUnavailable = false,
                             launch = launch,
                         )

@@ -163,7 +163,7 @@ internal class WebCrownsController(
                         WebCrownsState.Error(
                             difficulty,
                             levelNumber,
-                            exception.toWebLoadFailure(),
+                            exception.toLoggedWebLoadFailure("Crowns level"),
                             progressionUnavailable = false,
                             launch = WebGameLaunch.Catalog(PuzzleType.CROWNS, difficulty),
                         )
@@ -216,7 +216,7 @@ internal class WebCrownsController(
                         WebCrownsState.Error(
                             dailyAttempt.entry.difficulty,
                             null,
-                            exception.toWebLoadFailure(),
+                            exception.toLoggedWebLoadFailure("Crowns Daily"),
                             progressionUnavailable = false,
                             launch = launch,
                         )

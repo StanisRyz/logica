@@ -3,6 +3,7 @@ package com.stanisryz.logica.web
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.stanisryz.logica.platform.AppLog
 
 /**
  * Web-only Daily terminal persistence state. It is gameplay/application state bound to exactly one
@@ -79,6 +80,7 @@ internal class WebDailyCompletionController(
                 is WebDailyRecordResult.PersistenceFailed ->
                     WebDailyCompletionState.SaveError(outcome, result.cause.message ?: "Browser storage rejected the update.")
             }
+        (state as? WebDailyCompletionState.SaveError)?.let { AppLog.warn(TAG, "The Daily result was not saved: ${it.detail}") }
     }
 
     /** Repeats only the original Daily mutation; Statistics were recorded once at the real attempt. */
@@ -95,3 +97,5 @@ internal class WebDailyCompletionController(
         state = WebDailyCompletionState.Idle
     }
 }
+
+private const val TAG = "WebDailyCompletion"

@@ -1,5 +1,6 @@
 package com.stanisryz.logica.web
 
+import com.stanisryz.logica.platform.AppLog
 import com.stanisryz.logica.web.generated.resources.web_failure_data_corrupt
 import com.stanisryz.logica.web.generated.resources.web_failure_data_load
 import com.stanisryz.logica.web.generated.resources.web_failure_progress
@@ -42,3 +43,7 @@ internal fun Throwable.toWebLoadFailure(): WebLoadFailure =
         is IllegalStateException, is IllegalArgumentException -> WebLoadFailure.DATA_CORRUPT
         else -> WebLoadFailure.UNKNOWN
     }
+
+/** [toWebLoadFailure], with the cause written to [AppLog] for whoever reads the console. */
+internal fun Throwable.toLoggedWebLoadFailure(what: String): WebLoadFailure =
+    toWebLoadFailure().also { AppLog.warn("WebGame", "$what could not open ($it).", this) }

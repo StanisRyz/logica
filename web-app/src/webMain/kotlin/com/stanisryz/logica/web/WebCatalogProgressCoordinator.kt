@@ -3,6 +3,7 @@ package com.stanisryz.logica.web
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.stanisryz.logica.platform.AppLog
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
@@ -241,6 +242,7 @@ internal class WebCatalogCompletionController(
                 WebCatalogCompletionResult.ContextChanged ->
                     WebCatalogCompletionState.SaveError("The Player context changed before progress could be saved.")
             }
+        (state as? WebCatalogCompletionState.SaveError)?.let { AppLog.warn(TAG, "Catalog progress was not saved: ${it.detail}") }
     }
 
     fun reset() {
@@ -248,3 +250,5 @@ internal class WebCatalogCompletionController(
         state = WebCatalogCompletionState.Idle
     }
 }
+
+private const val TAG = "WebCatalogProgress"

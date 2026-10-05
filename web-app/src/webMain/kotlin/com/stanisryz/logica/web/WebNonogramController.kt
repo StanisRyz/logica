@@ -166,7 +166,7 @@ internal class WebNonogramController(
                         WebNonogramState.Error(
                             difficulty,
                             levelNumber,
-                            exception.toWebLoadFailure(),
+                            exception.toLoggedWebLoadFailure("Nonogram level"),
                             launch = launch,
                         )
                 }
@@ -210,7 +210,7 @@ internal class WebNonogramController(
                 WebNonogramState.Error(
                     dailyAttempt.entry.difficulty,
                     null,
-                    exception.toWebLoadFailure(),
+                    exception.toLoggedWebLoadFailure("Nonogram Daily"),
                     launch = launch,
                 )
         }

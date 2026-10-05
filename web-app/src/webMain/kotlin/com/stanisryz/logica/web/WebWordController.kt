@@ -161,7 +161,7 @@ internal class WebWordController(
                         WebWordState.Error(
                             difficulty,
                             levelNumber,
-                            exception.toWebLoadFailure(),
+                            exception.toLoggedWebLoadFailure("Word level"),
                             progressionUnavailable = false,
                             launch = WebGameLaunch.Catalog(PuzzleType.WORD, difficulty),
                         )
@@ -218,7 +218,7 @@ internal class WebWordController(
                         WebWordState.Error(
                             dailyAttempt.entry.difficulty,
                             null,
-                            exception.toWebLoadFailure(),
+                            exception.toLoggedWebLoadFailure("Word Daily"),
                             progressionUnavailable = false,
                             launch = launch,
                         )

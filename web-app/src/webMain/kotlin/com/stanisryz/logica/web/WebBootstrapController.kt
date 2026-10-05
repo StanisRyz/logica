@@ -5,6 +5,7 @@ package com.stanisryz.logica.web
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.stanisryz.logica.platform.AppLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -102,7 +103,7 @@ internal class WebBootstrapController(
                     hostLanguage = standaloneWebAppLanguage()
                     WebBootstrapState.Ready(WebHostMode.STANDALONE)
                 } else {
-                    // Yandex Games SDK is unavailable outside a local development host.
+                    AppLog.warn(TAG, "The Yandex Games SDK is unavailable outside a local development host.")
                     WebBootstrapState.FatalError
                 }
             return
@@ -128,6 +129,7 @@ internal class WebBootstrapController(
             },
             onFailure = { detail ->
                 initTimeout?.cancel()
+                AppLog.warn(TAG, "Yandex Games SDK initialization failed: $detail")
                 state = WebBootstrapState.FatalError
             },
         )
@@ -197,3 +199,5 @@ private fun browserHostname(): String = js("globalThis.location.hostname")
 private fun browserReloadPage(): Unit = js("globalThis.location.reload()")
 
 private fun browserProtocol(): String = js("globalThis.location.protocol")
+
+private const val TAG = "WebBootstrap"

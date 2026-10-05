@@ -163,7 +163,7 @@ internal class WebBalanceController(
                         WebBalanceState.Error(
                             difficulty,
                             levelNumber,
-                            exception.toWebLoadFailure(),
+                            exception.toLoggedWebLoadFailure("Balance level"),
                             progressionUnavailable = false,
                             launch = WebGameLaunch.Catalog(PuzzleType.BALANCE, difficulty),
                         )
@@ -220,7 +220,7 @@ internal class WebBalanceController(
                         WebBalanceState.Error(
                             dailyAttempt.entry.difficulty,
                             null,
-                            exception.toWebLoadFailure(),
+                            exception.toLoggedWebLoadFailure("Balance Daily"),
                             progressionUnavailable = false,
                             launch = launch,
                         )

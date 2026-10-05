@@ -1,5 +1,6 @@
 package com.stanisryz.logica.web
 
+import com.stanisryz.logica.platform.AppLog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -123,7 +124,8 @@ internal class WebUnifiedSaveScheduler(
                         saveManager.restore()
                     } catch (error: CancellationException) {
                         throw error
-                    } catch (_: Throwable) {
+                    } catch (error: Throwable) {
+                        AppLog.warn(TAG, "The unified cloud restore failed.", error)
                         WebSaveRestoreOutcome.UNRESOLVED
                     }
                 if (!isContextCurrent(token)) return outcome
@@ -222,7 +224,10 @@ internal class WebUnifiedSaveScheduler(
         // The single write gate: no unified write without a definite restore for this context.
         if (!canWrite(token)) return false
         mutableStatus.value = WebUnifiedSaveStatus.SAVING
-        val saved = runCatching { saveManager.persist() }.getOrDefault(false)
+        val saved =
+            runCatching { saveManager.persist() }
+                .onFailure { AppLog.warn(TAG, "The unified cloud write failed.", it) }
+                .getOrDefault(false)
         if (!isTokenCurrent(token)) return saved
         if (saved) {
             unifiedSaveActive = true
@@ -306,3 +311,5 @@ internal class WebUnifiedSaveScheduler(
         val RESTORE_RETRY_DELAYS_MS = longArrayOf(2_000L, 8_000L, 30_000L)
     }
 }
+
+private const val TAG = "WebUnifiedSave"

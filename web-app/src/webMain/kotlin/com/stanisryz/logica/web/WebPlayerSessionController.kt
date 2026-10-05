@@ -3,6 +3,7 @@ package com.stanisryz.logica.web
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.stanisryz.logica.platform.AppLog
 import com.stanisryz.logica.platform.CloudSaveGateway
 import com.stanisryz.logica.platform.CloudSaveReadResult
 import com.stanisryz.logica.platform.CloudSaveWriteResult
@@ -292,6 +293,8 @@ internal class WebPlayerSessionController(
                     it.loadLocal()
                 }
             }.getOrElse {
+                // Paid purchases then wait for the next bind's reconciliation.
+                AppLog.warn(TAG, "The payments ledger could not load for this Player context.", it)
                 return
             }
         if (!isCurrent(revision)) return
@@ -390,6 +393,7 @@ internal class WebPlayerSessionController(
                             WebStatisticsCodec.encode(binding.repository.snapshot.value),
                         )
                     }.getOrElse { CloudSaveWriteResult.Failed(it) }
+                (result as? CloudSaveWriteResult.Failed)?.let { AppLog.warn(TAG, "The statistics cloud write failed.", it.cause) }
                 if (!isCurrentStatistics(binding)) return@withLock
                 publishStatisticsReady(
                     binding.token.value,
@@ -432,6 +436,7 @@ internal class WebPlayerSessionController(
                     runCatching {
                         dailyCloudSaveGateway.write(WebDailyCodec.encode(snapshot))
                     }.getOrElse { CloudSaveWriteResult.Failed(it) }
+                (result as? CloudSaveWriteResult.Failed)?.let { AppLog.warn(TAG, "The Daily cloud write failed.", it.cause) }
                 if (!isCurrentDaily(binding)) return@withLock
                 if (result == CloudSaveWriteResult.Saved) dailyCloudSnapshot = snapshot
                 publishDailyReady(
@@ -546,7 +551,8 @@ internal class WebPlayerSessionController(
             }
         } catch (error: CancellationException) {
             throw error
-        } catch (_: Throwable) {
+        } catch (error: Throwable) {
+            AppLog.warn(TAG, "The Player context could not bind.", error)
             unavailable(revision, "The current Yandex Player progression context is unavailable.")
         }
     }
@@ -761,7 +767,8 @@ internal class WebPlayerSessionController(
             synchronizeStatistics(revision, identity, repository)
         } catch (error: CancellationException) {
             throw error
-        } catch (_: Throwable) {
+        } catch (error: Throwable) {
+            AppLog.warn(TAG, "The statistics cloud sync failed.", error)
             statisticsSyncFailed(revision, identity, repository)
         }
     }
@@ -854,7 +861,8 @@ internal class WebPlayerSessionController(
             synchronizeDaily(revision, identity, repository)
         } catch (error: CancellationException) {
             throw error
-        } catch (_: Throwable) {
+        } catch (error: Throwable) {
+            AppLog.warn(TAG, "The Daily cloud sync failed.", error)
             dailySyncFailed(revision, identity, repository)
         }
     }
@@ -1015,3 +1023,5 @@ internal class WebPlayerSessionController(
 
 /** How long resolving the current Player may take before binding falls back to unavailable. */
 private const val PLAYER_IDENTITY_TIMEOUT_MS = 10_000L
+
+private const val TAG = "WebPlayerSession"
