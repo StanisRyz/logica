@@ -31,7 +31,8 @@ internal class YandexGamesBridge :
     WebSdkBootstrapBridge,
     WebLeaderboardBridge,
     WebPlayerContextEvents,
-    WebStickyBannerBridge {
+    WebStickyBannerBridge,
+    WebPlayerDataBridge {
     private var sdk: YandexSdk? = null
     private var cachedPlayer: YandexPlayer? = null
     private var playerRequest: Promise<YandexPlayer>? = null
@@ -124,12 +125,12 @@ internal class YandexGamesBridge :
     /** Resolves the current Player once and reuses it until the SDK reports an account-context change. */
     suspend fun playerSnapshot(): YandexPlayerSnapshot = player().snapshot()
 
-    suspend fun readPlayerData(key: String): String? {
+    override suspend fun readPlayerData(key: String): String? {
         val data = player().getData(singleStringArray(key)).await()
         return stringPropertyOrNull(data, key)
     }
 
-    suspend fun writePlayerData(
+    override suspend fun writePlayerData(
         key: String,
         value: String,
         flush: Boolean,

@@ -9,6 +9,7 @@ import com.stanisryz.logica.platform.PlayerAuthorizationState
 import com.stanisryz.logica.platform.PlayerIdentity
 import com.stanisryz.logica.platform.PlayerIdentityGateway
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withTimeoutOrNull
 
 internal class YandexPlayerIdentityGateway(
     private val bridge: YandexGamesBridge,
@@ -39,9 +40,28 @@ internal class YandexPlayerIdentityGateway(
         )
 }
 
+/** The Player data calls of [YandexGamesBridge] that the cloud gateways use. */
+internal interface WebPlayerDataBridge {
+    suspend fun readPlayerData(key: String): String?
+
+    suspend fun writePlayerData(
+        key: String,
+        value: String,
+        flush: Boolean,
+    )
+}
+
+/**
+ * One Player data key in the Yandex cloud, for the unified save and the legacy keys alike. A
+ * `getData` without an answer within [readTimeoutMs] or a `setData` without one within
+ * [writeTimeoutMs] is a failed call — the restore stays unresolved and retries, the write retries
+ * — and its late answer is ignored.
+ */
 internal class YandexCloudSaveGateway(
-    private val bridge: YandexGamesBridge,
+    private val bridge: WebPlayerDataBridge,
     private val dataKey: String = CLOUD_STATE_KEY,
+    private val readTimeoutMs: Long = READ_TIMEOUT_MS,
+    private val writeTimeoutMs: Long = WRITE_TIMEOUT_MS,
 ) : CloudSaveGateway {
     init {
         require(dataKey.isNotBlank()) { "A Yandex Cloud Save data key is required." }
@@ -51,9 +71,11 @@ internal class YandexCloudSaveGateway(
 
     override suspend fun read(): CloudSaveReadResult =
         try {
-            val encoded = bridge.readPlayerData(dataKey) ?: return CloudSaveReadResult.Missing
-            val payload = WebBase64.decode(encoded) ?: error("Yandex cloud save payload is not valid Base64.")
-            CloudSaveReadResult.Found(payload)
+            withTimeoutOrNull(readTimeoutMs) {
+                val encoded = bridge.readPlayerData(dataKey) ?: return@withTimeoutOrNull CloudSaveReadResult.Missing
+                val payload = WebBase64.decode(encoded) ?: error("Yandex cloud save payload is not valid Base64.")
+                CloudSaveReadResult.Found(payload)
+            } ?: CloudSaveReadResult.Failed(IllegalStateException("Yandex getData did not answer in time."))
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
@@ -62,12 +84,14 @@ internal class YandexCloudSaveGateway(
 
     override suspend fun write(payload: ByteArray): CloudSaveWriteResult =
         try {
-            bridge.writePlayerData(
-                key = dataKey,
-                value = WebBase64.encode(payload),
-                flush = true,
-            )
-            CloudSaveWriteResult.Saved
+            withTimeoutOrNull(writeTimeoutMs) {
+                bridge.writePlayerData(
+                    key = dataKey,
+                    value = WebBase64.encode(payload),
+                    flush = true,
+                )
+                CloudSaveWriteResult.Saved
+            } ?: CloudSaveWriteResult.Failed(IllegalStateException("Yandex setData did not answer in time."))
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
@@ -78,6 +102,8 @@ internal class YandexCloudSaveGateway(
         const val CLOUD_STATE_KEY = "logica_state_v1"
         const val STATISTICS_STATE_KEY = "logica_statistics_v1"
         const val DAILY_STATE_KEY = "logica_daily_v1"
+        const val READ_TIMEOUT_MS = 10_000L
+        const val WRITE_TIMEOUT_MS = 15_000L
     }
 }
 
