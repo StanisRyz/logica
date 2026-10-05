@@ -156,7 +156,6 @@
     <string name="crowns_violation_region">В одной цветной области стоит больше одной короны.</string>
     <string name="crowns_violation_diagonal">Две короны соприкасаются по диагонали.</string>
     <string name="crowns_hint_incorrect_crown">Уберите корону из клетки %1$d:%2$d: она не входит в решение.</string>
-    <string name="crowns_hint_incorrect_mark">Уберите метку из клетки %1$d:%2$d: здесь должна стоять корона.</string>
     <string name="crowns_hint_place">Поставьте корону в клетку %1$d:%2$d. %3$s</string>
     <string name="crowns_hint_mark">Поставьте метки в выделенных клетках (%1$d). %2$s</string>
     <string name="crowns_technique_single_row">В этой строке осталась одна возможная клетка.</string>

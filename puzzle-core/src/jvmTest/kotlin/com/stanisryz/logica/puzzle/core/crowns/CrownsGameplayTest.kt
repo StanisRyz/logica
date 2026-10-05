@@ -131,27 +131,17 @@ class CrownsGameplayTest {
     }
 
     @Test
-    fun hintsPrioritizeIncorrectCrownsThenMarksThenLogicalDeductions() {
+    fun hintsPrioritizeIncorrectCrownsThenLogicalDeductions() {
         val puzzle = puzzle()
         val provider = CrownsHintProvider()
         val incorrectCrown = CrownsPosition(0, 0)
-        val incorrectlyMarkedSolutionCrown = CrownsPosition(0, 1)
 
-        val crownHint =
-            provider.hint(
-                puzzle,
-                CrownsState(listOf(incorrectCrown)),
-                setOf(incorrectlyMarkedSolutionCrown),
-            )
-        val markHint = provider.hint(puzzle, CrownsState(), setOf(incorrectlyMarkedSolutionCrown))
-        val logicalHint = provider.hint(puzzle, CrownsState(), emptySet())
+        val crownHint = provider.hint(puzzle, CrownsState(listOf(incorrectCrown)))
+        val logicalHint = provider.hint(puzzle, CrownsState())
 
         assertEquals(CrownsHintKind.INCORRECT_CROWN, crownHint?.kind)
         assertEquals(CrownsHintAction.CLEAR_CROWN, crownHint?.action)
         assertEquals(setOf(incorrectCrown), crownHint?.targetPositions)
-        assertEquals(CrownsHintKind.INCORRECT_MARK, markHint?.kind)
-        assertEquals(CrownsHintAction.CLEAR_MARK, markHint?.action)
-        assertEquals(setOf(incorrectlyMarkedSolutionCrown), markHint?.targetPositions)
         assertEquals(CrownsHintKind.LOGICAL_DEDUCTION, logicalHint?.kind)
         assertEquals(CrownsHintAction.PLACE_CROWN, logicalHint?.action)
         assertEquals(setOf(CrownsPosition(2, 0)), logicalHint?.targetPositions)

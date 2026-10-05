@@ -245,7 +245,7 @@ class CrownsGameEngine(
             else -> CrownsCellStatus.INCORRECT
         }
 
-    private fun logicalHint(board: CrownsState): CrownsHint? = hintProvider.hint(puzzle, board, emptySet())
+    private fun logicalHint(board: CrownsState): CrownsHint? = hintProvider.hint(puzzle, board)
 
     private fun applyCell(
         board: CrownsState,

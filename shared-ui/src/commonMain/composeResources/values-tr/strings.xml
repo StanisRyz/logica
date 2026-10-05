@@ -143,7 +143,6 @@
     <string name="crowns_violation_region">Bir renkli bölgede birden fazla taç var.</string>
     <string name="crowns_violation_diagonal">İki taç çapraz olarak değiyor.</string>
     <string name="crowns_hint_incorrect_crown">%1$d:%2$d hücresindeki tacı kaldır: çözümde yok.</string>
-    <string name="crowns_hint_incorrect_mark">%1$d:%2$d hücresindeki işareti kaldır: buraya taç gelir.</string>
     <string name="crowns_hint_place">%1$d:%2$d hücresine taç koy. %3$s</string>
     <string name="crowns_hint_mark">Vurgulanan hücreleri işaretle (%1$d). %2$s</string>
     <string name="crowns_technique_single_row">Bu satırda tek olası hücre kaldı.</string>

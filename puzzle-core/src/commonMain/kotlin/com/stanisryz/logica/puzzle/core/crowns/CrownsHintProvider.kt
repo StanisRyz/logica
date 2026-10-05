@@ -9,31 +9,14 @@ class CrownsHintProvider(
     override fun hint(
         puzzle: CrownsPuzzle,
         state: CrownsState,
-    ): CrownsHint? = hint(puzzle, state, emptySet())
-
-    fun hint(
-        puzzle: CrownsPuzzle,
-        state: CrownsState,
-        userMarks: Set<CrownsPosition>,
     ): CrownsHint? {
         requirePositionsInside(puzzle, state.crowns)
-        requirePositionsInside(puzzle, userMarks)
-        require(state.crowns.intersect(userMarks).isEmpty()) { "A cell cannot contain both a crown and a user mark." }
 
-        val uniqueSolution = uniqueSolution(puzzle)
-        if (uniqueSolution != null) {
-            findIncorrectCrown(puzzle, state, uniqueSolution)?.let { return it }
-            findIncorrectMark(userMarks, uniqueSolution)?.let { return it }
+        uniqueSolution(puzzle)?.let { solution ->
+            findIncorrectCrown(puzzle, state, solution)?.let { return it }
         }
 
-        var candidates = CrownsCandidateState.from(puzzle, state)
-        if (uniqueSolution != null) {
-            val applicableMarks = userMarks.filter { it in candidates.allowed }
-            if (applicableMarks.isNotEmpty()) {
-                candidates = candidates.exclude(applicableMarks).state
-            }
-        }
-        val step = logicEngine.nextStep(puzzle, candidates) ?: return null
+        val step = logicEngine.nextStep(puzzle, CrownsCandidateState.from(puzzle, state)) ?: return null
         return step.toHint()
     }
 
@@ -62,18 +45,6 @@ class CrownsHintProvider(
         )
     }
 
-    private fun findIncorrectMark(
-        userMarks: Set<CrownsPosition>,
-        solution: CrownsSolution,
-    ): CrownsHint? {
-        val position = solution.crowns.sortedWith(POSITION_ORDER).firstOrNull { it in userMarks } ?: return null
-        return CrownsHint(
-            kind = CrownsHintKind.INCORRECT_MARK,
-            action = CrownsHintAction.CLEAR_MARK,
-            targetPositions = listOf(position),
-        )
-    }
-
     private fun CrownsLogicStep.toHint(): CrownsHint =
         CrownsHint(
             kind = CrownsHintKind.LOGICAL_DEDUCTION,
@@ -92,9 +63,5 @@ class CrownsHintProvider(
         positions: Iterable<CrownsPosition>,
     ) {
         positions.forEach { CrownsBoardConstraints.requireInside(puzzle.size, it) }
-    }
-
-    private companion object {
-        val POSITION_ORDER = compareBy(CrownsPosition::row, CrownsPosition::column)
     }
 }

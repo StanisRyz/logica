@@ -5,14 +5,12 @@ import com.stanisryz.logica.puzzle.core.contract.PuzzleHint
 enum class CrownsHintKind {
     LOGICAL_DEDUCTION,
     INCORRECT_CROWN,
-    INCORRECT_MARK,
 }
 
 enum class CrownsHintAction {
     PLACE_CROWN,
     MARK_POSITIONS,
     CLEAR_CROWN,
-    CLEAR_MARK,
 }
 
 class CrownsHint internal constructor(
