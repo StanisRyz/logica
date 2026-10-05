@@ -1,6 +1,7 @@
 package com.stanisryz.logica.ads
 
 import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.runCatchingCancellable
 import java.util.UUID
 
 /** What a rewarded show pays: a life (Lives dialog, Store) or a gem (Store). */
@@ -63,7 +64,7 @@ internal class RewardedLifeReward(
         actionId: String,
         kind: RewardedAdKind,
     ): Boolean =
-        runCatching {
+        runCatchingCancellable {
             when (kind) {
                 RewardedAdKind.LIFE -> repository.grantRewardedLife(actionId)
                 RewardedAdKind.GEM -> repository.grantRewardedGem(actionId)

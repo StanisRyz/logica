@@ -1,6 +1,7 @@
 package com.stanisryz.logica.ads
 
 import android.content.Context
+import com.stanisryz.logica.runCatchingCancellable
 import com.yandex.mobile.ads.common.YandexAds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -47,7 +48,7 @@ internal object YandexAdsInitializer {
     suspend fun ensureInitialized(context: Context): Boolean =
         mutex.withLock {
             if (initialized) return@withLock true
-            initialized = runCatching { initializeWithPrivacyState(context.applicationContext) }.getOrDefault(false)
+            initialized = runCatchingCancellable { initializeWithPrivacyState(context.applicationContext) }.getOrDefault(false)
             initialized
         }
 

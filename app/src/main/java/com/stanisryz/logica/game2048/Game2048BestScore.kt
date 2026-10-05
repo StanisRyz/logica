@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.longPreferencesKey
+import com.stanisryz.logica.runCatchingCancellable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,7 +36,7 @@ internal class Game2048BestScore(
         scope.launch {
             offered.collect { score ->
                 if (score <= 0L) return@collect
-                runCatching { dataStore.edit { if (score > (it[BEST_SCORE] ?: 0L)) it[BEST_SCORE] = score } }
+                runCatchingCancellable { dataStore.edit { if (score > (it[BEST_SCORE] ?: 0L)) it[BEST_SCORE] = score } }
             }
         }
     }

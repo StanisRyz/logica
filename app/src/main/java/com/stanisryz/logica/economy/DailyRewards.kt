@@ -11,6 +11,7 @@ import com.stanisryz.logica.puzzle.core.quest.LoginGift
 import com.stanisryz.logica.result.GameResultDao
 import com.stanisryz.logica.result.GameResultEntity
 import com.stanisryz.logica.result.GameResultScope
+import com.stanisryz.logica.runCatchingCancellable
 import com.stanisryz.logica.ui.components.DailyRewardsUiState
 import com.stanisryz.logica.ui.components.dailyRewardsUiState
 import com.stanisryz.logica.ui.profile.Achievement
@@ -162,12 +163,12 @@ internal class DailyRewardsViewModel(
 
     fun claimLoginGift() {
         val today = day.value
-        viewModelScope.launch { runCatching { repository.claimLoginGift(today) } }
+        viewModelScope.launch { runCatchingCancellable { repository.claimLoginGift(today) } }
     }
 
     fun claimQuest(index: Int) {
         val today = day.value
-        viewModelScope.launch { runCatching { repository.claimQuest(today, index) } }
+        viewModelScope.launch { runCatchingCancellable { repository.claimQuest(today, index) } }
     }
 
     private companion object {
@@ -185,7 +186,7 @@ internal class AchievementRewardsViewModel(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), null)
 
     fun claim(achievement: Achievement) {
-        viewModelScope.launch { runCatching { repository.claimAchievement(achievement) } }
+        viewModelScope.launch { runCatchingCancellable { repository.claimAchievement(achievement) } }
     }
 }
 

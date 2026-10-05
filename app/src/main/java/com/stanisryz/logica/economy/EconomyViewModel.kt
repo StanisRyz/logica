@@ -3,6 +3,7 @@ package com.stanisryz.logica.economy
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.stanisryz.logica.runCatchingCancellable
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,12 +29,12 @@ internal class EconomyViewModel(
     private var refillJob: Job? = null
 
     init {
-        viewModelScope.launch { runCatching { repository.refresh() } }
+        viewModelScope.launch { runCatchingCancellable { repository.refresh() } }
         viewModelScope.launch {
             economy.collectLatest { state ->
                 val wait = state.millisUntilNextLife(clock.nowEpochMillis()) ?: return@collectLatest
                 delay(wait + REGENERATION_SETTLE_MILLIS)
-                runCatching { repository.refresh() }
+                runCatchingCancellable { repository.refresh() }
             }
         }
     }
@@ -45,7 +46,7 @@ internal class EconomyViewModel(
     fun refillLife() {
         if (refillJob?.isActive == true) return
         val actionId = actionIdFactory()
-        refillJob = viewModelScope.launch { runCatching { repository.refillLifeWithGems(actionId) } }
+        refillJob = viewModelScope.launch { runCatchingCancellable { repository.refillLifeWithGems(actionId) } }
     }
 
     private companion object {

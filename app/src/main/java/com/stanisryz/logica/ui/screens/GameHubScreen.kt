@@ -35,6 +35,7 @@ import com.stanisryz.logica.economy.DailyRewardsViewModelFactory
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.runCatchingCancellable
 import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.ui.components.ContinueGameCard
 import com.stanisryz.logica.ui.components.DailyRewardsCard
@@ -76,7 +77,7 @@ internal fun GameHubRoute(
     LaunchedEffect(continueGame, resumes) {
         continueLevel =
             continueGame?.let { (puzzle, difficulty) ->
-                runCatching { catalogLevelRepository.currentLevelId(puzzle, difficulty).levelNumber.value }.getOrNull()
+                runCatchingCancellable { catalogLevelRepository.currentLevelId(puzzle, difficulty).levelNumber.value }.getOrNull()
             }
     }
     val factory =

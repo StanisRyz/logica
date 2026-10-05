@@ -3,6 +3,7 @@ package com.stanisryz.logica.platform.android
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.SoundPool
+import com.stanisryz.logica.runCatchingCancellable
 import com.stanisryz.logica.ui.components.GameSound
 import com.stanisryz.logica.ui.components.GameSoundPlayer
 import com.stanisryz.logica.ui.components.readGameSoundBytes
@@ -39,7 +40,7 @@ internal class AndroidGameSoundPlayer(
         val directory = File(context.cacheDir, "sounds")
         scope.launch {
             GameSound.entries.forEach { sound ->
-                runCatching {
+                runCatchingCancellable {
                     val file =
                         withContext(Dispatchers.IO) {
                             directory.mkdirs()

@@ -6,6 +6,7 @@ import com.stanisryz.logica.economy.GemPack
 import com.stanisryz.logica.platform.PlatformPurchase
 import com.stanisryz.logica.platform.PlatformPurchaseResult
 import com.stanisryz.logica.platform.StoreGateway
+import com.stanisryz.logica.runCatchingCancellable
 
 /**
  * Turns a confirmed platform purchase into gems, in the one order that is safe to crash in.
@@ -62,7 +63,7 @@ internal class GemPurchaseProcessor(
         if (products.isNoAds(purchase.productId)) {
             // A repeat (reconciliation sees a permanent purchase on every open) records nothing new.
             economy.grantNoAds(purchase.transactionId)
-            runCatching { gateway.finalize(purchase.purchaseId) }
+            runCatchingCancellable { gateway.finalize(purchase.purchaseId) }
             return EconomyGemPurchase.NoAdsGranted(economy.refresh())
         }
         val pack = products.pack(purchase.productId)
@@ -74,7 +75,7 @@ internal class GemPurchaseProcessor(
         // open keeps it creditable by a later build that knows the product instead of quietly
         // acknowledging a purchase nothing was delivered for.
         if (granted !is EconomyGemPurchase.UnsupportedProduct) {
-            runCatching { gateway.finalize(purchase.purchaseId) }
+            runCatchingCancellable { gateway.finalize(purchase.purchaseId) }
         }
         return granted
     }

@@ -95,6 +95,7 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV1
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV2
 import com.stanisryz.logica.result.GameCompletionRepository
+import com.stanisryz.logica.runCatchingCancellable
 import com.stanisryz.logica.settings.SettingsRepository
 import com.stanisryz.logica.settings.ThemeMode
 import com.stanisryz.logica.settings.UserSettings
@@ -319,7 +320,7 @@ internal fun LogicaNavigation(
             onLastPlayed(puzzleType, difficulty)
             navigationScope.launch {
                 val levelId =
-                    runCatching { catalogLevelRepository.currentLevelId(puzzleType, difficulty) }
+                    runCatchingCancellable { catalogLevelRepository.currentLevelId(puzzleType, difficulty) }
                         .getOrElse {
                             resolvingCatalogLevel = false
                             snackbarHostState.showSnackbar(levelUnavailableMessage)
@@ -351,7 +352,7 @@ internal fun LogicaNavigation(
             if (sourceDestination == puzzleType.gameDestination(launch)) {
                 navigationScope.launch {
                     val levelResult =
-                        runCatching { catalogLevelRepository.currentLevelId(puzzleType, level.levelId.difficulty) }
+                        runCatchingCancellable { catalogLevelRepository.currentLevelId(puzzleType, level.levelId.difficulty) }
                     // The database lookup suspends. Only replace the exact route entry that launched it;
                     // otherwise a late response could overwrite a screen opened in the meantime.
                     if (backStack.lastOrNull() !== sourceDestination) return@launch
@@ -1145,7 +1146,7 @@ private fun NonogramGallery(
         clearedLevels = levels.clearedLevels(),
         loadPicture = { difficulty, level ->
             withContext(Dispatchers.Default) {
-                runCatching {
+                runCatchingCancellable {
                     val definition =
                         catalogLevelRepository.resolve(CatalogLevelId(PuzzleType.NONOGRAM, difficulty, CatalogLevelNumber(level)))
                     generator.generate(definition.seed, difficulty)

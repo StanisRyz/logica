@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.longPreferencesKey
+import com.stanisryz.logica.runCatchingCancellable
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import java.io.IOException
@@ -35,7 +36,7 @@ internal class DataStoreInterstitialCooldownStore(
     override suspend fun recordShownAt(epochMillis: Long) {
         // An unwritable preference file must not propagate into the terminal result flow; the worst
         // case is one extra interstitial after a restart, never a broken completion.
-        runCatching { dataStore.edit { it[LAST_INTERSTITIAL_SHOWN_AT] = epochMillis } }
+        runCatchingCancellable { dataStore.edit { it[LAST_INTERSTITIAL_SHOWN_AT] = epochMillis } }
     }
 
     private companion object {

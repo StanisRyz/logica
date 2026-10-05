@@ -6,6 +6,8 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.runCatchingCancellable
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,23 +28,29 @@ internal class RoomDailyChallengeRepository(
     init {
         scope.launch {
             for (command in commands) {
-                when (command) {
-                    is Command.Read ->
-                        command.reply.complete(
-                            runCatching {
-                                dao
-                                    .find(command.challengeDate.toString(), command.puzzleType.name)
-                                    ?.toSavedDailyChallengeOrNull()
-                            },
-                        )
-                    is Command.ReadRun ->
-                        command.reply.complete(
-                            runCatching {
-                                runDao.find(command.challengeDate.toString())?.toSavedDailyRunOrNull()
-                            },
-                        )
-                    is Command.CreateRun ->
-                        command.reply.complete(runCatching { createRunNow(command.definition) })
+                try {
+                    when (command) {
+                        is Command.Read ->
+                            command.reply.complete(
+                                runCatchingCancellable {
+                                    dao
+                                        .find(command.challengeDate.toString(), command.puzzleType.name)
+                                        ?.toSavedDailyChallengeOrNull()
+                                },
+                            )
+                        is Command.ReadRun ->
+                            command.reply.complete(
+                                runCatchingCancellable {
+                                    runDao.find(command.challengeDate.toString())?.toSavedDailyRunOrNull()
+                                },
+                            )
+                        is Command.CreateRun ->
+                            command.reply.complete(runCatchingCancellable { createRunNow(command.definition) })
+                    }
+                } catch (cancellation: CancellationException) {
+                    // The repository is shutting down: the caller is told so instead of waiting forever.
+                    command.reply.cancel(cancellation)
+                    throw cancellation
                 }
             }
         }
@@ -125,20 +133,22 @@ internal class RoomDailyChallengeRepository(
         }.getOrNull()
 
     private sealed interface Command {
+        val reply: CompletableDeferred<*>
+
         data class Read(
             val challengeDate: LocalDate,
             val puzzleType: PuzzleType,
-            val reply: CompletableDeferred<Result<SavedDailyChallenge?>>,
+            override val reply: CompletableDeferred<Result<SavedDailyChallenge?>>,
         ) : Command
 
         data class ReadRun(
             val challengeDate: LocalDate,
-            val reply: CompletableDeferred<Result<SavedDailyRun?>>,
+            override val reply: CompletableDeferred<Result<SavedDailyRun?>>,
         ) : Command
 
         data class CreateRun(
             val definition: DailyChallengeDefinition,
-            val reply: CompletableDeferred<Result<SavedDailyRun>>,
+            override val reply: CompletableDeferred<Result<SavedDailyRun>>,
         ) : Command
     }
 }

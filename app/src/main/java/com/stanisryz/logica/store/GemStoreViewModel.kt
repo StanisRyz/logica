@@ -7,6 +7,7 @@ import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.GemPack
 import com.stanisryz.logica.economy.OwnedPurchases
 import com.stanisryz.logica.platform.StoreGateway
+import com.stanisryz.logica.runCatchingCancellable
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -77,9 +78,9 @@ internal class GemStoreViewModel(
         _state.value = GemStoreState.Loading
         loadJob =
             viewModelScope.launch {
-                runCatching { purchases.reconcile() }
+                runCatchingCancellable { purchases.reconcile() }
                 _state.value =
-                    runCatching { purchases.catalog() }
+                    runCatchingCancellable { purchases.catalog() }
                         .fold(
                             onSuccess = { catalog ->
                                 if (catalog.packs.isEmpty()) {
@@ -107,7 +108,7 @@ internal class GemStoreViewModel(
         _state.value = ready.copy(purchasing = pack, outcome = null)
         purchaseJob =
             viewModelScope.launch {
-                val outcome = runCatching { purchases.buy(pack) }.getOrDefault(GemPurchaseOutcome.Failed)
+                val outcome = runCatchingCancellable { purchases.buy(pack) }.getOrDefault(GemPurchaseOutcome.Failed)
                 _state.update { current ->
                     if (current is GemStoreState.Ready) current.copy(purchasing = null, outcome = outcome) else current
                 }
@@ -121,7 +122,7 @@ internal class GemStoreViewModel(
         _state.value = ready.copy(purchasingNoAds = true, outcome = null)
         purchaseJob =
             viewModelScope.launch {
-                val outcome = runCatching { purchases.buyNoAds() }.getOrDefault(GemPurchaseOutcome.Failed)
+                val outcome = runCatchingCancellable { purchases.buyNoAds() }.getOrDefault(GemPurchaseOutcome.Failed)
                 _state.update { current ->
                     if (current is GemStoreState.Ready) current.copy(purchasingNoAds = false, outcome = outcome) else current
                 }
