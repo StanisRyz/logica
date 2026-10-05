@@ -118,7 +118,7 @@
 | `./gradlew :web-app:compileKotlinWasmJs` | OK |
 | Ручная проверка Web (Playwright) | Sudoku «сначала цифра» в светлой и тёмной теме; протягивание в Crowns |
 
-CI прошлого пуша (`4a85fbf`, этап 7.1): зелёный, https://github.com/StanisRyz/logica/actions/runs/37353123180. Задача `web-distribution` там тоже зелёная, то есть `packageYandexDistribution`, которую не удалось собрать локально в 7.1. Ссылку на CI этого этапа допишу следующим коммитом.
+CI прошлого пуша (`4a85fbf`, этап 7.1): зелёный, https://github.com/StanisRyz/logica/actions/runs/37353123180. Задача `web-distribution` там тоже зелёная, то есть `packageYandexDistribution`, которую не удалось собрать локально в 7.1. CI этого этапа (`254cba9`): зелёный, https://github.com/StanisRyz/logica/actions/runs/37356403855 (дописано вместе с этапом 7.2).
 
 ## 5. Отклонения и вопросы
 
