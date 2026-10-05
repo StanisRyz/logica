@@ -178,9 +178,10 @@ internal interface WebSaveSection {
     fun export(): ByteArray?
 
     /**
-     * Merges one cloud payload through the domain's own semantics. Returns false only when the
-     * payload cannot be decoded by this section's codec, so restore never mistakes an unreadable
-     * section for an absent one; an unbound domain simply skips a decodable payload.
+     * Merges one cloud payload through the domain's own semantics. Returns false when the payload
+     * cannot be decoded by this section's codec or its merge did not land durably in local
+     * state, so restore never mistakes an unmerged section for a restored one; an unbound domain
+     * simply skips a decodable payload (the manager carries its bytes forward).
      */
     fun apply(payload: ByteArray): Boolean
 
@@ -264,14 +265,25 @@ internal object WebEconomyStoreCoupledRestore {
  *
  * Save flow: collect all exported sections -> validate the envelope against the Player data
  * budget -> repository.save(). Writes are all-or-nothing; oversized payloads fail safely
- * instead of silently dropping history or inventory.
+ * instead of silently dropping history or inventory. A known section its domain does not
+ * export right now (an unbound domain, an empty value) is carried forward byte for byte from
+ * the envelope last restored or written for this context, so it never vanishes from the cloud.
  */
 internal class WebSaveManager(
     private val sections: List<WebSaveSection>,
     private val repository: SaveRepository,
     private val maxPayloadBytes: Int = DEFAULT_MAX_UNIFIED_PAYLOAD_BYTES,
 ) {
+    /** Raw section bytes of the envelope last restored (RESTORED only) or written; per context. */
+    private var carriedSections: Map<String, ByteArray> = emptyMap()
+
+    /** Bumped by every restore, so a write that finishes after a newer restore never refills the cache. */
+    private var restoreGeneration = 0
+
     suspend fun restore(): WebSaveRestoreOutcome {
+        // A new restore starts a new context: Player B never inherits Player A's sections.
+        restoreGeneration += 1
+        carriedSections = emptyMap()
         val data =
             when (val result = repository.load()) {
                 is SaveLoadResult.Found -> result.data
@@ -284,10 +296,10 @@ internal class WebSaveManager(
         // every owner is invoked exactly once with all payloads it owns, regardless of the
         // order in which the section adapters were registered.
         val ownerOf = HashMap<String, WebSaveSection>()
-        sections.forEach { section ->
-            ownerOf[section.id] = section
-            section.coupledIds.forEach { coupledId -> ownerOf[coupledId] = section }
-        }
+        sections.forEach { section -> ownerOf[section.id] = section }
+        // Coupled claims win over a section's own id (Store belongs to the Economy group), so the
+        // order in which the adapters were registered can never hand Store to its own adapter.
+        sections.forEach { section -> section.coupledIds.forEach { coupledId -> ownerOf[coupledId] = section } }
         // A section id this build does not know (written by a newer build) cannot be carried
         // into a rewritten envelope, so its save stays unresolved rather than being dropped.
         var resolved = data.sections.keys.all { it in ownerOf }
@@ -301,21 +313,29 @@ internal class WebSaveManager(
             // Decodable sections still merge (every merge is monotonic and safe to repeat).
             if (!runCatching { owner.applyRestoring(payloads) }.getOrDefault(false)) resolved = false
         }
-        return if (resolved) WebSaveRestoreOutcome.RESTORED else WebSaveRestoreOutcome.UNRESOLVED
+        if (!resolved) return WebSaveRestoreOutcome.UNRESOLVED
+        carriedSections = data.sections
+        return WebSaveRestoreOutcome.RESTORED
     }
 
     suspend fun persist(): Boolean {
+        val generation = restoreGeneration
+        val carried = carriedSections
         val sectionsById =
             sections
-                .mapNotNull { section -> section.export()?.let { section.id to it } }
+                .mapNotNull { section -> (section.export() ?: carried[section.id])?.let { section.id to it } }
                 .toMap()
         if (sectionsById.isEmpty()) return false
         val data = SaveData(sections = sectionsById)
-        // Payload safety: the Yandex Player data budget is finite and shared by all sections.
+        // Payload safety: the Yandex Player data budget is finite and shared by all sections,
+        // carried-forward ones included.
         require(WebSaveCodec.encode(data).size <= maxPayloadBytes) {
             "Unified save payload exceeds the supported Player data budget."
         }
-        return runCatching { repository.save(data) }.getOrDefault(false)
+        val saved = runCatching { repository.save(data) }.getOrDefault(false)
+        // The cache follows what this context last wrote, unless a newer restore began meanwhile.
+        if (saved && restoreGeneration == generation) carriedSections = sectionsById
+        return saved
     }
 }
 
@@ -343,7 +363,6 @@ internal object WebSaveSectionIds {
 internal class WebSaveSections(
     private val playerSession: WebPlayerSessionController,
 ) {
-    /** Economy resolves jointly with Store, so `all()` must keep this exact section order. */
     private var pendingEconomyRestore: WebEconomySnapshot? = null
 
     fun all(): List<WebSaveSection> =
@@ -374,8 +393,7 @@ internal class WebSaveSections(
                 val cloud = WebCatalogProgressCodec.decode(payload) ?: return false
                 val repository =
                     (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository ?: return true
-                repository.mergeCloud(cloud)
-                return true
+                return repository.mergeCloud(cloud) is WebCatalogMergeResult.Merged
             }
         }
 
@@ -396,8 +414,7 @@ internal class WebSaveSections(
                 val cloud = WebCatalogStarsCodec.decode(payload) ?: return false
                 val repository =
                     (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository ?: return true
-                repository.mergeCloudStars(cloud)
-                return true
+                return repository.mergeCloudStars(cloud) is WebCloudValueMergeResult.Merged
             }
         }
 
@@ -418,8 +435,7 @@ internal class WebSaveSections(
                 val cloud = WebBestScoreCodec.decode(payload) ?: return false
                 val repository =
                     (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository ?: return true
-                repository.mergeCloudBest2048(cloud)
-                return true
+                return repository.mergeCloudBest2048(cloud) is WebCloudValueMergeResult.Merged
             }
         }
 
@@ -440,8 +456,7 @@ internal class WebSaveSections(
                 val cloud = WebDailyRewardsCodec.decode(payload) ?: return false
                 val repository =
                     (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository ?: return true
-                repository.mergeCloudRewards(cloud)
-                return true
+                return repository.mergeCloudRewards(cloud) is WebCloudValueMergeResult.Merged
             }
         }
 
@@ -460,8 +475,8 @@ internal class WebSaveSections(
                 val cloud = WebStatisticsCodec.decode(payload) ?: return false
                 val repository =
                     (playerSession.statisticsBinding.value as? WebStatisticsBinding.Ready)?.repository ?: return true
-                runCatching { repository.mergeCloud(cloud) }
-                return true
+                // Invalid (the merge itself threw) and PersistenceFailed both leave the cloud unmerged.
+                return repository.mergeCloud(cloud) is WebStatisticsMergeResult.Merged
             }
         }
 
@@ -480,8 +495,12 @@ internal class WebSaveSections(
                 val cloud = WebDailyCodec.decode(payload) ?: return false
                 val repository =
                     (playerSession.dailyBinding.value as? WebDailyBinding.Ready)?.repository ?: return true
-                runCatching { repository.mergeCloud(cloud) }
-                return true
+                return when (repository.mergeCloud(cloud)) {
+                    is WebDailyMergeResult.Merged -> true
+                    // A same-date policy conflict is the domain's deliberate refusal, not a failure.
+                    is WebDailyMergeResult.PolicyConflict -> true
+                    is WebDailyMergeResult.PersistenceFailed -> false
+                }
             }
         }
 
@@ -520,9 +539,9 @@ internal class WebSaveSections(
                 val targetEconomy = decision.economy ?: return true
                 val targetStore = decision.store ?: return true
                 // Pair-consistent application: if either side cannot be persisted durably,
-                // the previous local pair stays authoritative and observable.
-                WebEconomyStorePairApply.apply(economyRepository, storeRepository, targetEconomy, targetStore)
-                return true
+                // the previous local pair stays authoritative and observable, and the older local
+                // pair must not overwrite the newer cloud pair, so the group is unresolved.
+                return WebEconomyStorePairApply.apply(economyRepository, storeRepository, targetEconomy, targetStore)
             }
         }
 
@@ -548,8 +567,10 @@ internal class WebSaveSections(
             override fun apply(payload: ByteArray): Boolean {
                 val cloud = WebPaymentsCodec.decode(payload) ?: return false
                 val repository = playerSession.paymentsRepository ?: return true
-                repository.mergeCloud(cloud)
-                return true
+                return when (repository.mergeCloud(cloud)) {
+                    WebExternalRestoreResult.Applied, WebExternalRestoreResult.NoChange -> true
+                    is WebExternalRestoreResult.PersistenceFailed, WebExternalRestoreResult.Rejected -> false
+                }
             }
         }
 }

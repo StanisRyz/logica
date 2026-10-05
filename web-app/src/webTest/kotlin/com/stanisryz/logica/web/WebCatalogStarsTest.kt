@@ -63,8 +63,8 @@ class WebCatalogStarsTest {
         assertEquals(2, durableChanges)
         assertEquals(3, starsStore.load().starsOf(easyBalance, 1))
 
-        assertTrue(repository.mergeCloudStars(WebCatalogStarsSnapshot.EMPTY)) // the cloud lacks level 1
-        assertFalse(repository.mergeCloudStars(repository.stars.value))
+        assertEquals(WebCloudValueMergeResult.Merged(cloudLacksLocal = true), repository.mergeCloudStars(WebCatalogStarsSnapshot.EMPTY))
+        assertEquals(WebCloudValueMergeResult.Merged(cloudLacksLocal = false), repository.mergeCloudStars(repository.stars.value))
     }
 
     @Test
@@ -90,8 +90,8 @@ class WebCatalogStarsTest {
         assertEquals(3_400, repository.best2048.value)
         assertEquals(1, durableChanges)
 
-        assertTrue(repository.mergeCloudBest2048(1_000)) // the cloud lacks the local best
-        assertFalse(repository.mergeCloudBest2048(9_000))
+        assertEquals(WebCloudValueMergeResult.Merged(cloudLacksLocal = true), repository.mergeCloudBest2048(1_000))
+        assertEquals(WebCloudValueMergeResult.Merged(cloudLacksLocal = false), repository.mergeCloudBest2048(9_000))
         assertEquals(9_000, repository.best2048.value)
         assertEquals(9_000, bestStore.load())
 

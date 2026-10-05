@@ -236,6 +236,19 @@ internal sealed interface WebCatalogMergeResult {
     ) : WebCatalogMergeResult
 }
 
+/** Outcome of merging one cloud value kept beside Catalog progress (stars, best 2048, rewards). */
+internal sealed interface WebCloudValueMergeResult {
+    /** Merged durably; [cloudLacksLocal] is true when the cloud copy misses something local. */
+    data class Merged(
+        val cloudLacksLocal: Boolean,
+    ) : WebCloudValueMergeResult
+
+    /** The merged value could not be saved locally, so the local copy still lacks the cloud's. */
+    data class PersistenceFailed(
+        val cause: Throwable,
+    ) : WebCloudValueMergeResult
+}
+
 /** Authoritative Web-local Catalog levels and deterministic monotonic cloud merge. */
 internal class WebCatalogProgressRepository(
     val scope: WebCatalogProgressScope,
@@ -292,12 +305,17 @@ internal class WebCatalogProgressRepository(
         return true
     }
 
-    /** Per-level maximum with the cloud copy; true when the cloud lacks something local. */
-    fun mergeCloudStars(cloud: WebCatalogStarsSnapshot): Boolean {
+    /** Per-level maximum with the cloud copy. */
+    fun mergeCloudStars(cloud: WebCatalogStarsSnapshot): WebCloudValueMergeResult {
         val local = mutableStars.value
         val merged = local.mergedWith(cloud)
-        if (merged != local && runCatching { starsStore.save(merged) }.isSuccess) mutableStars.value = merged
-        return merged != cloud
+        if (merged != local) {
+            runCatching { starsStore.save(merged) }
+                .exceptionOrNull()
+                ?.let { return WebCloudValueMergeResult.PersistenceFailed(it) }
+            mutableStars.value = merged
+        }
+        return WebCloudValueMergeResult.Merged(cloudLacksLocal = merged != cloud)
     }
 
     /** Keeps [score] locally when it beats the best 2048 score; cheap enough to call on every move. */
@@ -313,14 +331,17 @@ internal class WebCatalogProgressRepository(
         onDurableChange?.invoke()
     }
 
-    /** Maximum with the cloud copy; true when the cloud lacks the local best. */
-    fun mergeCloudBest2048(cloud: Long): Boolean {
+    /** Maximum with the cloud copy. */
+    fun mergeCloudBest2048(cloud: Long): WebCloudValueMergeResult {
         val local = maxOf(mutableBest2048.value, unpublishedBest2048)
-        if (cloud > local && runCatching { bestScoreStore.save(cloud) }.isSuccess) {
+        if (cloud > local) {
+            runCatching { bestScoreStore.save(cloud) }
+                .exceptionOrNull()
+                ?.let { return WebCloudValueMergeResult.PersistenceFailed(it) }
             unpublishedBest2048 = cloud
             mutableBest2048.value = cloud
         }
-        return local > cloud
+        return WebCloudValueMergeResult.Merged(cloudLacksLocal = local > cloud)
     }
 
     /** Counts one recorded terminal attempt toward the quests of the local day [today]. */
@@ -362,12 +383,17 @@ internal class WebCatalogProgressRepository(
         return saveRewards(current.copy(claimedAchievements = current.claimedAchievements + achievementId))
     }
 
-    /** Day-aware merge with the cloud copy; true when the cloud lacks something local. */
-    fun mergeCloudRewards(cloud: WebDailyRewardsSnapshot): Boolean {
+    /** Day-aware merge with the cloud copy. */
+    fun mergeCloudRewards(cloud: WebDailyRewardsSnapshot): WebCloudValueMergeResult {
         val local = mutableRewards.value
         val merged = local.mergedWith(cloud)
-        if (merged != local && runCatching { rewardsStore.save(merged) }.isSuccess) mutableRewards.value = merged
-        return merged != cloud
+        if (merged != local) {
+            runCatching { rewardsStore.save(merged) }
+                .exceptionOrNull()
+                ?.let { return WebCloudValueMergeResult.PersistenceFailed(it) }
+            mutableRewards.value = merged
+        }
+        return WebCloudValueMergeResult.Merged(cloudLacksLocal = merged != cloud)
     }
 
     private fun saveRewards(updated: WebDailyRewardsSnapshot): Boolean {
