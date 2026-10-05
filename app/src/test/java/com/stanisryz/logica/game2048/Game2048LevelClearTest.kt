@@ -179,6 +179,75 @@ class Game2048LevelClearTest {
             assertEquals(1, completions.calls)
         }
 
+    @Test
+    fun aDeadEndBeforeTheTargetOffersTheUndoOnceAndTheSameMoveBringsTheSameSpawn() =
+        runBlocking {
+            val completions = RecordingCompletions(CompletableDeferred<Unit>().apply { complete(Unit) })
+            val viewModel = deadEndViewModel(completions)
+            val (beforeLoss, failed) = viewModel.playUntilTheUndoOffer()
+
+            // The offer holds the result back, and leaving now would count as an unfinished level.
+            assertEquals(Game2048Status.FAILED, failed.game.status)
+            assertTrue(failed.hasMeaningfulProgress)
+            assertEquals(0, completions.calls)
+
+            // A watched ad takes the losing move back with no economy effect.
+            viewModel.undoLosingMoveAfterAd()
+            val restored = viewModel.ready()
+            assertFalse(restored.undoOffered)
+            assertEquals(beforeLoss, restored.game)
+            assertEquals(0, completions.calls)
+
+            // The spawns are frozen: the same move from the same board brings the same dead end, and
+            // this time it is final — no second offer, one FAILED result.
+            viewModel.play(dumbDirection(restored.game))
+            val final = viewModel.ready()
+            assertEquals(failed.game, final.game)
+            assertFalse(final.undoOffered)
+            assertEquals(GameOutcome.FAILED, completions.recorded.single().outcome)
+        }
+
+    @Test
+    fun decliningTheUndoRecordsTheFailure() =
+        runBlocking {
+            val completions = RecordingCompletions(CompletableDeferred<Unit>().apply { complete(Unit) })
+            val viewModel = deadEndViewModel(completions)
+            viewModel.playUntilTheUndoOffer()
+
+            viewModel.declineUndoOffer()
+
+            assertFalse(viewModel.ready().undoOffered)
+            assertEquals(GameOutcome.FAILED, completions.recorded.single().outcome)
+        }
+
+    private fun deadEndViewModel(completions: RecordingCompletions): Game2048ViewModel =
+        Game2048ViewModel(
+            launch = GameAttemptLaunch.Level(levelId),
+            attemptFactory = GameAttemptFactory(FrozenLevel(PuzzleSeed(1L))) { ATTEMPT_ID },
+            completionRepository = completions,
+            economyRepository = FullWallet,
+        )
+
+    /** Plays a poor fixed strategy until the dead end before the target; returns the board before it and the offer. */
+    private suspend fun Game2048ViewModel.playUntilTheUndoOffer(): Pair<Game2048State, Game2048UiState.Ready> {
+        var ready = uiState.first { it !is Game2048UiState.Loading } as Game2048UiState.Ready
+        var beforeLoss = ready.game
+        while (!ready.undoOffered) {
+            assertFalse(ready.isOver)
+            assertFalse(ready.game.goalReached)
+            beforeLoss = ready.game
+            play(dumbDirection(ready.game))
+            ready = ready()
+        }
+        return beforeLoss to ready
+    }
+
+    /** The first legal move in a fixed order: a weak player, so the board dies long before the target. */
+    private fun dumbDirection(state: Game2048State): Game2048Direction {
+        val engine = Game2048Engine(state.puzzleId)
+        return DUMB_DIRECTIONS.first { engine.move(state, it) != state }
+    }
+
     /**
      * A seed whose deterministic corner-strategy playthrough crosses the EASY target and then runs
      * out of moves, so the test exercises both halves of the contract without depending on the
@@ -308,6 +377,8 @@ class Game2048LevelClearTest {
         /** Keeping cells free is worth roughly one small merge; it stops the greedy player choking. */
         const val EMPTY_CELL_WEIGHT = 12L
         const val LOOKAHEAD_DEPTH = 4
+
+        val DUMB_DIRECTIONS = listOf(Game2048Direction.UP, Game2048Direction.LEFT, Game2048Direction.RIGHT, Game2048Direction.DOWN)
 
         val PREFERRED_DIRECTIONS =
             listOf(

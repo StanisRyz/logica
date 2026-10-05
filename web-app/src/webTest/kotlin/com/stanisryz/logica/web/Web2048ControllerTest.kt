@@ -23,6 +23,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -152,6 +153,8 @@ class Web2048ControllerTest {
             failedController.selectDifficulty(Difficulty.MEDIUM)
             advanceUntilIdle()
             failedController.move(Game2048Direction.LEFT)
+            // The dead end first offers the ad-paid undo; declining it records the failure.
+            failedController.declineUndoOffer()
             assertEquals(listOf(WebStatisticsTerminalOutcome.FAILED), failedStatistics.outcomes)
         }
 
@@ -187,6 +190,61 @@ class Web2048ControllerTest {
             // The card offers Next Level from the saved clear, exactly as after a game over.
             assertEquals(2, assertIs<WebCatalogCompletionState.Saved>(controller.completionState).nextLevel.levelNumber.value)
         }
+
+    @Test
+    fun aDeadEndBeforeTheTargetOffersTheUndoOnceAndHoldsTheResultUntilAnswered() =
+        runTest {
+            val statistics = RecordingGameplayStatistics()
+            val economy = RecordingEconomy()
+            val controller =
+                Web2048Controller(
+                    loadPack = {},
+                    progression = FakeWebCatalogProgressAccess(),
+                    levelPack = fixedMediumLevelOne,
+                    engineFactory = { puzzleId -> scriptedV2FailureEngine(puzzleId) },
+                    statistics = statistics,
+                    economy = economy,
+                    scope = this,
+                )
+            controller.selectDifficulty(Difficulty.MEDIUM)
+            advanceUntilIdle()
+            val beforeLoss = assertIs<Web2048State.Playing>(controller.state).game
+
+            controller.move(Game2048Direction.LEFT)
+
+            // The offer is open and nothing is recorded yet; leaving now counts as an unfinished level.
+            assertTrue(controller.undoOffered)
+            assertEquals(Game2048Status.FAILED, assertIs<Web2048State.Playing>(controller.state).game.status)
+            assertEquals(emptyList(), statistics.outcomes)
+            assertEquals(emptyList(), economy.results)
+
+            // A watched ad takes the losing move back, with no economy effect.
+            controller.undoLosingMoveAfterAd()
+            val restored = assertIs<Web2048State.Playing>(controller.state)
+            assertFalse(controller.undoOffered)
+            assertEquals(beforeLoss, restored.game)
+            assertEquals(Game2048Status.IN_PROGRESS, restored.game.status)
+            assertEquals(emptyList(), economy.results)
+
+            // The next dead end of the same attempt is final: no second offer, one FAILED and one life.
+            controller.move(Game2048Direction.LEFT)
+            assertFalse(controller.undoOffered)
+            assertEquals(listOf(WebStatisticsTerminalOutcome.FAILED), statistics.outcomes)
+            assertEquals(listOf(false), economy.results)
+        }
+
+    private class RecordingEconomy : WebGameplayEconomy {
+        val results = mutableListOf<Boolean>()
+
+        override fun recordTerminalResult(
+            solved: Boolean,
+            gemsEarned: Int,
+        ) {
+            results += solved
+        }
+
+        override fun recordAbandonedAttempt() = Unit
+    }
 
     private fun scriptedV2Engine(puzzleId: Game2048PuzzleId): Web2048GameEngine {
         val start = Game2048Engine(puzzleId).start()

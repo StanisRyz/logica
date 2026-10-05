@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.stanisryz.logica.ui.components.ContinueAdAvailability
 import com.stanisryz.logica.ui.components.ContinueOfferDialog
+import com.stanisryz.logica.ui.components.ContinueOfferKind
 
 /** The rewarded placement behind the second chance; null in hosts without ads. */
 internal val LocalWebSecondChanceAd = staticCompositionLocalOf<WebRewardedPlacementController?> { null }
@@ -18,6 +19,7 @@ internal val LocalWebSecondChanceAd = staticCompositionLocalOf<WebRewardedPlacem
 internal fun WebSecondChanceDialog(
     onContinue: () -> Unit,
     onDecline: () -> Unit,
+    kind: ContinueOfferKind = ContinueOfferKind.THIRD_MISTAKE,
 ) {
     PauseGameKeysWhileShown()
     val placement = LocalWebSecondChanceAd.current
@@ -33,5 +35,6 @@ internal fun WebSecondChanceDialog(
         onWatch = { placement?.requestReward(onGranted = onContinue) },
         onRetry = { placement?.requestReward(onGranted = onContinue) },
         onDecline = onDecline,
+        kind = kind,
     )
 }

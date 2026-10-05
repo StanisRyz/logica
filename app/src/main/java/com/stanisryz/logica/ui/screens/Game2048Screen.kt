@@ -35,11 +35,13 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.settings.ThemeMode
+import com.stanisryz.logica.ui.components.ContinueOfferKind
 import com.stanisryz.logica.ui.components.GameResultDialog
 import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.LeaveLevelGuard
 import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.components.RetryableErrorState
+import com.stanisryz.logica.ui.components.SecondChanceDialog
 import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.components.resultEconomy
 import com.stanisryz.logica.ui.components.russianLabel
@@ -80,6 +82,14 @@ internal fun Game2048Route(
         onDurableCompletionExit =
             onTerminalAction.takeIf { backBehavior == Game2048BackBehavior.DEFERRED_TERMINAL_ACTION },
     )
+    // A dead end before the target first offers to take the losing move back for an ad, once per attempt.
+    if (ready?.undoOffered == true) {
+        SecondChanceDialog(
+            onContinue = gameViewModel::undoLosingMoveAfterAd,
+            onDecline = gameViewModel::declineUndoOffer,
+            kind = ContinueOfferKind.UNDO_LAST_MOVE,
+        )
+    }
     Game2048Screen(
         uiState = uiState,
         economy = economy,
@@ -241,7 +251,7 @@ private fun Game2048ReadyState(
             ZeroLivesCard(economy, onRestoreLife)
         },
     )
-    if (uiState.isOver && motionEvent == null) {
+    if (uiState.isOver && !uiState.undoOffered && motionEvent == null) {
         Game2048TerminalDialog(
             game = game,
             completionPersistence = uiState.completionPersistence,

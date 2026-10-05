@@ -122,6 +122,7 @@ internal class Web2048Controller(
                 } == true
 
     fun selectDifficulty(difficulty: Difficulty) {
+        resetUndoOffer()
         progression.publishBest2048()
         operation?.cancel()
         statisticsAttempt = null
@@ -214,6 +215,7 @@ internal class Web2048Controller(
      * crossing is not a result here, and only the real final game state resolves the attempt.
      */
     fun startDaily(dailyAttempt: WebDailyAttempt) {
+        resetUndoOffer()
         progression.publishBest2048()
         operation?.cancel()
         statisticsAttempt = null
@@ -267,7 +269,13 @@ internal class Web2048Controller(
             playing.source is WebGameplaySource.CatalogLevel &&
                 !playing.game.goalReached &&
                 transition.state.goalReached
-        if (transition.state.status.isTerminal || catalogGoalCrossing) {
+        // A dead end before the target first offers to take the losing move back for an ad, once per
+        // attempt; nothing is recorded until the player answers.
+        val offersUndo =
+            !playing.game.status.isTerminal && transition.state.status == Game2048Status.FAILED && !undoOfferUsed
+        if (offersUndo) {
+            // The undo history stays, so play after a watched ad goes on exactly as before the move.
+        } else if (transition.state.status.isTerminal || catalogGoalCrossing) {
             undoHistory.clear()
         } else {
             undoHistory += playing.game
@@ -282,8 +290,21 @@ internal class Web2048Controller(
             )
         // Every game's score is a candidate for the best one; it is published once the game ends.
         progression.recordBest2048(transition.state.score)
+        if (offersUndo) {
+            undoOfferUsed = true
+            undoOffer = playing
+            return
+        }
         if (transition.state.status.isTerminal) progression.publishBest2048()
-        val firstGoalCrossing = !playing.game.goalReached && transition.state.goalReached
+        recordTransition(playing, transition.state)
+    }
+
+    /** The results one move causes: the Catalog clear at the first target crossing, or a game's end. */
+    private fun recordTransition(
+        playing: Web2048State.Playing,
+        updated: Game2048State,
+    ) {
+        val firstGoalCrossing = !playing.game.goalReached && updated.goalReached
         when (val source = playing.source) {
             is WebGameplaySource.CatalogLevel -> {
                 if (firstGoalCrossing) {
@@ -293,7 +314,7 @@ internal class Web2048Controller(
                     completion.saveSolved(source.attempt)
                     // The first V2 target crossing is the Catalog result; it also feeds the wallet.
                     economy.recordTerminalResult(solved = true, gemsEarned = completion.gemsEarned)
-                } else if (!playing.game.status.isTerminal && transition.state.status == Game2048Status.FAILED) {
+                } else if (!playing.game.status.isTerminal && updated.status == Game2048Status.FAILED) {
                     statisticsAttempt?.let {
                         statistics.recordTerminalResult(it, WebStatisticsTerminalOutcome.FAILED)
                     }
@@ -303,10 +324,11 @@ internal class Web2048Controller(
             }
             is WebGameplaySource.DailyChallenge -> {
                 // Daily 2048: a target crossing records nothing; only the real final game state
-                // (game over) resolves exactly one Daily result and one Statistics result.
-                if (!playing.game.status.isTerminal && transition.state.status.isTerminal) {
+                // (game over, or «Finish» after the target) resolves exactly one Daily and one
+                // Statistics result.
+                if (!playing.game.status.isTerminal && updated.status.isTerminal) {
                     val outcome =
-                        if (transition.state.status == Game2048Status.SOLVED) {
+                        if (updated.status == Game2048Status.SOLVED) {
                             WebStatisticsTerminalOutcome.SOLVED
                         } else {
                             WebStatisticsTerminalOutcome.FAILED
@@ -331,6 +353,40 @@ internal class Web2048Controller(
                 }
             }
         }
+    }
+
+    /** One undo offer per attempt: the board before the losing move, waiting on the player's answer. */
+    private var undoOfferUsed = false
+    private var undoOffer by mutableStateOf<Web2048State.Playing?>(null)
+
+    val undoOffered: Boolean
+        get() = undoOffer != null
+
+    /** The player ended the level instead: the failure is recorded as usual and costs a life. */
+    fun declineUndoOffer() {
+        val beforeLoss = undoOffer ?: return
+        undoOffer = null
+        val playing = state as? Web2048State.Playing ?: return
+        undoHistory.clear()
+        progression.publishBest2048()
+        recordTransition(beforeLoss, playing.game)
+    }
+
+    /**
+     * The rewarded ad was watched: the board goes back to just before the losing move and play goes
+     * on, with no economy effect. The move and its spawn index go back with it, so the same move
+     * would bring the same frozen spawn again.
+     */
+    fun undoLosingMoveAfterAd() {
+        val beforeLoss = undoOffer ?: return
+        undoOffer = null
+        val playing = state as? Web2048State.Playing ?: return
+        state = playing.copy(game = beforeLoss.game, motionRevision = null, motionTrace = null)
+    }
+
+    private fun resetUndoOffer() {
+        undoOfferUsed = false
+        undoOffer = null
     }
 
     fun undo() {
@@ -385,6 +441,7 @@ internal class Web2048Controller(
         }
         val activeEngine = engine ?: return
         operation?.cancel()
+        resetUndoOffer()
         undoHistory.clear()
         if (catalog != null) completion.startAttempt(catalog.attempt)
         (source as? WebGameplaySource.DailyChallenge)?.let { dailyCompletion.startAttempt(it.attempt) }
@@ -414,6 +471,7 @@ internal class Web2048Controller(
     }
 
     fun showDifficultySelector() {
+        resetUndoOffer()
         progression.publishBest2048()
         operation?.cancel()
         engine = null

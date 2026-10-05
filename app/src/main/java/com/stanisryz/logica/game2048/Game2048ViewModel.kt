@@ -47,11 +47,17 @@ internal sealed interface Game2048UiState {
         val canUndo: Boolean = false,
         /** The player ended the game with «Finish» after reaching the target: it is over like a game over. */
         val finishedByPlayer: Boolean = false,
+        /** A dead end before the target waits on the one ad-paid undo of the losing move. */
+        val undoOffered: Boolean = false,
     ) : Game2048UiState {
-        /** A reached target stays guarded until its completion transaction is actually durable. */
+        /**
+         * A reached target stays guarded until its completion transaction is actually durable, and an
+         * open undo offer counts as an unfinished level.
+         */
         val hasMeaningfulProgress: Boolean
             get() =
-                !finishedByPlayer &&
+                undoOffered ||
+                    !finishedByPlayer &&
                     game.hasMeaningfulProgress(levelCleared, completionSaved = completionPersistence == CompletionPersistence.Saved)
 
         /** Over for the player: no move is left, or they finished after the target. */
@@ -108,6 +114,10 @@ internal class Game2048ViewModel(
     private var completionJob: Job? = null
     private var nextMotionRevision = 0L
 
+    /** One undo offer per attempt, and the board before the losing move while it is open. */
+    private var undoOfferUsed = false
+    private var stateBeforeLoss: Game2048State? = null
+
     init {
         viewModelScope.launch {
             try {
@@ -142,7 +152,13 @@ internal class Game2048ViewModel(
         val transition = engine?.moveWithTrace(current.game, direction) ?: return
         val trace = transition.trace ?: return
         val catalogGoalCrossing = attempt?.isCatalog == true && !current.game.goalReached && transition.state.goalReached
-        if (transition.state.status.isTerminal || catalogGoalCrossing) {
+        // A dead end before the target first offers to take the losing move back for an ad, once per
+        // attempt; nothing is recorded until the player answers, and the undo history stays for after.
+        val offersUndo = transition.state.status == Game2048Status.FAILED && !current.levelCleared && !undoOfferUsed
+        if (offersUndo) {
+            undoOfferUsed = true
+            stateBeforeLoss = current.game
+        } else if (transition.state.status.isTerminal || catalogGoalCrossing) {
             undoHistory.clear()
         } else {
             undoHistory += current.game
@@ -153,10 +169,12 @@ internal class Game2048ViewModel(
             current.copy(
                 game = transition.state,
                 motionEvent = Game2048MotionEvent(nextMotionRevision, trace),
-                canUndo = undoHistory.isNotEmpty(),
+                canUndo = !offersUndo && undoHistory.isNotEmpty(),
+                undoOffered = offersUndo,
             )
         // Every game's score is a candidate for the best one, whether the level was cleared or not.
         bestScore?.offer(transition.state.score)
+        if (offersUndo) return
         onStateAdvanced(transition.state)
     }
 
@@ -188,6 +206,30 @@ internal class Game2048ViewModel(
         if (attempt?.isCatalog != true) persistCompletion(current.game, GameOutcome.SOLVED)
     }
 
+    /** The player ended the level instead of watching the ad: the failure is recorded and costs a life. */
+    fun declineUndoOffer() {
+        val current = mutableUiState.value as? Game2048UiState.Ready ?: return
+        if (!current.undoOffered) return
+        stateBeforeLoss = null
+        undoHistory.clear()
+        mutableUiState.value = current.copy(undoOffered = false, canUndo = false)
+        onStateAdvanced(current.game)
+    }
+
+    /**
+     * The rewarded ad was watched: the board goes back to just before the losing move and play goes
+     * on, with no economy effect. The spawn index goes back too, so the same move would bring the
+     * same frozen spawn again.
+     */
+    fun undoLosingMoveAfterAd() {
+        val current = mutableUiState.value as? Game2048UiState.Ready ?: return
+        val previous = stateBeforeLoss ?: return
+        if (!current.undoOffered) return
+        stateBeforeLoss = null
+        mutableUiState.value =
+            current.copy(game = previous, motionEvent = null, undoOffered = false, canUndo = undoHistory.isNotEmpty())
+    }
+
     fun finishMotion(revision: Long) {
         val current = mutableUiState.value as? Game2048UiState.Ready ?: return
         if (current.motionEvent?.revision == revision) {
@@ -204,6 +246,8 @@ internal class Game2048ViewModel(
         val gameEngine = engine ?: return
         val previous = attempt ?: return
         undoHistory.clear()
+        undoOfferUsed = false
+        stateBeforeLoss = null
         attempt = previous.restarted(attemptFactory.nextAttemptId())
         mutableUiState.value = Game2048UiState.Ready(gameEngine.retry(current.game))
     }
@@ -213,7 +257,7 @@ internal class Game2048ViewModel(
         // A cleared level, or a game finished after its target, is a solve however the board stands.
         if (current.levelCleared || current.finishedByPlayer) {
             persistCompletion(current.game, GameOutcome.SOLVED)
-        } else if (current.game.status.isTerminal) {
+        } else if (current.game.status.isTerminal && !current.undoOffered) {
             persistCompletion(current.game)
         }
     }

@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.game_2048_undo_offer_body
+import com.stanisryz.logica.shared.ui.generated.resources.game_2048_undo_offer_title
 import com.stanisryz.logica.shared.ui.generated.resources.second_chance_body
 import com.stanisryz.logica.shared.ui.generated.resources.second_chance_decline
 import com.stanisryz.logica.shared.ui.generated.resources.second_chance_loading
@@ -43,10 +45,17 @@ enum class ContinueAdAvailability {
     UNAVAILABLE,
 }
 
+/** What the ad-paid second chance gives back: one mistake, or 2048's losing move. */
+enum class ContinueOfferKind {
+    THIRD_MISTAKE,
+    UNDO_LAST_MOVE,
+}
+
 /**
- * The one second chance an attempt gets at its third mistake: watch a rewarded ad and one mistake
- * is taken back on the same board, or end the level as usual. Back or a tap outside never decides
- * for the player; only the two buttons do. Hosts own the ad and what either answer does.
+ * The one second chance an attempt gets: at its third mistake watch a rewarded ad and one mistake is
+ * taken back on the same board (2048: its losing move is taken back), or end the level as usual. Back
+ * or a tap outside never decides for the player; only the two buttons do. Hosts own the ad and what
+ * either answer does.
  */
 @Composable
 fun ContinueOfferDialog(
@@ -54,6 +63,7 @@ fun ContinueOfferDialog(
     onWatch: () -> Unit,
     onRetry: () -> Unit,
     onDecline: () -> Unit,
+    kind: ContinueOfferKind = ContinueOfferKind.THIRD_MISTAKE,
 ) {
     val colors = MaterialTheme.colorScheme
     Dialog(
@@ -68,12 +78,22 @@ fun ContinueOfferDialog(
             ) {
                 StateArtworkImage(StateArtwork.SECOND_CHANCE, size = STATE_ARTWORK_DIALOG_SIZE)
                 Text(
-                    stringResource(Res.string.second_chance_title),
+                    stringResource(
+                        when (kind) {
+                            ContinueOfferKind.THIRD_MISTAKE -> Res.string.second_chance_title
+                            ContinueOfferKind.UNDO_LAST_MOVE -> Res.string.game_2048_undo_offer_title
+                        },
+                    ),
                     style = MaterialTheme.typography.titleLarge,
                     textAlign = TextAlign.Center,
                 )
                 Text(
-                    stringResource(Res.string.second_chance_body),
+                    stringResource(
+                        when (kind) {
+                            ContinueOfferKind.THIRD_MISTAKE -> Res.string.second_chance_body
+                            ContinueOfferKind.UNDO_LAST_MOVE -> Res.string.game_2048_undo_offer_body
+                        },
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.onSurfaceVariant,
                     textAlign = TextAlign.Center,

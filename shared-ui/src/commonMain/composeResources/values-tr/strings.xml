@@ -397,6 +397,8 @@
     <string name="second_chance_unavailable">Şu anda reklam yok</string>
     <string name="second_chance_retry">Tekrar dene</string>
     <string name="second_chance_decline">Seviyeyi bitir</string>
+    <string name="game_2048_undo_offer_title">Hamle kalmadı</string>
+    <string name="game_2048_undo_offer_body">Kısa bir reklam izleyin, son hamleniz geri alınsın ve oyuna devam edin. Bu şans her denemede bir kez verilir.</string>
     <string name="login_gift_title">Günlük giriş hediyesi</string>
     <string name="login_gift_day">Gün %1$d / %2$d</string>
     <string name="quests_title">Günlük görevler</string>

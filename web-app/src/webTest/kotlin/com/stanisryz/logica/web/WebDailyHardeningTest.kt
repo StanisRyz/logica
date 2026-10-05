@@ -335,6 +335,8 @@ class WebDailyHardeningTest {
             advanceUntilIdle()
 
             failedController.move(Game2048Direction.LEFT)
+            // The dead end before the target first offers the ad-paid undo; declining records FAILED.
+            failedController.declineUndoOffer()
             val failedSaved = assertIs<WebDailyCompletionState.Saved>(failedController.dailyCompletionState)
             assertEquals(WebStatisticsTerminalOutcome.FAILED, failedSaved.outcome)
             assertTrue(game2048Facts(failedRepository).failedSeen)

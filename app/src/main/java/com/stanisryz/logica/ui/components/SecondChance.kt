@@ -26,6 +26,7 @@ internal val LocalSecondChancePending = staticCompositionLocalOf { false }
 internal fun SecondChanceDialog(
     onContinue: () -> Unit,
     onDecline: () -> Unit,
+    kind: ContinueOfferKind = ContinueOfferKind.THIRD_MISTAKE,
 ) {
     val ad = LocalSecondChanceAd.current
     DisposableEffect(ad?.setVisible) {
@@ -42,5 +43,6 @@ internal fun SecondChanceDialog(
         onWatch = { ad?.watch?.invoke(onContinue) },
         onRetry = { ad?.retry?.invoke() },
         onDecline = onDecline,
+        kind = kind,
     )
 }

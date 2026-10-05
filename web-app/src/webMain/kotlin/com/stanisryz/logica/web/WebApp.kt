@@ -90,6 +90,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.profile_page_rating_ti
 import com.stanisryz.logica.ui.balance.BalanceGameContent
 import com.stanisryz.logica.ui.blocksudoku.BlockSudokuContent
 import com.stanisryz.logica.ui.components.ContinueGameCard
+import com.stanisryz.logica.ui.components.ContinueOfferKind
 import com.stanisryz.logica.ui.components.DailyRewardsCard
 import com.stanisryz.logica.ui.components.DifficultySelector
 import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
@@ -2335,7 +2336,8 @@ private fun PlayingGame2048Content(
             puzzleType = PuzzleType.GAME_2048,
             isDaily = state.source.isDaily,
             hasMeaningfulProgress =
-                !state.finishedByPlayer &&
+                controller.undoOffered ||
+                    !state.finishedByPlayer &&
                     state.game.hasMeaningfulProgress(
                         levelCleared = !state.source.isDaily && state.game.goalReached,
                         completionSaved = controller.completionState is WebCatalogCompletionState.Saved,
@@ -2368,10 +2370,18 @@ private fun PlayingGame2048Content(
         )
     }
 
+    // A dead end before the target first offers to take the losing move back for an ad, once per attempt.
+    if (controller.undoOffered) {
+        WebSecondChanceDialog(
+            onContinue = controller::undoLosingMoveAfterAd,
+            onDecline = controller::declineUndoOffer,
+            kind = ContinueOfferKind.UNDO_LAST_MOVE,
+        )
+    }
     if (state.source.isDaily) {
         WebDailyOrdinaryTerminalDialog(
             puzzleType = PuzzleType.GAME_2048,
-            visible = state.isOver && state.motionTrace == null,
+            visible = state.isOver && state.motionTrace == null && !controller.undoOffered,
             difficulty = state.source.difficulty,
             solved = state.game.goalReached,
             scoreDetail = stringResource(WebRes.string.web_score_final, formatGame2048Number(state.game.score)),
@@ -2382,7 +2392,7 @@ private fun PlayingGame2048Content(
         )
     } else {
         Web2048CatalogTerminalDialog(
-            visible = state.isOver && state.motionTrace == null,
+            visible = state.isOver && state.motionTrace == null && !controller.undoOffered,
             difficulty = state.source.difficulty,
             levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
             goalReached = state.game.goalReached,

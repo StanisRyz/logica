@@ -166,8 +166,10 @@ class WebDailyGame2048ControllerTest {
                     .getValue(today)
             assertFalse(recordBeforeGameOver.facts(PuzzleType.GAME_2048).solved)
 
-            // The later real game over with the goal reached records exactly one SOLVED, once.
+            // The later real game over with the goal reached records exactly one SOLVED, once, and a
+            // dead end after the target is a solve, so no undo is offered.
             controller.move(Game2048Direction.LEFT)
+            assertFalse(controller.undoOffered)
             assertEquals(listOf(WebStatisticsTerminalOutcome.SOLVED), statistics.outcomes)
             assertTrue(
                 repository.snapshot.value.days
@@ -226,6 +228,10 @@ class WebDailyGame2048ControllerTest {
 
             failedController.move(Game2048Direction.LEFT)
             failedController.finishMotion(assertNotNull((failedController.state as Web2048State.Playing).motionRevision))
+            // A Daily dead end before the target offers the ad-paid undo first; declining records FAILED.
+            assertTrue(failedController.undoOffered)
+            assertEquals(emptyList(), failedStatistics.outcomes)
+            failedController.declineUndoOffer()
             assertEquals(listOf(WebStatisticsTerminalOutcome.FAILED), failedStatistics.outcomes)
             val recordAfterBoth =
                 failedRepository.snapshot.value.days
