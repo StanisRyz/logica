@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -48,9 +49,13 @@ internal class RoomDailyChallengeRepository(
                             command.reply.complete(runCatchingCancellable { createRunNow(command.definition) })
                     }
                 } catch (cancellation: CancellationException) {
-                    // The repository is shutting down: the caller is told so instead of waiting forever.
-                    command.reply.cancel(cancellation)
-                    throw cancellation
+                    if (!isActive) {
+                        // The repository is shutting down: the caller is told so instead of waiting forever.
+                        command.reply.cancel(cancellation)
+                        throw cancellation
+                    }
+                    // Only some inner work was cancelled: this command fails, the loop keeps serving.
+                    command.reply.completeExceptionally(IllegalStateException("The Daily command was cancelled.", cancellation))
                 }
             }
         }
