@@ -45,7 +45,7 @@
 | 7.2 | tasks/stage-07-2-contrast-states.md | принята (17880bf…a7b4dc5), CI зелёный; скриншоты в reports/img/stage-07-2 |
 | 7.3 | tasks/stage-07-3-text-layout-a11y.md | принята (2e14bf3…83809e8); CI: задача android не получила раннер (сбой GitHub), архитектор прогнал `:app:testDebugUnitTest :app:lintRelease` локально — зелёно |
 | 8.1 | tasks/stage-08-1-web-performance.md | принята (95e5f09, 8cddea4, 85842c7), кроме шрифта: подмножество потеряло дополнительную кириллицу → 8.1a |
-| 8.1a | tasks/stage-08-1a-font-subset-coverage.md | выдана |
+| 8.1a | tasks/stage-08-1a-font-subset-coverage.md | принята (65b5a51), CI зелёный; архитектор проверил fontTools: дополнительная кириллица 86/86, ни одного потерянного знака латиницы и кириллицы |
 | 8.2 | tasks/stage-08-2-refactor.md | принята (6e6f7d4…44b8e90), CI зелёный (37374156842) |
 
 
