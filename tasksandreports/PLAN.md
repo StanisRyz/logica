@@ -34,5 +34,6 @@
 | 2.2a | tasks/stage-02-2a-web-clock-cloud-timeouts.md | принята (c3b22e9, 6f69871); SDK `serverTime()` монотонный, своё время не вводим |
 | 3 | tasks/stage-03-android-release.md | принята (ac71986…ae0bd8c); ручная проверка release с RuStore — за владельцем (раздел 6 отчёта) |
 | 4.1 | tasks/stage-04-1-ci-migrations-golden.md | принята (85dbd40…503b9b6), CI зелёный; найдена P0 Crowns на Android 8–14 |
-| 4.2 | tasks/stage-04-2-p0-crowns-single-rules.md | выдана (п. 0 — P0) |
+| 4.2 | tasks/stage-04-2-p0-crowns-single-rules.md | принята (cc0ded5…3fde1be), CI зелёный, dex-проверка в CI |
+| 5.1 | tasks/stage-05-1-controls-small-bugs.md | выдана |
 
