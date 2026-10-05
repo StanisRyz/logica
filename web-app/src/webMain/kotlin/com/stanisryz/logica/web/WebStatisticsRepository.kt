@@ -37,6 +37,18 @@ internal class WebInstallationIdProvider(
         cached = created
         return created
     }
+
+    /**
+     * Replaces this browser's installation ID with a fresh one: used when another device folded the
+     * current component into the statistics archive, so new plays never land in a dropped component.
+     */
+    fun rotate(): String {
+        val created = generate()
+        require(WebInstallationId.isValid(created)) { "Generated an invalid Web installation ID." }
+        runCatching { store.save(created) }
+        cached = created
+        return created
+    }
 }
 
 private object BrowserInstallationIdStore : WebInstallationIdStore {
@@ -133,12 +145,21 @@ internal sealed interface WebStatisticsRecordResult {
     ) : WebStatisticsRecordResult
 }
 
-/** Current-scope durable statistics, updated only in this installation's monotonic component. */
+/**
+ * Current-scope durable statistics, updated only in this installation's monotonic component, which
+ * appears with the first recorded terminal attempt. Snapshots this repository writes are compacted
+ * ([WebStatisticsCompaction]); if a merge brings an archive that folded this installation's own id,
+ * the installation moves to a fresh id ([rotateInstallationId]) so its next plays are counted.
+ */
 internal class WebStatisticsRepository(
     val scope: WebCatalogProgressScope,
-    val installationId: String,
+    installationId: String,
     private val localStore: WebStatisticsStore,
+    private val rotateInstallationId: () -> String = ::randomInstallationId,
 ) {
+    var installationId: String = installationId
+        private set
+
     init {
         require(WebInstallationId.isValid(installationId))
     }
@@ -149,19 +170,11 @@ internal class WebStatisticsRepository(
     /** Invoked after every successful durable local mutation; never after a cloud merge. */
     var onDurableChange: (() -> Unit)? = null
 
+    /** Loads without adding anything: this installation's component appears with its first attempt. */
     fun loadLocal(): WebStatisticsSnapshot {
         val loaded = localStore.load()
-        val initialized =
-            if (installationId in loaded.components) {
-                loaded
-            } else {
-                loaded.copy(
-                    components = loaded.components + (installationId to WebStatisticsDeviceComponent()),
-                )
-            }
-        if (initialized != loaded) localStore.save(initialized)
-        mutableSnapshot.value = initialized
-        return initialized
+        mutableSnapshot.value = loaded
+        return loaded
     }
 
     fun aggregate(): WebStatisticsAggregate = WebStatisticsAggregator.aggregate(mutableSnapshot.value)
@@ -170,10 +183,8 @@ internal class WebStatisticsRepository(
         val updated =
             runCatching {
                 val current = mutableSnapshot.value
-                val component =
-                    requireNotNull(current.components[installationId]) {
-                        "The current Web installation component has not been initialized."
-                    }
+                // The first terminal attempt of this installation creates its component.
+                val component = current.components[installationId] ?: WebStatisticsDeviceComponent()
                 val bucket = WebStatisticsBucket(result.puzzleType, result.difficulty)
                 val counters = component.buckets[bucket] ?: WebStatisticsCounters()
                 val wordAttemptIncrement = result.wordAttemptsUsed?.let { mapOf(it to 1L) } ?: emptyMap()
@@ -189,7 +200,10 @@ internal class WebStatisticsRepository(
                     WebStatisticsDeviceComponent(
                         component.buckets + (bucket to counters.addChecked(increment)),
                     )
-                current.copy(components = current.components + (installationId to updatedComponent))
+                WebStatisticsCompaction.compact(
+                    current.copy(components = current.components + (installationId to updatedComponent)),
+                    protectedId = installationId,
+                )
             }.getOrElse { return WebStatisticsRecordResult.Rejected(it) }
 
         runCatching {
@@ -205,8 +219,12 @@ internal class WebStatisticsRepository(
     fun mergeCloud(cloud: WebStatisticsSnapshot): WebStatisticsMergeResult {
         val local = mutableSnapshot.value
         val merged =
-            runCatching { WebStatisticsMerger.merge(local, cloud) }
-                .getOrElse { return WebStatisticsMergeResult.Invalid }
+            runCatching {
+                val union = WebStatisticsMerger.merge(local, cloud)
+                // Another device folded this installation's component: continue under a fresh id.
+                if (installationId in union.archive.foldedIds) installationId = rotateInstallationId()
+                WebStatisticsCompaction.compact(union, protectedId = installationId)
+            }.getOrElse { return WebStatisticsMergeResult.Invalid }
         if (merged != local) {
             runCatching { localStore.save(merged) }
                 .exceptionOrNull()

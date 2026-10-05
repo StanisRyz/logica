@@ -78,20 +78,47 @@ internal data class WebStatisticsDeviceComponent(
     }
 }
 
-/** Versioned Web-only statistics. Map keys are stable browser-installation component IDs. */
+/**
+ * The sums of device components folded away to keep the section small, plus the ids folded into
+ * them. A component whose id is folded is dropped by every merge, so no play is counted twice; two
+ * archives merge by per-counter maximum, which may undercount but never double-counts.
+ */
+internal data class WebStatisticsArchive(
+    val totals: WebStatisticsDeviceComponent = WebStatisticsDeviceComponent(),
+    val foldedIds: Set<String> = emptySet(),
+) {
+    init {
+        require(foldedIds.all(WebInstallationId::isValid)) { "Invalid folded Web statistics device ID." }
+    }
+
+    val isEmpty: Boolean
+        get() = totals.buckets.isEmpty() && foldedIds.isEmpty()
+
+    companion object {
+        val EMPTY = WebStatisticsArchive()
+    }
+}
+
+/**
+ * Versioned Web-only statistics. Map keys are stable browser-installation component IDs; a
+ * component appears only once its installation records a terminal attempt.
+ */
 internal data class WebStatisticsSnapshot(
     val schemaVersion: Int = CURRENT_SCHEMA_VERSION,
     val components: Map<String, WebStatisticsDeviceComponent> = emptyMap(),
+    val archive: WebStatisticsArchive = WebStatisticsArchive.EMPTY,
 ) {
     init {
         require(schemaVersion == CURRENT_SCHEMA_VERSION) { "Unsupported Web statistics schema $schemaVersion." }
         require(components.size <= MAX_DEVICE_COMPONENTS) { "Too many Web statistics device components." }
         require(components.keys.all(WebInstallationId::isValid)) { "Invalid Web statistics device ID." }
+        require(components.keys.none { it in archive.foldedIds }) { "A folded Web statistics component is still present." }
         WebStatisticsAggregator.aggregate(this).totals()
     }
 
     companion object {
-        const val CURRENT_SCHEMA_VERSION = 1
+        /** Schema 2 adds the archive; a snapshot without one is still written as schema 1. */
+        const val CURRENT_SCHEMA_VERSION = 2
         const val MAX_DEVICE_COMPONENTS = WebStatisticsPayloadLimits.MAX_DEVICE_COMPONENTS
         val EMPTY = WebStatisticsSnapshot()
     }
@@ -115,7 +142,7 @@ internal data class WebStatisticsAggregate(
 internal object WebStatisticsAggregator {
     fun aggregate(snapshot: WebStatisticsSnapshot): WebStatisticsAggregate {
         val totals = linkedMapOf<WebStatisticsBucket, WebStatisticsCounters>()
-        snapshot.components.values.forEach { component ->
+        (snapshot.components.values + snapshot.archive.totals).forEach { component ->
             component.buckets.forEach { (bucket, counters) ->
                 totals[bucket] = (totals[bucket] ?: WebStatisticsCounters()).addChecked(counters)
             }
@@ -129,8 +156,10 @@ internal object WebStatisticsMerger {
         local: WebStatisticsSnapshot,
         cloud: WebStatisticsSnapshot,
     ): WebStatisticsSnapshot {
+        // Folded ids union; their components are already counted in an archive and are dropped.
+        val folded = local.archive.foldedIds + cloud.archive.foldedIds
         val components = linkedMapOf<String, WebStatisticsDeviceComponent>()
-        (local.components.keys + cloud.components.keys).sorted().forEach { deviceId ->
+        (local.components.keys + cloud.components.keys).filterNot { it in folded }.sorted().forEach { deviceId ->
             val localComponent = local.components[deviceId]
             val cloudComponent = cloud.components[deviceId]
             components[deviceId] =
@@ -140,7 +169,12 @@ internal object WebStatisticsMerger {
                     else -> mergeComponent(localComponent, cloudComponent)
                 }
         }
-        return WebStatisticsSnapshot(components = components)
+        val archive =
+            WebStatisticsArchive(
+                totals = mergeComponent(local.archive.totals, cloud.archive.totals),
+                foldedIds = folded,
+            )
+        return WebStatisticsSnapshot(components = components, archive = archive)
     }
 
     private fun mergeComponent(
@@ -164,7 +198,60 @@ internal object WebStatisticsMerger {
     }
 }
 
-/** Compact deterministic binary format. All lifetime counters are signed-safe 64-bit values. */
+/**
+ * Keeps the section small: beyond [MAX_ACTIVE_COMPONENTS] components the ones with the fewest plays
+ * are folded into the archive (their sums added, their ids remembered). The current installation's
+ * own component is never folded, and folding stops once the folded ids reach their byte budget.
+ */
+internal object WebStatisticsCompaction {
+    /** With the archive and id budgets this keeps every section this build writes below ~40 KB. */
+    const val MAX_ACTIVE_COMPONENTS = 12
+
+    /** Bytes the folded ids may take in the payload (2-byte length plus the id each). */
+    const val MAX_FOLDED_ID_BYTES = 8 * 1024
+
+    fun compact(
+        snapshot: WebStatisticsSnapshot,
+        protectedId: String,
+    ): WebStatisticsSnapshot {
+        val excess = snapshot.components.size - MAX_ACTIVE_COMPONENTS
+        if (excess <= 0) return snapshot
+        var idBytes = snapshot.archive.foldedIds.sumOf(::foldedIdBytes)
+        val candidates =
+            snapshot.components.entries
+                .filter { it.key != protectedId }
+                .sortedWith(compareBy({ played(it.value) }, { it.key }))
+        val folding = mutableListOf<String>()
+        for (candidate in candidates) {
+            if (folding.size == excess) break
+            val bytes = foldedIdBytes(candidate.key)
+            if (idBytes + bytes > MAX_FOLDED_ID_BYTES) break
+            idBytes += bytes
+            folding += candidate.key
+        }
+        if (folding.isEmpty()) return snapshot
+        val totals = LinkedHashMap(snapshot.archive.totals.buckets)
+        folding.forEach { id ->
+            snapshot.components.getValue(id).buckets.forEach { (bucket, counters) ->
+                totals[bucket] = (totals[bucket] ?: WebStatisticsCounters()).addChecked(counters)
+            }
+        }
+        return snapshot.copy(
+            components = snapshot.components - folding.toSet(),
+            archive = WebStatisticsArchive(WebStatisticsDeviceComponent(totals), snapshot.archive.foldedIds + folding),
+        )
+    }
+
+    private fun played(component: WebStatisticsDeviceComponent): Long = component.buckets.values.sumOf { it.played }
+
+    private fun foldedIdBytes(id: String): Int = Short.SIZE_BYTES + id.encodeToByteArray().size
+}
+
+/**
+ * Compact deterministic binary format. All lifetime counters are signed-safe 64-bit values. Schema 1
+ * is the components alone; schema 2 (written only when an archive exists) appends the archive's
+ * buckets and folded ids. Both decode.
+ */
 internal object WebStatisticsCodec {
     private val magic = byteArrayOf('L'.code.toByte(), 'G'.code.toByte(), 'S'.code.toByte(), 'T'.code.toByte())
     private const val HEADER_SIZE = WebStatisticsPayloadLimits.HEADER_SIZE
@@ -172,19 +259,32 @@ internal object WebStatisticsCodec {
     private const val BUCKET_SIZE = WebStatisticsPayloadLimits.BUCKET_SIZE
     internal const val MAX_PAYLOAD_SIZE = WebStatisticsPayloadLimits.MAX_RAW_PAYLOAD_SIZE
 
+    /** The encoded size of [snapshot] in bytes. */
+    fun encodedSize(snapshot: WebStatisticsSnapshot): Long {
+        val archiveSize =
+            if (snapshot.archive.isEmpty) {
+                0L
+            } else {
+                Int.SIZE_BYTES.toLong() + snapshot.archive.totals.buckets.size
+                    .toLong() * BUCKET_SIZE +
+                    Int.SIZE_BYTES + snapshot.archive.foldedIds.sumOf { Short.SIZE_BYTES + it.encodeToByteArray().size }
+            }
+        return HEADER_SIZE.toLong() +
+            snapshot.components.entries.sumOf { (deviceId, component) ->
+                COMPONENT_HEADER_SIZE.toLong() +
+                    deviceId.encodeToByteArray().size +
+                    component.buckets.size.toLong() * BUCKET_SIZE
+            } + archiveSize
+    }
+
     fun encode(snapshot: WebStatisticsSnapshot): ByteArray {
         val components = snapshot.components.entries.sortedBy(Map.Entry<String, *>::key)
-        val size =
-            HEADER_SIZE.toLong() +
-                components.sumOf { (deviceId, component) ->
-                    COMPONENT_HEADER_SIZE.toLong() +
-                        deviceId.encodeToByteArray().size +
-                        component.buckets.size.toLong() * BUCKET_SIZE
-                }
+        val size = encodedSize(snapshot)
         require(size <= MAX_PAYLOAD_SIZE) { "Web statistics payload is too large." }
         val result = ByteArray(size.toInt())
         magic.copyInto(result)
-        writeInt(result, 4, snapshot.schemaVersion)
+        // Without an archive the payload stays schema 1, so older builds keep reading it.
+        writeInt(result, 4, if (snapshot.archive.isEmpty) LEGACY_SCHEMA_VERSION else WebStatisticsSnapshot.CURRENT_SCHEMA_VERSION)
         writeInt(result, 8, components.size)
         var offset = HEADER_SIZE
         components.forEach { (deviceId, component) ->
@@ -195,28 +295,54 @@ internal object WebStatisticsCodec {
             offset += encodedDeviceId.size
             writeInt(result, offset, component.buckets.size)
             offset += Int.SIZE_BYTES
-            component.buckets.entries
-                .sortedWith(compareBy({ puzzleCode(it.key.puzzleType) }, { difficultyCode(it.key.difficulty) }))
-                .forEach { (bucket, counters) ->
-                    result[offset++] = puzzleCode(bucket.puzzleType).toByte()
-                    result[offset++] = difficultyCode(bucket.difficulty).toByte()
-                    writeLong(result, offset, counters.played)
-                    offset += Long.SIZE_BYTES
-                    writeLong(result, offset, counters.solved)
-                    offset += Long.SIZE_BYTES
-                    writeLong(result, offset, counters.failed)
-                    offset += Long.SIZE_BYTES
-                    writeLong(result, offset, counters.hints)
-                    offset += Long.SIZE_BYTES
-                    for (attempt in 1..WordRules.MAXIMUM_ATTEMPTS) {
-                        writeLong(result, offset, counters.wordSolvedAttempts[attempt] ?: 0L)
-                        offset += Long.SIZE_BYTES
-                    }
-                }
+            offset = writeBuckets(result, offset, component.buckets)
+        }
+        if (!snapshot.archive.isEmpty) {
+            writeInt(result, offset, snapshot.archive.totals.buckets.size)
+            offset = writeBuckets(result, offset + Int.SIZE_BYTES, snapshot.archive.totals.buckets)
+            val folded = snapshot.archive.foldedIds.sorted()
+            writeInt(result, offset, folded.size)
+            offset += Int.SIZE_BYTES
+            folded.forEach { id ->
+                val encoded = id.encodeToByteArray()
+                writeUnsignedShort(result, offset, encoded.size)
+                offset += Short.SIZE_BYTES
+                encoded.copyInto(result, offset)
+                offset += encoded.size
+            }
         }
         check(offset == result.size)
         return result
     }
+
+    private fun writeBuckets(
+        result: ByteArray,
+        startOffset: Int,
+        buckets: Map<WebStatisticsBucket, WebStatisticsCounters>,
+    ): Int {
+        var offset = startOffset
+        buckets.entries
+            .sortedWith(compareBy({ puzzleCode(it.key.puzzleType) }, { difficultyCode(it.key.difficulty) }))
+            .forEach { (bucket, counters) ->
+                result[offset++] = puzzleCode(bucket.puzzleType).toByte()
+                result[offset++] = difficultyCode(bucket.difficulty).toByte()
+                writeLong(result, offset, counters.played)
+                offset += Long.SIZE_BYTES
+                writeLong(result, offset, counters.solved)
+                offset += Long.SIZE_BYTES
+                writeLong(result, offset, counters.failed)
+                offset += Long.SIZE_BYTES
+                writeLong(result, offset, counters.hints)
+                offset += Long.SIZE_BYTES
+                for (attempt in 1..WordRules.MAXIMUM_ATTEMPTS) {
+                    writeLong(result, offset, counters.wordSolvedAttempts[attempt] ?: 0L)
+                    offset += Long.SIZE_BYTES
+                }
+            }
+        return offset
+    }
+
+    private const val LEGACY_SCHEMA_VERSION = 1
 
     fun decode(payload: ByteArray): WebStatisticsSnapshot? =
         runCatching {
@@ -224,7 +350,7 @@ internal object WebStatisticsCodec {
             require(magic.indices.all { payload[it] == magic[it] })
             val reader = Reader(payload, magic.size)
             val schemaVersion = reader.readInt()
-            require(schemaVersion == WebStatisticsSnapshot.CURRENT_SCHEMA_VERSION)
+            require(schemaVersion == LEGACY_SCHEMA_VERSION || schemaVersion == WebStatisticsSnapshot.CURRENT_SCHEMA_VERSION)
             val componentCount = reader.readInt()
             require(componentCount in 0..WebStatisticsSnapshot.MAX_DEVICE_COMPONENTS)
             val components = linkedMapOf<String, WebStatisticsDeviceComponent>()
@@ -233,30 +359,47 @@ internal object WebStatisticsCodec {
                 require(deviceIdLength in WebInstallationId.MIN_LENGTH..WebInstallationId.MAX_LENGTH)
                 val deviceId = reader.readBytes(deviceIdLength).decodeToString()
                 require(WebInstallationId.isValid(deviceId))
-                val bucketCount = reader.readInt()
-                require(bucketCount in 0..WebStatisticsDeviceComponent.MAX_BUCKETS)
-                val buckets = linkedMapOf<WebStatisticsBucket, WebStatisticsCounters>()
-                repeat(bucketCount) {
-                    val bucket = WebStatisticsBucket(puzzleType(reader.readByte()), difficulty(reader.readByte()))
-                    val played = reader.readCounter()
-                    val solved = reader.readCounter()
-                    val failed = reader.readCounter()
-                    val hints = reader.readCounter()
-                    val attempts = linkedMapOf<Int, Long>()
-                    for (attempt in 1..WordRules.MAXIMUM_ATTEMPTS) {
-                        val count = reader.readCounter()
-                        if (count > 0L) attempts[attempt] = count
-                    }
-                    val counters = WebStatisticsCounters(played, solved, failed, hints, attempts)
-                    require(buckets.put(bucket, counters) == null) { "Duplicate Web statistics bucket." }
-                }
-                require(components.put(deviceId, WebStatisticsDeviceComponent(buckets)) == null) {
+                require(components.put(deviceId, readComponent(reader)) == null) {
                     "Duplicate Web statistics device component."
                 }
             }
+            var archive = WebStatisticsArchive.EMPTY
+            if (schemaVersion == WebStatisticsSnapshot.CURRENT_SCHEMA_VERSION) {
+                val totals = readComponent(reader)
+                val foldedCount = reader.readInt()
+                require(foldedCount in 0..MAX_PAYLOAD_SIZE / (Short.SIZE_BYTES + WebInstallationId.MIN_LENGTH))
+                val folded = linkedSetOf<String>()
+                repeat(foldedCount) {
+                    val length = reader.readUnsignedShort()
+                    require(length in WebInstallationId.MIN_LENGTH..WebInstallationId.MAX_LENGTH)
+                    require(folded.add(reader.readBytes(length).decodeToString())) { "Duplicate folded Web statistics ID." }
+                }
+                archive = WebStatisticsArchive(totals, folded)
+            }
             require(reader.isAtEnd)
-            WebStatisticsSnapshot(schemaVersion, components)
+            WebStatisticsSnapshot(components = components, archive = archive)
         }.getOrNull()
+
+    private fun readComponent(reader: Reader): WebStatisticsDeviceComponent {
+        val bucketCount = reader.readInt()
+        require(bucketCount in 0..WebStatisticsDeviceComponent.MAX_BUCKETS)
+        val buckets = linkedMapOf<WebStatisticsBucket, WebStatisticsCounters>()
+        repeat(bucketCount) {
+            val bucket = WebStatisticsBucket(puzzleType(reader.readByte()), difficulty(reader.readByte()))
+            val played = reader.readCounter()
+            val solved = reader.readCounter()
+            val failed = reader.readCounter()
+            val hints = reader.readCounter()
+            val attempts = linkedMapOf<Int, Long>()
+            for (attempt in 1..WordRules.MAXIMUM_ATTEMPTS) {
+                val count = reader.readCounter()
+                if (count > 0L) attempts[attempt] = count
+            }
+            val counters = WebStatisticsCounters(played, solved, failed, hints, attempts)
+            require(buckets.put(bucket, counters) == null) { "Duplicate Web statistics bucket." }
+        }
+        return WebStatisticsDeviceComponent(buckets)
+    }
 
     private class Reader(
         private val payload: ByteArray,

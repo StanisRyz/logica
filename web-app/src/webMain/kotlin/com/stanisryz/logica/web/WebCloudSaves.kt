@@ -321,17 +321,18 @@ internal class WebSaveManager(
     suspend fun persist(): Boolean {
         val generation = restoreGeneration
         val carried = carriedSections
+        // A section that cannot even encode (over its own limit) fails the write, never the caller.
         val sectionsById =
-            sections
-                .mapNotNull { section -> (section.export() ?: carried[section.id])?.let { section.id to it } }
-                .toMap()
+            runCatching {
+                sections
+                    .mapNotNull { section -> (section.export() ?: carried[section.id])?.let { section.id to it } }
+                    .toMap()
+            }.getOrElse { return false }
         if (sectionsById.isEmpty()) return false
         val data = SaveData(sections = sectionsById)
         // Payload safety: the Yandex Player data budget is finite and shared by all sections,
-        // carried-forward ones included.
-        require(WebSaveCodec.encode(data).size <= maxPayloadBytes) {
-            "Unified save payload exceeds the supported Player data budget."
-        }
+        // carried-forward ones included; an oversized envelope is a failed write (status ERROR).
+        if (WebSaveCodec.encode(data).size > maxPayloadBytes) return false
         val saved = runCatching { repository.save(data) }.getOrDefault(false)
         // The cache follows what this context last wrote, unless a newer restore began meanwhile.
         if (saved && restoreGeneration == generation) carriedSections = sectionsById

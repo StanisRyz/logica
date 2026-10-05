@@ -38,6 +38,7 @@ fun main() {
                 scope = scope,
                 installationId = installationIdProvider.getOrCreate(),
                 localStore = WebStatisticsLocalStore(scope),
+                rotateInstallationId = installationIdProvider::rotate,
             )
         }
     val dailyRepositoryFactory =
