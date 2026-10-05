@@ -82,6 +82,7 @@ internal class WebNonogramController(
     private var statisticsAttempt: WebStatisticsAttempt? = null
     private val completion = WebCatalogCompletionController(progression)
     private val dailyCompletion = WebDailyCompletionController(daily)
+    private val terminal = WebTerminalRecorder(PuzzleType.NONOGRAM, statistics, economy, completion, dailyCompletion)
     private val pictureGenerator = NonogramGeneratorV2()
 
     val dailyCompletionState: WebDailyCompletionState
@@ -362,39 +363,13 @@ internal class WebNonogramController(
     private fun recordTerminal(
         playing: WebNonogramState.Playing,
         updated: NonogramGameState,
-    ) {
-        val solved = updated.status == NonogramGameStatus.SOLVED
-        statisticsAttempt?.let {
-            statistics.recordTerminalResult(
-                attempt = it,
-                outcome = if (solved) WebStatisticsTerminalOutcome.SOLVED else WebStatisticsTerminalOutcome.FAILED,
-                hintsUsed = updated.hintsUsed,
-            )
-        }
-        when (val source = playing.source) {
-            is WebGameplaySource.CatalogLevel -> {
-                if (solved) completion.saveSolved(source.attempt, PuzzleStars.forMistakes(updated.mistakesUsed))
-                // A solve pays its earned gems (a replay only by raising an Expert level to three stars),
-                // a failure — replay or not — one life.
-                economy.recordTerminalResult(solved = solved, gemsEarned = if (solved) completion.gemsEarned else 0)
-            }
-            is WebGameplaySource.DailyChallenge -> {
-                dailyCompletion.saveTerminal(
-                    source.attempt,
-                    if (solved) WebStatisticsTerminalOutcome.SOLVED else WebStatisticsTerminalOutcome.FAILED,
-                )
-                economy.recordTerminalResult(
-                    solved = solved,
-                    gemsEarned =
-                        WebEconomyProcessor.dailyGemsFor(
-                            PuzzleType.NONOGRAM,
-                            source.difficulty,
-                            PuzzleStars.forMistakes(updated.mistakesUsed),
-                        ),
-                )
-            }
-        }
-    }
+    ) = terminal.record(
+        source = playing.source,
+        statisticsAttempt = statisticsAttempt,
+        solved = updated.status == NonogramGameStatus.SOLVED,
+        stars = PuzzleStars.forMistakes(updated.mistakesUsed),
+        hintsUsed = updated.hintsUsed,
+    )
 
     private fun resolveLevel(levelId: CatalogLevelId): CatalogLevelDefinition =
         when (val resolved = levelPack.resolve(levelId)) {

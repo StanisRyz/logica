@@ -104,6 +104,7 @@ internal class Web2048Controller(
     private val undoHistory = mutableListOf<Game2048State>()
     private val completion = WebCatalogCompletionController(progression)
     private val dailyCompletion = WebDailyCompletionController(daily)
+    private val terminal = WebTerminalRecorder(PuzzleType.GAME_2048, statistics, economy, completion, dailyCompletion)
 
     var state by mutableStateOf<Web2048State>(Web2048State.DifficultySelection)
         private set
@@ -305,21 +306,14 @@ internal class Web2048Controller(
         updated: Game2048State,
     ) {
         val firstGoalCrossing = !playing.game.goalReached && updated.goalReached
-        when (val source = playing.source) {
+        when (playing.source) {
             is WebGameplaySource.CatalogLevel -> {
+                // The first V2 target crossing is the Catalog result; a pre-target game over is the
+                // normal Catalog failure and costs one life.
                 if (firstGoalCrossing) {
-                    statisticsAttempt?.let {
-                        statistics.recordTerminalResult(it, WebStatisticsTerminalOutcome.SOLVED)
-                    }
-                    completion.saveSolved(source.attempt)
-                    // The first V2 target crossing is the Catalog result; it also feeds the wallet.
-                    economy.recordTerminalResult(solved = true, gemsEarned = completion.gemsEarned)
+                    terminal.record(playing.source, statisticsAttempt, solved = true)
                 } else if (!playing.game.status.isTerminal && updated.status == Game2048Status.FAILED) {
-                    statisticsAttempt?.let {
-                        statistics.recordTerminalResult(it, WebStatisticsTerminalOutcome.FAILED)
-                    }
-                    // A pre-target game over is the normal Catalog failure and costs one life.
-                    economy.recordTerminalResult(solved = false, gemsEarned = 0)
+                    terminal.record(playing.source, statisticsAttempt, solved = false)
                 }
             }
             is WebGameplaySource.DailyChallenge -> {
@@ -327,29 +321,7 @@ internal class Web2048Controller(
                 // (game over, or «Finish» after the target) resolves exactly one Daily and one
                 // Statistics result.
                 if (!playing.game.status.isTerminal && updated.status.isTerminal) {
-                    val outcome =
-                        if (updated.status == Game2048Status.SOLVED) {
-                            WebStatisticsTerminalOutcome.SOLVED
-                        } else {
-                            WebStatisticsTerminalOutcome.FAILED
-                        }
-                    statisticsAttempt?.let { statistics.recordTerminalResult(it, outcome) }
-                    dailyCompletion.saveTerminal(source.attempt, outcome)
-                    // A Daily result feeds the wallet like a Catalog one: a failure costs a life.
-                    val solved = outcome == WebStatisticsTerminalOutcome.SOLVED
-                    economy.recordTerminalResult(
-                        solved = solved,
-                        gemsEarned =
-                            if (solved) {
-                                WebEconomyProcessor.dailyGemsFor(
-                                    PuzzleType.GAME_2048,
-                                    source.difficulty,
-                                    stars = null,
-                                )
-                            } else {
-                                0
-                            },
-                    )
+                    terminal.record(playing.source, statisticsAttempt, solved = updated.status == Game2048Status.SOLVED)
                 }
             }
         }
@@ -408,13 +380,8 @@ internal class Web2048Controller(
         undoHistory.clear()
         state = playing.copy(finishedByPlayer = true)
         progression.publishBest2048()
-        val source = playing.source as? WebGameplaySource.DailyChallenge ?: return
-        statisticsAttempt?.let { statistics.recordTerminalResult(it, WebStatisticsTerminalOutcome.SOLVED) }
-        dailyCompletion.saveTerminal(source.attempt, WebStatisticsTerminalOutcome.SOLVED)
-        economy.recordTerminalResult(
-            solved = true,
-            gemsEarned = WebEconomyProcessor.dailyGemsFor(PuzzleType.GAME_2048, source.difficulty, stars = null),
-        )
+        if (playing.source !is WebGameplaySource.DailyChallenge) return
+        terminal.record(playing.source, statisticsAttempt, solved = true)
     }
 
     fun finishMotion(revision: Long) {

@@ -81,6 +81,7 @@ internal class WebWordController(
     private var statisticsAttempt: WebStatisticsAttempt? = null
     private val completion = WebCatalogCompletionController(progression)
     private val dailyCompletion = WebDailyCompletionController(daily)
+    private val terminal = WebTerminalRecorder(PuzzleType.WORD, statistics, economy, completion, dailyCompletion)
 
     var state by mutableStateOf<WebWordState>(WebWordState.DifficultySelection)
         private set
@@ -257,49 +258,17 @@ internal class WebWordController(
                         state = updated
                         if (!playing.game.isFinished && updated.game.isFinished) {
                             val solved = updated.game.status == WordGameStatus.SOLVED
-                            val outcome =
-                                if (solved) WebStatisticsTerminalOutcome.SOLVED else WebStatisticsTerminalOutcome.FAILED
                             // Terminal persistence happens here immediately — it never waits for
                             // the reveal animation, and the reveal is never shortened by it.
-                            val wordAttemptsUsed =
-                                updated.game.attempts.size
-                                    .takeIf { solved }
-                            statisticsAttempt?.let {
-                                statistics.recordTerminalResult(
-                                    attempt = it,
-                                    outcome = outcome,
-                                    wordAttemptsUsed = wordAttemptsUsed,
-                                )
-                            }
-                            when (val source = playing.source) {
-                                is WebGameplaySource.CatalogLevel -> {
-                                    // Daily never advances Catalog progression; Catalog completion stays here only.
-                                    if (solved) {
-                                        completion.saveSolved(
-                                            source.attempt,
-                                            PuzzleStars.forWordAttempts(updated.game.attempts.size),
-                                        )
-                                    }
-                                    // Catalog terminals feed the wallet.
-                                    economy.recordTerminalResult(
-                                        solved = solved,
-                                        gemsEarned = if (solved) completion.gemsEarned else 0,
-                                    )
-                                }
-                                is WebGameplaySource.DailyChallenge -> {
-                                    dailyCompletion.saveTerminal(source.attempt, outcome, wordAttemptsUsed)
-                                    // A Daily result feeds the wallet like a Catalog one: a failure costs a life.
-                                    economy.recordTerminalResult(
-                                        solved = solved,
-                                        gemsEarned =
-                                            WebEconomyProcessor.dailyGemsFor(
-                                                PuzzleType.WORD,
-                                                source.difficulty,
-                                                PuzzleStars.forWordAttempts(updated.game.attempts.size),
-                                            ),
-                                    )
-                                }
-                            }
+                            terminal.record(
+                                source = playing.source,
+                                statisticsAttempt = statisticsAttempt,
+                                solved = solved,
+                                stars = PuzzleStars.forWordAttempts(updated.game.attempts.size),
+                                wordAttemptsUsed =
+                                    updated.game.attempts.size
+                                        .takeIf { solved },
+                            )
                         }
                     }
         }

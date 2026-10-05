@@ -70,6 +70,7 @@ internal class WebBlockSudokuController(
     private var statisticsAttempt: WebStatisticsAttempt? = null
     private val completion = WebCatalogCompletionController(progression)
     private val dailyCompletion = WebDailyCompletionController(daily)
+    private val terminal = WebTerminalRecorder(PuzzleType.BLOCK_SUDOKU, statistics, economy, completion, dailyCompletion)
 
     var state by mutableStateOf<WebBlockSudokuState>(WebBlockSudokuState.DifficultySelection)
         private set
@@ -239,30 +240,11 @@ internal class WebBlockSudokuController(
     private fun recordTerminal(
         playing: WebBlockSudokuState.Playing,
         updated: BlockSudokuState,
-    ) {
-        val solved = updated.status == BlockSudokuStatus.SOLVED
-        statisticsAttempt?.let {
-            statistics.recordTerminalResult(
-                attempt = it,
-                outcome = if (solved) WebStatisticsTerminalOutcome.SOLVED else WebStatisticsTerminalOutcome.FAILED,
-            )
-        }
-        when (val source = playing.source) {
-            is WebGameplaySource.CatalogLevel -> if (solved) completion.saveSolved(source.attempt)
-            is WebGameplaySource.DailyChallenge ->
-                dailyCompletion.saveTerminal(
-                    source.attempt,
-                    if (solved) WebStatisticsTerminalOutcome.SOLVED else WebStatisticsTerminalOutcome.FAILED,
-                )
-        }
-        val gemsEarned =
-            when {
-                !solved -> 0
-                playing.source is WebGameplaySource.CatalogLevel -> completion.gemsEarned
-                else -> WebEconomyProcessor.dailyGemsFor(PuzzleType.BLOCK_SUDOKU, playing.source.difficulty, stars = null)
-            }
-        economy.recordTerminalResult(solved = solved, gemsEarned = gemsEarned)
-    }
+    ) = terminal.record(
+        source = playing.source,
+        statisticsAttempt = statisticsAttempt,
+        solved = updated.status == BlockSudokuStatus.SOLVED,
+    )
 
     private fun resolveLevel(levelId: CatalogLevelId): CatalogLevelDefinition =
         when (val resolved = levelPack.resolve(levelId)) {

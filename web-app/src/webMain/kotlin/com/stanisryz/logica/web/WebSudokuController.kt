@@ -93,6 +93,7 @@ internal class WebSudokuController(
     private val undoHistory = mutableStateListOf<UndoFrame>()
     private val completion = WebCatalogCompletionController(progression)
     private val dailyCompletion = WebDailyCompletionController(daily)
+    private val terminal = WebTerminalRecorder(PuzzleType.SUDOKU, statistics, economy, completion, dailyCompletion)
 
     var state by mutableStateOf<WebSudokuState>(WebSudokuState.DifficultySelection)
         private set
@@ -532,48 +533,13 @@ internal class WebSudokuController(
     private fun recordTerminal(
         playing: WebSudokuState.Playing,
         updated: SudokuGameState,
-    ) {
-        val outcome =
-            if (updated.status == SudokuGameStatus.SOLVED) {
-                WebStatisticsTerminalOutcome.SOLVED
-            } else {
-                WebStatisticsTerminalOutcome.FAILED
-            }
-        statisticsAttempt?.let {
-            statistics.recordTerminalResult(
-                attempt = it,
-                outcome = outcome,
-                hintsUsed = updated.hintsUsed,
-            )
-        }
-        when (val source = playing.source) {
-            is WebGameplaySource.CatalogLevel -> {
-                // Daily never advances Catalog progression; Catalog completion stays here only.
-                if (updated.status ==
-                    SudokuGameStatus.SOLVED
-                ) {
-                    completion.saveSolved(source.attempt, PuzzleStars.forMistakes(updated.mistakesUsed))
-                }
-                // Catalog terminals feed the wallet: a solve its earned gems (a replay only by raising an
-                // Expert level to three stars), a failure — replay or not — one life.
-                val solved = updated.status == SudokuGameStatus.SOLVED
-                economy.recordTerminalResult(solved = solved, gemsEarned = if (solved) completion.gemsEarned else 0)
-            }
-            is WebGameplaySource.DailyChallenge -> {
-                dailyCompletion.saveTerminal(source.attempt, outcome)
-                // A Daily result feeds the wallet like a Catalog one: a failure costs a life.
-                economy.recordTerminalResult(
-                    solved = outcome == WebStatisticsTerminalOutcome.SOLVED,
-                    gemsEarned =
-                        WebEconomyProcessor.dailyGemsFor(
-                            PuzzleType.SUDOKU,
-                            source.difficulty,
-                            PuzzleStars.forMistakes(updated.mistakesUsed),
-                        ),
-                )
-            }
-        }
-    }
+    ) = terminal.record(
+        source = playing.source,
+        statisticsAttempt = statisticsAttempt,
+        solved = updated.status == SudokuGameStatus.SOLVED,
+        stars = PuzzleStars.forMistakes(updated.mistakesUsed),
+        hintsUsed = updated.hintsUsed,
+    )
 
     private fun resolveLevel(levelId: CatalogLevelId): CatalogLevelDefinition =
         when (val resolved = levelPack.resolve(levelId)) {
