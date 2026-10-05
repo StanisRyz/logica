@@ -106,7 +106,9 @@ android {
         release {
             buildConfigField("String", "REWARDED_AD_UNIT_ID", "\"$releaseRewardedAdUnitId\"")
             buildConfigField("String", "INTERSTITIAL_AD_UNIT_ID", "\"$releaseInterstitialAdUnitId\"")
-            isMinifyEnabled = false
+            // R8 drops the unused code (most of material-icons-extended) and then the unused resources.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
