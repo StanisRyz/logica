@@ -31,6 +31,6 @@
 | 1a | tasks/stage-01a-cloud-save-carry-forward.md | принята (c8f84fc); заодно исправлена старая ошибка: Store не восстанавливался из облака |
 | 2.1 | tasks/stage-02-1-web-tabs-journals-payments.md | принята (67901dd…aff5cd2) |
 | 2.2 | tasks/stage-02-2-web-time-stats-startup.md | принята (6bb7378…3eb7481) |
-| 2.2a | tasks/stage-02-2a-web-clock-cloud-timeouts.md | выдана |
-| 3 | tasks/stage-03-android-release.md | готова, выдать после 2.2a |
+| 2.2a | tasks/stage-02-2a-web-clock-cloud-timeouts.md | принята (c3b22e9, 6f69871); SDK `serverTime()` монотонный, своё время не вводим |
+| 3 | tasks/stage-03-android-release.md | выдана |
 
