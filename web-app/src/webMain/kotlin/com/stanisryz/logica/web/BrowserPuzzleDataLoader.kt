@@ -10,7 +10,6 @@ import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetVersion
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDifficulty
 import com.stanisryz.logica.puzzle.core.web.WebPuzzleData
 import org.khronos.webgl.ArrayBuffer
-import org.khronos.webgl.Uint8Array
 import kotlin.js.ExperimentalWasmJsInterop
 import kotlin.js.JsAny
 import kotlin.js.JsString
@@ -83,12 +82,5 @@ private external interface BrowserFetchResponse : JsAny {
 @JsName("fetch")
 private external fun browserFetch(resourcePath: String): Promise<BrowserFetchResponse>
 
-private fun ArrayBuffer.toByteArray(): ByteArray {
-    val source = Uint8Array(this)
-    return ByteArray(source.length) { index -> uint8ArrayByteAt(source, index).toByte() }
-}
-
-private fun uint8ArrayByteAt(
-    source: Uint8Array,
-    index: Int,
-): Int = js("source[index]")
+/** The fetched bytes in one block copy (Wasm) or none at all (JS), never one bridge call per byte. */
+internal expect fun ArrayBuffer.toByteArray(): ByteArray
