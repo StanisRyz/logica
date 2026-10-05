@@ -68,6 +68,8 @@ internal class WebBootstrapController(
         bridge.initialize(
             lifecycleListener = lifecycle,
             onReady = {
+                // Economy, rewards, and the Daily date run on the server-corrected clock.
+                webClock.synchronize(bridge.serverTimeMs())
                 // Read the real platform language once the SDK is initialized; unsupported or
                 // unexpected values resolve safely to the application default.
                 hostLanguage = resolveWebAppLanguage(bridge.platformLanguage())

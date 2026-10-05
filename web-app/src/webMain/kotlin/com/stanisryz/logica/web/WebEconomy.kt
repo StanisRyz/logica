@@ -401,7 +401,7 @@ internal class WebPlayerEconomyRepository(
     val scope: WebCatalogProgressScope,
     private val store: WebEconomyStore,
     private val revisions: WebPlayerStateRevisions = WebPlayerStateRevisions(),
-    private val currentTimeMs: () -> Long = ::currentTimeMillis,
+    private val currentTimeMs: () -> Long = webClock::now,
 ) {
     private val mutableState =
         MutableStateFlow(EconomyState(EconomyPolicy.STARTING_GEMS, EconomyPolicy.STARTING_LIVES, null))

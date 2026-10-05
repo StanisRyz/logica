@@ -1134,7 +1134,8 @@ private fun WebDailyRewardsRoute(
             epochDay = today,
             activity = rewards.activity(today, dailySolved),
             claimedQuests = rewards.claimedQuests(today),
-            lastGiftEpochDay = rewards.lastGiftDayOrNull,
+            // A clock moved back past the last claim shows the gift as claimed, which it is.
+            lastGiftEpochDay = rewards.lastGiftDayOrNull?.let { minOf(it, today) },
             lastGiftStreakDay = rewards.giftStreakDay,
         )
     DailyRewardsCard(

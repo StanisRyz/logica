@@ -36,15 +36,29 @@ internal data class WebDailyRewardsSnapshot(
             DailyQuestActivity(dailySolved = dailySolved)
         }
 
+    /**
+     * Today's claimed quests. A day earlier than the stored one (the clock went back) reads as all
+     * claimed: its rewards are unavailable rather than claimable again.
+     */
     fun claimedQuests(today: Long): Set<Int> =
-        if (epochDay == today) (0 until Int.SIZE_BITS).filter { claimedQuests and (1 shl it) != 0 }.toSet() else emptySet()
+        when {
+            epochDay == today -> (0 until Int.SIZE_BITS).filter { claimedQuests and (1 shl it) != 0 }.toSet()
+            today < epochDay -> (0 until Int.SIZE_BITS).toSet()
+            else -> emptySet()
+        }
+
+    /** False while [today] is earlier than the stored quest day: nothing of that day may be claimed or counted. */
+    fun acceptsDay(today: Long): Boolean = today >= epochDay
 
     val lastGiftDayOrNull: Long?
         get() = lastGiftEpochDay.takeIf { it != NO_DAY }
 
-    /** The same snapshot with its quest part rolled over to [today]. */
+    /**
+     * The same snapshot with its quest part rolled over to [today]. The quest day only moves
+     * forward: an earlier [today] (a clock moved back) resets nothing and returns this snapshot.
+     */
     fun on(today: Long): WebDailyRewardsSnapshot =
-        if (epochDay == today) this else copy(epochDay = today, played = 0, solvedByType = emptyMap(), solvedHard = 0, claimedQuests = 0)
+        if (today <= epochDay) this else copy(epochDay = today, played = 0, solvedByType = emptyMap(), solvedHard = 0, claimedQuests = 0)
 
     fun plus(
         today: Long,
@@ -52,6 +66,7 @@ internal data class WebDailyRewardsSnapshot(
         difficulty: Difficulty,
         solved: Boolean,
     ): WebDailyRewardsSnapshot {
+        if (!acceptsDay(today)) return this // an earlier day never counts toward the stored day
         val current = on(today)
         val activity =
             DailyQuestActivity(current.played, current.solvedByType, current.solvedHard)

@@ -19,16 +19,12 @@ internal fun interface WebDailyDateProvider {
     fun currentDate(): DailyDate
 }
 
-/** Browser-local calendar boundary; puzzle-core receives an explicit date and never reads the clock. */
+/**
+ * Browser-local calendar boundary on the server-corrected [webClock]; puzzle-core receives an
+ * explicit date and never reads the clock.
+ */
 internal object BrowserLocalWebDailyDateProvider : WebDailyDateProvider {
-    override fun currentDate(): DailyDate {
-        val encoded = browserLocalDateCode()
-        return DailyDate(
-            year = encoded / 10_000,
-            month = encoded / 100 % 100,
-            day = encoded % 100,
-        )
-    }
+    override fun currentDate(): DailyDate = webClock.currentDate()
 }
 
 internal enum class WebDailyEntryState {
@@ -286,23 +282,11 @@ private fun DailyChallengeDefinition.requirePuzzleBit(puzzleType: PuzzleType): I
     return WebDailyPuzzleOrder.bit(puzzleType)
 }
 
-/** Milliseconds until the next browser-local midnight, when the current Daily date changes. */
-internal fun millisUntilNextLocalMidnight(): Long = browserMillisUntilNextLocalMidnight().toLong()
+/** Milliseconds until the next browser-local midnight (on [webClock]), when the Daily date changes. */
+internal fun millisUntilNextLocalMidnight(): Long = webClock.millisUntilNextLocalMidnight()
 
 /** A short margin past midnight so the timer never wakes a moment before the date has changed. */
 internal const val MIDNIGHT_ROLLOVER_SLACK_MS = 1_000L
-
-private fun browserMillisUntilNextLocalMidnight(): Double =
-    js(
-        "(() => { const now = new Date(); " +
-            "return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime(); })()",
-    )
-
-private fun browserLocalDateCode(): Int =
-    js(
-        "(() => { const date = new Date(); " +
-            "return date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate(); })()",
-    )
 
 private fun dailyLocalStorageGet(key: String): String? = js("globalThis.localStorage.getItem(key)")
 

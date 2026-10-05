@@ -98,7 +98,7 @@ fun main() {
         WebStoreProcessor(
             economyRepository = { playerSession.economyRepository },
             storeRepository = { playerSession.storeRepository },
-            currentTimeMs = ::currentTimeMillis,
+            currentTimeMs = webClock::now,
             revisionsProvider = { playerSession.activeStateRevisions },
             transactionStoreProvider = { playerSession.purchaseTransactionStore },
         )

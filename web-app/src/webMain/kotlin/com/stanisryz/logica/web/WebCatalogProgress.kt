@@ -362,16 +362,20 @@ internal class WebCatalogProgressRepository(
         today: Long,
         index: Int,
     ): Boolean {
+        if (!mutableRewards.value.acceptsDay(today)) return false // a clock moved back claims nothing
         val current = mutableRewards.value.on(today)
         val bit = 1 shl index
         if (current.claimedQuests and bit != 0) return false
         return saveRewards(current.copy(claimedQuests = current.claimedQuests or bit))
     }
 
-    /** Claims [today]'s login gift once; returns its gems, or null when it was already claimed. */
+    /**
+     * Claims [today]'s login gift once; returns its gems, or null when it was already claimed. The
+     * gift day only moves forward, so switching the clock between two days never pays twice.
+     */
     fun claimLoginGift(today: Long): Int? {
         val current = mutableRewards.value
-        if (current.lastGiftEpochDay == today) return null
+        if (today <= current.lastGiftEpochDay) return null
         val day = LoginGift.streakDay(current.lastGiftDayOrNull, current.giftStreakDay, today)
         return if (saveRewards(current.copy(lastGiftEpochDay = today, giftStreakDay = day))) LoginGift.gemsFor(day) else null
     }

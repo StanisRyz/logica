@@ -73,7 +73,7 @@ internal fun WebLivesRegenerationEffect(
         while (true) {
             repository.refresh()
             val dueAt = repository.state.value.nextLifeRestoreAtEpochMs ?: break
-            delay((dueAt - currentTimeMillis()).coerceIn(MIN_REFRESH_DELAY_MS, EconomyPolicy.LIFE_RESTORE_INTERVAL_MS))
+            delay((dueAt - webClock.now()).coerceIn(MIN_REFRESH_DELAY_MS, EconomyPolicy.LIFE_RESTORE_INTERVAL_MS))
         }
     }
 }
@@ -153,15 +153,15 @@ internal fun WebNoLivesDialog(
     )
 }
 
-/** Wall-clock time that advances once per second while [ticking]; used only for countdown text. */
+/** [webClock] time that advances once per second while [ticking]; used only for countdown text. */
 @Composable
 internal fun rememberNowMs(ticking: Boolean): Long {
-    var now by remember { mutableLongStateOf(currentTimeMillis()) }
+    var now by remember { mutableLongStateOf(webClock.now()) }
     LaunchedEffect(ticking) {
-        now = currentTimeMillis()
+        now = webClock.now()
         while (ticking) {
             delay(COUNTDOWN_TICK_MS)
-            now = currentTimeMillis()
+            now = webClock.now()
         }
     }
     return now

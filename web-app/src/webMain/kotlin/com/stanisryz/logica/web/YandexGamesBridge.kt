@@ -59,6 +59,13 @@ internal class YandexGamesBridge :
      */
     fun platformLanguage(): String? = runCatching { sdk?.let(::sdkPlatformLanguage) }.getOrNull()
 
+    /** `ysdk.serverTime()` in epoch milliseconds; null when unavailable, not a number, or failing. */
+    fun serverTimeMs(): Long? =
+        runCatching { sdk?.let(::sdkServerTime) }
+            .getOrNull()
+            ?.takeIf { !it.isNaN() && it > 0.0 }
+            ?.toLong()
+
     fun initialize(
         lifecycleListener: YandexLifecycleListener,
         onReady: () -> Unit,
@@ -699,6 +706,11 @@ private fun isJsArray(value: JsAny): Boolean = js("Array.isArray(value)")
 private fun sdkPlatformLanguage(sdk: YandexSdk): String? =
     js(
         "typeof sdk.environment === 'object' && sdk.environment != null && typeof sdk.environment.i18n === 'object' && sdk.environment.i18n != null && typeof sdk.environment.i18n.lang === 'string' ? sdk.environment.i18n.lang : null",
+    )
+
+private fun sdkServerTime(sdk: YandexSdk): Double =
+    js(
+        "(() => { try { const t = typeof sdk.serverTime === 'function' ? sdk.serverTime() : NaN; return typeof t === 'number' ? t : NaN; } catch (e) { return NaN; } })()",
     )
 
 private fun paymentsOptions(): JsAny = js("({ signed: false })")
