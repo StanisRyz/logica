@@ -42,6 +42,9 @@ enum class PurchaseStatus {
     INSUFFICIENT_GEMS,
     UNKNOWN_ITEM,
     FAILED,
+
+    /** The purchase would take an inventory item past what the Player can hold; nothing started. */
+    INVENTORY_FULL,
 }
 
 sealed interface PurchaseResult {

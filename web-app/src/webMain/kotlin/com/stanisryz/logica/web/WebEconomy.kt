@@ -31,6 +31,12 @@ internal sealed interface WebExternalRestoreResult {
     data object Rejected : WebExternalRestoreResult
 }
 
+/** Adds [amount] gems to [gems], saturating at [EconomyPolicy.MAX_GEMS] instead of overflowing. */
+internal fun saturatedGems(
+    gems: Int,
+    amount: Int,
+): Int = (gems.toLong() + amount).coerceIn(0L, EconomyPolicy.MAX_GEMS.toLong()).toInt()
+
 /**
  * Versioned Player-scoped economy save model. Intentionally simple and migration-ready: a new
  * schema version can be introduced without infrastructure because every read validates the
@@ -103,8 +109,10 @@ internal object WebEconomyCodec {
             require(magic.indices.all { payload[it] == magic[it] })
             val version = payload[4].toInt() and 0xff
             require(version in 1..WebEconomySnapshot.CURRENT_VERSION)
-            val gems = readInt(payload, 5)
-            val lives = payload[9].toInt() and 0xff
+            // Values outside the wallet's invariants (a tampered or foreign payload) are clamped to the
+            // nearest bound instead of rejecting the whole snapshot.
+            val gems = readInt(payload, 5).coerceIn(0, EconomyPolicy.MAX_GEMS)
+            val lives = payload[9].toInt().coerceIn(0, EconomyPolicy.MAXIMUM_LIVES)
             val hasRestore = payload[10].toInt() != 0
             var restore = 0L
             if (hasRestore) {
@@ -307,7 +315,7 @@ internal object WebEconomyProcessor {
             if (reward == 0) {
                 state to listOf(EconomyEvent.GameCompleted)
             } else {
-                EconomyState(state.gems + reward, state.lives, state.nextLifeRestoreAtEpochMs) to
+                EconomyState(saturatedGems(state.gems, reward), state.lives, state.nextLifeRestoreAtEpochMs) to
                     listOf(EconomyEvent.GameCompleted, EconomyEvent.RewardGranted(EconomyRewardType.GEMS, reward))
             }
         } else {
@@ -435,7 +443,7 @@ internal class WebPlayerEconomyRepository(
     fun addGems(amount: Int): Boolean {
         if (amount <= 0) return false
         mutate { state, _ ->
-            EconomyState(state.gems + amount, state.lives, state.nextLifeRestoreAtEpochMs) to emptyList()
+            EconomyState(saturatedGems(state.gems, amount), state.lives, state.nextLifeRestoreAtEpochMs) to emptyList()
         }
         return true
     }
@@ -493,7 +501,7 @@ internal class WebPlayerEconomyRepository(
     /** Gems from a rewarded advertisement: one ordinary durable wallet mutation. */
     fun grantGems(amount: Int): Boolean {
         if (amount <= 0) return false
-        mutate { state, _ -> state.copy(gems = state.gems + amount) to emptyList() }
+        mutate { state, _ -> state.copy(gems = saturatedGems(state.gems, amount)) to emptyList() }
         return true
     }
 

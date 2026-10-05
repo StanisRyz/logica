@@ -17,6 +17,9 @@ import kotlinx.coroutines.flow.asStateFlow
 /** Inventory key of the only supported consumable in this foundation stage. */
 internal const val STORE_INVENTORY_HINTS = "hints"
 
+/** The Store codec keeps each inventory count in one byte, so no item can exceed this. */
+internal const val MAX_STORE_INVENTORY = 0xff
+
 /** History stays a compact bounded audit trail; older entries fall off the front. */
 internal const val STORE_HISTORY_LIMIT = 50
 
@@ -61,7 +64,7 @@ internal object WebStoreCodec {
 
     fun encode(snapshot: WebStoreSnapshot): ByteArray {
         val inventory = snapshot.inventory.entries.sortedBy { it.key }
-        require(inventory.all { it.key.length <= MAX_KEY_LENGTH && it.value in 1..0xff })
+        require(inventory.all { it.key.length <= MAX_KEY_LENGTH && it.value in 1..MAX_STORE_INVENTORY })
         val history = snapshot.history.take(STORE_HISTORY_LIMIT)
         require(history.all { it.itemId.length <= MAX_KEY_LENGTH })
 
@@ -266,7 +269,8 @@ internal class WebPlayerStoreRepository(
     ): Boolean {
         if (amount <= 0 || inventoryItemId.isBlank()) return false
         return mutate { snapshot ->
-            snapshot.copy(inventory = snapshot.inventory + (inventoryItemId to snapshot.quantityOf(inventoryItemId) + amount))
+            val quantity = (snapshot.quantityOf(inventoryItemId) + amount).coerceAtMost(MAX_STORE_INVENTORY)
+            snapshot.copy(inventory = snapshot.inventory + (inventoryItemId to quantity))
         }
     }
 
@@ -386,6 +390,14 @@ internal object WebStoreCatalog {
         )
 
     fun itemById(itemId: String): StoreItem? = ITEMS.firstOrNull { it.id == itemId }
+
+    /** False when buying [item] would take its inventory item past [MAX_STORE_INVENTORY]. */
+    fun fitsInventory(
+        item: StoreItem,
+        store: WebStoreSnapshot,
+    ): Boolean =
+        item.reward.type != StoreRewardType.HINTS ||
+            store.quantityOf(STORE_INVENTORY_HINTS) + item.reward.amount <= MAX_STORE_INVENTORY
 }
 
 /**
@@ -429,6 +441,10 @@ internal class WebStoreProcessor(
         val targetLives =
             when (item.reward.type) {
                 StoreRewardType.HINTS -> {
+                    // A pack that would overflow the stock never starts: no gems, no audit record.
+                    if (!WebStoreCatalog.fitsInventory(item, store.snapshot.value)) {
+                        return PurchaseResult.Failure(PurchaseStatus.INVENTORY_FULL, item, item.priceGems, currentEconomy.gems)
+                    }
                     inventoryItemId = STORE_INVENTORY_HINTS
                     granted = item.reward.amount
                     currentEconomy.lives

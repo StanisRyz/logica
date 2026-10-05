@@ -66,6 +66,7 @@
     <string name="web_ad_cooldown">Подождите немного перед следующей рекламой.</string>
     <string name="web_ad_offer">За просмотр короткой рекламы</string>
     <string name="web_lives_full">Жизни уже полные</string>
+    <string name="web_hints_full">Больше подсказок не поместится</string>
     <string name="web_purchase_insufficient">Недостаточно кристаллов: нужно %1$d, есть %2$d.</string>
     <string name="web_purchase_failed">Покупка не выполнена. Попробуйте ещё раз.</string>
     <string name="web_item_hint">Подсказка</string>

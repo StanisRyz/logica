@@ -66,6 +66,7 @@
     <string name="web_ad_cooldown">Sonraki reklamdan önce biraz bekle.</string>
     <string name="web_ad_offer">Kısa bir reklam izleyerek</string>
     <string name="web_lives_full">Canlar zaten dolu</string>
+    <string name="web_hints_full">Daha fazla ipucu sığmaz</string>
     <string name="web_purchase_insufficient">Yeterli elmas yok: %1$d gerekli, %2$d var.</string>
     <string name="web_purchase_failed">Satın alma başarısız. Lütfen tekrar dene.</string>
     <string name="web_item_hint">İpucu</string>

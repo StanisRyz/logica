@@ -66,6 +66,7 @@
     <string name="web_ad_cooldown">Please wait a moment before the next ad.</string>
     <string name="web_ad_offer">For watching a short ad</string>
     <string name="web_lives_full">Lives are already full</string>
+    <string name="web_hints_full">No room for more hints</string>
     <string name="web_purchase_insufficient">Not enough gems: %1$d needed, %2$d available.</string>
     <string name="web_purchase_failed">The purchase failed. Please try again.</string>
     <string name="web_item_hint">Hint</string>

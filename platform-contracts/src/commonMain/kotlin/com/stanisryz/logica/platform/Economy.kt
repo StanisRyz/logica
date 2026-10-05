@@ -19,6 +19,9 @@ data class EconomyState(
 object EconomyPolicy {
     /** A new player's welcome gift, the same as on Android. */
     const val STARTING_GEMS = 10
+
+    /** The largest gem balance a wallet keeps; additions saturate here instead of overflowing. */
+    const val MAX_GEMS = 1_000_000
     const val STARTING_LIVES = 5
     const val MAXIMUM_LIVES = 5
     const val FAILED_ATTEMPT_LIFE_COST = 1

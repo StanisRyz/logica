@@ -35,9 +35,6 @@ internal enum class WebPaidProduct(
     }
 }
 
-/** The Store codec keeps each inventory count in one byte. */
-private const val MAX_INVENTORY_COUNT = 0xff
-
 internal fun paidProductFor(yandexProductId: String): WebPaidProduct? =
     WebPaidProduct.entries.firstOrNull { it.yandexProductId == yandexProductId }
 
@@ -667,7 +664,7 @@ internal class WebPaymentsCoordinator(
         val currentEconomy = economy.currentSnapshot
         val targetEconomy =
             currentEconomy.copy(
-                gems = currentEconomy.gems + product.gemReward,
+                gems = saturatedGems(currentEconomy.gems, product.gemReward),
                 lives = if (product.refillsLives) EconomyPolicy.MAXIMUM_LIVES else currentEconomy.lives,
                 nextLifeRestoreAtEpochMs = if (product.refillsLives) null else currentEconomy.nextLifeRestoreAtEpochMs,
                 revision = revision,
@@ -675,7 +672,7 @@ internal class WebPaymentsCoordinator(
         val previousStore = store?.snapshot?.value
         val targetStore =
             previousStore?.let { current ->
-                val hints = ((current.inventory[STORE_INVENTORY_HINTS] ?: 0) + product.hintReward).coerceAtMost(MAX_INVENTORY_COUNT)
+                val hints = ((current.inventory[STORE_INVENTORY_HINTS] ?: 0) + product.hintReward).coerceAtMost(MAX_STORE_INVENTORY)
                 current.copy(inventory = current.inventory + (STORE_INVENTORY_HINTS to hints), revision = revision)
             }
         val currentPayments = payments.snapshot.value

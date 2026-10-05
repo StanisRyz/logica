@@ -67,6 +67,7 @@ import com.stanisryz.logica.web.generated.resources.web_ad_unavailable
 import com.stanisryz.logica.web.generated.resources.web_ad_watch
 import com.stanisryz.logica.web.generated.resources.web_back_to_game
 import com.stanisryz.logica.web.generated.resources.web_gems_plus
+import com.stanisryz.logica.web.generated.resources.web_hints_full
 import com.stanisryz.logica.web.generated.resources.web_hints_plus
 import com.stanisryz.logica.web.generated.resources.web_item_hint
 import com.stanisryz.logica.web.generated.resources.web_item_hint_pack
@@ -217,7 +218,13 @@ internal fun WebStoreScreen(
         }
 
         StoreSectionTitle(stringResource(WebRes.string.web_store_section_for_gems))
-        WebStoreCatalog.ITEMS.forEach { item -> StoreCatalogRow(item, economyBinding, storeProcessor, { feedback = it }) }
+        val storeSnapshot =
+            (storeBinding as? WebStoreBinding.Ready)
+                ?.repository
+                ?.snapshot
+                ?.collectAsState()
+                ?.value
+        WebStoreCatalog.ITEMS.forEach { item -> StoreCatalogRow(item, economyBinding, storeSnapshot, storeProcessor, { feedback = it }) }
 
         feedback?.let { message ->
             Surface(
@@ -355,6 +362,7 @@ internal fun rewardedAdSubtitle(
 private fun StoreCatalogRow(
     item: StoreItem,
     economyBinding: WebEconomyBinding,
+    storeSnapshot: WebStoreSnapshot?,
     storeProcessor: WebStoreProcessor,
     onFeedback: (WebStoreFeedback) -> Unit,
 ) {
@@ -367,22 +375,29 @@ private fun StoreCatalogRow(
     val livesFull = item.reward.type == StoreRewardType.LIFE_RESTORE && wallet?.let { it.lives >= EconomyPolicy.MAXIMUM_LIVES } == true
     // A purchase the balance cannot cover is shown as such instead of failing after the tap.
     val missingGems = wallet?.let { (item.priceGems - it.gems).coerceAtLeast(0) } ?: 0
+    // So is a hint pack that would take the stock past what the Player can hold.
+    val inventoryFull = storeSnapshot != null && !WebStoreCatalog.fitsInventory(item, storeSnapshot)
     StoreItemRow(
         artwork = if (item.reward.type == StoreRewardType.LIFE_RESTORE) StoreArtwork.LIFE else StoreArtwork.forHints(item.reward.amount),
         title = item.webTitle(),
         subtitle =
             when {
                 livesFull -> stringResource(WebRes.string.web_lives_full)
+                inventoryFull -> stringResource(WebRes.string.web_hints_full)
                 missingGems > 0 -> pluralStringResource(WebRes.plurals.web_missing_gems, missingGems, missingGems)
                 else -> item.webDescription()
             },
         subtitleColor =
-            if (missingGems > 0 && !livesFull) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+            if ((missingGems > 0 || inventoryFull) && !livesFull) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
     ) {
         // The price is the button: one tap spends exactly what it says.
         GemPriceButton(
             price = item.priceGems,
-            enabled = !livesFull && missingGems == 0,
+            enabled = !livesFull && !inventoryFull && missingGems == 0,
             onClick = { onFeedback(purchaseFeedback(storeProcessor, item, economyBinding)) },
         )
     }
@@ -417,6 +432,7 @@ private fun WebStoreFeedback.text(): String =
             when (outcome.status) {
                 PurchaseStatus.INSUFFICIENT_GEMS ->
                     stringResource(WebRes.string.web_purchase_insufficient, outcome.requiredGems, outcome.availableGems)
+                PurchaseStatus.INVENTORY_FULL -> stringResource(WebRes.string.web_hints_full)
                 else -> stringResource(WebRes.string.web_purchase_failed)
             }
     }
