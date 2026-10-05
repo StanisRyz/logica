@@ -12,7 +12,7 @@ import kotlin.js.ExperimentalWasmJsInterop
 /** Browser/Yandex host activity only; future gameplay policy remains outside this adapter. */
 internal class WebHostLifecycle :
     PlatformLifecycle,
-    YandexLifecycleListener,
+    WebBootstrapLifecycle,
     WebFullscreenAdActivity {
     private val mutableState = MutableStateFlow(PlatformLifecycleState.INACTIVE)
     override val state: StateFlow<PlatformLifecycleState> = mutableState.asStateFlow()
@@ -32,7 +32,7 @@ internal class WebHostLifecycle :
     // blur or hidden document still makes it inactive.
     private val interactionCallback = { setBrowserFocused(true) }
 
-    fun start() {
+    override fun start() {
         if (started) return
         started = true
         addDocumentEventListener("visibilitychange", visibilityCallback)
@@ -65,7 +65,7 @@ internal class WebHostLifecycle :
         updateState()
     }
 
-    fun dispose() {
+    override fun dispose() {
         if (!started) return
         started = false
         removeDocumentEventListener("visibilitychange", visibilityCallback)

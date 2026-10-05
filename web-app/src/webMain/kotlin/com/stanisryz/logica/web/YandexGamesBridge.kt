@@ -5,6 +5,7 @@ package com.stanisryz.logica.web
 import com.stanisryz.logica.platform.PaymentProductSnapshot
 import com.stanisryz.logica.platform.PaymentPurchaseSnapshot
 import com.stanisryz.logica.platform.PaymentResult
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.js.ExperimentalWasmJsInterop
 import kotlin.js.JsAny
 import kotlin.js.JsArray
@@ -27,6 +28,7 @@ internal interface WebPlayerContextEvents {
 
 /** The only raw JavaScript boundary for the Yandex Games SDK. */
 internal class YandexGamesBridge :
+    WebSdkBootstrapBridge,
     WebLeaderboardBridge,
     WebPlayerContextEvents,
     WebStickyBannerBridge {
@@ -47,26 +49,26 @@ internal class YandexGamesBridge :
     private var accountSelectionOpenedListener: (() -> Unit)? = null
     private var playerContextChangedListener: (() -> Unit)? = null
 
-    val isAvailable: Boolean
+    override val isAvailable: Boolean
         get() = yandexGamesOrNull() != null
 
-    val isReady: Boolean
+    override val isReady: Boolean
         get() = sdk != null
 
     /**
      * Platform language reported by `ysdk.environment.i18n.lang`, read after SDK initialization;
      * raw SDK objects never leave this bridge. Null when unavailable or structurally unexpected.
      */
-    fun platformLanguage(): String? = runCatching { sdk?.let(::sdkPlatformLanguage) }.getOrNull()
+    override fun platformLanguage(): String? = runCatching { sdk?.let(::sdkPlatformLanguage) }.getOrNull()
 
     /** `ysdk.serverTime()` in epoch milliseconds; null when unavailable, not a number, or failing. */
-    fun serverTimeMs(): Long? =
+    override fun serverTimeMs(): Long? =
         runCatching { sdk?.let(::sdkServerTime) }
             .getOrNull()
             ?.takeIf { !it.isNaN() && it > 0.0 }
             ?.toLong()
 
-    fun initialize(
+    override fun initialize(
         lifecycleListener: YandexLifecycleListener,
         onReady: () -> Unit,
         onFailure: (String) -> Unit,
@@ -144,7 +146,7 @@ internal class YandexGamesBridge :
     }
 
     /** Returns an error for the caller to surface; repeated calls never reach the real SDK twice. */
-    fun notifyLoadingReady(): String? {
+    override fun notifyLoadingReady(): String? {
         if (loadingReadySent) return null
         val initializedSdk = sdk ?: return "Yandex Games SDK is not ready."
         loadingReadySent = true
@@ -157,7 +159,7 @@ internal class YandexGamesBridge :
     }
 
     /** Idempotent Yandex gameplay activity; hosts decide when a real in-progress route is active. */
-    fun setGameplayActive(active: Boolean): String? {
+    override fun setGameplayActive(active: Boolean): String? {
         if (gameplayActive == active) return null
         val gameplayApi = sdk?.features?.gameplayApi
         return try {
@@ -393,7 +395,7 @@ internal class YandexGamesBridge :
 
     // endregion
 
-    fun dispose() {
+    override fun dispose() {
         if (disposed) return
         disposed = true
         val initializedSdk = sdk
@@ -462,7 +464,11 @@ internal class YandexGamesBridge :
         val request = playerRequest ?: initializedSdk.getPlayer().also { playerRequest = it }
 
         return try {
-            request.await().also { resolved ->
+            // A player() that never answers fails after a while, and the next call asks afresh.
+            val resolved =
+                withTimeoutOrNull(PLAYER_TIMEOUT_MS) { request.await() }
+                    ?: throw IllegalStateException("Yandex player() did not answer in time.")
+            resolved.also { resolved ->
                 if (!disposed && playerRequest === request) {
                     cachedPlayer = resolved
                     playerRequest = null
@@ -531,6 +537,9 @@ internal class YandexGamesBridge :
     private companion object {
         const val GAME_API_PAUSE = "game_api_pause"
         const val GAME_API_RESUME = "game_api_resume"
+
+        /** How long `ysdk.getPlayer()` may take before identity resolution fails into its retry path. */
+        const val PLAYER_TIMEOUT_MS = 10_000L
         const val PLAYER_PHOTO_SIZE = "small"
         const val STICKY_BANNER_SHOWING_KEY = "stickyAdvIsShowing"
         const val PRODUCT_ID_KEY = "id"

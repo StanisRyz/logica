@@ -131,7 +131,10 @@ import com.stanisryz.logica.ui.theme.LogicaTheme
 import com.stanisryz.logica.ui.tutorial.FirstPlayTutorialDialog
 import com.stanisryz.logica.ui.word.WordGameContent
 import com.stanisryz.logica.web.generated.resources.web_fatal_title
+import com.stanisryz.logica.web.generated.resources.web_init_timeout_body
+import com.stanisryz.logica.web.generated.resources.web_init_timeout_title
 import com.stanisryz.logica.web.generated.resources.web_loading
+import com.stanisryz.logica.web.generated.resources.web_retry
 import com.stanisryz.logica.web.generated.resources.web_score_final
 import com.stanisryz.logica.web.generated.resources.web_settings
 import com.stanisryz.logica.web.generated.resources.web_tab_elsewhere_body
@@ -319,6 +322,7 @@ internal fun WebApp(
                             onRendered = controller::onInitialHostUiReady,
                         )
                     is WebBootstrapState.FatalError -> FatalContent(state.message)
+                    WebBootstrapState.TimedOut -> InitTimedOutContent(onRetry = controller::retryInitialization)
                 }
             }
         }
@@ -2387,6 +2391,28 @@ private fun PlayingGame2048Content(
             onRetrySave = controller::retrySave,
             onBack = { transitionAd(controller::showDifficultySelector) },
         )
+    }
+}
+
+/** `YaGames.init()` did not answer in time: say so and offer a retry. */
+@Composable
+private fun InitTimedOutContent(onRetry: () -> Unit) {
+    CenteredColumn {
+        Text(
+            text = stringResource(WebRes.string.web_init_timeout_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = stringResource(WebRes.string.web_init_timeout_body),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(24.dp))
+        Button(onClick = onRetry) { Text(stringResource(WebRes.string.web_retry)) }
     }
 }
 

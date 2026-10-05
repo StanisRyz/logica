@@ -5,6 +5,8 @@
     <string name="web_tab_elsewhere_body">Aynı anda yalnızca bir sekmede oynayabilirsin. İlerlemen burada devam eder.</string>
     <string name="web_tab_play_here">Burada oyna</string>
     <string name="web_fatal_title">Web sürümü başlatılamadı</string>
+    <string name="web_init_timeout_title">Oyun başlatılamadı</string>
+    <string name="web_init_timeout_body">Platform zamanında yanıt vermedi. Bağlantını kontrol et ve tekrar dene.</string>
     <string name="web_settings">Ayarlar</string>
     <string name="web_settings_theme">Tema</string>
     <string name="web_theme_system">Sistem ayarı</string>

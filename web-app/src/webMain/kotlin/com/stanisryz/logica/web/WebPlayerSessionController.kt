@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 
 internal enum class WebCloudSyncStatus {
     SYNCING,
@@ -125,6 +126,7 @@ internal class WebPlayerSessionController(
         WebPaymentsRepositoryFactory { playerScope -> WebPlayerPaymentsRepository(playerScope, WebPaymentsLocalStore(playerScope)) },
     private val paymentsJournalStoreFactory: (WebCatalogProgressScope) -> WebPaymentsJournalStore = ::BrowserWebPaymentsJournalStore,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    private val playerIdentityTimeoutMs: Long = PLAYER_IDENTITY_TIMEOUT_MS,
 ) : WebStatisticsSessionAccess,
     WebDailySessionAccess,
     WebEconomySessionAccess,
@@ -498,7 +500,10 @@ internal class WebPlayerSessionController(
 
     private suspend fun resolveAndSynchronize(revision: Long) {
         try {
-            val identity = playerIdentityGateway.identity()
+            // A player() that never answers ends in the ordinary unavailable state, whose retry works.
+            val identity =
+                withTimeoutOrNull(playerIdentityTimeoutMs) { playerIdentityGateway.identity() }
+                    ?: return unavailable(revision, "The current Yandex Player did not answer in time.")
             if (!isCurrent(revision)) return
 
             if (identity.authorizationState == PlayerAuthorizationState.UNSUPPORTED) {
@@ -1007,3 +1012,6 @@ internal class WebPlayerSessionController(
                 it.token == binding.token && it.repository === binding.repository
             } == true
 }
+
+/** How long resolving the current Player may take before binding falls back to unavailable. */
+private const val PLAYER_IDENTITY_TIMEOUT_MS = 10_000L
