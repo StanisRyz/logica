@@ -88,8 +88,14 @@ data class DailyQuestActivity(
 object DailyQuests {
     const val COUNT = 3
 
-    /** Games a SOLVE_GAME quest may name; the Catalog order shared by both hosts. */
-    private val GAMES =
+    /**
+     * The first local day (2026-10-12) whose quests may name Block Sudoku. Claimed quests are kept by
+     * their index, so every day before it keeps exactly the quests it was shown with.
+     */
+    const val BLOCK_SUDOKU_QUESTS_FROM_EPOCH_DAY = 20_738L
+
+    /** Games a SOLVE_GAME quest may name before [BLOCK_SUDOKU_QUESTS_FROM_EPOCH_DAY]; the Catalog order. */
+    private val GAMES_BEFORE_BLOCK_SUDOKU =
         listOf(
             PuzzleType.BALANCE,
             PuzzleType.CROWNS,
@@ -99,16 +105,20 @@ object DailyQuests {
             PuzzleType.NONOGRAM,
         )
 
+    /** Games a SOLVE_GAME quest may name from [BLOCK_SUDOKU_QUESTS_FROM_EPOCH_DAY] on. */
+    private val GAMES = GAMES_BEFORE_BLOCK_SUDOKU + PuzzleType.BLOCK_SUDOKU
+
     fun forDay(epochDay: Long): List<DailyQuest> {
+        val games = if (epochDay >= BLOCK_SUDOKU_QUESTS_FROM_EPOCH_DAY) GAMES else GAMES_BEFORE_BLOCK_SUDOKU
         val first =
             when (pick(epochDay, 0, 2)) {
                 0 -> DailyQuest(0, DailyQuestKind.PLAY, target = 3, gems = 1)
                 else -> DailyQuest(0, DailyQuestKind.SOLVE, target = 2, gems = 1)
             }
-        val gameChoice = pick(epochDay, 1, GAMES.size + 1)
+        val gameChoice = pick(epochDay, 1, games.size + 1)
         val second =
-            if (gameChoice < GAMES.size) {
-                DailyQuest(1, DailyQuestKind.SOLVE_GAME, target = 1, gems = 1, puzzleType = GAMES[gameChoice])
+            if (gameChoice < games.size) {
+                DailyQuest(1, DailyQuestKind.SOLVE_GAME, target = 1, gems = 1, puzzleType = games[gameChoice])
             } else {
                 DailyQuest(1, DailyQuestKind.SOLVE_DAILY, target = 1, gems = 1)
             }

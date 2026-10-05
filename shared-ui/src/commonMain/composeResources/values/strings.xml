@@ -434,6 +434,7 @@
     <string name="quest_solve_sudoku">Решите судоку</string>
     <string name="quest_solve_2048">Пройдите уровень 2048</string>
     <string name="quest_solve_nonogram">Решите нонограмму</string>
+    <string name="quest_solve_block_sudoku">Пройдите уровень блок-судоку</string>
     <string name="game_title_block_sudoku">Блок-судоку</string>
     <string name="block_sudoku_score">Очки</string>
     <string name="block_sudoku_target">Цель</string>

@@ -423,6 +423,7 @@
     <string name="quest_solve_sudoku">Solve a Sudoku</string>
     <string name="quest_solve_2048">Clear a 2048 level</string>
     <string name="quest_solve_nonogram">Solve a Nonogram</string>
+    <string name="quest_solve_block_sudoku">Clear a Block Sudoku level</string>
     <string name="game_title_block_sudoku">Block Sudoku</string>
     <string name="block_sudoku_score">Score</string>
     <string name="block_sudoku_target">Target</string>

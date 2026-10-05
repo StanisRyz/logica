@@ -423,6 +423,7 @@
     <string name="quest_solve_sudoku">Bir Sudoku çöz</string>
     <string name="quest_solve_2048">Bir 2048 seviyesini geç</string>
     <string name="quest_solve_nonogram">Bir Nonogram çöz</string>
+    <string name="quest_solve_block_sudoku">Bir Blok Sudoku seviyesini geç</string>
     <string name="game_title_block_sudoku">Blok Sudoku</string>
     <string name="block_sudoku_score">Puan</string>
     <string name="block_sudoku_target">Hedef</string>

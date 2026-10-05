@@ -60,6 +60,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.quest_play_few
 import com.stanisryz.logica.shared.ui.generated.resources.quest_play_many
 import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_2048
 import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_balance
+import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_block_sudoku
 import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_crowns
 import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_daily
 import com.stanisryz.logica.shared.ui.generated.resources.quest_solve_few
@@ -304,6 +305,7 @@ private fun questTitle(quest: DailyQuest): String =
                     PuzzleType.SUDOKU -> Res.string.quest_solve_sudoku
                     PuzzleType.GAME_2048 -> Res.string.quest_solve_2048
                     PuzzleType.NONOGRAM -> Res.string.quest_solve_nonogram
+                    PuzzleType.BLOCK_SUDOKU -> Res.string.quest_solve_block_sudoku
                     else -> Res.string.quest_solve_balance
                 },
             )
