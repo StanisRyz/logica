@@ -464,6 +464,32 @@ internal class YandexPaymentsProvider(
     override suspend fun consume(purchaseToken: String): Boolean = bridge.consumePurchaseToken(purchaseToken)
 }
 
+/**
+ * What a successful `getPurchases()` answered in one bound Player context: the products the platform
+ * itself confirms. Kept in memory only, per context; another context never reads it.
+ */
+internal data class WebConfirmedPurchases(
+    val context: WebPlayerContextToken,
+    val productIds: Set<String>,
+)
+
+/**
+ * The one ownership rule for a permanent product such as «no ads»: once `getPurchases()` answered
+ * successfully in the current Player context, only what it (or a purchase confirmed since) lists
+ * counts, so a tampered local ledger entry cannot remove ads; until then — a failed or unsupported
+ * query, standalone development — the fulfilled-token ledger decides as before. The ledger itself
+ * is never pruned.
+ */
+internal fun ownsPaidProduct(
+    product: WebPaidProduct,
+    ledger: WebPaymentsSnapshot?,
+    confirmed: WebConfirmedPurchases?,
+    currentContext: WebPlayerContextToken?,
+): Boolean {
+    val live = confirmed?.takeIf { currentContext != null && it.context == currentContext }
+    return if (live != null) product.yandexProductId in live.productIds else ledger?.owns(product) == true
+}
+
 /** Compact paid-purchase presentation state for the Store's real-money section. */
 internal enum class WebPaidPurchaseState {
     Idle,
@@ -554,6 +580,15 @@ internal class WebPaymentsCoordinator(
     private val mutableUnknownProducts = MutableStateFlow<List<PaymentPurchaseSnapshot>>(emptyList())
     val unknownProducts: StateFlow<List<PaymentPurchaseSnapshot>> = mutableUnknownProducts.asStateFlow()
 
+    private val mutableConfirmedPurchases = MutableStateFlow<WebConfirmedPurchases?>(null)
+
+    /** The latest successful `getPurchases()` answer, for [ownsPaidProduct]; memory only. */
+    val confirmedPurchases: StateFlow<WebConfirmedPurchases?> = mutableConfirmedPurchases.asStateFlow()
+
+    /** Whether the bound Player owns [product] by [ownsPaidProduct], for ads and the Store alike. */
+    fun owns(product: WebPaidProduct): Boolean =
+        ownsPaidProduct(product, paymentsRepository()?.snapshot?.value, mutableConfirmedPurchases.value, currentPlayerContext())
+
     private var nextPaymentSessionId = 0L
     private var activePaymentSession: Long? = null
     private var fallbackRevisions: WebPlayerStateRevisions? = null
@@ -641,6 +676,9 @@ internal class WebPaymentsCoordinator(
         onLocalOutcome: (WebPaymentOutcome) -> Unit = {},
     ): WebPaymentOutcome {
         val localOutcome = fulfillPurchase(purchase)
+        if (localOutcome == WebPaymentOutcome.Fulfilled || localOutcome == WebPaymentOutcome.AlreadyFulfilled) {
+            confirmPurchased(purchase.productId) // the platform itself just confirmed it
+        }
         onLocalOutcome(localOutcome)
         if (localOutcome == WebPaymentOutcome.UnknownProduct || localOutcome == WebPaymentOutcome.PersistenceFailed) {
             return localOutcome // nothing to flush; journal/reconciliation owns recovery
@@ -747,6 +785,13 @@ internal class WebPaymentsCoordinator(
         return fallbackRevisions ?: WebPlayerStateRevisions().also { fallbackRevisions = it }
     }
 
+    /** Adds a purchase the platform confirmed in this context to the latest `getPurchases()` answer. */
+    private fun confirmPurchased(productId: String) {
+        val current = mutableConfirmedPurchases.value ?: return
+        if (current.context != currentPlayerContext()) return
+        mutableConfirmedPurchases.value = current.copy(productIds = current.productIds + productId)
+    }
+
     private fun recordUnknown(purchase: PaymentPurchaseSnapshot) {
         mutableUnknownProducts.value =
             (mutableUnknownProducts.value + purchase).distinctBy { it.purchaseToken }
@@ -824,6 +869,9 @@ internal class WebPaymentsCoordinator(
         recoverPendingFulfillment()
         val contextAtStart = currentPlayerContext() ?: return
         val purchases = provider.pendingPurchases() ?: return // unsupported/failed: silent no-op
+        if (currentPlayerContext() == contextAtStart) {
+            mutableConfirmedPurchases.value = WebConfirmedPurchases(contextAtStart, purchases.map { it.productId }.toSet())
+        }
         for (purchase in purchases) {
             if (currentPlayerContext() != contextAtStart) return // stale context: stop safely
             when {

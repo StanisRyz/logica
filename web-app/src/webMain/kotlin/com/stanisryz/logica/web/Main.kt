@@ -132,24 +132,6 @@ fun main() {
             life = rewardedController(WebRewardedPlacementController.LIFE_REWARD),
             secondChance = rewardedController(reward = null),
         )
-    // «No ads» is owned once the bound Player's payments ledger holds it (never consumed, synced).
-    val adsRemoved = {
-        playerSession.paymentsRepository
-            ?.snapshot
-            ?.value
-            ?.owns(WebPaidProduct.NO_ADS) == true
-    }
-    val leaderboard = WebLeaderboardController(bridge, rememberMainScope())
-    val interstitialController =
-        WebInterstitialContinuationController(
-            provider = YandexInterstitialAdProvider(bridge),
-            policy = adPolicy,
-            analytics = monetizationAnalytics,
-            fullscreenAdActivity = lifecycle,
-            currentTimeMs = ::currentTimeMillis,
-            adsRemoved = adsRemoved,
-        )
-    val stickyBannerController = WebStickyBannerController(bridge, adsRemoved)
     // Real-money consumable pipeline (client-side Yandex Payments flow).
     val paymentsCoordinator =
         WebPaymentsCoordinator(
@@ -163,6 +145,19 @@ fun main() {
             currentPlayerContext = { playerSession.currentPlayerContextToken() },
             scope = rememberMainScope(),
         )
+    // «No ads» by the one ownership rule: the live getPurchases() answer once it succeeded, else the ledger.
+    val adsRemoved = { paymentsCoordinator.owns(WebPaidProduct.NO_ADS) }
+    val leaderboard = WebLeaderboardController(bridge, rememberMainScope())
+    val interstitialController =
+        WebInterstitialContinuationController(
+            provider = YandexInterstitialAdProvider(bridge),
+            policy = adPolicy,
+            analytics = monetizationAnalytics,
+            fullscreenAdActivity = lifecycle,
+            currentTimeMs = ::currentTimeMillis,
+            adsRemoved = adsRemoved,
+        )
+    val stickyBannerController = WebStickyBannerController(bridge, adsRemoved)
     playerSession.pendingPaymentsRecoveryAction = { paymentsCoordinator.recoverPendingFulfillment() }
     playerSession.postRestoreAction = { paymentsCoordinator.reconcilePendingPurchases() }
     // Unified cloud save foundation: identity through the SDK, payload over a dedicated key.

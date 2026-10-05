@@ -206,9 +206,16 @@ internal fun WebStoreScreen(
             entries.filter { it.product in WebPaidProduct.GEM_PACKS }.forEach { entry ->
                 PaidGemTopUpCard(entry, purchaseState, rowReportsState = purchasingProduct == entry.product, paymentsCoordinator)
             }
+            val confirmedPurchases by paymentsCoordinator.confirmedPurchases.collectAsState()
             entries.firstOrNull { it.product == WebPaidProduct.NO_ADS }?.let { entry ->
                 NoAdsRow(
-                    owned = ledger?.owns(WebPaidProduct.NO_ADS) == true,
+                    owned =
+                        ownsPaidProduct(
+                            WebPaidProduct.NO_ADS,
+                            ledger,
+                            confirmedPurchases,
+                            playerSession.currentPlayerContextToken(),
+                        ),
                     enabled = ledger != null && !purchaseState.isBusy,
                     onBuy = { paymentsCoordinator.purchase(entry.product) },
                     message = if (purchasingProduct == entry.product) paidPurchaseMessage(purchaseState) else null,
