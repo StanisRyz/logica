@@ -483,9 +483,11 @@ fun GameResultDialog(
     stars: Int? = null,
     lifeOffer: GameResultLifeOffer? = null,
 ) {
+    // Back (Esc on Web) is the card's own exit, with all of its rules, once the result is saved;
+    // before that it does nothing, and a tap outside never decides anything.
     Dialog(
-        onDismissRequest = {},
-        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
+        onDismissRequest = { if (saveState == GameResultSaveState.SAVED) onExit() },
+        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false),
     ) {
         GameResultCard(
             solved = solved,

@@ -62,7 +62,17 @@ internal fun WordGameRoute(
     val gameViewModel: WordGameViewModel = viewModel(factory = factory)
     val uiState by gameViewModel.uiState.collectAsStateWithLifecycle()
     val economy by gameViewModel.economy.collectAsStateWithLifecycle()
-    LeaveLevelGuard(exitGuard, (uiState as? WordGameUiState.Ready)?.hasMeaningfulProgress == true)
+    val ready = uiState as? WordGameUiState.Ready
+    val finished = ready != null && ready.game.status != WordGameStatus.IN_PROGRESS
+    val saved = ready?.completionPersistence == CompletionPersistence.Saved
+    // The finished card sits under the board instead of in a dialog, so Back leaves the way the other
+    // games' result dialogs do: not before the result is saved, then through the card's own exit.
+    LeaveLevelGuard(
+        guard = exitGuard,
+        hasProgress = ready?.hasMeaningfulProgress == true,
+        exitBlocked = finished && !saved,
+        onDurableCompletionExit = { _: () -> Unit -> onTerminalAction(onGameHub) }.takeIf { finished && saved },
+    )
 
     WordGameScreen(
         uiState = uiState,
