@@ -326,6 +326,10 @@ class AchievementRewards(
     fun claimableCount(statistics: ProfileStatistics): Int = Achievement.entries.count { it.isUnlocked(statistics) && it.id !in claimed }
 }
 
+/**
+ * Expert solves across the games whose statistics break solves down by difficulty. Word is not among
+ * them: [WordProfileStatistics] keeps only totals and the attempt distribution, with no Expert count.
+ */
 private fun expertSolved(statistics: ProfileStatistics): Long =
     listOf(
         statistics.balance.solvedByDifficulty,
