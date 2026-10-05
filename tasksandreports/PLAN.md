@@ -30,5 +30,6 @@
 | 1 | tasks/stage-01-web-cloud-save-integrity.md | принята (e6ef660, 16a3b69) |
 | 1a | tasks/stage-01a-cloud-save-carry-forward.md | принята (c8f84fc); заодно исправлена старая ошибка: Store не восстанавливался из облака |
 | 2.1 | tasks/stage-02-1-web-tabs-journals-payments.md | принята (67901dd…aff5cd2) |
-| 2.2 | tasks/stage-02-2-web-time-stats-startup.md | выдана |
+| 2.2 | tasks/stage-02-2-web-time-stats-startup.md | принята (6bb7378…3eb7481) |
+| 2.2a | tasks/stage-02-2a-web-clock-cloud-timeouts.md | выдана |
 
