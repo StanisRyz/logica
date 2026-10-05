@@ -28,4 +28,13 @@
 | Этап | Задача | Статус |
 |---|---|---|
 | 1 | tasks/stage-01-web-cloud-save-integrity.md | принята (e6ef660, 16a3b69) |
-| 1a | tasks/stage-01a-cloud-save-carry-forward.md | выдана |
+| 1a | tasks/stage-01a-cloud-save-carry-forward.md | принята (c8f84fc); заодно исправлена старая ошибка: Store не восстанавливался из облака |
+| 2.1 | tasks/stage-02-1-web-tabs-journals-payments.md | выдана |
+
+## Отложено на этап 2.2
+
+- Серверное время (`ysdk.serverTime()`) для подарка за вход, заданий, восстановления жизней и даты Daily. Монотонный день наград.
+- Рост компонентов статистики: компактное слияние и ленивое создание компонента только при первой попытке.
+- Таймауты `YaGames.init()` и `player()`; сбой `LoadingAPI.ready()` не приводит к фатальной ошибке.
+- Daily `PolicyConflict`: сливать все даты, кроме конфликтующей, на ней оставлять локальную запись. Сейчас облачная секция daily заменяется целиком.
+- Удалить неиспользуемое `WebSaveSections.pendingEconomyRestore`.
