@@ -168,7 +168,14 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    // Room migration tests run on the host JVM: the JVM build of the bundled SQLite driver carries
+    // desktop natives, the Android one only Android ABIs (it is left off the unit-test classpath below).
+    testImplementation(libs.androidx.sqlite.bundled.jvm) { isTransitive = false }
 
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
+}
+
+configurations.matching { it.name.endsWith("UnitTestRuntimeClasspath") }.configureEach {
+    exclude(group = "androidx.sqlite", module = "sqlite-bundled-android")
 }
