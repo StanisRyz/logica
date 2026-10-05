@@ -176,17 +176,6 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
 }
 
-// Temporary (stage 4.1 report, finding P0): `:puzzle-core`'s Android build calls Java 21's
-// `List.removeLast()` in the Crowns generator, which neither a JDK 17 test JVM nor Android 8–14 has.
-// The fix belongs to the owner's follow-up; until then this one test only runs where the method exists.
-if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
-    tasks.withType<Test>().configureEach {
-        filter.excludeTestsMatching(
-            "com.stanisryz.logica.catalog.FrozenCatalogLevelPackTest.representativeFrozenLevelsKeepTheirContentIdentityAndStableDifficultyCodes",
-        )
-    }
-}
-
 configurations.matching { it.name.endsWith("UnitTestRuntimeClasspath") }.configureEach {
     exclude(group = "androidx.sqlite", module = "sqlite-bundled-android")
 }

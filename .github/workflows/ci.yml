@@ -71,10 +71,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       # compileSdk 36, as in app/build.gradle.kts; the runner image ships the SDK itself.
       - run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" > /dev/null
-      - run: bash ./gradlew -Plogica.withoutRustore=true :app:testDebugUnitTest :app:lintRelease
+      - run: bash ./gradlew -Plogica.withoutRustore=true :app:testDebugUnitTest :app:lintRelease :app:assembleRelease
       - name: Test summary
         if: always()
         run: python3 .github/scripts/test_summary.py
+      # Java 21 List methods (removeFirst/removeLast/getFirst/getLast/…) crash on Android 8–14.
+      - name: Release dex has no Java 21 List calls
+        run: python3 .github/scripts/check_dex_api.py app/build/outputs/apk/release/app-release-unsigned.apk "$ANDROID_HOME/build-tools/36.0.0/dexdump"
 
   web-distribution:
     runs-on: ubuntu-latest

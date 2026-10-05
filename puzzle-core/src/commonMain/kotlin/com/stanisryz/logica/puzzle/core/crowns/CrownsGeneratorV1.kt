@@ -105,7 +105,7 @@ class CrownsGeneratorV1(
             columns += column
             crowns += CrownsPosition(row, column)
             placeCrownInRow(size, row + 1, columns, crowns, random, budget)?.let { return it }
-            crowns.removeLast()
+            crowns.removeAt(crowns.lastIndex)
             columns -= column
         }
         return null
