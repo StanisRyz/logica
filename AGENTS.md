@@ -106,7 +106,7 @@
 - Crowns mathematical crowns, solver candidates, and user marks remain separate concepts.
 - Crowns gameplay state is immutable and UI-independent; Android renders state and dispatches actions without owning rules.
 - Incorrect player crowns are allowed and reported through centralized structured violations.
-- User marks are annotations checked only for hint/error reasoning, never Crowns domain violations.
+- The Crowns X mark (`userMarks`) is the player's unchecked note: it never costs a mistake, never locks, and never gets a cell status; a crown placed on it replaces it, the pencil only drafts crowns (an X in pencil mode is the same note), solving needs only every crown in place, a revealed hint opens only crowns and reads no marks (clearing the mark on its own cell), and marks are not meaningful progress.
 - Crowns hints reuse deterministic logic and a confirmed unique solution; reset preserves attempt-level hint usage.
 - Crowns gameplay is context-aware like Balance: a `Catalog` level or a `Daily(challengeDate, policyVersion)` entry drives result scope, level or Daily identity, completion metadata, and the return to the Game hub.
 - Balance and Crowns keep separate UI/gameplay adapters while sharing the attempt, completion, and result infrastructure.

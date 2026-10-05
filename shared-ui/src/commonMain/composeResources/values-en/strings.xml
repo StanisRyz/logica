@@ -199,9 +199,9 @@
     <string name="crowns_tutorial_stage_three_title">Crowns never touch diagonally</string>
     <string name="crowns_tutorial_stage_three_body">Crowns cannot touch each other, not even diagonally. Place a crown in the highlighted cell: it touches none of the crowns already placed.</string>
     <string name="crowns_tutorial_stage_four_title">Marks and pencil</string>
-    <string name="crowns_tutorial_stage_four_body">Pick “Mark ×” and mark the highlighted cell — that is how you note there is no crown here. The pencil adds rough notes that are never checked.</string>
+    <string name="crowns_tutorial_stage_four_body">Pick “Mark ×” and mark the highlighted cell — that is how you note there is no crown here. A mark is only your note: it is never checked and never costs a mistake. The pencil adds rough crowns.</string>
     <string name="crowns_tutorial_stage_five_title">A small puzzle of your own</string>
-    <string name="crowns_tutorial_stage_five_body">Place four crowns yourself. A wrong value is a mistake, and after three mistakes the board starts over. Marks and the pencil help rule out cells.</string>
+    <string name="crowns_tutorial_stage_five_body">Place four crowns yourself. A wrong crown is a mistake, and after three mistakes the board starts over. Marks and the pencil help rule out cells.</string>
     <string name="crowns_tutorial_feedback_row_column">Not quite. This step needs a crown in the highlighted cell: two crowns in one row or column conflict.</string>
     <string name="crowns_tutorial_feedback_region">Not quite. Check the region border: it can hold only one crown.</string>
     <string name="crowns_tutorial_feedback_diagonal">Not quite. Crowns in diagonally adjacent cells conflict.</string>
@@ -326,7 +326,7 @@
     <string name="rules_balance_3">Filled rows never repeat each other, and neither do columns.</string>
     <string name="rules_crowns_1">Every row, column, and coloured region has exactly one crown.</string>
     <string name="rules_crowns_2">Crowns never touch each other, not even diagonally.</string>
-    <string name="rules_crowns_3">A mark × is your note that there is surely no crown here.</string>
+    <string name="rules_crowns_3">A mark × is your note that there is surely no crown here. It is never checked and never costs a mistake.</string>
     <string name="rules_sudoku_1">Fill the board with the digits 1 to 9.</string>
     <string name="rules_sudoku_2">Each digit appears once in every row, column, and 3×3 block.</string>
     <string name="word_russian_only">Words are in Russian only.</string>

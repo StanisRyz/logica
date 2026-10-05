@@ -58,7 +58,9 @@ class MeaningfulProgressTest {
         val engine = CrownsGameEngine(puzzle)
         val start = engine.start()
         assertFalse(start.hasMeaningfulProgress)
-        assertTrue(engine.placeValue(start, CrownsPosition(0, 0), CrownsPlayerCell.MARKED).hasMeaningfulProgress)
+        // An X is the player's own note and is not progress; a crown is.
+        assertFalse(engine.placeValue(start, CrownsPosition(0, 0), CrownsPlayerCell.MARKED).hasMeaningfulProgress)
+        assertTrue(engine.placeValue(start, CrownsPosition(0, 0), CrownsPlayerCell.CROWN).hasMeaningfulProgress)
     }
 
     @Test

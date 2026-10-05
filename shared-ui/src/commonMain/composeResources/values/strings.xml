@@ -210,9 +210,9 @@
     <string name="crowns_tutorial_stage_three_title">Короны не касаются по диагонали</string>
     <string name="crowns_tutorial_stage_three_body">Короны не могут касаться друг друга даже по диагонали. Поставьте корону в выделенную клетку: она не касается уже стоящих корон.</string>
     <string name="crowns_tutorial_stage_four_title">Метки и карандаш</string>
-    <string name="crowns_tutorial_stage_four_body">Выберите «Метка ×» и отметьте выделенную клетку — так вы записываете, что короны здесь нет. Карандаш ставит черновые пометки, они не проверяются.</string>
+    <string name="crowns_tutorial_stage_four_body">Выберите «Метка ×» и отметьте выделенную клетку — так вы записываете, что короны здесь нет. Метка — только ваша заметка: она не проверяется и не стоит ошибки. Карандаш ставит черновые короны.</string>
     <string name="crowns_tutorial_stage_five_title">Небольшая самостоятельная задача</string>
-    <string name="crowns_tutorial_stage_five_body">Расставьте четыре короны сами. Неверное значение — ошибка, после трёх ошибок поле начнётся заново. Метки и карандаш помогают исключать клетки.</string>
+    <string name="crowns_tutorial_stage_five_body">Расставьте четыре короны сами. Неверная корона — ошибка, после трёх ошибок поле начнётся заново. Метки и карандаш помогают исключать клетки.</string>
     <string name="crowns_tutorial_feedback_row_column">Пока не так. В этом шаге нужна корона в выделенной клетке: две короны в одной строке или столбце конфликтуют.</string>
     <string name="crowns_tutorial_feedback_region">Пока не так. Проверьте границу области: в ней может быть только одна корона.</string>
     <string name="crowns_tutorial_feedback_diagonal">Пока не так. Короны в соседних по диагонали клетках конфликтуют.</string>
@@ -346,7 +346,7 @@
     <string name="rules_balance_3">Заполненные строки не повторяют друг друга, и столбцы тоже.</string>
     <string name="rules_crowns_1">В каждой строке, каждом столбце и каждой цветной области — ровно одна корона.</string>
     <string name="rules_crowns_2">Короны не касаются друг друга, даже по диагонали.</string>
-    <string name="rules_crowns_3">Метка × — ваша заметка, что здесь короны точно нет.</string>
+    <string name="rules_crowns_3">Метка × — ваша заметка, что здесь короны точно нет. Она не проверяется и не стоит ошибки.</string>
     <string name="rules_sudoku_1">Заполните поле цифрами от 1 до 9.</string>
     <string name="rules_sudoku_2">В каждой строке, каждом столбце и каждом блоке 3×3 цифра встречается один раз.</string>
     <string name="word_russian_only">Слова — только на русском языке.</string>

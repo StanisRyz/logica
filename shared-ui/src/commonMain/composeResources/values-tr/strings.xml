@@ -199,9 +199,9 @@
     <string name="crowns_tutorial_stage_three_title">Taçlar çapraz değmez</string>
     <string name="crowns_tutorial_stage_three_body">Taçlar birbirine çapraz bile değemez. Vurgulanan hücreye taç koy: mevcut taçların hiçbirine değmiyor.</string>
     <string name="crowns_tutorial_stage_four_title">İşaretler ve kalem</string>
-    <string name="crowns_tutorial_stage_four_body">«İşaret ×»i seç ve vurgulanan hücreyi işaretle — burada taç olmadığını böyle not edersin. Kalem, kontrol edilmeyen taslak notlar ekler.</string>
+    <string name="crowns_tutorial_stage_four_body">«İşaret ×»i seç ve vurgulanan hücreyi işaretle — burada taç olmadığını böyle not edersin. İşaret yalnızca senin notundur: kontrol edilmez ve hata saymaz. Kalem taslak taçlar ekler.</string>
     <string name="crowns_tutorial_stage_five_title">Kendi başına küçük bir bulmaca</string>
-    <string name="crowns_tutorial_stage_five_body">Dört tacı kendin yerleştir. Yanlış değer bir hatadır, üç hatadan sonra tahta baştan başlar. İşaretler ve kalem hücreleri elemeye yardım eder.</string>
+    <string name="crowns_tutorial_stage_five_body">Dört tacı kendin yerleştir. Yanlış taç bir hatadır, üç hatadan sonra tahta baştan başlar. İşaretler ve kalem hücreleri elemeye yardım eder.</string>
     <string name="crowns_tutorial_feedback_row_column">Pek olmadı. Bu adımda vurgulanan hücreye taç gerekiyor: aynı satır ya da sütundaki iki taç çakışır.</string>
     <string name="crowns_tutorial_feedback_region">Pek olmadı. Bölge sınırını kontrol et: bölgede yalnızca bir taç olabilir.</string>
     <string name="crowns_tutorial_feedback_diagonal">Pek olmadı. Çapraz komşu hücrelerdeki taçlar çakışır.</string>
@@ -326,7 +326,7 @@
     <string name="rules_balance_3">Dolu satırlar birbirini tekrarlamaz, sütunlar da.</string>
     <string name="rules_crowns_1">Her satırda, sütunda ve renkli bölgede tam olarak bir taç vardır.</string>
     <string name="rules_crowns_2">Taçlar birbirine değmez, çapraz bile.</string>
-    <string name="rules_crowns_3">× işareti, burada kesinlikle taç olmadığına dair notundur.</string>
+    <string name="rules_crowns_3">× işareti, burada kesinlikle taç olmadığına dair notundur. Kontrol edilmez ve hata saymaz.</string>
     <string name="rules_sudoku_1">Tahtayı 1\'den 9\'a kadar rakamlarla doldur.</string>
     <string name="rules_sudoku_2">Her rakam her satırda, sütunda ve 3×3 blokta bir kez bulunur.</string>
     <string name="word_russian_only">Kelimeler yalnızca Rusça.</string>

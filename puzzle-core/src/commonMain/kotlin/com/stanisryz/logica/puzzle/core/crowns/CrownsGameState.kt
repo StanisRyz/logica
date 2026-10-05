@@ -10,9 +10,10 @@ enum class CrownsPlayerCell {
 }
 
 /**
- * How one cell of the board stands right now. A committed crown or blocked mark is checked against
- * the puzzle's own answer as soon as it is placed: a correct value is final, a wrong one stays on
- * the board until the player fixes it. `UNVERIFIED` covers a board with no single answer to check.
+ * How one crown on the board stands right now. A committed crown is checked against the puzzle's own
+ * answer as soon as it is placed: a correct crown is final, a wrong one stays on the board until the
+ * player fixes it. `UNVERIFIED` covers a board with no single answer to check. Marks are unchecked
+ * notes and never have a status.
  */
 enum class CrownsCellStatus {
     EMPTY,
@@ -35,7 +36,6 @@ class CrownsGameState internal constructor(
     val board: CrownsState,
     userMarks: Iterable<CrownsPosition>,
     pencilCrowns: Iterable<CrownsPosition>,
-    pencilMarks: Iterable<CrownsPosition>,
     cellStatuses: Map<CrownsPosition, CrownsCellStatus>,
     val status: CrownsGameStatus,
     /** How many incorrect values this attempt has committed, counted as events rather than red cells. */
@@ -44,12 +44,11 @@ class CrownsGameState internal constructor(
     val currentHint: CrownsHint?,
     violations: Iterable<CrownsViolation>,
 ) {
-    /** Committed blocked marks; crowns live in [board]. */
+    /** The player's X marks: unchecked notes, never locked and never a mistake. Crowns live in [board]. */
     val userMarks: Set<CrownsPosition> = userMarks.toSet()
 
-    /** Unvalidated player hypotheses, kept apart from the committed values. */
+    /** Unchecked crown hypotheses drawn small in the corner, kept apart from the committed crowns. */
     val pencilCrowns: Set<CrownsPosition> = pencilCrowns.toSet()
-    val pencilMarks: Set<CrownsPosition> = pencilMarks.toSet()
     val cellStatuses: Map<CrownsPosition, CrownsCellStatus> = cellStatuses.toMap()
     val violations: List<CrownsViolation> = violations.toList()
 
@@ -59,10 +58,8 @@ class CrownsGameState internal constructor(
         require(mistakesUsed in 0..PuzzleMistakes.MAX_MISTAKES) {
             "Mistakes used must be within 0..${PuzzleMistakes.MAX_MISTAKES}."
         }
-        val committed = board.crowns + this.userMarks
-        require((this.pencilCrowns + this.pencilMarks).none { it in committed }) {
-            "A committed cell cannot also hold pencil marks."
-        }
+        val occupied = board.crowns + this.userMarks
+        require(this.pencilCrowns.none { it in occupied }) { "A crown or marked cell cannot also hold a pencil crown." }
         require(this.cellStatuses.values.none { it == CrownsCellStatus.EMPTY }) {
             "Empty cells are not listed among the cell statuses."
         }
@@ -81,10 +78,7 @@ class CrownsGameState internal constructor(
     fun isLocked(position: CrownsPosition): Boolean = statusAt(position) == CrownsCellStatus.CORRECT
 
     fun pencilAt(position: CrownsPosition): Set<CrownsPlayerCell> =
-        buildSet {
-            if (position in pencilCrowns) add(CrownsPlayerCell.CROWN)
-            if (position in pencilMarks) add(CrownsPlayerCell.MARKED)
-        }
+        if (position in pencilCrowns) setOf(CrownsPlayerCell.CROWN) else emptySet()
 
     override fun equals(other: Any?): Boolean =
         this === other ||
@@ -93,7 +87,6 @@ class CrownsGameState internal constructor(
             board == other.board &&
             userMarks == other.userMarks &&
             pencilCrowns == other.pencilCrowns &&
-            pencilMarks == other.pencilMarks &&
             cellStatuses == other.cellStatuses &&
             status == other.status &&
             mistakesUsed == other.mistakesUsed &&
@@ -106,7 +99,6 @@ class CrownsGameState internal constructor(
         result = 31 * result + board.hashCode()
         result = 31 * result + userMarks.hashCode()
         result = 31 * result + pencilCrowns.hashCode()
-        result = 31 * result + pencilMarks.hashCode()
         result = 31 * result + cellStatuses.hashCode()
         result = 31 * result + status.hashCode()
         result = 31 * result + mistakesUsed
@@ -118,22 +110,21 @@ class CrownsGameState internal constructor(
 
     override fun toString(): String =
         "CrownsGameState(puzzleId=$puzzleId, board=$board, userMarks=$userMarks, pencilCrowns=$pencilCrowns, " +
-            "pencilMarks=$pencilMarks, cellStatuses=$cellStatuses, status=$status, " +
+            "cellStatuses=$cellStatuses, status=$status, " +
             "mistakesUsed=$mistakesUsed, hintsUsed=$hintsUsed, currentHint=$currentHint, violations=$violations)"
 }
 
 /**
- * Whether leaving this unfinished attempt throws away something the player did — a crown or mark,
- * a pencil note, a mistake, or a hint — so leaving costs a life. Both hosts ask only this.
+ * Whether leaving this unfinished attempt throws away something the player did — a crown (correct or
+ * wrong), a pencil crown, a mistake, or a hint — so leaving costs a life. X marks are notes and do not
+ * count. Both hosts ask only this.
  */
 val CrownsGameState.hasMeaningfulProgress: Boolean
     get() =
         !status.isTerminal &&
             (
-                cellStatuses.isNotEmpty() ||
+                board.crowns.isNotEmpty() ||
                     pencilCrowns.isNotEmpty() ||
-                    pencilMarks.isNotEmpty() ||
-                    userMarks.isNotEmpty() ||
                     mistakesUsed > 0 ||
                     hintsUsed > 0
             )

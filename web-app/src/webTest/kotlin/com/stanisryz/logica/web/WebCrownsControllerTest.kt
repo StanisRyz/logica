@@ -53,8 +53,11 @@ class WebCrownsControllerTest {
             val position = CrownsPosition(0, 0)
             controller.onCellTapped(position)
 
+            // The mark is one unchecked note in or out of pencil mode: it never becomes a pencil value.
             val updated = assertIs<WebCrownsState.Playing>(controller.state)
-            assertEquals(setOf(CrownsPlayerCell.MARKED), updated.game.pencilAt(position))
+            assertEquals(CrownsPlayerCell.MARKED, updated.game.cellAt(position))
+            assertTrue(updated.game.pencilAt(position).isEmpty())
+            assertEquals(0, updated.game.mistakesUsed)
 
             // A hint opens one cell correctly: it costs one hint and never a mistake.
             controller.requestHint()

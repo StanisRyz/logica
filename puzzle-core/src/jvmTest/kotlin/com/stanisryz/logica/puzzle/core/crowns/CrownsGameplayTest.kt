@@ -6,6 +6,7 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleId
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -13,41 +14,42 @@ import org.junit.Test
 
 class CrownsGameplayTest {
     @Test
-    fun committedValuesAreValidatedWhilePencilMarksStayHypotheses() {
+    fun crownsAreCheckedWhileMarksAndPencilCrownsStayNotes() {
         val engine = CrownsGameEngine(puzzle())
         val solutionCell = CrownsPosition(2, 0)
         val draftCell = CrownsPosition(0, 0)
         val initial = engine.start()
 
-        // A blocked mark on a cell that really holds a crown is a wrong committed value.
+        // A mark on a cell that really holds a crown is only a note: no status, no mistake, no lock.
         val marked = engine.placeValue(initial, solutionCell, CrownsPlayerCell.MARKED)
-        assertEquals(CrownsCellStatus.INCORRECT, marked.statusAt(solutionCell))
         assertEquals(CrownsPlayerCell.MARKED, marked.cellAt(solutionCell))
+        assertEquals(CrownsCellStatus.EMPTY, marked.statusAt(solutionCell))
+        assertEquals(0, marked.mistakesUsed)
+        assertFalse(marked.isLocked(solutionCell))
+        // Tapping the mark again takes it away.
+        assertEquals(initial, engine.placeValue(marked, solutionCell, CrownsPlayerCell.MARKED))
 
+        // A crown replaces the mark and is checked as before.
         val crowned = engine.placeValue(marked, solutionCell, CrownsPlayerCell.CROWN)
         assertEquals(CrownsCellStatus.CORRECT, crowned.statusAt(solutionCell))
         assertTrue(crowned.userMarks.isEmpty())
         assertSame(crowned, engine.placeValue(crowned, solutionCell, CrownsPlayerCell.CROWN))
         assertSame(crowned, engine.togglePencilMark(crowned, solutionCell, CrownsPlayerCell.MARKED))
 
-        var drafted = engine.togglePencilMark(crowned, draftCell, CrownsPlayerCell.CROWN)
-        drafted = engine.togglePencilMark(drafted, draftCell, CrownsPlayerCell.MARKED)
-        assertEquals(
-            setOf(CrownsPlayerCell.CROWN, CrownsPlayerCell.MARKED),
-            drafted.pencilAt(draftCell),
-        )
+        // A pencil crown is a hypothesis; the mark tool in pencil mode places the same note as outside it.
+        val drafted = engine.togglePencilMark(crowned, draftCell, CrownsPlayerCell.CROWN)
+        assertEquals(setOf(CrownsPlayerCell.CROWN), drafted.pencilAt(draftCell))
         assertEquals(CrownsPlayerCell.EMPTY, drafted.cellAt(draftCell))
-        assertEquals(
-            setOf(CrownsPlayerCell.MARKED),
-            engine.togglePencilMark(drafted, draftCell, CrownsPlayerCell.CROWN).pencilAt(draftCell),
-        )
+        val pencilMarked = engine.togglePencilMark(drafted, draftCell, CrownsPlayerCell.MARKED)
+        assertEquals(CrownsPlayerCell.MARKED, pencilMarked.cellAt(draftCell))
+        assertTrue(pencilMarked.pencilAt(draftCell).isEmpty())
+        assertEquals(drafted.userMarks + draftCell, pencilMarked.userMarks)
 
         val restored =
             engine.restore(
                 board = drafted.board,
                 userMarks = drafted.userMarks,
                 pencilCrowns = drafted.pencilCrowns,
-                pencilMarks = drafted.pencilMarks,
                 mistakesUsed = drafted.mistakesUsed,
                 hintsUsed = drafted.hintsUsed,
                 currentHint = drafted.currentHint,
@@ -58,9 +60,7 @@ class CrownsGameplayTest {
         assertEquals(1, hinted.hintsUsed)
         assertNotNull(hinted.currentHint)
         assertSame(hinted, engine.requestHint(hinted))
-
-        // Removing a wrong value never refunds the mistake it already cost.
-        assertEquals(1, hinted.mistakesUsed)
+        assertEquals(0, hinted.mistakesUsed)
     }
 
     @Test
@@ -73,7 +73,10 @@ class CrownsGameplayTest {
         assertEquals(0, game.mistakesUsed)
 
         game = engine.placeValue(game, CrownsPosition(0, 0), CrownsPlayerCell.CROWN)
+        // A mark on a real crown is a note and costs nothing; a second wrong crown does.
         game = engine.placeValue(game, CrownsPosition(1, 3), CrownsPlayerCell.MARKED)
+        assertEquals(1, game.mistakesUsed)
+        game = engine.placeValue(game, CrownsPosition(3, 3), CrownsPlayerCell.CROWN)
         assertEquals(2, game.mistakesUsed)
         assertEquals(CrownsGameStatus.IN_PROGRESS, game.status)
         // Pencil marks are hypotheses and never cost a mistake.
@@ -118,7 +121,13 @@ class CrownsGameplayTest {
         assertEquals(CrownsGameStatus.SOLVED, game.status)
         assertTrue(game.violations.isEmpty())
         assertEquals(CrownsPlayerCell.MARKED, game.cellAt(CrownsPosition(0, 3)))
-        assertEquals(CrownsCellStatus.CORRECT, game.statusAt(CrownsPosition(0, 3)))
+        assertEquals(CrownsCellStatus.EMPTY, game.statusAt(CrownsPosition(0, 3)))
+
+        // All crowns in place is enough: no cell needs a mark.
+        var crownsOnly = engine.start()
+        solutionPositions.forEach { position -> crownsOnly = engine.placeValue(crownsOnly, position, CrownsPlayerCell.CROWN) }
+        assertEquals(CrownsGameStatus.SOLVED, crownsOnly.status)
+        assertTrue(crownsOnly.userMarks.isEmpty())
     }
 
     @Test
@@ -150,21 +159,41 @@ class CrownsGameplayTest {
     }
 
     @Test
-    fun revealedHintsFixWrongCellsThenOpenCrownsUntilTheBoardIsSolved() {
+    fun revealedHintsOpenOnlyCrownsAndLeaveMarksAloneExceptOnTheirOwnCell() {
         val engine = CrownsGameEngine(puzzle())
         val solutionCell = CrownsPosition(2, 0)
-        // A mark hiding a real crown is opened as that crown first.
+        val noteCell = CrownsPosition(0, 0)
         var game = engine.placeValue(engine.start(), solutionCell, CrownsPlayerCell.MARKED)
+        game = engine.placeValue(game, noteCell, CrownsPlayerCell.MARKED)
 
+        // The first logical crown is (2, 0): the mark there gives way, the other mark stays untouched.
         game = engine.revealHint(game)
         assertEquals(CrownsPlayerCell.CROWN, game.cellAt(solutionCell))
         assertEquals(CrownsCellStatus.CORRECT, game.statusAt(solutionCell))
+        assertEquals(setOf(noteCell), game.userMarks)
         assertEquals(1, game.hintsUsed)
-        while (game.status == CrownsGameStatus.IN_PROGRESS) game = engine.revealHint(game)
 
+        // Every reveal opens one crown, so the hints alone reach the solution.
+        while (game.status == CrownsGameStatus.IN_PROGRESS) {
+            val before = game
+            game = engine.revealHint(game)
+            assertEquals(before.board.crowns.size + 1, game.board.crowns.size)
+        }
         assertEquals(CrownsGameStatus.SOLVED, game.status)
-        assertEquals(1, game.mistakesUsed)
+        assertEquals(4, game.hintsUsed)
+        assertEquals(0, game.mistakesUsed)
         assertSame(game, engine.revealHint(game))
+    }
+
+    @Test
+    fun aRevealTakesAWrongCrownAwayBeforeOpeningTheNextOne() {
+        val engine = CrownsGameEngine(puzzle())
+        val wrong = engine.placeValue(engine.start(), CrownsPosition(0, 0), CrownsPlayerCell.CROWN)
+        assertEquals(1, wrong.mistakesUsed)
+
+        val fixed = engine.revealHint(wrong)
+        assertEquals(CrownsPlayerCell.EMPTY, fixed.cellAt(CrownsPosition(0, 0)))
+        assertEquals(1, fixed.mistakesUsed)
     }
 
     private fun puzzle(): CrownsPuzzle {
