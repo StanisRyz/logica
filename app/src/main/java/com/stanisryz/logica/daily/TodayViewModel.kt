@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengeDefinition
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
-import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV7
 import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
 import com.stanisryz.logica.puzzle.core.model.Difficulty
@@ -135,7 +134,7 @@ internal class TodayViewModel(
                     val run = dailyChallengeRepository.readRun(challengeDate)
                     // A persisted run keeps its own policy version forever; only brand-new runs use the newest.
                     val definition =
-                        definitionProvider(challengeDate, run?.policyVersion ?: DailyChallengePolicyV7.VERSION)
+                        definitionProvider(challengeDate, run?.policyVersion ?: DailyChallengePolicyResolver.NEW_RUN_VERSION)
                     val results =
                         run
                             ?.let { dailyResultRepository.readResults(challengeDate, it.policyVersion) }

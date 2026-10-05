@@ -1,5 +1,6 @@
 package com.stanisryz.logica.web
 
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV7
 import com.stanisryz.logica.puzzle.core.daily.DailyDate
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
@@ -150,7 +151,7 @@ class WebDailyGameplayCoordinatorTest {
             }
         val coordinator = WebDailyGameplayCoordinator(session) { today }
 
-        val stale = assertIs<WebDailyStartResult.Started>(coordinator.start(PuzzleType.WORD))
+        val stale = assertIs<WebDailyStartResult.Started>(coordinator.start(PuzzleType.BALANCE))
         assertTrue(repositoryA.stateFor(today).isDurable)
 
         // The account context changes: Player B becomes current with their own isolated scope.
@@ -164,10 +165,36 @@ class WebDailyGameplayCoordinatorTest {
 
         assertEquals(
             WebDailyRecordResult.StaleContext,
-            coordinator.recordTerminalResult(stale.attempt, WebStatisticsTerminalOutcome.SOLVED, wordAttemptsUsed = 3),
+            coordinator.recordTerminalResult(stale.attempt, WebStatisticsTerminalOutcome.SOLVED, wordAttemptsUsed = null),
         )
         assertFalse(repositoryB.stateFor(today).isDurable)
         assertEquals(0, storeB.saveCount)
-        assertEquals(WebDailyEntryState.AVAILABLE, repositoryB.stateFor(today).entries[PuzzleType.WORD])
+        assertEquals(WebDailyEntryState.AVAILABLE, repositoryB.stateFor(today).entries[PuzzleType.BALANCE])
+    }
+
+    @Test
+    fun wordStartsOnlyOnADayWhoseRunStillHasIt() {
+        // A fresh day is a V8 run without Word.
+        val fresh = readyRepository(FakeDailyStore())
+        val freshSession =
+            FakeSessionAccess().also {
+                it.dailyBinding.value =
+                    WebDailyBinding.Ready(WebPlayerContextToken(1L), fresh, null, WebDailyCloudSyncStatus.LOCAL_ONLY)
+            }
+        assertIs<WebDailyStartResult.NotStarted>(WebDailyGameplayCoordinator(freshSession) { today }.start(PuzzleType.WORD))
+
+        // A V7 run created before the update keeps Word playable.
+        val v7Store =
+            FakeDailyStore().also {
+                it.snapshot =
+                    WebDailySnapshotV1(days = mapOf(today to WebDailyDayRecord(today, DailyChallengePolicyV7.VERSION)))
+            }
+        val v7 = readyRepository(v7Store)
+        val v7Session =
+            FakeSessionAccess().also {
+                it.dailyBinding.value =
+                    WebDailyBinding.Ready(WebPlayerContextToken(2L), v7, null, WebDailyCloudSyncStatus.LOCAL_ONLY)
+            }
+        assertIs<WebDailyStartResult.Started>(WebDailyGameplayCoordinator(v7Session) { today }.start(PuzzleType.WORD))
     }
 }

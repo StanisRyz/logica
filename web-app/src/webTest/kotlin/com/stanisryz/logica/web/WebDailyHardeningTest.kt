@@ -1,6 +1,7 @@
 package com.stanisryz.logica.web
 
 import com.stanisryz.logica.puzzle.core.contract.PuzzleGenerator
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV7
 import com.stanisryz.logica.puzzle.core.daily.DailyDate
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Direction
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Engine
@@ -92,9 +93,15 @@ class WebDailyHardeningTest {
             }
     }
 
+    /** Today's run was created as V7 before the update, so its Word entry is still part of it. */
+    private fun v7RunStore(): FakeDailyStore =
+        FakeDailyStore().also {
+            it.snapshot = WebDailySnapshotV1(days = mapOf(today to WebDailyDayRecord(today, DailyChallengePolicyV7.VERSION)))
+        }
+
     private fun readyCoordinator(): Pair<WebDailyRepository, WebDailyGameplayCoordinator> {
         val repository =
-            WebDailyRepository(WebCatalogProgressScope.STANDALONE, FakeDailyStore()) { today }.also { it.loadLocal() }
+            WebDailyRepository(WebCatalogProgressScope.STANDALONE, v7RunStore()) { today }.also { it.loadLocal() }
         val session =
             object : WebDailySessionAccess {
                 override val dailyBinding =

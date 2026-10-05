@@ -4,6 +4,8 @@ import com.stanisryz.logica.daily.DailyChallengeStatus
 import com.stanisryz.logica.daily.DailyRunStatus
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengeDefinition
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV2
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV7
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV8
 import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import kotlinx.coroutines.runBlocking
@@ -67,6 +69,30 @@ class DailyAggregateCompletionTest {
         }
 
     @Test
+    fun aPersistedV7RunKeepsWordAndCompletesOnlyAfterAllSevenWhileV8NeedsSix() =
+        runBlocking {
+            val date = LocalDate.of(2026, 10, 12)
+            val v7 = DailyChallengePolicyV7.definitionFor(date)
+            val v7Dao = FakeGameCompletionDao(v7)
+            val (word, others) = v7.entries.partition { it.puzzleType == PuzzleType.WORD }
+            others.forEachIndexed { index, entry ->
+                v7Dao.complete(entry.completion(v7, "v7-$index", hintsUsed = 0).toEntity(1_000L + index))
+            }
+            // Six of seven: the V7 run still waits for its Word entry.
+            assertEquals(DailyRunStatus.IN_PROGRESS.name, v7Dao.run.status)
+            v7Dao.complete(word.single().completion(v7, "v7-word", hintsUsed = 0, attemptsUsed = 3).toEntity(2_000))
+            assertEquals(DailyRunStatus.COMPLETED.name, v7Dao.run.status)
+
+            val v8 = DailyChallengePolicyV8.definitionFor(date)
+            val v8Dao = FakeGameCompletionDao(v8)
+            v8.entries.forEachIndexed { index, entry ->
+                v8Dao.complete(entry.completion(v8, "v8-$index", hintsUsed = 0).toEntity(3_000L + index))
+            }
+            assertEquals(6, v8.entries.size)
+            assertEquals(DailyRunStatus.COMPLETED.name, v8Dao.run.status)
+        }
+
+    @Test
     fun aCatalogCompletionNeverTouchesDailyLifecycleState() =
         runBlocking {
             val definition = DailyChallengePolicyV2.definitionFor(LocalDate.of(2026, 8, 9))
@@ -93,6 +119,7 @@ class DailyAggregateCompletionTest {
         resultId: String,
         hintsUsed: Int,
         outcome: GameOutcome = GameOutcome.SOLVED,
+        attemptsUsed: Int? = null,
     ): GameCompletion =
         GameCompletion(
             resultId = resultId,
@@ -103,6 +130,7 @@ class DailyAggregateCompletionTest {
             resultScope = GameResultScope.DAILY,
             hintsUsed = hintsUsed,
             outcome = outcome,
+            attemptsUsed = attemptsUsed,
             challengeDate = definition.challengeDate,
             dailyPolicyVersion = definition.policyVersion,
         )

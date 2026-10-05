@@ -1,6 +1,9 @@
 package com.stanisryz.logica.puzzle.core.daily
 
 object DailyChallengePolicyResolver {
+    /** The policy a brand-new run is created with; an existing run always keeps its own version. */
+    val NEW_RUN_VERSION: DailyPolicyVersion = DailyChallengePolicyV8.VERSION
+
     fun definitionFor(
         date: DailyDate,
         policyVersion: DailyPolicyVersion,
@@ -13,6 +16,7 @@ object DailyChallengePolicyResolver {
             DailyChallengePolicyV5.VERSION -> DailyChallengePolicyV5.definitionFor(date)
             DailyChallengePolicyV6.VERSION -> DailyChallengePolicyV6.definitionFor(date)
             DailyChallengePolicyV7.VERSION -> DailyChallengePolicyV7.definitionFor(date)
+            DailyChallengePolicyV8.VERSION -> DailyChallengePolicyV8.definitionFor(date)
             else -> error("Unsupported Daily policy version ${policyVersion.value}.")
         }
 

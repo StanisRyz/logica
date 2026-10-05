@@ -8,6 +8,7 @@ import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV3
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV4
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV5
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV7
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV8
 import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
@@ -82,16 +83,15 @@ class TodayViewModelTest {
         }
 
     @Test
-    fun newRunsUseV7WhilePersistedOlderRunsKeepTheirOriginalEntries() =
+    fun newRunsUseV8WhilePersistedOlderRunsKeepTheirOriginalEntries() =
         runBlocking {
             val fresh = viewModel(FakeDailyChallengeRepository()).awaitContent()
 
-            assertEquals(DailyChallengePolicyV7.VERSION, fresh.definition.policyVersion)
+            assertEquals(DailyChallengePolicyV8.VERSION, fresh.definition.policyVersion)
             assertEquals(
                 listOf(
                     PuzzleType.BALANCE,
                     PuzzleType.CROWNS,
-                    PuzzleType.WORD,
                     PuzzleType.SUDOKU,
                     PuzzleType.GAME_2048,
                     PuzzleType.NONOGRAM,
@@ -100,10 +100,29 @@ class TodayViewModelTest {
                 fresh.entries.map { it.puzzleType },
             )
             assertEquals(0, fresh.completedCount)
-            assertEquals(7, fresh.totalCount)
+            assertEquals(6, fresh.totalCount)
+
+            // A V7 run created before the update keeps its seven entries, Word included and playable.
+            val v7Definition = DailyChallengePolicyV7.definitionFor(date)
+            val persistedV7 =
+                viewModel(
+                    FakeDailyChallengeRepository(
+                        run = savedRun(DailyChallengePolicyV7.VERSION.value, DailyRunStatus.IN_PROGRESS),
+                        entries =
+                            v7Definition.entries.associate { entry ->
+                                entry.puzzleType to v7Definition.savedChallenge(entry, DailyChallengeStatus.IN_PROGRESS)
+                            },
+                    ),
+                ).awaitContent()
+            assertEquals(DailyChallengePolicyV7.VERSION, persistedV7.definition.policyVersion)
+            assertEquals(7, persistedV7.totalCount)
+            assertEquals(
+                DailyEntryState.AVAILABLE,
+                persistedV7.entries.single { it.puzzleType == PuzzleType.WORD }.state,
+            )
             assertEquals(
                 GeneratorVersion(2),
-                fresh.definition.entries
+                persistedV7.definition.entries
                     .single { it.puzzleType == PuzzleType.WORD }
                     .generatorVersion,
             )

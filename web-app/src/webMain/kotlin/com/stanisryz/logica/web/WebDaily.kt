@@ -3,7 +3,7 @@ package com.stanisryz.logica.web
 import androidx.compose.runtime.compositionLocalOf
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV1
-import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV7
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV8
 import com.stanisryz.logica.puzzle.core.daily.DailyDate
 import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.daily.toDailyEpochDay
@@ -80,7 +80,7 @@ internal data class WebDailyDayRecord(
         const val MIN_YEAR = 1
         const val MAX_YEAR = 9_999
         private val MIN_POLICY_VERSION = DailyChallengePolicyV1.VERSION.value
-        private val MAX_POLICY_VERSION = DailyChallengePolicyV7.VERSION.value
+        private val MAX_POLICY_VERSION = DailyChallengePolicyV8.VERSION.value
     }
 }
 
