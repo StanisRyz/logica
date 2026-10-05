@@ -82,7 +82,6 @@ import com.stanisryz.logica.web.generated.resources.web_not_now
 import com.stanisryz.logica.web.generated.resources.web_paid_cancelled
 import com.stanisryz.logica.web.generated.resources.web_paid_error
 import com.stanisryz.logica.web.generated.resources.web_paid_fulfilling
-import com.stanisryz.logica.web.generated.resources.web_paid_pending
 import com.stanisryz.logica.web.generated.resources.web_paid_purchasing
 import com.stanisryz.logica.web.generated.resources.web_paid_saving
 import com.stanisryz.logica.web.generated.resources.web_paid_success
@@ -310,7 +309,6 @@ private fun paidPurchaseMessage(state: WebPaidPurchaseState): String? =
         WebPaidPurchaseState.Success -> stringResource(WebRes.string.web_paid_success)
         WebPaidPurchaseState.Cancelled -> stringResource(WebRes.string.web_paid_cancelled)
         WebPaidPurchaseState.Unavailable -> stringResource(WebRes.string.web_paid_unavailable)
-        WebPaidPurchaseState.CloudPending -> stringResource(WebRes.string.web_paid_pending)
         WebPaidPurchaseState.Error -> stringResource(WebRes.string.web_paid_error)
         WebPaidPurchaseState.Idle -> null
     }

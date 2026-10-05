@@ -227,19 +227,15 @@ class WebPaymentsTest {
             assertEquals(listOf("tok-5"), provider.consumedTokens.toList())
             assertEquals(EconomyPolicy.STARTING_GEMS + 150, economy.currentSnapshot.gems)
 
-            // A failed canonical flush gates consumption entirely: no consume call at all.
-            val failingFlush =
-                coordinator(
-                    economy,
-                    payments,
-                    journal,
-                    revisions,
-                    FakeUnifiedSaveAccess().apply { flushSucceeds = false },
-                    provider,
-                )
+            // Stage 2.1: a failing canonical flush is retried twice, then the token is consumed anyway,
+            // so a cleared local ledger can never pay it again; the reward still lands exactly once.
+            val failingUnified = FakeUnifiedSaveAccess().apply { flushSucceeds = false }
+            val failingFlush = coordinator(economy, payments, journal, revisions, failingUnified, provider)
             provider.pending = listOf(PaymentPurchaseSnapshot("tok-6", "gems_150"))
             failingFlush.reconcilePendingPurchases()
-            assertFalse(provider.consumedTokens.contains("tok-6"))
+            assertTrue(provider.consumedTokens.contains("tok-6"))
+            assertEquals(3, failingUnified.flushCalls)
+            assertEquals(EconomyPolicy.STARTING_GEMS + 300, economy.currentSnapshot.gems)
         }
 
     /** Stage 45.16: an unknown pending productID stays recoverable but is never granted/consumed. */

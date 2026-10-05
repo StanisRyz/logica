@@ -5,6 +5,7 @@ import com.stanisryz.logica.platform.PaymentProductSnapshot
 import com.stanisryz.logica.platform.PaymentPurchaseSnapshot
 import com.stanisryz.logica.platform.PaymentResult
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,6 +35,9 @@ internal enum class WebPaidProduct(
         val GEM_PACKS: List<WebPaidProduct> = listOf(GEMS_50, GEMS_150, GEMS_500)
     }
 }
+
+/** Delays of the bounded retries of a failed canonical flush before a paid token is consumed. */
+private val FLUSH_RETRY_DELAYS_MS = longArrayOf(2_000L, 8_000L)
 
 internal fun paidProductFor(yandexProductId: String): WebPaidProduct? =
     WebPaidProduct.entries.firstOrNull { it.yandexProductId == yandexProductId }
@@ -470,9 +474,6 @@ internal enum class WebPaidPurchaseState {
     Cancelled,
     Unavailable,
     Error,
-
-    /** Locally durable but the canonical cloud flush has not succeeded yet (recoverable). */
-    CloudPending,
 }
 
 /** Result of processing one platform purchase through the fulfillment pipeline. */
@@ -489,7 +490,7 @@ internal enum class WebPaymentOutcome {
     /** Local Economy/Payments writes failed; the journal stays pending for recovery. */
     PersistenceFailed,
 
-    /** Fulfillment is durable but cloud flush/consume did not succeed yet (retry later). */
+    /** Fulfillment is durable but the consume call did not succeed yet (retried by the next reconcile). */
     PendingRetry,
 
     /** Local fulfillment/persistence failed for this attempt (recoverable via journal). */
@@ -525,8 +526,8 @@ internal data class WebPaidCatalogEntry(
  * current Player context; only that session may update UI state, and the context is
  * re-validated before granting. Durable exactly-once identity is the Yandex purchaseToken,
  * tracked in the Player-scoped fulfilled-token ledger; grant + ledger form one recoverable
- * journal transaction. Consumption happens only after the immediate canonical unified cloud
- * flush succeeds, so an un-consumed purchase always remains recoverable via getPurchases().
+ * journal transaction. A consumable is consumed after the canonical unified cloud flush and its
+ * bounded retries, whether or not the flush succeeded, so no token can ever pay twice.
  */
 internal class WebPaymentsCoordinator(
     private val provider: WebPaymentsProvider,
@@ -597,28 +598,31 @@ internal class WebPaymentsCoordinator(
         result: PaymentResult,
     ) {
         if (activePaymentSession != session) return // stale payment session cannot touch UI
-        val outcome =
-            when (result) {
-                is PaymentResult.Completed -> {
-                    if (currentPlayerContext() != capturedContext) {
-                        // Account changed during the frame: never grant/consume across Players;
-                        // the purchase stays recoverable through its owning Player reconcile.
-                        activePaymentSession = null
-                        mutablePurchaseState.value = WebPaidPurchaseState.Idle
-                        return
-                    }
-                    mutablePurchaseState.value = WebPaidPurchaseState.Fulfilling
-                    completeFulfillment(result.purchase)
+        when (result) {
+            is PaymentResult.Completed -> {
+                if (currentPlayerContext() != capturedContext) {
+                    // Account changed during the frame: never grant/consume across Players;
+                    // the purchase stays recoverable through its owning Player reconcile.
+                    activePaymentSession = null
+                    mutablePurchaseState.value = WebPaidPurchaseState.Idle
+                    return
                 }
-                PaymentResult.Cancelled -> WebPaymentOutcome.Cancelled
-                PaymentResult.Unavailable -> WebPaymentOutcome.Unavailable
-                is PaymentResult.Failed -> WebPaymentOutcome.Error
+                mutablePurchaseState.value = WebPaidPurchaseState.Fulfilling
+                // The Store reports the result as soon as the reward is locally durable; the cloud
+                // flush retries and the consume call then finish without holding the Store busy.
+                completeFulfillment(result.purchase) { localOutcome -> finishInteractive(localOutcome) }
             }
+            PaymentResult.Cancelled -> finishInteractive(WebPaymentOutcome.Cancelled)
+            PaymentResult.Unavailable -> finishInteractive(WebPaymentOutcome.Unavailable)
+            is PaymentResult.Failed -> finishInteractive(WebPaymentOutcome.Error)
+        }
+    }
+
+    private fun finishInteractive(outcome: WebPaymentOutcome) {
         activePaymentSession = null
         mutablePurchaseState.value =
             when (outcome) {
                 WebPaymentOutcome.Fulfilled, WebPaymentOutcome.AlreadyFulfilled -> WebPaidPurchaseState.Success
-                WebPaymentOutcome.PendingRetry -> WebPaidPurchaseState.CloudPending
                 WebPaymentOutcome.Cancelled -> WebPaidPurchaseState.Cancelled
                 WebPaymentOutcome.Unavailable -> WebPaidPurchaseState.Unavailable
                 else -> WebPaidPurchaseState.Error
@@ -627,11 +631,17 @@ internal class WebPaymentsCoordinator(
 
     /**
      * Full pipeline for one platform purchase: local fulfill (grant+ledger as one recoverable
-     * journal transaction) -> immediate canonical unified flush -> consume. Consumption happens
-     * only after the flush succeeds; failures converge through later getPurchases() reconciles.
+     * journal transaction) -> canonical unified flush, retried ~2s and ~8s if it fails -> consume
+     * regardless. Consuming even without a successful flush means a cleared local ledger can
+     * never pay the same token twice; the accepted cost is a purchase lost if the player clears
+     * site data before any cloud write lands. Permanent products are never consumed.
      */
-    private suspend fun completeFulfillment(purchase: PaymentPurchaseSnapshot): WebPaymentOutcome {
+    private suspend fun completeFulfillment(
+        purchase: PaymentPurchaseSnapshot,
+        onLocalOutcome: (WebPaymentOutcome) -> Unit = {},
+    ): WebPaymentOutcome {
         val localOutcome = fulfillPurchase(purchase)
+        onLocalOutcome(localOutcome)
         if (localOutcome == WebPaymentOutcome.UnknownProduct || localOutcome == WebPaymentOutcome.PersistenceFailed) {
             return localOutcome // nothing to flush; journal/reconciliation owns recovery
         }
@@ -639,11 +649,22 @@ internal class WebPaymentsCoordinator(
         // so a purchase the ledger already knows needs no flush either.
         val permanent = paidProductFor(purchase.productId)?.permanent == true
         if (permanent && localOutcome == WebPaymentOutcome.AlreadyFulfilled) return localOutcome
-        val flushed = unifiedSaveAccess()?.flushNow() == true
-        if (!flushed) return WebPaymentOutcome.PendingRetry // keep reward + ledger, do NOT consume
+        val context = currentPlayerContext()
+        flushWithBoundedRetry()
         if (permanent) return localOutcome
+        // Never consume one Player's token from another Player's context; its own next bind does.
+        if (currentPlayerContext() != context) return WebPaymentOutcome.PendingRetry
         if (provider.consume(purchase.purchaseToken)) return localOutcome
         return WebPaymentOutcome.PendingRetry // retried when getPurchases returns this token again
+    }
+
+    /** One immediate canonical flush, then at most two delayed retries; best effort, never blocking. */
+    private suspend fun flushWithBoundedRetry() {
+        if (unifiedSaveAccess()?.flushNow() == true) return
+        for (delayMs in FLUSH_RETRY_DELAYS_MS) {
+            delay(delayMs)
+            if (unifiedSaveAccess()?.flushNow() == true) return
+        }
     }
 
     /** Grants + fulfills one purchase exactly once, keyed by its opaque token. */

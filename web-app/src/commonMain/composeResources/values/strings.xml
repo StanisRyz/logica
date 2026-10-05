@@ -57,7 +57,6 @@
     <string name="web_paid_success">Покупка завершена: кристаллы начислены.</string>
     <string name="web_paid_cancelled">Оплата отменена.</string>
     <string name="web_paid_unavailable">Оплата сейчас недоступна.</string>
-    <string name="web_paid_pending">Покупка сохранена и будет завершена автоматически.</string>
     <string name="web_paid_error">Не удалось завершить покупку. Попробуйте ещё раз.</string>
     <string name="web_ad_in_progress">Идёт…</string>
     <string name="web_ad_watch">Смотреть</string>

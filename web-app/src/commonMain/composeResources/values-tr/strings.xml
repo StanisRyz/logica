@@ -57,7 +57,6 @@
     <string name="web_paid_success">Satın alma tamamlandı: elmaslar hesabına eklendi.</string>
     <string name="web_paid_cancelled">Ödeme iptal edildi.</string>
     <string name="web_paid_unavailable">Ödeme şu anda kullanılamıyor.</string>
-    <string name="web_paid_pending">Satın alma kaydedildi ve otomatik olarak tamamlanacak.</string>
     <string name="web_paid_error">Satın alma tamamlanamadı. Lütfen tekrar dene.</string>
     <string name="web_ad_in_progress">Oynatılıyor…</string>
     <string name="web_ad_watch">İzle</string>

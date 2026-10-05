@@ -57,7 +57,6 @@
     <string name="web_paid_success">Purchase complete: the gems are in your wallet.</string>
     <string name="web_paid_cancelled">Payment cancelled.</string>
     <string name="web_paid_unavailable">Payments are unavailable right now.</string>
-    <string name="web_paid_pending">The purchase is saved and will finish automatically.</string>
     <string name="web_paid_error">The purchase could not be completed. Please try again.</string>
     <string name="web_ad_in_progress">Playing…</string>
     <string name="web_ad_watch">Watch</string>
