@@ -146,7 +146,7 @@
 | `./gradlew :web-app:packageYandexDistribution` | Здесь не собирается: 403 на форк Karma, окружение (см. отчёт 7.1). Проверяется в CI (`web-distribution`) |
 | Ручная проверка Web (Playwright) | каталог на 360 dp в EN и TR; загрузчик и сохранённая тёмная тема; касания Nonogram через сетку семантики |
 
-CI прошлого пуша (`53fb71a`, этап 7.2): зелёный, https://github.com/StanisRyz/logica/actions/runs/37359726038. Ссылку на CI этого этапа допишу следующим коммитом.
+CI прошлого пуша (`53fb71a`, этап 7.2): зелёный, https://github.com/StanisRyz/logica/actions/runs/37359726038. CI этого этапа (`286ae5b`): https://github.com/StanisRyz/logica/actions/runs/37364192867 — ktlint, puzzle-core, web, web-distribution зелёные; задача android дважды не получила раннер (`runner_id 0`, снята через 15 минут, ни один шаг не выполнялся). Её проверки (`:app:testDebugUnitTest :app:lintRelease`) прошли локально; следующий пуш прогоняет их в CI заново (дописано вместе с этапом 8.1).
 
 ## 5. Отклонения и вопросы
 

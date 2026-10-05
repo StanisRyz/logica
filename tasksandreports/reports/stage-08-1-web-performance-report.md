@@ -4,13 +4,13 @@
 
 | Пункт | SHA | Коммит |
 |---|---|---|
-| 1. Копирование байтов | `1a567b3` | Web data loader: copy fetched bytes in blocks, not one bridge call per byte |
-| 2. Дедупликация загрузок | `e8a342d` | Web data loader: one shared load per resource path |
-| 3. Шрифты | `997c171` | Fonts: ship Rubik subsets for the characters the game shows |
+| 1. Копирование байтов | `95e5f09` | Web data loader: copy fetched bytes in blocks, not one bridge call per byte |
+| 2. Дедупликация загрузок | `8cddea4` | Web data loader: one shared load per resource path |
+| 3. Шрифты | `85842c7` | Fonts: ship Rubik subsets for the characters the game shows |
 | 4. Перекомпоновки | — | Изменений нет: замер показал, что `ReadyContent` от тиков не перекомпонуется |
 | 5. Размер сборки | — | Только замер, удалять нечего |
 
-SHA указаны до `pull --rebase`. Фраза `AGENTS.md` про шрифты лежит в коммите п. 3. Скриншоты лежат в `tasksandreports/reports/img/stage-08-1/`.
+Фраза `AGENTS.md` про шрифты лежит в коммите п. 3. Скриншоты лежат в `tasksandreports/reports/img/stage-08-1/`.
 
 ## 2. Что сделано по пунктам
 
@@ -124,7 +124,7 @@ SHA указаны до `pull --rebase`. Фраза `AGENTS.md` про шриф�
 | `./gradlew :web-app:packageYandexDistribution` | не собирается в среде (yarn не скачивает пакеты), проверяется в CI |
 | Замеры в браузере (Playwright, production Wasm) | пп. 1, 2, 4 — таблица выше |
 
-CI этапа 7.3 (`286ae5b`): первый прогон отменён, задания не получили раннер (`runner_id 0`, сняты из очереди через 15 минут, ни один шаг не выполнялся). Перезапустил упавшие задания один раз; результат допишу отдельным коммитом перед пушем.
+CI этапа 7.3 (`286ae5b`): первый прогон отменён, задания не получили раннер (`runner_id 0`, сняты из очереди через 15 минут, ни один шаг не выполнялся). Перезапустил упавшие задания один раз: ktlint, web и web-distribution прошли, задача android снова не получила раннер. Ссылка: https://github.com/StanisRyz/logica/actions/runs/37364192867. Пуш этого этапа прогоняет android заново; его ссылку допишу в отчёт 8.2.
 
 ## 5. Отклонения и вопросы
 
