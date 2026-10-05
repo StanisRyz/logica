@@ -3,6 +3,7 @@ package com.stanisryz.logica.web
 import com.stanisryz.logica.platform.AdKind
 import com.stanisryz.logica.platform.AdRewardDefinition
 import com.stanisryz.logica.platform.AdShowResult
+import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.platform.MonetizationAnalyticsEvent
 import com.stanisryz.logica.platform.StoreRewardType
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -143,8 +144,8 @@ internal class WebRewardedPlacementController(
 
     companion object {
         /** The explicit, always-disclosed exchanges of the two placements. */
-        val GEM_REWARD = AdRewardDefinition(rewardType = StoreRewardType.GEMS, amount = 1)
-        val LIFE_REWARD = AdRewardDefinition(rewardType = StoreRewardType.LIFE_RESTORE, amount = 1)
+        val GEM_REWARD = AdRewardDefinition(rewardType = StoreRewardType.GEMS, amount = EconomyPolicy.REWARDED_AD_GEMS)
+        val LIFE_REWARD = AdRewardDefinition(rewardType = StoreRewardType.LIFE_RESTORE, amount = EconomyPolicy.REWARDED_AD_LIVES)
     }
 }
 

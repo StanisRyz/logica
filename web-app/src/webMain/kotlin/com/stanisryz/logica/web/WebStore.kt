@@ -369,22 +369,22 @@ internal object WebStoreCatalog {
     const val ITEM_HINT_PACK = "hint_pack"
     const val ITEM_LIFE_RESTORE = "life_restore"
 
-    // Hint prices are provisional placeholders until the pricing pass; only the logic is final.
+    /** Prices and amounts are the shared [EconomyPolicy] numbers, the same as on Android. */
     val ITEMS: List<StoreItem> =
         listOf(
             StoreItem(
                 id = ITEM_HINT_SINGLE,
-                priceGems = 4,
+                priceGems = EconomyPolicy.HINT_SINGLE_GEM_COST,
                 reward = StoreReward(StoreRewardType.HINTS, amount = 1),
             ),
             StoreItem(
                 id = ITEM_HINT_PACK,
-                priceGems = 10,
-                reward = StoreReward(StoreRewardType.HINTS, amount = 3),
+                priceGems = EconomyPolicy.HINT_PACK_GEM_COST,
+                reward = StoreReward(StoreRewardType.HINTS, amount = EconomyPolicy.HINT_PACK_SIZE),
             ),
             StoreItem(
                 id = ITEM_LIFE_RESTORE,
-                priceGems = 10,
+                priceGems = EconomyPolicy.LIFE_REFILL_GEM_COST,
                 reward = StoreReward(StoreRewardType.LIFE_RESTORE, amount = 1),
             ),
         )

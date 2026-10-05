@@ -31,6 +31,27 @@ object EconomyPolicy {
 
     /** One missing life comes back after this much elapsed real time. */
     const val LIFE_RESTORE_INTERVAL_MS = 30L * 60L * 1000L
+
+    /** Gems that buy back one missing life. */
+    const val LIFE_REFILL_GEM_COST = 10
+
+    // Hint prices are provisional placeholders until the pricing pass; only the logic is final.
+    const val HINT_SINGLE_GEM_COST = 4
+    const val HINT_PACK_SIZE = 3
+    const val HINT_PACK_GEM_COST = 10
+
+    /** What one watched rewarded ad pays: a gem in the Store, a life while one is missing. */
+    const val REWARDED_AD_GEMS = 1
+    const val REWARDED_AD_LIVES = 1
+
+    /** The paid gem packs, smallest first; the reward never comes from store metadata. */
+    const val GEM_PACK_SMALL = 50
+    const val GEM_PACK_MEDIUM = 150
+    const val GEM_PACK_LARGE = 500
+
+    /** The one-time starter pack: these gems and hints, plus every missing life. */
+    const val STARTER_PACK_GEMS = 100
+    const val STARTER_PACK_HINTS = 5
 }
 
 enum class EconomyRewardType {

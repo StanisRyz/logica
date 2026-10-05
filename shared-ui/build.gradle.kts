@@ -36,6 +36,8 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":puzzle-core"))
+            // Only for the shared economy numbers the Store presentation shows (EconomyPolicy).
+            implementation(project(":platform-contracts"))
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)

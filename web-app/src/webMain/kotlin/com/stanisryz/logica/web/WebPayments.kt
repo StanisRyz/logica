@@ -23,10 +23,10 @@ internal enum class WebPaidProduct(
     val refillsLives: Boolean = false,
     val permanent: Boolean = false,
 ) {
-    GEMS_50("gems_50", 50),
-    GEMS_150("gems_150", 150),
-    GEMS_500("gems_500", 500),
-    STARTER_PACK("starter_pack", 100, hintReward = 5, refillsLives = true),
+    GEMS_50("gems_50", EconomyPolicy.GEM_PACK_SMALL),
+    GEMS_150("gems_150", EconomyPolicy.GEM_PACK_MEDIUM),
+    GEMS_500("gems_500", EconomyPolicy.GEM_PACK_LARGE),
+    STARTER_PACK("starter_pack", EconomyPolicy.STARTER_PACK_GEMS, hintReward = EconomyPolicy.STARTER_PACK_HINTS, refillsLives = true),
     NO_ADS("no_ads", 0, permanent = true),
     ;
 

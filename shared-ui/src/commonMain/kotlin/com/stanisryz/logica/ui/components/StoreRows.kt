@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.shared.ui.generated.resources.Res
 import com.stanisryz.logica.shared.ui.generated.resources.no_ads_owned
 import com.stanisryz.logica.shared.ui.generated.resources.no_ads_subtitle
@@ -223,10 +224,10 @@ private val ROW_PADDING = 14.dp
 private val ARTWORK = 48.dp
 private val STARTER_ARTWORK = 64.dp
 
-/** What the one-time starter pack holds, the same on both platforms. */
+/** What the one-time starter pack shows: the shared [EconomyPolicy] contents both hosts grant. */
 object StarterPackContents {
-    const val GEMS = 100
-    const val HINTS = 5
+    const val GEMS = EconomyPolicy.STARTER_PACK_GEMS
+    const val HINTS = EconomyPolicy.STARTER_PACK_HINTS
 }
 
 /**
