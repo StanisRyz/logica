@@ -83,7 +83,6 @@ import com.stanisryz.logica.web.generated.resources.web_paid_cancelled
 import com.stanisryz.logica.web.generated.resources.web_paid_error
 import com.stanisryz.logica.web.generated.resources.web_paid_fulfilling
 import com.stanisryz.logica.web.generated.resources.web_paid_purchasing
-import com.stanisryz.logica.web.generated.resources.web_paid_saving
 import com.stanisryz.logica.web.generated.resources.web_paid_success
 import com.stanisryz.logica.web.generated.resources.web_paid_unavailable
 import com.stanisryz.logica.web.generated.resources.web_purchase_done_hints
@@ -282,8 +281,7 @@ private fun PaidGemTopUpCard(
 private val WebPaidPurchaseState.isBusy: Boolean
     get() =
         this == WebPaidPurchaseState.Purchasing ||
-            this == WebPaidPurchaseState.Fulfilling ||
-            this == WebPaidPurchaseState.Saving
+            this == WebPaidPurchaseState.Fulfilling
 
 /**
  * Price exactly as the Yandex catalog supplies it: the amount with the portal currency icon, or,
@@ -312,7 +310,6 @@ private fun paidPurchaseMessage(state: WebPaidPurchaseState): String? =
     when (state) {
         WebPaidPurchaseState.Purchasing -> stringResource(WebRes.string.web_paid_purchasing)
         WebPaidPurchaseState.Fulfilling -> stringResource(WebRes.string.web_paid_fulfilling)
-        WebPaidPurchaseState.Saving -> stringResource(WebRes.string.web_paid_saving)
         WebPaidPurchaseState.Success -> stringResource(WebRes.string.web_paid_success)
         WebPaidPurchaseState.Cancelled -> stringResource(WebRes.string.web_paid_cancelled)
         WebPaidPurchaseState.Unavailable -> stringResource(WebRes.string.web_paid_unavailable)

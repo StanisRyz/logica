@@ -495,7 +495,6 @@ internal enum class WebPaidPurchaseState {
     Idle,
     Purchasing,
     Fulfilling,
-    Saving,
     Success,
     Cancelled,
     Unavailable,

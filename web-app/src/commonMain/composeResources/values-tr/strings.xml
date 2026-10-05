@@ -56,7 +56,6 @@
     <string name="web_store_section_for_gems">Elmasla</string>
     <string name="web_paid_purchasing">Ödeme açılıyor…</string>
     <string name="web_paid_fulfilling">Elmaslar ekleniyor…</string>
-    <string name="web_paid_saving">Satın alma kaydediliyor…</string>
     <string name="web_paid_success">Satın alma tamamlandı: elmaslar hesabına eklendi.</string>
     <string name="web_paid_cancelled">Ödeme iptal edildi.</string>
     <string name="web_paid_unavailable">Ödeme şu anda kullanılamıyor.</string>

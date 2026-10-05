@@ -56,7 +56,6 @@
     <string name="web_store_section_for_gems">For gems</string>
     <string name="web_paid_purchasing">Opening payment…</string>
     <string name="web_paid_fulfilling">Adding gems…</string>
-    <string name="web_paid_saving">Saving the purchase…</string>
     <string name="web_paid_success">Purchase complete: the gems are in your wallet.</string>
     <string name="web_paid_cancelled">Payment cancelled.</string>
     <string name="web_paid_unavailable">Payments are unavailable right now.</string>

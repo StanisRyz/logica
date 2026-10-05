@@ -363,8 +363,6 @@ internal object WebSaveSectionIds {
 internal class WebSaveSections(
     private val playerSession: WebPlayerSessionController,
 ) {
-    private var pendingEconomyRestore: WebEconomySnapshot? = null
-
     fun all(): List<WebSaveSection> =
         listOf(
             catalogSection(),

@@ -56,7 +56,6 @@
     <string name="web_store_section_for_gems">За кристаллы</string>
     <string name="web_paid_purchasing">Открывается оплата…</string>
     <string name="web_paid_fulfilling">Начисляем кристаллы…</string>
-    <string name="web_paid_saving">Сохраняем покупку…</string>
     <string name="web_paid_success">Покупка завершена: кристаллы начислены.</string>
     <string name="web_paid_cancelled">Оплата отменена.</string>
     <string name="web_paid_unavailable">Оплата сейчас недоступна.</string>
