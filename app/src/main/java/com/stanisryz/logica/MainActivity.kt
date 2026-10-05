@@ -1,10 +1,15 @@
 package com.stanisryz.logica
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,5 +39,24 @@ class MainActivity : ComponentActivity() {
     private fun proceedPaymentDeeplink(intent: Intent) {
         val application = application as LogicaApplication
         application.container.platform.proceedPaymentReturn(intent)
+    }
+}
+
+/**
+ * Status and navigation bar icons follow the app's resolved theme rather than the system's: a light
+ * theme on a dark system would otherwise draw white icons on the cream background. The bars stay
+ * transparent; only the icon colour changes.
+ */
+@Composable
+internal fun SystemBarsFollowTheme(darkTheme: Boolean) {
+    val activity = LocalActivity.current as? ComponentActivity ?: return
+    LaunchedEffect(activity, darkTheme) {
+        val style =
+            if (darkTheme) {
+                SystemBarStyle.dark(Color.TRANSPARENT)
+            } else {
+                SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+            }
+        activity.enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
     }
 }

@@ -35,6 +35,7 @@ import com.stanisryz.logica.ui.profile.AchievementAnnouncer
 import com.stanisryz.logica.ui.profile.LocalAchievementAnnouncer
 import com.stanisryz.logica.ui.profile.unlockedAchievementIds
 import com.stanisryz.logica.ui.theme.LogicaTheme
+import com.stanisryz.logica.ui.theme.isDarkTheme
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -113,7 +114,9 @@ fun LogicaApp() {
             }
     }
 
-    LogicaTheme(themeMode = settings.themeMode) {
+    val darkTheme = settings.themeMode.isDarkTheme()
+    SystemBarsFollowTheme(darkTheme)
+    LogicaTheme(darkTheme = darkTheme) {
         CompositionLocalProvider(
             LocalGameSounds provides soundPlayer,
             LocalAchievementAnnouncer provides achievementAnnouncer,
