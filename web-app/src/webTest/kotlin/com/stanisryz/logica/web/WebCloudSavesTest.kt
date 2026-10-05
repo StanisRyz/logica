@@ -1,6 +1,7 @@
 package com.stanisryz.logica.web
 
 import com.stanisryz.logica.platform.SaveData
+import com.stanisryz.logica.platform.SaveLoadResult
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -34,9 +35,9 @@ class WebCloudSavesTest {
             )
 
             // Player B loads nothing — Player A's data is invisible in B's scope.
-            assertNull(playerB.load())
+            assertEquals(SaveLoadResult.Missing, playerB.load())
             // Player A reloads exactly their own durable state.
-            val restored = playerA.load()
+            val restored = (playerA.load() as? SaveLoadResult.Found)?.data
             assertEquals(SaveData.CURRENT_VERSION, restored?.version)
             assertTrue(economySection.contentEquals(restored?.section(WebSaveSectionIds.ECONOMY)))
             assertNull(restored?.section(WebSaveSectionIds.STORE))
@@ -52,8 +53,9 @@ class WebCloudSavesTest {
 
                     override fun export(): ByteArray = economySection
 
-                    override fun apply(payload: ByteArray) {
+                    override fun apply(payload: ByteArray): Boolean {
                         applied = payload
+                        return true
                     }
                 }
             val storeSectionAdapter =
@@ -63,8 +65,9 @@ class WebCloudSavesTest {
 
                     override fun export(): ByteArray = storeSection
 
-                    override fun apply(payload: ByteArray) {
+                    override fun apply(payload: ByteArray): Boolean {
                         applied = payload
+                        return true
                     }
                 }
             val storage = mutableMapOf<String, String>()
@@ -84,7 +87,7 @@ class WebCloudSavesTest {
             assertEquals(setOf(WebSaveSectionIds.ECONOMY, WebSaveSectionIds.STORE), decoded.sections.keys)
 
             // Restore applies each section payload unchanged.
-            assertTrue(manager.restore())
+            assertEquals(WebSaveRestoreOutcome.RESTORED, manager.restore())
             assertEquals(economySection.toList(), (economySectionAdapter.applied ?: ByteArray(0)).toList())
             assertEquals(storeSection.toList(), (storeSectionAdapter.applied ?: ByteArray(0)).toList())
         }

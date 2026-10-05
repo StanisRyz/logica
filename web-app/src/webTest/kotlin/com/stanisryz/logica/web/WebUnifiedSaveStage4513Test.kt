@@ -10,6 +10,7 @@ import com.stanisryz.logica.platform.PlayerIdentity
 import com.stanisryz.logica.platform.PlayerIdentityGateway
 import com.stanisryz.logica.platform.PurchaseResult
 import com.stanisryz.logica.platform.SaveData
+import com.stanisryz.logica.platform.SaveLoadResult
 import com.stanisryz.logica.platform.SaveRepository
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
@@ -19,6 +20,7 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
@@ -262,7 +264,7 @@ class WebUnifiedSaveStage4513Test {
             val repoA = LocalSaveRepository("save_a", { storageA["k"] }, { _, v -> storageA["k"] = v })
             val repoOther = LocalSaveRepository("save_b", { storageOther["k"] }, { _, v -> storageOther["k"] = v })
             assertTrue(repoA.save(SaveData(sections = mapOf("x" to byteArrayOf(1)))))
-            assertNull(repoOther.load())
+            assertEquals(SaveLoadResult.Missing, repoOther.load())
         }
 
     // Test 3: durable changes coalesce; stale Player contexts and account switches never write.
@@ -276,7 +278,7 @@ class WebUnifiedSaveStage4513Test {
 
                     override fun export(): ByteArray = byteArrayOf(generation.toByte())
 
-                    override fun apply(payload: ByteArray) = Unit
+                    override fun apply(payload: ByteArray) = true
                 }
             val repository = RecordingSaveRepository()
             val scheduler =
@@ -330,6 +332,102 @@ class WebUnifiedSaveStage4513Test {
             assertEquals(11.toByte(), repository.lastSections.getValue("probe").single())
             assertEquals(WebUnifiedSaveStatus.SYNCED, scheduler.saveStatus.value)
         }
+
+    // A fresh browser whose first unified read fails, or whose cloud holds an unreadable
+    // section, never overwrites the Player's cloud save with fresh local state.
+    @Test
+    fun unresolvedUnifiedRestoreNeverOverwritesThePlayersCloudSave() =
+        runTest {
+            val playerA = "player/A"
+            val identity = FakePlayerIdentityGateway(playerA)
+            val unifiedCloud = FakeCloudSaveGateway(identity)
+            val stored =
+                WebSaveCodec.encode(
+                    SaveData(
+                        sections =
+                            mapOf(
+                                WebSaveSectionIds.CATALOG to catalogSectionPayload(level = 12),
+                                WebSaveSectionIds.STATISTICS to
+                                    statisticsSectionPayload("unified-device-0000001", played = 9L),
+                            ),
+                    ),
+                )
+            unifiedCloud.snapshots[playerA] = stored
+            unifiedCloud.failReads = true
+            val controller = freshBrowserController(identity)
+            val scheduler = WebUnifiedSaveScheduler(WebSaveManager(WebSaveSections(controller).all(), unifiedCloud.repository()), this)
+            controller.unifiedSaveAccess = scheduler
+            controller.postBindAction = { token -> scheduler.restoreAndEstablish(token) }
+
+            controller.start()
+            runCurrent()
+            scheduler.markDirty() // a durable local change asks for a restore, never a write
+            assertFalse(scheduler.flushNow())
+            advanceTimeBy(1_000)
+            runCurrent()
+            // Nothing was written: the stored save is byte-for-byte intact.
+            assertEquals(0, unifiedCloud.writeCount(playerA))
+            assertTrue(stored.contentEquals(unifiedCloud.snapshots.getValue(playerA)))
+            assertFalse(scheduler.unifiedSaveActive)
+            assertEquals(WebUnifiedSaveStatus.ERROR, scheduler.saveStatus.value)
+
+            // The read recovers: the retried restore merges, then establishes the merged state.
+            unifiedCloud.failReads = false
+            advanceUntilIdle()
+            assertEquals(12, controller.progressRepository?.currentLevel(balance)?.value)
+            assertEquals(1, unifiedCloud.writeCount(playerA))
+            val canonical = checkNotNull(WebSaveCodec.decode(unifiedCloud.snapshots.getValue(playerA)))
+            assertEquals(
+                12,
+                checkNotNull(
+                    WebCatalogProgressCodec.decode(checkNotNull(canonical.section(WebSaveSectionIds.CATALOG))),
+                ).currentLevel(balance).value,
+            )
+            assertTrue(scheduler.unifiedSaveActive)
+
+            // An unreadable section keeps the cloud as it is, while readable sections still merge.
+            val withUnreadableStatistics =
+                WebSaveCodec.encode(
+                    SaveData(
+                        sections =
+                            mapOf(
+                                WebSaveSectionIds.CATALOG to catalogSectionPayload(level = 20),
+                                WebSaveSectionIds.STATISTICS to byteArrayOf(1, 2, 3),
+                            ),
+                    ),
+                )
+            unifiedCloud.snapshots[playerA] = withUnreadableStatistics
+            val otherBrowser = freshBrowserController(identity)
+            val otherScheduler =
+                WebUnifiedSaveScheduler(WebSaveManager(WebSaveSections(otherBrowser).all(), unifiedCloud.repository()), this)
+            otherBrowser.unifiedSaveAccess = otherScheduler
+            otherBrowser.postBindAction = { token -> otherScheduler.restoreAndEstablish(token) }
+            otherBrowser.start()
+            advanceUntilIdle()
+            assertEquals(20, otherBrowser.progressRepository?.currentLevel(balance)?.value)
+            assertEquals(1, unifiedCloud.writeCount(playerA))
+            assertTrue(withUnreadableStatistics.contentEquals(unifiedCloud.snapshots.getValue(playerA)))
+            assertFalse(otherScheduler.unifiedSaveActive)
+        }
+
+    private fun TestScope.freshBrowserController(identity: FakePlayerIdentityGateway): WebPlayerSessionController =
+        WebPlayerSessionController(
+            playerIdentityGateway = identity,
+            cloudSaveGateway = FakeCloudSaveGateway(identity),
+            progressRepositoryFactory = { scope ->
+                WebCatalogProgressRepository(scope, FakeProgressStore(WebCatalogProgressSnapshot.EMPTY))
+            },
+            statisticsCloudSaveGateway = FakeCloudSaveGateway(identity),
+            statisticsRepositoryFactory = { scope ->
+                WebStatisticsRepository(scope, INSTALLATION_ID, FakeStatisticsStore(WebStatisticsSnapshot.EMPTY))
+            },
+            dailyCloudSaveGateway = FakeCloudSaveGateway(identity),
+            dailyRepositoryFactory = { scope -> WebDailyRepository(scope, FakeDailyStore(WebDailySnapshotV1.EMPTY)) { dailyDate } },
+            playerContextEvents = FakePlayerContextEvents(),
+            economyRepositoryFactory = { scope -> WebPlayerEconomyRepository(scope, FakeEconomyStore()) },
+            storeRepositoryFactory = { scope -> WebPlayerStoreRepository(scope, FakePlayerItemStore()) },
+            scope = this,
+        )
 
     private fun catalogSnapshot(level: Int): WebCatalogProgressSnapshot =
         WebCatalogProgressSnapshot(levels = mapOf(balance to CatalogLevelNumber(level)))
@@ -386,10 +484,12 @@ class WebUnifiedSaveStage4513Test {
 
     private fun FakeCloudSaveGateway.repository(): SaveRepository =
         object : SaveRepository {
-            override suspend fun load(): SaveData? =
+            override suspend fun load(): SaveLoadResult =
                 when (val result = read()) {
-                    is CloudSaveReadResult.Found -> WebSaveCodec.decode(result.payload)
-                    else -> null
+                    is CloudSaveReadResult.Found -> WebSaveCodec.decodeForLoad(result.payload)
+                    is CloudSaveReadResult.Failed -> SaveLoadResult.Failed(result.cause)
+                    CloudSaveReadResult.Unsupported -> SaveLoadResult.Unavailable
+                    CloudSaveReadResult.Missing -> SaveLoadResult.Missing
                 }
 
             override suspend fun save(data: SaveData): Boolean = write(WebSaveCodec.encode(data)) == CloudSaveWriteResult.Saved
@@ -400,7 +500,7 @@ class WebUnifiedSaveStage4513Test {
         var writeDelayMs = 0L
         var lastSections: Map<String, ByteArray> = emptyMap()
 
-        override suspend fun load(): SaveData? = null
+        override suspend fun load(): SaveLoadResult = SaveLoadResult.Missing
 
         override suspend fun save(data: SaveData): Boolean {
             if (writeDelayMs > 0) delay(writeDelayMs)
@@ -430,9 +530,14 @@ class WebUnifiedSaveStage4513Test {
 
         val snapshots = mutableMapOf<String, ByteArray>()
         private val writesPerPlayer = mutableMapOf<String, Int>()
+        var failReads = false
 
         override suspend fun read(): CloudSaveReadResult =
-            snapshots[identity.playerId]?.let(CloudSaveReadResult::Found) ?: CloudSaveReadResult.Missing
+            if (failReads) {
+                CloudSaveReadResult.Failed(IllegalStateException("player.getData failed"))
+            } else {
+                snapshots[identity.playerId]?.let(CloudSaveReadResult::Found) ?: CloudSaveReadResult.Missing
+            }
 
         override suspend fun write(payload: ByteArray): CloudSaveWriteResult {
             snapshots[identity.playerId] = payload

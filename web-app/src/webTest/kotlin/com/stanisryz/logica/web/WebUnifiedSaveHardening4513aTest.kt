@@ -3,6 +3,7 @@ package com.stanisryz.logica.web
 import com.stanisryz.logica.platform.PurchaseRecord
 import com.stanisryz.logica.platform.PurchaseStatus
 import com.stanisryz.logica.platform.SaveData
+import com.stanisryz.logica.platform.SaveLoadResult
 import com.stanisryz.logica.platform.SaveRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceTimeBy
@@ -151,7 +152,7 @@ class WebUnifiedSaveHardening4513aTest {
             var writes = 0
             val repository =
                 object : SaveRepository {
-                    override suspend fun load(): SaveData? = null
+                    override suspend fun load(): SaveLoadResult = SaveLoadResult.Missing
 
                     override suspend fun save(data: SaveData): Boolean {
                         writes += 1
@@ -188,7 +189,7 @@ class WebUnifiedSaveHardening4513aTest {
                         WebSaveManager(
                             listOf(ProbeSection()),
                             object : SaveRepository {
-                                override suspend fun load(): SaveData? = null
+                                override suspend fun load(): SaveLoadResult = SaveLoadResult.Missing
 
                                 override suspend fun save(data: SaveData): Boolean {
                                     alwaysFailingWrites += 1
@@ -211,7 +212,7 @@ class WebUnifiedSaveHardening4513aTest {
 
         override fun export(): ByteArray = byteArrayOf(1)
 
-        override fun apply(payload: ByteArray) = Unit
+        override fun apply(payload: ByteArray) = true
     }
 
     private class FakeEconomyStore(
