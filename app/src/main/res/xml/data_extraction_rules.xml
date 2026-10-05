@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Android 12+ backup and device transfer. With no cloud save on Android, this is how progress and
+    purchases move to a new phone: the Room database (`databases/logica.db`, plus its write-ahead log,
+    which may still hold the latest commits) and the DataStore files (`files/datastore/`). Everything
+    else stays behind: caches (the unpacked game sounds) and the ad and payment SDKs' own data.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="database" path="logica.db" />
+        <include domain="database" path="logica.db-wal" />
+        <include domain="file" path="datastore/" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="database" path="logica.db" />
+        <include domain="database" path="logica.db-wal" />
+        <include domain="file" path="datastore/" />
+    </device-transfer>
+</data-extraction-rules>

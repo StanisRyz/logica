@@ -204,6 +204,7 @@
 - The Daily section derives one state per policy entry: completed from the persisted Daily entry, retry from a durable failed result, otherwise available. Opening an entry always starts a fresh attempt at that day's same deterministic puzzle.
 - The Daily section operates on the current date only and targets puzzles individually; the tutorial is offered by each puzzle's start screen rather than by the Daily card.
 - Room migrations preserve existing saves and never use destructive migration.
+- Android backup stays on (`allowBackup`) because it is the only way progress and purchases reach a new phone: `data_extraction_rules.xml` (API 31+) and `backup_rules.xml` include exactly the Room database `logica.db` with its WAL and the DataStore files under `files/datastore/`, leaving caches and SDK data behind.
 - Room v4 stores one aggregate `daily_runs` lifecycle per date separately from policy-defined `daily_challenges` entries and results.
 - Room v8 removes the obsolete `game_sessions` table through `MIGRATION_7_8`; historical migrations and all current durable state remain intact.
 - Room v10 adds the nullable `game_results.stars` through `MIGRATION_9_10`; historical results keep no star count and nothing is inferred for them.
