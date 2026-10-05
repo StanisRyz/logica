@@ -58,7 +58,7 @@ internal sealed interface WebWordState {
     data class Error(
         val difficulty: Difficulty,
         val levelNumber: CatalogLevelNumber?,
-        val detail: String,
+        val failure: WebLoadFailure,
         val progressionUnavailable: Boolean = false,
         val launch: WebGameLaunch,
     ) : WebWordState
@@ -120,7 +120,7 @@ internal class WebWordController(
                                     WebWordState.Error(
                                         difficulty,
                                         null,
-                                        resolved.detail,
+                                        WebLoadFailure.PROGRESS_UNAVAILABLE,
                                         progressionUnavailable = true,
                                         launch = WebGameLaunch.Catalog(PuzzleType.WORD, difficulty),
                                     )
@@ -161,7 +161,7 @@ internal class WebWordController(
                         WebWordState.Error(
                             difficulty,
                             levelNumber,
-                            exception.message ?: "Word level is unavailable.",
+                            exception.toWebLoadFailure(),
                             progressionUnavailable = false,
                             launch = WebGameLaunch.Catalog(PuzzleType.WORD, difficulty),
                         )
@@ -218,7 +218,7 @@ internal class WebWordController(
                         WebWordState.Error(
                             dailyAttempt.entry.difficulty,
                             null,
-                            exception.message ?: "Word Daily is unavailable.",
+                            exception.toWebLoadFailure(),
                             progressionUnavailable = false,
                             launch = launch,
                         )

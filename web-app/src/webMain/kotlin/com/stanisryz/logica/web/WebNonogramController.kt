@@ -54,7 +54,7 @@ internal sealed interface WebNonogramState {
     data class Error(
         val difficulty: Difficulty,
         val levelNumber: CatalogLevelNumber?,
-        val detail: String,
+        val failure: WebLoadFailure,
         val progressionUnavailable: Boolean = false,
         val launch: WebGameLaunch,
     ) : WebNonogramState
@@ -134,7 +134,7 @@ internal class WebNonogramController(
                                     WebNonogramState.Error(
                                         difficulty,
                                         null,
-                                        resolved.detail,
+                                        WebLoadFailure.PROGRESS_UNAVAILABLE,
                                         progressionUnavailable = true,
                                         launch = launch,
                                     )
@@ -166,7 +166,7 @@ internal class WebNonogramController(
                         WebNonogramState.Error(
                             difficulty,
                             levelNumber,
-                            exception.message ?: "Nonogram level is unavailable.",
+                            exception.toWebLoadFailure(),
                             launch = launch,
                         )
                 }
@@ -210,7 +210,7 @@ internal class WebNonogramController(
                 WebNonogramState.Error(
                     dailyAttempt.entry.difficulty,
                     null,
-                    exception.message ?: "Nonogram Daily is unavailable.",
+                    exception.toWebLoadFailure(),
                     launch = launch,
                 )
         }

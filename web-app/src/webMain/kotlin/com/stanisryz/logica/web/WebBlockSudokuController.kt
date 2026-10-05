@@ -44,7 +44,7 @@ internal sealed interface WebBlockSudokuState {
     data class Error(
         val difficulty: Difficulty,
         val levelNumber: CatalogLevelNumber?,
-        val detail: String,
+        val failure: WebLoadFailure,
         val progressionUnavailable: Boolean = false,
         val launch: WebGameLaunch,
     ) : WebBlockSudokuState
@@ -102,7 +102,7 @@ internal class WebBlockSudokuController(
                                     WebBlockSudokuState.Error(
                                         difficulty,
                                         null,
-                                        resolved.detail,
+                                        WebLoadFailure.PROGRESS_UNAVAILABLE,
                                         progressionUnavailable = true,
                                         launch = launch,
                                     )
@@ -132,7 +132,7 @@ internal class WebBlockSudokuController(
                         WebBlockSudokuState.Error(
                             difficulty,
                             levelNumber,
-                            exception.message ?: "Block Sudoku level is unavailable.",
+                            exception.toWebLoadFailure(),
                             launch = launch,
                         )
                 }
@@ -173,7 +173,7 @@ internal class WebBlockSudokuController(
                 WebBlockSudokuState.Error(
                     entry.difficulty,
                     null,
-                    exception.message ?: "Block Sudoku Daily is unavailable.",
+                    exception.toWebLoadFailure(),
                     launch = launch,
                 )
         }

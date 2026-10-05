@@ -93,7 +93,7 @@ private fun WebStateBackButton(
 @Composable
 internal fun WebCatalogLevelErrorContent(
     levelNumber: Int?,
-    detail: String,
+    failure: WebLoadFailure,
     onRetry: () -> Unit,
     onBack: () -> Unit,
     isDaily: Boolean = false,
@@ -114,7 +114,7 @@ internal fun WebCatalogLevelErrorContent(
         )
         Spacer(Modifier.height(12.dp))
         Text(
-            text = detail,
+            text = stringResource(failure.message),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -170,7 +170,7 @@ internal fun WebOrdinaryCatalogTerminalDialog(
         onRetrySave = onRetrySave,
         onExit = onBack,
         detail = if (solved) solvedDetail else failedDetail,
-        saveErrorDetail = saveError?.let { stringResource(WebRes.string.web_save_error_catalog, it.detail) },
+        saveErrorDetail = saveError?.let { stringResource(WebRes.string.web_save_error_catalog) },
         economy =
             when {
                 // A solved replay only raises stars; it pays nothing.
@@ -227,7 +227,7 @@ internal fun WebDailyOrdinaryTerminalDialog(
             },
         saveErrorDetail =
             (completion as? WebDailyCompletionState.SaveError)?.let {
-                stringResource(WebRes.string.web_save_error_daily, it.detail)
+                stringResource(WebRes.string.web_save_error_daily)
             },
         mistakesUsed = mistakesUsed,
         hintsUsed = hintsUsed,
@@ -248,7 +248,7 @@ internal fun WebCatalogSaveErrorBanner(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                stringResource(WebRes.string.web_save_error_generic, error.detail),
+                stringResource(WebRes.string.web_save_error_generic),
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodySmall,
             )

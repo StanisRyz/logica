@@ -57,7 +57,7 @@ internal sealed interface WebSudokuState {
     data class Error(
         val difficulty: Difficulty,
         val levelNumber: CatalogLevelNumber?,
-        val detail: String,
+        val failure: WebLoadFailure,
         val progressionUnavailable: Boolean = false,
         val launch: WebGameLaunch,
     ) : WebSudokuState
@@ -150,7 +150,7 @@ internal class WebSudokuController(
                                     WebSudokuState.Error(
                                         difficulty,
                                         null,
-                                        resolved.detail,
+                                        WebLoadFailure.PROGRESS_UNAVAILABLE,
                                         progressionUnavailable = true,
                                         launch = WebGameLaunch.Catalog(PuzzleType.SUDOKU, difficulty),
                                     )
@@ -188,7 +188,7 @@ internal class WebSudokuController(
                         WebSudokuState.Error(
                             difficulty,
                             levelNumber,
-                            exception.message ?: "Sudoku level is unavailable.",
+                            exception.toWebLoadFailure(),
                             progressionUnavailable = false,
                             launch = WebGameLaunch.Catalog(PuzzleType.SUDOKU, difficulty),
                         )
@@ -251,7 +251,7 @@ internal class WebSudokuController(
                         WebSudokuState.Error(
                             dailyAttempt.entry.difficulty,
                             null,
-                            exception.message ?: "Sudoku Daily is unavailable.",
+                            exception.toWebLoadFailure(),
                             progressionUnavailable = false,
                             launch = launch,
                         )

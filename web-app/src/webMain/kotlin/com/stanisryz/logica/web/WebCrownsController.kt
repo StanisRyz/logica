@@ -50,7 +50,7 @@ internal sealed interface WebCrownsState {
     data class Error(
         val difficulty: Difficulty,
         val levelNumber: CatalogLevelNumber?,
-        val detail: String,
+        val failure: WebLoadFailure,
         val progressionUnavailable: Boolean = false,
         val launch: WebGameLaunch,
     ) : WebCrownsState
@@ -127,7 +127,7 @@ internal class WebCrownsController(
                                     WebCrownsState.Error(
                                         difficulty,
                                         null,
-                                        resolved.detail,
+                                        WebLoadFailure.PROGRESS_UNAVAILABLE,
                                         progressionUnavailable = true,
                                         launch = WebGameLaunch.Catalog(PuzzleType.CROWNS, difficulty),
                                     )
@@ -163,7 +163,7 @@ internal class WebCrownsController(
                         WebCrownsState.Error(
                             difficulty,
                             levelNumber,
-                            exception.message ?: "Crowns level is unavailable.",
+                            exception.toWebLoadFailure(),
                             progressionUnavailable = false,
                             launch = WebGameLaunch.Catalog(PuzzleType.CROWNS, difficulty),
                         )
@@ -216,7 +216,7 @@ internal class WebCrownsController(
                         WebCrownsState.Error(
                             dailyAttempt.entry.difficulty,
                             null,
-                            exception.message ?: "Crowns Daily is unavailable.",
+                            exception.toWebLoadFailure(),
                             progressionUnavailable = false,
                             launch = launch,
                         )

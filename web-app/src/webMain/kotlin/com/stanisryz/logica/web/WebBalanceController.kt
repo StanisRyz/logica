@@ -50,7 +50,7 @@ internal sealed interface WebBalanceState {
     data class Error(
         val difficulty: Difficulty,
         val levelNumber: CatalogLevelNumber?,
-        val detail: String,
+        val failure: WebLoadFailure,
         val progressionUnavailable: Boolean = false,
         val launch: WebGameLaunch,
     ) : WebBalanceState
@@ -127,7 +127,7 @@ internal class WebBalanceController(
                                     WebBalanceState.Error(
                                         difficulty,
                                         null,
-                                        resolved.detail,
+                                        WebLoadFailure.PROGRESS_UNAVAILABLE,
                                         progressionUnavailable = true,
                                         launch = WebGameLaunch.Catalog(PuzzleType.BALANCE, difficulty),
                                     )
@@ -163,7 +163,7 @@ internal class WebBalanceController(
                         WebBalanceState.Error(
                             difficulty,
                             levelNumber,
-                            exception.message ?: "Balance level is unavailable.",
+                            exception.toWebLoadFailure(),
                             progressionUnavailable = false,
                             launch = WebGameLaunch.Catalog(PuzzleType.BALANCE, difficulty),
                         )
@@ -220,7 +220,7 @@ internal class WebBalanceController(
                         WebBalanceState.Error(
                             dailyAttempt.entry.difficulty,
                             null,
-                            exception.message ?: "Balance Daily is unavailable.",
+                            exception.toWebLoadFailure(),
                             progressionUnavailable = false,
                             launch = launch,
                         )

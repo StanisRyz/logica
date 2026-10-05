@@ -25,9 +25,8 @@ internal sealed interface WebBootstrapState {
         val mode: WebHostMode,
     ) : WebBootstrapState
 
-    data class FatalError(
-        val message: String,
-    ) : WebBootstrapState
+    /** The SDK could not start; the player sees a localized message, the cause goes to [AppLog]. */
+    data object FatalError : WebBootstrapState
 
     /** `YaGames.init()` did not answer in time; the player may retry (a page reload). */
     data object TimedOut : WebBootstrapState
@@ -103,9 +102,8 @@ internal class WebBootstrapController(
                     hostLanguage = standaloneWebAppLanguage()
                     WebBootstrapState.Ready(WebHostMode.STANDALONE)
                 } else {
-                    WebBootstrapState.FatalError(
-                        "Yandex Games SDK is unavailable outside a local development host.",
-                    )
+                    // Yandex Games SDK is unavailable outside a local development host.
+                    WebBootstrapState.FatalError
                 }
             return
         }
@@ -130,7 +128,7 @@ internal class WebBootstrapController(
             },
             onFailure = { detail ->
                 initTimeout?.cancel()
-                state = WebBootstrapState.FatalError("Yandex Games SDK initialization failed: $detail")
+                state = WebBootstrapState.FatalError
             },
         )
     }

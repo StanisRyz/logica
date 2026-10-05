@@ -135,6 +135,7 @@ import com.stanisryz.logica.ui.theme.LogicaSpacing
 import com.stanisryz.logica.ui.theme.LogicaTheme
 import com.stanisryz.logica.ui.tutorial.FirstPlayTutorialDialog
 import com.stanisryz.logica.ui.word.WordGameContent
+import com.stanisryz.logica.web.generated.resources.web_fatal_message
 import com.stanisryz.logica.web.generated.resources.web_fatal_title
 import com.stanisryz.logica.web.generated.resources.web_init_timeout_body
 import com.stanisryz.logica.web.generated.resources.web_init_timeout_title
@@ -326,7 +327,7 @@ internal fun WebApp(
                             paymentsCoordinator = paymentsCoordinator,
                             onRendered = controller::onInitialHostUiReady,
                         )
-                    is WebBootstrapState.FatalError -> FatalContent(state.message)
+                    WebBootstrapState.FatalError -> FatalContent()
                     WebBootstrapState.TimedOut -> InitTimedOutContent(onRetry = controller::retryInitialization)
                 }
             }
@@ -1411,7 +1412,7 @@ private fun NonogramFlow(
         is WebNonogramState.Error ->
             WebCatalogLevelErrorContent(
                 levelNumber = state.levelNumber?.value,
-                detail = state.detail,
+                failure = state.failure,
                 onRetry = controller::retryLoading,
                 onBack = if (state.launch.isDaily) onExitNonogram else controller::showDifficultySelector,
                 isDaily = state.launch.isDaily,
@@ -1516,7 +1517,7 @@ private fun BlockSudokuFlow(
         is WebBlockSudokuState.Error ->
             WebCatalogLevelErrorContent(
                 levelNumber = state.levelNumber?.value,
-                detail = state.detail,
+                failure = state.failure,
                 onRetry = controller::retryLoading,
                 onBack = if (state.launch.isDaily) onExit else controller::showDifficultySelector,
                 isDaily = state.launch.isDaily,
@@ -1610,7 +1611,7 @@ private fun BalanceFlow(
         is WebBalanceState.Error ->
             WebCatalogLevelErrorContent(
                 levelNumber = state.levelNumber?.value,
-                detail = state.detail,
+                failure = state.failure,
                 onRetry = controller::retryLoading,
                 onBack =
                     if (state.launch.isDaily) {
@@ -1664,7 +1665,7 @@ private fun CrownsFlow(
         is WebCrownsState.Error ->
             WebCatalogLevelErrorContent(
                 levelNumber = state.levelNumber?.value,
-                detail = state.detail,
+                failure = state.failure,
                 onRetry = controller::retryLoading,
                 onBack =
                     if (state.launch.isDaily) {
@@ -1716,7 +1717,7 @@ private fun WordFlow(
         is WebWordState.Error ->
             WebCatalogLevelErrorContent(
                 levelNumber = state.levelNumber?.value,
-                detail = state.detail,
+                failure = state.failure,
                 onRetry = controller::retryLoading,
                 onBack =
                     if (state.launch.isDaily) {
@@ -1769,7 +1770,7 @@ private fun SudokuFlow(
         is WebSudokuState.Error ->
             WebCatalogLevelErrorContent(
                 levelNumber = state.levelNumber?.value,
-                detail = state.detail,
+                failure = state.failure,
                 onRetry = controller::retryLoading,
                 onBack =
                     if (state.launch.isDaily) {
@@ -1820,7 +1821,7 @@ private fun Game2048Flow(
         is Web2048State.Error ->
             WebCatalogLevelErrorContent(
                 levelNumber = state.levelNumber?.value,
-                detail = state.detail,
+                failure = state.failure,
                 onRetry = controller::retryLoading,
                 onBack =
                     if (state.launch.isDaily) {
@@ -2422,7 +2423,7 @@ private fun InitTimedOutContent(onRetry: () -> Unit) {
 }
 
 @Composable
-private fun FatalContent(message: String) {
+private fun FatalContent() {
     CenteredColumn {
         Text(
             text = stringResource(WebRes.string.web_fatal_title),
@@ -2433,7 +2434,7 @@ private fun FatalContent(message: String) {
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            text = message,
+            text = stringResource(WebRes.string.web_fatal_message),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,

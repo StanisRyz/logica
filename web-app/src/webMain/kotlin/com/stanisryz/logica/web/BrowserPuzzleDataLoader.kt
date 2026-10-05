@@ -55,10 +55,14 @@ class BrowserPuzzleDataLoader {
     }
 
     private suspend fun fetchResponse(resourcePath: String): BrowserFetchResponse {
-        val response = browserFetch(resourcePath.relativeToPage()).await()
-        check(response.ok) {
-            "Unable to load $resourcePath: HTTP ${response.status}."
-        }
+        val response =
+            try {
+                browserFetch(resourcePath.relativeToPage()).await()
+            } catch (failure: IllegalStateException) {
+                // A rejected fetch: no connection, or the request never reached the server.
+                throw WebPuzzleDataLoadException("Unable to load $resourcePath.", failure)
+            }
+        if (!response.ok) throw WebPuzzleDataLoadException("Unable to load $resourcePath: HTTP ${response.status}.")
         return response
     }
 

@@ -5,6 +5,7 @@
     <string name="web_tab_elsewhere_body">Играть можно только в одной вкладке. Здесь игра продолжится с того же прогресса.</string>
     <string name="web_tab_play_here">Играть здесь</string>
     <string name="web_fatal_title">Не удалось запустить Web-версию</string>
+    <string name="web_fatal_message">Не удалось подключиться к Яндекс Играм. Обновите страницу.</string>
     <string name="web_init_timeout_title">Игра не запустилась</string>
     <string name="web_init_timeout_body">Платформа не ответила вовремя. Проверьте подключение и попробуйте ещё раз.</string>
     <string name="web_settings">Настройки</string>
@@ -32,10 +33,14 @@
     <string name="web_error_daily">Не удалось открыть задачу дня</string>
     <string name="web_error_level">Не удалось открыть уровень %1$d</string>
     <string name="web_error_progress">Не удалось загрузить прогресс</string>
+    <string name="web_failure_data_load">Не удалось загрузить данные игры. Проверьте подключение к интернету и попробуйте ещё раз.</string>
+    <string name="web_failure_data_corrupt">Данные игры повреждены. Обновите страницу.</string>
+    <string name="web_failure_progress">Прогресс сейчас недоступен. Попробуйте ещё раз.</string>
+    <string name="web_failure_unknown">Что-то пошло не так. Попробуйте ещё раз.</string>
     <string name="web_retry">Повторить</string>
-    <string name="web_save_error_catalog">Уровень решён, но прогресс не сохранён. %1$s</string>
-    <string name="web_save_error_daily">Игра завершена, но прогресс задачи дня не сохранён. %1$s</string>
-    <string name="web_save_error_generic">Прогресс не сохранён: %1$s</string>
+    <string name="web_save_error_catalog">Уровень решён, но прогресс не сохранён.</string>
+    <string name="web_save_error_daily">Игра завершена, но прогресс задачи дня не сохранён.</string>
+    <string name="web_save_error_generic">Прогресс не сохранён.</string>
     <string name="web_score_final">Итоговый счёт: %1$s.</string>
     <string name="web_score_failed">Цель не достигнута. Итоговый счёт: %1$s.</string>
     <string name="web_word_answer">Загаданное слово: %1$s</string>

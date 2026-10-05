@@ -48,7 +48,7 @@ internal sealed interface Web2048State {
     data class Error(
         val difficulty: Difficulty,
         val levelNumber: CatalogLevelNumber?,
-        val detail: String,
+        val failure: WebLoadFailure,
         val progressionUnavailable: Boolean = false,
         val launch: WebGameLaunch,
     ) : Web2048State
@@ -146,7 +146,7 @@ internal class Web2048Controller(
                                     Web2048State.Error(
                                         difficulty,
                                         null,
-                                        resolved.detail,
+                                        WebLoadFailure.PROGRESS_UNAVAILABLE,
                                         progressionUnavailable = true,
                                         launch = WebGameLaunch.Catalog(PuzzleType.GAME_2048, difficulty),
                                     )
@@ -184,7 +184,7 @@ internal class Web2048Controller(
                         Web2048State.Error(
                             difficulty,
                             levelNumber,
-                            exception.message ?: "2048 level is unavailable.",
+                            exception.toWebLoadFailure(),
                             progressionUnavailable = false,
                             launch = WebGameLaunch.Catalog(PuzzleType.GAME_2048, difficulty),
                         )
@@ -244,7 +244,7 @@ internal class Web2048Controller(
                         Web2048State.Error(
                             dailyAttempt.entry.difficulty,
                             null,
-                            exception.message ?: "2048 Daily is unavailable.",
+                            exception.toWebLoadFailure(),
                             progressionUnavailable = false,
                             launch = launch,
                         )
