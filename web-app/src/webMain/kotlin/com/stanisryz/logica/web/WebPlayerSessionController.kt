@@ -873,9 +873,7 @@ internal class WebPlayerSessionController(
         if (!isCurrentDaily(revision, repository)) return
 
         when (val merge = repository.mergeCloud(cloud)) {
-            is WebDailyMergeResult.PolicyConflict,
-            is WebDailyMergeResult.PersistenceFailed,
-            -> dailySyncFailed(revision, identity, repository)
+            is WebDailyMergeResult.PersistenceFailed -> dailySyncFailed(revision, identity, repository)
             is WebDailyMergeResult.Merged -> {
                 if (merge.cloudWriteRequired) {
                     val writeResult =

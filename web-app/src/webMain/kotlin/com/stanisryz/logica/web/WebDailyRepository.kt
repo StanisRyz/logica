@@ -105,10 +105,8 @@ internal sealed interface WebDailyMergeResult {
     data class Merged(
         val snapshot: WebDailySnapshotV1,
         val cloudWriteRequired: Boolean,
-    ) : WebDailyMergeResult
-
-    data class PolicyConflict(
-        val date: DailyDate,
+        /** Dates that kept the local record because the cloud's carried another policy. */
+        val policyConflicts: List<DailyDate> = emptyList(),
     ) : WebDailyMergeResult
 
     data class PersistenceFailed(
@@ -193,14 +191,14 @@ internal class WebDailyRepository(
 
     fun mergeCloud(cloud: WebDailySnapshotV1): WebDailyMergeResult {
         val local = mutableSnapshot.value
-        val merged =
+        // A same-date policy conflict keeps the local record; every other cloud date still merges.
+        val result =
             try {
-                WebDailyMerger.merge(local, cloud)
-            } catch (conflict: WebDailyPolicyConflictException) {
-                return WebDailyMergeResult.PolicyConflict(conflict.date)
+                WebDailyMerger.mergeReporting(local, cloud)
             } catch (error: Throwable) {
                 return WebDailyMergeResult.PersistenceFailed(error)
             }
+        val merged = result.snapshot
         if (merged != local) {
             persist(merged)?.let { return WebDailyMergeResult.PersistenceFailed(it) }
             mutableSnapshot.value = merged
@@ -208,6 +206,7 @@ internal class WebDailyRepository(
         return WebDailyMergeResult.Merged(
             snapshot = merged,
             cloudWriteRequired = merged != cloud,
+            policyConflicts = result.policyConflicts,
         )
     }
 

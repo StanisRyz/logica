@@ -494,9 +494,8 @@ internal class WebSaveSections(
                 val repository =
                     (playerSession.dailyBinding.value as? WebDailyBinding.Ready)?.repository ?: return true
                 return when (repository.mergeCloud(cloud)) {
+                    // A same-date policy conflict merges too, keeping the local record of that date.
                     is WebDailyMergeResult.Merged -> true
-                    // A same-date policy conflict is the domain's deliberate refusal, not a failure.
-                    is WebDailyMergeResult.PolicyConflict -> true
                     is WebDailyMergeResult.PersistenceFailed -> false
                 }
             }

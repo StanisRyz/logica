@@ -57,9 +57,46 @@ class WebDailyRepositoryTest {
         encoded[WebDailyHeader.RECORD_SOLVED_MASK_OFFSET] = 0x80.toByte()
         assertNull(WebDailyCodec.decode(encoded))
 
+        // Stage 2.2: a same-date policy conflict keeps the local record (and is reported) instead of
+        // refusing the whole merge.
         val conflicting = snapshot(record(date, policyV4 = true))
-        assertIs<WebDailyMergeResult.PolicyConflict>(repository.mergeCloud(conflicting))
+        val conflicted = assertIs<WebDailyMergeResult.Merged>(repository.mergeCloud(conflicting))
+        assertEquals(listOf(date), conflicted.policyConflicts)
         assertEquals(first.snapshot, repository.snapshot.value)
+    }
+
+    @Test
+    fun aPolicyConflictKeepsTheLocalRecordAndEveryOtherCloudDate() {
+        val conflictDate = DailyDate(2026, 8, 20)
+        val localOnly = DailyDate(2026, 8, 18)
+        val cloudOnly = DailyDate(2026, 8, 19)
+        val localConflict = record(conflictDate, solved = setOf(PuzzleType.WORD))
+        val local =
+            WebDailySnapshotV1(
+                days =
+                    mapOf(
+                        conflictDate to localConflict,
+                        localOnly to record(localOnly, solved = setOf(PuzzleType.BALANCE)),
+                    ),
+            )
+        val cloud =
+            WebDailySnapshotV1(
+                days =
+                    mapOf(
+                        conflictDate to record(conflictDate, solved = setOf(PuzzleType.CROWNS), policyV4 = true),
+                        cloudOnly to record(cloudOnly, solved = setOf(PuzzleType.SUDOKU)),
+                    ),
+            )
+        val store = FakeDailyStore(local)
+        val repository = WebDailyRepository(WebCatalogProgressScope.STANDALONE, store) { conflictDate }
+        repository.loadLocal()
+
+        val merged = assertIs<WebDailyMergeResult.Merged>(repository.mergeCloud(cloud))
+        assertEquals(setOf(conflictDate, localOnly, cloudOnly), merged.snapshot.days.keys)
+        assertEquals(localConflict, merged.snapshot.days.getValue(conflictDate))
+        assertTrue(merged.cloudWriteRequired)
+        assertEquals(listOf(conflictDate), merged.policyConflicts)
+        assertEquals(merged.snapshot, store.snapshot)
     }
 
     @Test

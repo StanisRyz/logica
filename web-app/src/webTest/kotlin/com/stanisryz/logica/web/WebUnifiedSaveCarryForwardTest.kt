@@ -137,14 +137,25 @@ class WebUnifiedSaveCarryForwardTest {
     @Test
     fun aDailyPolicyConflictStillResolvesTheRestore() =
         runTest {
-            val stored =
-                WebSaveCodec.encode(SaveData(sections = mapOf(WebSaveSectionIds.DAILY to dailyPayload(DailyChallengePolicyV6.VERSION))))
+            // Stage 2.2: the cloud's other dates survive the conflict; the conflict date keeps the local record.
+            val otherDate = DailyDate(2026, 8, 19)
+            val cloudDaily =
+                WebDailySnapshotV1(
+                    days =
+                        dailySnapshot(DailyChallengePolicyV6.VERSION).days +
+                            (otherDate to WebDailyDayRecord(otherDate, DailyChallengePolicyV5.VERSION, solvedMask = 1)),
+                )
+            val stored = WebSaveCodec.encode(SaveData(sections = mapOf(WebSaveSectionIds.DAILY to WebDailyCodec.encode(cloudDaily))))
             val harness = Harness(this, stored, localDaily = dailySnapshot(DailyChallengePolicyV5.VERSION))
 
             harness.start()
             advanceUntilIdle()
             assertEquals(1, harness.cloud.writes)
             assertTrue(harness.scheduler.unifiedSaveActive)
+            val written = checkNotNull(WebSaveCodec.decode(checkNotNull(harness.cloud.stored)))
+            val writtenDaily = checkNotNull(WebDailyCodec.decode(checkNotNull(written.section(WebSaveSectionIds.DAILY))))
+            assertEquals(setOf(dailyDate, otherDate), writtenDaily.days.keys)
+            assertEquals(DailyChallengePolicyV5.VERSION, writtenDaily.days.getValue(dailyDate).policyVersion)
         }
 
     @Test

@@ -10,6 +10,7 @@ import com.stanisryz.logica.platform.PlayerIdentity
 import com.stanisryz.logica.platform.PlayerIdentityGateway
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
+import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV4
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyV5
 import com.stanisryz.logica.puzzle.core.daily.DailyDate
 import com.stanisryz.logica.puzzle.core.model.Difficulty
@@ -234,6 +235,54 @@ class WebPlayerSessionControllerTest {
 
             assertEquals(1, postBindCalls)
             assertEquals(1, restoreReconciliations)
+        }
+
+    // Stage 2.2: the legacy Daily key keeps every cloud date through a same-date policy conflict.
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun legacyDailySyncKeepsOtherCloudDatesThroughAPolicyConflict() =
+        runTest {
+            val playerA = "player/A"
+            val identity = FakePlayerIdentityGateway(playerA)
+            val conflictDate = DailyDate(2026, 8, 20)
+            val cloudOnly = DailyDate(2026, 8, 19)
+            val localRecord =
+                WebDailyDayRecord(conflictDate, DailyChallengePolicyV5.VERSION, solvedMask = WebDailyPuzzleOrder.bit(PuzzleType.WORD))
+            val dailyCloud = FakeCloudSaveGateway(identity)
+            dailyCloud.snapshots[playerA] =
+                WebDailyCodec.encode(
+                    WebDailySnapshotV1(
+                        days =
+                            mapOf(
+                                conflictDate to WebDailyDayRecord(conflictDate, DailyChallengePolicyV4.VERSION, solvedMask = 1),
+                                cloudOnly to WebDailyDayRecord(cloudOnly, DailyChallengePolicyV5.VERSION, solvedMask = 2),
+                            ),
+                    ),
+                )
+            val dailyStore = FakeDailyStore(WebDailySnapshotV1(days = mapOf(conflictDate to localRecord)))
+            val controller =
+                WebPlayerSessionController(
+                    playerIdentityGateway = identity,
+                    cloudSaveGateway = FakeCloudSaveGateway(identity),
+                    progressRepositoryFactory = { scope ->
+                        WebCatalogProgressRepository(scope, FakeProgressStore(WebCatalogProgressSnapshot.EMPTY))
+                    },
+                    statisticsCloudSaveGateway = FakeCloudSaveGateway(identity),
+                    statisticsRepositoryFactory = { scope ->
+                        WebStatisticsRepository(scope, INSTALLATION_ID, FakeStatisticsStore(WebStatisticsSnapshot.EMPTY))
+                    },
+                    dailyCloudSaveGateway = dailyCloud,
+                    dailyRepositoryFactory = { scope -> WebDailyRepository(scope, dailyStore) { conflictDate } },
+                    playerContextEvents = FakePlayerContextEvents(),
+                    scope = this,
+                )
+
+            controller.start()
+            advanceUntilIdle()
+            assertEquals(setOf(conflictDate, cloudOnly), dailyStore.snapshot.days.keys)
+            assertEquals(localRecord, dailyStore.snapshot.days.getValue(conflictDate))
+            val written = checkNotNull(WebDailyCodec.decode(dailyCloud.snapshots.getValue(playerA)))
+            assertEquals(dailyStore.snapshot, written)
         }
 
     private fun snapshot(

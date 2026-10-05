@@ -133,19 +133,29 @@ internal object WebDailyPuzzleOrder {
     }
 }
 
-internal class WebDailyPolicyConflictException(
-    val date: DailyDate,
-    val firstPolicyVersion: DailyPolicyVersion,
-    val secondPolicyVersion: DailyPolicyVersion,
-) : IllegalArgumentException("Conflicting Web Daily policies for $date.")
-
-/** Commutative, idempotent union of monotonic Daily facts. */
+/**
+ * Idempotent union of monotonic Daily facts, commutative except on a date whose two records carry
+ * different policies: that date keeps the first (preferred, local) record and the other side's
+ * record is dropped, while every other date is still merged.
+ */
 internal object WebDailyMerger {
+    data class Result(
+        val snapshot: WebDailySnapshotV1,
+        /** Dates whose second-side record was dropped for a policy conflict. */
+        val policyConflicts: List<DailyDate>,
+    )
+
     fun merge(
         first: WebDailySnapshotV1,
         second: WebDailySnapshotV1,
-    ): WebDailySnapshotV1 {
+    ): WebDailySnapshotV1 = mergeReporting(first, second).snapshot
+
+    fun mergeReporting(
+        first: WebDailySnapshotV1,
+        second: WebDailySnapshotV1,
+    ): Result {
         val merged = linkedMapOf<DailyDate, WebDailyDayRecord>()
+        val conflicts = mutableListOf<DailyDate>()
         (first.days.keys + second.days.keys).sortedWith(webDailyDateComparator).forEach { date ->
             val firstRecord = first.days[date]
             val secondRecord = second.days[date]
@@ -153,12 +163,10 @@ internal object WebDailyMerger {
                 when {
                     firstRecord == null -> checkNotNull(secondRecord)
                     secondRecord == null -> firstRecord
-                    firstRecord.policyVersion != secondRecord.policyVersion ->
-                        throw WebDailyPolicyConflictException(
-                            date,
-                            firstRecord.policyVersion,
-                            secondRecord.policyVersion,
-                        )
+                    firstRecord.policyVersion != secondRecord.policyVersion -> {
+                        conflicts += date
+                        firstRecord
+                    }
                     else ->
                         WebDailyDayRecord(
                             date = date,
@@ -173,7 +181,7 @@ internal object WebDailyMerger {
                         )
                 }
         }
-        return WebDailySnapshotV1(days = merged)
+        return Result(WebDailySnapshotV1(days = merged), conflicts)
     }
 }
 
