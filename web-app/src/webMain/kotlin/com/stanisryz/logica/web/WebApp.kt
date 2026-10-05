@@ -253,7 +253,9 @@ internal fun WebApp(
     val lifecycleState by lifecycle.state.collectAsState()
     val tabLockState by tabLock.state.collectAsState()
     val soundPlayer = remember(lifecycle) { WebGameSoundPlayer(lifecycle.state) }
-    LaunchedEffect(soundPlayer, lifecycleState) { soundPlayer.onLifecycle(lifecycleState) }
+    LaunchedEffect(soundPlayer, lifecycleState, WebSettings.soundEnabled) {
+        soundPlayer.onHostAudio(lifecycleState, WebSettings.soundEnabled)
+    }
 
     // Like Android's default, the Web follows the device's light/dark preference unless the player
     // picked a theme in the Web settings.
