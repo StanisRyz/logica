@@ -53,7 +53,7 @@ internal sealed interface NonogramGameUiState {
     ) : NonogramGameUiState {
         /** Whether leaving now would throw away something the player actually did. */
         val hasMeaningfulProgress: Boolean
-            get() = continueOffered || !game.status.isTerminal && game.hasMeaningfulProgress(initial)
+            get() = continueOffered || game.hasMeaningfulProgress(initial)
     }
 
     data object Error : NonogramGameUiState

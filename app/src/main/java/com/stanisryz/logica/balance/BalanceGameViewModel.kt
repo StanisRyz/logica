@@ -12,13 +12,13 @@ import com.stanisryz.logica.economy.GameplayHints
 import com.stanisryz.logica.economy.HintOffer
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.balance.BalanceCell
-import com.stanisryz.logica.puzzle.core.balance.BalanceCellStatus
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameEngine
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameState
 import com.stanisryz.logica.puzzle.core.balance.BalanceGameStatus
 import com.stanisryz.logica.puzzle.core.balance.BalanceGeneratorV1
 import com.stanisryz.logica.puzzle.core.balance.BalancePosition
 import com.stanisryz.logica.puzzle.core.balance.BalancePuzzle
+import com.stanisryz.logica.puzzle.core.balance.hasMeaningfulProgress
 import com.stanisryz.logica.puzzle.core.model.PuzzleStars
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
@@ -54,16 +54,8 @@ internal sealed interface BalanceGameUiState {
     ) : BalanceGameUiState {
         /** Whether leaving now would throw away something the player actually did. */
         val hasMeaningfulProgress: Boolean
-            get() =
-                // Leaving while the second chance is offered is leaving an unfinished level.
-                continueOffered ||
-                    !game.status.isTerminal &&
-                    (
-                        game.cellStatuses.values.any { it != BalanceCellStatus.FIXED } ||
-                            game.pencilMarks.isNotEmpty() ||
-                            game.mistakesUsed > 0 ||
-                            game.hintsUsed > 0
-                    )
+            // Leaving while the second chance is offered is leaving an unfinished level.
+            get() = continueOffered || game.hasMeaningfulProgress
     }
 
     data class Error(

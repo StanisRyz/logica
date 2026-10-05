@@ -16,7 +16,6 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleStars
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.sudoku.BinarySudokuDataset
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuCatalogProvider
-import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetError
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetResult
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameEngine
@@ -24,6 +23,7 @@ import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameState
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuPosition
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuPuzzle
+import com.stanisryz.logica.puzzle.core.sudoku.hasMeaningfulProgress
 import com.stanisryz.logica.puzzle.core.sudoku.toPlatformDifficulty
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
@@ -56,19 +56,8 @@ internal sealed interface SudokuGameUiState {
         val hintsExhausted: Boolean = false,
     ) : SudokuGameUiState {
         val hasMeaningfulProgress: Boolean
-            get() =
-                // Leaving while the second chance is offered is leaving an unfinished level.
-                continueOffered ||
-                    !game.status.isTerminal &&
-                    (
-                        game.cells.any { cell ->
-                            cell.status == SudokuCellStatus.CORRECT ||
-                                cell.status == SudokuCellStatus.INCORRECT ||
-                                !cell.candidates.isEmpty
-                        } ||
-                            game.mistakesUsed > 0 ||
-                            game.hintsUsed > 0
-                    )
+            // Leaving while the second chance is offered is leaving an unfinished level.
+            get() = continueOffered || game.hasMeaningfulProgress
     }
 
     data class Error(

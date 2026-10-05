@@ -15,6 +15,7 @@ import com.stanisryz.logica.puzzle.core.game2048.Game2048MoveTrace
 import com.stanisryz.logica.puzzle.core.game2048.Game2048PuzzleId
 import com.stanisryz.logica.puzzle.core.game2048.Game2048State
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Status
+import com.stanisryz.logica.puzzle.core.game2048.hasMeaningfulProgress
 import com.stanisryz.logica.puzzle.core.game2048.toGame2048GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
@@ -45,12 +46,7 @@ internal sealed interface Game2048UiState {
     ) : Game2048UiState {
         /** A reached target stays guarded until its completion transaction is actually durable. */
         val hasMeaningfulProgress: Boolean
-            get() =
-                !game.status.isTerminal &&
-                    when {
-                        levelCleared -> completionPersistence != CompletionPersistence.Saved
-                        else -> game.nextSpawnIndex > INITIAL_SPAWN_COUNT
-                    }
+            get() = game.hasMeaningfulProgress(levelCleared, completionSaved = completionPersistence == CompletionPersistence.Saved)
     }
 
     data class Error(
@@ -253,7 +249,6 @@ internal class Game2048ViewModel(
     private class NoLivesException : Exception()
 }
 
-private const val INITIAL_SPAWN_COUNT = 2L
 private const val MAX_UNDO_HISTORY = 100
 
 internal class Game2048ViewModelFactory(

@@ -18,6 +18,7 @@ import com.stanisryz.logica.puzzle.core.crowns.CrownsGeneratorV1
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPlayerCell
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPosition
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPuzzle
+import com.stanisryz.logica.puzzle.core.crowns.hasMeaningfulProgress
 import com.stanisryz.logica.puzzle.core.model.PuzzleStars
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
@@ -52,18 +53,8 @@ internal sealed interface CrownsGameUiState {
         val continueOffered: Boolean = false,
     ) : CrownsGameUiState {
         val hasMeaningfulProgress: Boolean
-            get() =
-                // Leaving while the second chance is offered is leaving an unfinished level.
-                continueOffered ||
-                    !game.status.isTerminal &&
-                    (
-                        game.cellStatuses.isNotEmpty() ||
-                            game.pencilCrowns.isNotEmpty() ||
-                            game.pencilMarks.isNotEmpty() ||
-                            game.userMarks.isNotEmpty() ||
-                            game.mistakesUsed > 0 ||
-                            game.hintsUsed > 0
-                    )
+            // Leaving while the second chance is offered is leaving an unfinished level.
+            get() = continueOffered || game.hasMeaningfulProgress
     }
 
     data class Error(

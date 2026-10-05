@@ -48,8 +48,12 @@ data class NonogramGameState(
     /** Filled cells found so far, the progress the header shows without revealing anything new. */
     val filledFound: Int get() = cells.count { it == NonogramCell.FILLED }
 
-    /** Anything the player would lose by leaving: an opened cell, a mistake, or a hint. */
-    fun hasMeaningfulProgress(initial: NonogramGameState): Boolean = cells != initial.cells || mistakesUsed > 0 || hintsUsed > 0
+    /**
+     * Whether leaving this unfinished attempt throws away something the player did — an opened cell,
+     * a mistake, or a hint — so leaving costs a life. Both hosts ask only this.
+     */
+    fun hasMeaningfulProgress(initial: NonogramGameState): Boolean =
+        !status.isTerminal && (cells != initial.cells || mistakesUsed > 0 || hintsUsed > 0)
 }
 
 /**

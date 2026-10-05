@@ -93,3 +93,17 @@ class BalanceGameState internal constructor(
             "cellStatuses=$cellStatuses, mistakesUsed=$mistakesUsed, hintsUsed=$hintsUsed, " +
             "currentHint=$currentHint, violations=$violations)"
 }
+
+/**
+ * Whether leaving this unfinished attempt throws away something the player did — a placed or
+ * pencilled cell, a mistake, or a hint — so leaving costs a life. Both hosts ask only this.
+ */
+val BalanceGameState.hasMeaningfulProgress: Boolean
+    get() =
+        !status.isTerminal &&
+            (
+                cellStatuses.values.any { it != BalanceCellStatus.FIXED } ||
+                    pencilMarks.isNotEmpty() ||
+                    mistakesUsed > 0 ||
+                    hintsUsed > 0
+            )

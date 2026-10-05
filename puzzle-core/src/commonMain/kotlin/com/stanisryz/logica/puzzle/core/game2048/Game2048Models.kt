@@ -99,3 +99,16 @@ data class Game2048State(
         const val CELL_COUNT = BOARD_SIZE * BOARD_SIZE
     }
 }
+
+/**
+ * Whether leaving this unfinished 2048 game throws away something the player did, so leaving costs
+ * a life: any valid move (each one spawns a tile past the two opening spawns). A Catalog level whose
+ * target was reached ([levelCleared]) has nothing left to lose once its completion is durably saved
+ * ([completionSaved]); the Daily never counts as cleared. Both hosts ask only this.
+ */
+fun Game2048State.hasMeaningfulProgress(
+    levelCleared: Boolean,
+    completionSaved: Boolean,
+): Boolean =
+    !status.isTerminal &&
+        if (levelCleared) !completionSaved else nextSpawnIndex > Game2048Engine.INITIAL_SPAWN_COUNT

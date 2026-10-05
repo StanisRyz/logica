@@ -38,7 +38,7 @@ internal sealed interface WebBlockSudokuState {
         val source: WebGameplaySource,
         val game: BlockSudokuState,
     ) : WebBlockSudokuState {
-        val hasMeaningfulProgress: Boolean get() = !game.status.isTerminal && game.hasProgress
+        val hasMeaningfulProgress: Boolean get() = game.hasMeaningfulProgress
     }
 
     data class Error(

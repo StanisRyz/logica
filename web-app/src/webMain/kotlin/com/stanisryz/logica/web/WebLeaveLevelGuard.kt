@@ -32,14 +32,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.platform.EconomyPolicy
-import com.stanisryz.logica.puzzle.core.balance.BalanceCellStatus
-import com.stanisryz.logica.puzzle.core.balance.BalanceGameState
-import com.stanisryz.logica.puzzle.core.crowns.CrownsGameState
-import com.stanisryz.logica.puzzle.core.game2048.Game2048State
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
-import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
-import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameState
-import com.stanisryz.logica.puzzle.core.word.WordGameState
 import com.stanisryz.logica.ui.components.GameIcon
 import com.stanisryz.logica.ui.components.GameIconImage
 import com.stanisryz.logica.ui.components.GameRulesSheet
@@ -154,56 +147,6 @@ internal fun WebTopBar(
         Box(Modifier.align(Alignment.CenterEnd)) { WebGameplayWallet() }
     }
 }
-
-// The progress rules mirror the Android gameplay ViewModels' `hasMeaningfulProgress`.
-
-internal val BalanceGameState.hasMeaningfulProgress: Boolean
-    get() =
-        !status.isTerminal &&
-            (
-                cellStatuses.values.any { it != BalanceCellStatus.FIXED } ||
-                    pencilMarks.isNotEmpty() ||
-                    mistakesUsed > 0 ||
-                    hintsUsed > 0
-            )
-
-internal val CrownsGameState.hasMeaningfulProgress: Boolean
-    get() =
-        !status.isTerminal &&
-            (
-                cellStatuses.isNotEmpty() ||
-                    pencilCrowns.isNotEmpty() ||
-                    pencilMarks.isNotEmpty() ||
-                    userMarks.isNotEmpty() ||
-                    mistakesUsed > 0 ||
-                    hintsUsed > 0
-            )
-
-internal val WordGameState.hasMeaningfulProgress: Boolean
-    get() = !isFinished && (attempts.isNotEmpty() || currentDraft.positions.any { it != null })
-
-internal val SudokuGameState.hasMeaningfulProgress: Boolean
-    get() =
-        !status.isTerminal &&
-            (
-                cells.any { cell ->
-                    cell.status == SudokuCellStatus.CORRECT ||
-                        cell.status == SudokuCellStatus.INCORRECT ||
-                        !cell.candidates.isEmpty
-                } ||
-                    mistakesUsed > 0 ||
-                    hintsUsed > 0
-            )
-
-/** A cleared Catalog level has nothing left to lose once its completion is durably saved. */
-internal fun Game2048State.hasMeaningfulProgress(
-    levelCleared: Boolean,
-    completionSaved: Boolean,
-): Boolean =
-    !status.isTerminal &&
-        if (levelCleared) !completionSaved else nextSpawnIndex > GAME_2048_INITIAL_SPAWN_COUNT
-
-private const val GAME_2048_INITIAL_SPAWN_COUNT = 2L
 
 internal val GAME_HEADER_HEIGHT = 52.dp
 private val HELP_BUTTON_SIZE = 36.dp

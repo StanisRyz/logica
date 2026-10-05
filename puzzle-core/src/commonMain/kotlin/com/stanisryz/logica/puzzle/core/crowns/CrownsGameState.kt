@@ -121,3 +121,19 @@ class CrownsGameState internal constructor(
             "pencilMarks=$pencilMarks, cellStatuses=$cellStatuses, status=$status, " +
             "mistakesUsed=$mistakesUsed, hintsUsed=$hintsUsed, currentHint=$currentHint, violations=$violations)"
 }
+
+/**
+ * Whether leaving this unfinished attempt throws away something the player did — a crown or mark,
+ * a pencil note, a mistake, or a hint — so leaving costs a life. Both hosts ask only this.
+ */
+val CrownsGameState.hasMeaningfulProgress: Boolean
+    get() =
+        !status.isTerminal &&
+            (
+                cellStatuses.isNotEmpty() ||
+                    pencilCrowns.isNotEmpty() ||
+                    pencilMarks.isNotEmpty() ||
+                    userMarks.isNotEmpty() ||
+                    mistakesUsed > 0 ||
+                    hintsUsed > 0
+            )

@@ -123,3 +123,10 @@ class WordGameState internal constructor(
     override fun toString(): String =
         "WordGameState(puzzleId=$puzzleId, wordLength=$wordLength, currentDraft=$currentDraft, attempts=$attempts, status=$status)"
 }
+
+/**
+ * Whether leaving this unfinished attempt throws away something the player did — a submitted guess
+ * or a typed letter — so leaving costs a life. Both hosts ask only this.
+ */
+val WordGameState.hasMeaningfulProgress: Boolean
+    get() = !isFinished && (attempts.isNotEmpty() || currentDraft.positions.any { it != null })

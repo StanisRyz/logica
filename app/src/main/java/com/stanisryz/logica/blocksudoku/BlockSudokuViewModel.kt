@@ -34,7 +34,7 @@ internal sealed interface BlockSudokuUiState {
     ) : BlockSudokuUiState {
         /** Whether leaving now would throw away something the player actually did. */
         val hasMeaningfulProgress: Boolean
-            get() = !game.status.isTerminal && game.hasProgress
+            get() = game.hasMeaningfulProgress
     }
 
     data object Error : BlockSudokuUiState

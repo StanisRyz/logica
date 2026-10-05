@@ -106,7 +106,8 @@ class Game2048Engine(
         val spawnedTile: Game2048SpawnTrace,
     )
 
-    private companion object {
+    internal companion object {
+        /** Spawns 0 and 1 open every game; each valid move after that consumes one more. */
         const val INITIAL_SPAWN_COUNT = 2L
     }
 }

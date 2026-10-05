@@ -135,3 +135,20 @@ class SudokuGameState internal constructor(
         const val CELL_COUNT = 81
     }
 }
+
+/**
+ * Whether leaving this unfinished attempt throws away something the player did — an entered or
+ * pencilled digit, a mistake, or a hint — so leaving costs a life. Both hosts ask only this.
+ */
+val SudokuGameState.hasMeaningfulProgress: Boolean
+    get() =
+        !status.isTerminal &&
+            (
+                cells.any { cell ->
+                    cell.status == SudokuCellStatus.CORRECT ||
+                        cell.status == SudokuCellStatus.INCORRECT ||
+                        !cell.candidates.isEmpty
+                } ||
+                    mistakesUsed > 0 ||
+                    hintsUsed > 0
+            )

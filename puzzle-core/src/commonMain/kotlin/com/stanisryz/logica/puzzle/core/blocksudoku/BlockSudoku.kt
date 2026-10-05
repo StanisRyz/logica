@@ -54,8 +54,11 @@ data class BlockSudokuState(
         column: Int,
     ): Boolean = board[row * BlockSudokuRules.SIZE + column]
 
-    /** Whether leaving now would throw away something the player actually did. */
-    val hasProgress: Boolean get() = placements > 0
+    /**
+     * Whether leaving this unfinished attempt throws away something the player did — a placed piece —
+     * so leaving costs a life. Both hosts ask only this.
+     */
+    val hasMeaningfulProgress: Boolean get() = !status.isTerminal && placements > 0
 }
 
 /**

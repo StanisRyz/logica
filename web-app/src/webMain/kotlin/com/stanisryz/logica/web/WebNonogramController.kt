@@ -48,7 +48,7 @@ internal sealed interface WebNonogramState {
         val initial: NonogramGameState,
         val selectedTool: NonogramTool = NonogramTool.FILL,
     ) : WebNonogramState {
-        val hasMeaningfulProgress: Boolean get() = !game.status.isTerminal && game.hasMeaningfulProgress(initial)
+        val hasMeaningfulProgress: Boolean get() = game.hasMeaningfulProgress(initial)
     }
 
     data class Error(

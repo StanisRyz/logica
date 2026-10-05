@@ -20,6 +20,7 @@ import com.stanisryz.logica.puzzle.core.word.WordPuzzle
 import com.stanisryz.logica.puzzle.core.word.WordRuntime
 import com.stanisryz.logica.puzzle.core.word.WordRuntimeResolver
 import com.stanisryz.logica.puzzle.core.word.WordSubmitResult
+import com.stanisryz.logica.puzzle.core.word.hasMeaningfulProgress
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.result.GameOutcome
@@ -47,9 +48,7 @@ internal sealed interface WordGameUiState {
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
     ) : WordGameUiState {
         val hasMeaningfulProgress: Boolean
-            get() =
-                !game.isFinished &&
-                    (game.attempts.isNotEmpty() || game.currentDraft.positions.any { it != null })
+            get() = game.hasMeaningfulProgress
     }
 
     data class Error(
