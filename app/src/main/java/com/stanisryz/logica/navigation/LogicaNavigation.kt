@@ -3,48 +3,20 @@ package com.stanisryz.logica.navigation
 import android.app.Activity
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.HelpOutline
-import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.SportsEsports
-import androidx.compose.material.icons.rounded.Storefront
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -60,23 +32,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
-import com.stanisryz.logica.AppLanguage
 import com.stanisryz.logica.R
 import com.stanisryz.logica.ads.InterstitialOpportunity
 import com.stanisryz.logica.ads.RewardedAdKind
@@ -96,10 +62,7 @@ import com.stanisryz.logica.platform.StoreGateway
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
 import com.stanisryz.logica.puzzle.core.model.Difficulty
-import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
-import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV1
-import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV2
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.runCatchingCancellable
 import com.stanisryz.logica.settings.SettingsRepository
@@ -108,21 +71,15 @@ import com.stanisryz.logica.settings.UserSettings
 import com.stanisryz.logica.settings.tutorialCompleted
 import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.store.GemPackProductMapping
-import com.stanisryz.logica.ui.components.EconomyBar
 import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
 import com.stanisryz.logica.ui.components.GameRulesSheet
 import com.stanisryz.logica.ui.components.GameplayExitGuard
-import com.stanisryz.logica.ui.components.LevelMapSheet
 import com.stanisryz.logica.ui.components.LivesDialog
 import com.stanisryz.logica.ui.components.LocalResultLives
 import com.stanisryz.logica.ui.components.LocalSecondChanceAd
 import com.stanisryz.logica.ui.components.PuzzleStartScreen
 import com.stanisryz.logica.ui.components.ResultLives
 import com.stanisryz.logica.ui.components.SecondChanceAd
-import com.stanisryz.logica.ui.nonogram.DailyGalleryPicture
-import com.stanisryz.logica.ui.nonogram.NonogramGallerySheet
-import com.stanisryz.logica.ui.profile.ProfilePage
-import com.stanisryz.logica.ui.rating.GameRating
 import com.stanisryz.logica.ui.screens.AchievementsRoute
 import com.stanisryz.logica.ui.screens.BalanceGameRoute
 import com.stanisryz.logica.ui.screens.BalanceTutorialRoute
@@ -145,14 +102,7 @@ import com.stanisryz.logica.ui.screens.SudokuGameRoute
 import com.stanisryz.logica.ui.screens.SudokuTutorialRoute
 import com.stanisryz.logica.ui.screens.WordGameRoute
 import com.stanisryz.logica.ui.screens.WordTutorialRoute
-import com.stanisryz.logica.ui.theme.LogicaMotion
-import com.stanisryz.logica.ui.theme.LogicaSpacing
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 import java.util.UUID
 
 @Composable
@@ -903,354 +853,11 @@ private fun PuzzleType.startDestination(): AppDestination =
         else -> error("$this is not a Catalog game.")
     }
 
-/**
- * The shared header of every screen: what you are looking at, the wallet where it belongs, and the
- * Settings gear on all three primary tabs. The wallet always remains on that same line; its compact
- * presentation protects normal portrait phones without introducing a second header row.
- */
-@Composable
-@OptIn(ExperimentalMaterial3Api::class)
-private fun AppTopBar(
-    title: String,
-    showBack: Boolean,
-    showWallet: Boolean,
-    showSettings: Boolean,
-    economy: PlayerEconomy,
-    onBack: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onOpenLives: () -> Unit,
-    onOpenStore: () -> Unit,
-) {
-    TopAppBar(
-        title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        navigationIcon = {
-            if (showBack) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
-                }
-            }
-        },
-        actions = {
-            if (showWallet) {
-                EconomyBar(
-                    economy = economy,
-                    onOpenLives = onOpenLives,
-                    onOpenGemStore = onOpenStore,
-                    compact = true,
-                )
-            }
-            if (showSettings) {
-                IconButton(onClick = onOpenSettings) {
-                    Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings))
-                }
-            }
-        },
-        // The bar shares the screen background, so no seam runs under it.
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-    )
-}
-
-private fun horizontalSlideTransition(
-    incomingDirection: Int,
-    outgoingDirection: Int,
-) = slideInHorizontally(navigationSlideSpec()) { width ->
-    incomingDirection * width
-} togetherWith
-    slideOutHorizontally(navigationSlideSpec()) { width ->
-        outgoingDirection * width
-    }
-
-private fun navigationSlideSpec() =
-    tween<IntOffset>(
-        durationMillis = LogicaMotion.NAVIGATION_SLIDE_MILLIS,
-        easing = FastOutSlowInEasing,
-    )
-
-/** The primary tabs as a rail on the left of a wide window, the same three tabs as the bottom bar. */
-@Composable
-private fun AppNavigationRail(
-    selectedTab: PrimaryTab,
-    onTabSelected: (PrimaryTab) -> Unit,
-) {
-    NavigationRail(modifier = Modifier.fillMaxHeight(), windowInsets = WindowInsets(0, 0, 0, 0)) {
-        Spacer(Modifier.height(LogicaSpacing.section))
-        PrimaryTab.entries.forEach { tab ->
-            NavigationRailItem(
-                selected = selectedTab == tab,
-                onClick = { onTabSelected(tab) },
-                icon = { Icon(tab.icon(), null) },
-                label = { Text(stringResource(tab.titleResource)) },
-            )
-        }
-    }
-}
-
-/** Profile and Store keep a readable width in a wide window, centred like on the Web. */
-@Composable
-private fun ReadableWidth(
-    wide: Boolean,
-    maxWidth: Dp,
-    content: @Composable () -> Unit,
-) {
-    if (!wide) {
-        content()
-        return
-    }
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-        Box(Modifier.widthIn(max = maxWidth).fillMaxHeight()) { content() }
-    }
-}
-
-private fun PrimaryTab.icon(): ImageVector =
-    when (this) {
-        PrimaryTab.GAME -> Icons.Rounded.SportsEsports
-        PrimaryTab.STORE -> Icons.Rounded.Storefront
-        PrimaryTab.PROFILE -> Icons.Rounded.Person
-    }
-
 private val WIDE_LAYOUT_MIN_WIDTH = 720.dp
+
 private val PROFILE_MAX_WIDTH = 720.dp
+
 private val STORE_MAX_WIDTH = 640.dp
-
-@Composable
-private fun AppBottomBar(
-    selectedTab: PrimaryTab,
-    onTabSelected: (PrimaryTab) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    NavigationBar(
-        modifier = modifier.fillMaxWidth(),
-        windowInsets = WindowInsets(0, 0, 0, 0),
-    ) {
-        PrimaryTab.entries.forEach { tab ->
-            NavigationBarItem(
-                selected = selectedTab == tab,
-                onClick = { onTabSelected(tab) },
-                icon = { Icon(tab.icon(), null) },
-                label = { Text(stringResource(tab.titleResource)) },
-            )
-        }
-    }
-}
-
-/** A lower-profile game HUD keeps navigation and the wallet reachable without a full app bar. */
-@Composable
-private fun GameTopBar(
-    title: String,
-    onHelp: () -> Unit,
-    economy: PlayerEconomy,
-    onBack: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onOpenLives: () -> Unit,
-    onOpenStore: () -> Unit,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .height(GAME_TOP_BAR_HEIGHT)
-                .background(MaterialTheme.colorScheme.background)
-                .padding(horizontal = GAME_TOP_BAR_HORIZONTAL_PADDING),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(GAME_TOP_BAR_CONTENT_GAP),
-    ) {
-        IconButton(onClick = onBack, modifier = Modifier.size(GAME_TOP_BAR_HEIGHT)) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
-        }
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        IconButton(onClick = onHelp, modifier = Modifier.size(HELP_BUTTON_SIZE)) {
-            Icon(
-                Icons.AutoMirrored.Rounded.HelpOutline,
-                contentDescription = stringResource(R.string.game_rules),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(HELP_ICON_SIZE),
-            )
-        }
-        Spacer(Modifier.weight(1f))
-        EconomyBar(
-            economy = economy,
-            onOpenLives = onOpenLives,
-            onOpenGemStore = onOpenStore,
-            compact = true,
-        )
-        IconButton(onClick = onOpenSettings, modifier = Modifier.size(GAME_TOP_BAR_HEIGHT)) {
-            Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings))
-        }
-    }
-}
-
-private val HELP_BUTTON_SIZE = 48.dp
-private val HELP_ICON_SIZE = 20.dp
-private val GAME_TOP_BAR_HEIGHT = 48.dp
-private val GAME_TOP_BAR_HORIZONTAL_PADDING = 4.dp
-private val GAME_TOP_BAR_CONTENT_GAP = 4.dp
 
 /** Used for the first measure only; [AppBottomBar] immediately supplies its actual inset. */
 private val PRIMARY_NAVIGATION_BAR_FALLBACK_HEIGHT = 80.dp
-
-@Composable
-private fun destinationTitle(
-    destination: AppDestination,
-    tab: PrimaryTab,
-): String =
-    stringResource(
-        when (destination) {
-            AppDestination.Home -> tab.titleResource
-            AppDestination.Settings -> R.string.settings
-            AppDestination.Achievements -> R.string.achievements
-            is AppDestination.ProfileSection ->
-                when (destination.page) {
-                    ProfilePage.DAILY -> R.string.profile_daily_calendar
-                    ProfilePage.GAMES, ProfilePage.RATING -> R.string.profile_game_statistics
-                }
-            AppDestination.BalanceStart, is AppDestination.BalanceGame -> R.string.balance
-            AppDestination.BalanceTutorial -> R.string.balance_tutorial_title
-            AppDestination.CrownsStart, is AppDestination.CrownsGame -> R.string.crowns
-            AppDestination.CrownsTutorial -> R.string.crowns_tutorial_title
-            AppDestination.WordStart, is AppDestination.WordGame -> R.string.word
-            AppDestination.WordTutorial -> R.string.word_tutorial_title
-            AppDestination.SudokuStart, is AppDestination.SudokuGame -> R.string.sudoku
-            AppDestination.SudokuTutorial -> R.string.sudoku_tutorial_title
-            AppDestination.Game2048Start, is AppDestination.Game2048Game -> R.string.game_2048_title
-            AppDestination.Game2048Tutorial -> R.string.game_2048_tutorial_title
-            AppDestination.NonogramStart, is AppDestination.NonogramGame -> R.string.nonogram
-            AppDestination.NonogramTutorial -> R.string.nonogram_tutorial_title
-            AppDestination.BlockSudokuStart, is AppDestination.BlockSudokuGame -> R.string.block_sudoku
-            AppDestination.BlockSudokuTutorial -> R.string.block_sudoku_tutorial_title
-        },
-    )
-
-/** Best stars per difficulty for one game's start screen, read from durable results. */
-@Composable
-private fun difficultyStars(
-    statisticsRepository: StatisticsRepository,
-    puzzleType: PuzzleType,
-): Map<Difficulty, Long> {
-    val flow = remember(statisticsRepository) { statisticsRepository.observe(LocalDate.now()) }
-    val snapshot by flow.collectAsStateWithLifecycle(initialValue = null)
-    return remember(snapshot, puzzleType) {
-        snapshot
-            ?.statistics
-            ?.levelStars
-            ?.filter { it.puzzleType == puzzleType }
-            ?.groupBy { it.difficulty }
-            ?.mapValues { (_, levels) -> levels.sumOf { it.stars.toLong() } }
-            .orEmpty()
-    }
-}
-
-/** A level game's rating: Catalog levels cleared per difficulty, straight from progression. */
-@Composable
-private fun levelRating(
-    catalogLevelRepository: CatalogLevelRepository,
-    puzzleType: PuzzleType,
-): GameRating {
-    val flow = remember(catalogLevelRepository, puzzleType) { catalogLevelRepository.observeCurrentLevels(puzzleType) }
-    val levels by flow.collectAsStateWithLifecycle(initialValue = emptyMap())
-    return GameRating.Levels(levels.clearedLevels().mapValues { it.value.toLong() })
-}
-
-@Composable
-private fun bestScoreRating(bestScore: Game2048BestScore): GameRating {
-    val best by bestScore.best.collectAsStateWithLifecycle(initialValue = 0L)
-    return GameRating.BestScore(best)
-}
-
-/** Levels are cleared in order, so everything below the current level is solved. */
-private fun Map<Difficulty, CatalogLevelNumber>.clearedLevels(): Map<Difficulty, Int> = mapValues { (_, level) -> level.value - 1 }
-
-/** The Nonogram gallery: every cleared level's picture, rebuilt from its frozen level on demand. */
-@Composable
-private fun NonogramGallery(
-    catalogLevelRepository: CatalogLevelRepository,
-    statisticsRepository: StatisticsRepository,
-    onDismiss: () -> Unit,
-    onReplay: (Difficulty, Int) -> Unit,
-) {
-    val levelsFlow = remember(catalogLevelRepository) { catalogLevelRepository.observeCurrentLevels(PuzzleType.NONOGRAM) }
-    val levels by levelsFlow.collectAsStateWithLifecycle(initialValue = emptyMap())
-    val statisticsFlow = remember(statisticsRepository) { statisticsRepository.observe(LocalDate.now()) }
-    val statistics by statisticsFlow.collectAsStateWithLifecycle(initialValue = null)
-    val stars =
-        remember(statistics) {
-            statistics
-                ?.statistics
-                ?.levelStars
-                ?.filter { it.puzzleType == PuzzleType.NONOGRAM }
-                ?.associate { (it.difficulty to it.level) to it.stars }
-                .orEmpty()
-        }
-    val generator = remember { NonogramGeneratorV1() }
-    val dailyFlow = remember(statisticsRepository) { statisticsRepository.observeSolvedDailyPictures() }
-    val dailySolved by dailyFlow.collectAsStateWithLifecycle(initialValue = emptyList())
-    val dailyPictures =
-        remember(dailySolved) {
-            val pictures = NonogramGeneratorV2()
-            val formatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(AppLanguage.locale)
-            dailySolved.mapNotNull { (date, seed) ->
-                runCatching {
-                    DailyGalleryPicture(formatter.format(date), pictures.generate(PuzzleSeed(seed), Difficulty.MEDIUM))
-                }.getOrNull()
-            }
-        }
-    NonogramGallerySheet(
-        clearedLevels = levels.clearedLevels(),
-        loadPicture = { difficulty, level ->
-            withContext(Dispatchers.Default) {
-                runCatchingCancellable {
-                    val definition =
-                        catalogLevelRepository.resolve(CatalogLevelId(PuzzleType.NONOGRAM, difficulty, CatalogLevelNumber(level)))
-                    generator.generate(definition.seed, difficulty)
-                }.getOrNull()
-            }
-        },
-        starsOf = { difficulty, level -> stars[difficulty to level] ?: 0 },
-        onDismiss = onDismiss,
-        onReplay = onReplay,
-        dailyPictures = dailyPictures,
-    )
-}
-
-/** One game's level map over its progression and the best stars of each cleared level. */
-@Composable
-private fun LevelMap(
-    catalogLevelRepository: CatalogLevelRepository,
-    statisticsRepository: StatisticsRepository,
-    puzzleType: PuzzleType,
-    onDismiss: () -> Unit,
-    onPlay: (PuzzleType, Difficulty) -> Unit,
-    onReplay: (PuzzleType, Difficulty, Int) -> Unit,
-) {
-    val levelsFlow = remember(catalogLevelRepository, puzzleType) { catalogLevelRepository.observeCurrentLevels(puzzleType) }
-    val levels by levelsFlow.collectAsStateWithLifecycle(initialValue = emptyMap())
-    val statisticsFlow = remember(statisticsRepository) { statisticsRepository.observe(LocalDate.now()) }
-    val statistics by statisticsFlow.collectAsStateWithLifecycle(initialValue = null)
-    val stars =
-        remember(statistics, puzzleType) {
-            statistics
-                ?.statistics
-                ?.levelStars
-                ?.filter { it.puzzleType == puzzleType }
-                ?.associate { (it.difficulty to it.level) to it.stars }
-                .orEmpty()
-        }
-    LevelMapSheet(
-        currentLevels = levels.mapValues { it.value.value },
-        starsOf = { difficulty, level -> stars[difficulty to level] ?: 0 },
-        onPlayCurrent = { difficulty ->
-            onDismiss()
-            onPlay(puzzleType, difficulty)
-        },
-        onReplay = { difficulty, level ->
-            onDismiss()
-            onReplay(puzzleType, difficulty, level)
-        },
-        onDismiss = onDismiss,
-    )
-}
