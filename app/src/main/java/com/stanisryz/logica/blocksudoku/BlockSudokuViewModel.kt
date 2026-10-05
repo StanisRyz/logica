@@ -31,6 +31,8 @@ internal sealed interface BlockSudokuUiState {
     data class Ready(
         val game: BlockSudokuState,
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
+        /** Gems the saved result actually credited, for the result card. */
+        val gemsEarned: Int = 0,
     ) : BlockSudokuUiState {
         /** Whether leaving now would throw away something the player actually did. */
         val hasMeaningfulProgress: Boolean
@@ -122,9 +124,10 @@ internal class BlockSudokuViewModel(
             )
         completionJob =
             viewModelScope.launch {
+                var gemsEarned = 0
                 val persistence =
                     try {
-                        completionRepository.complete(completion)
+                        gemsEarned = completionRepository.complete(completion).gemsEarned
                         CompletionPersistence.Saved
                     } catch (exception: CancellationException) {
                         throw exception
@@ -133,7 +136,7 @@ internal class BlockSudokuViewModel(
                     }
                 val latest = mutableUiState.value
                 if (latest is BlockSudokuUiState.Ready && latest.game == game) {
-                    mutableUiState.value = latest.copy(completionPersistence = persistence)
+                    mutableUiState.value = latest.copy(completionPersistence = persistence, gemsEarned = gemsEarned)
                 }
             }
     }

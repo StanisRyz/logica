@@ -286,21 +286,13 @@ internal class Web2048Controller(
                     }
                     completion.saveSolved(source.attempt)
                     // The first V2 target crossing is the Catalog result; it also feeds the wallet.
-                    economy.recordTerminalResult(
-                        PuzzleType.GAME_2048,
-                        source.attempt.levelId.difficulty,
-                        solved = true,
-                    )
+                    economy.recordTerminalResult(solved = true, gemsEarned = completion.gemsEarned)
                 } else if (!playing.game.status.isTerminal && transition.state.status == Game2048Status.FAILED) {
                     statisticsAttempt?.let {
                         statistics.recordTerminalResult(it, WebStatisticsTerminalOutcome.FAILED)
                     }
                     // A pre-target game over is the normal Catalog failure and costs one life.
-                    economy.recordTerminalResult(
-                        PuzzleType.GAME_2048,
-                        source.attempt.levelId.difficulty,
-                        solved = false,
-                    )
+                    economy.recordTerminalResult(solved = false, gemsEarned = 0)
                 }
             }
             is WebGameplaySource.DailyChallenge -> {
@@ -316,10 +308,19 @@ internal class Web2048Controller(
                     statisticsAttempt?.let { statistics.recordTerminalResult(it, outcome) }
                     dailyCompletion.saveTerminal(source.attempt, outcome)
                     // A Daily result feeds the wallet like a Catalog one: a failure costs a life.
+                    val solved = outcome == WebStatisticsTerminalOutcome.SOLVED
                     economy.recordTerminalResult(
-                        PuzzleType.GAME_2048,
-                        source.difficulty,
-                        solved = outcome == WebStatisticsTerminalOutcome.SOLVED,
+                        solved = solved,
+                        gemsEarned =
+                            if (solved) {
+                                WebEconomyProcessor.dailyGemsFor(
+                                    PuzzleType.GAME_2048,
+                                    source.difficulty,
+                                    stars = null,
+                                )
+                            } else {
+                                0
+                            },
                     )
                 }
             }

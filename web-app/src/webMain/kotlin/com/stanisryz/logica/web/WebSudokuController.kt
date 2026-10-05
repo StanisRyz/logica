@@ -512,23 +512,22 @@ internal class WebSudokuController(
                 ) {
                     completion.saveSolved(source.attempt, PuzzleStars.forMistakes(updated.mistakesUsed))
                 }
-                // Catalog terminals feed the wallet.
-                // A solved replay only raises stars and pays nothing; a failed one still costs a life.
-                if (!(source.attempt.replay && updated.status == SudokuGameStatus.SOLVED)) {
-                    economy.recordTerminalResult(
-                        PuzzleType.SUDOKU,
-                        source.attempt.levelId.difficulty,
-                        solved = updated.status == SudokuGameStatus.SOLVED,
-                    )
-                }
+                // Catalog terminals feed the wallet: a solve its earned gems (a replay only by raising an
+                // Expert level to three stars), a failure — replay or not — one life.
+                val solved = updated.status == SudokuGameStatus.SOLVED
+                economy.recordTerminalResult(solved = solved, gemsEarned = if (solved) completion.gemsEarned else 0)
             }
             is WebGameplaySource.DailyChallenge -> {
                 dailyCompletion.saveTerminal(source.attempt, outcome)
                 // A Daily result feeds the wallet like a Catalog one: a failure costs a life.
                 economy.recordTerminalResult(
-                    PuzzleType.SUDOKU,
-                    source.difficulty,
                     solved = outcome == WebStatisticsTerminalOutcome.SOLVED,
+                    gemsEarned =
+                        WebEconomyProcessor.dailyGemsFor(
+                            PuzzleType.SUDOKU,
+                            source.difficulty,
+                            PuzzleStars.forMistakes(updated.mistakesUsed),
+                        ),
                 )
             }
         }

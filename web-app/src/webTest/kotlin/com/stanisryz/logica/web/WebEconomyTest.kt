@@ -5,8 +5,6 @@ import com.stanisryz.logica.platform.EconomyEvent
 import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.platform.EconomyRewardType
 import com.stanisryz.logica.platform.EconomyState
-import com.stanisryz.logica.puzzle.core.model.Difficulty
-import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -64,8 +62,8 @@ class WebEconomyTest {
         val coordinator = WebGameplayEconomyCoordinator(session)
         session.economyBinding.value =
             WebEconomyBinding.Ready(WebPlayerContextToken(1L), playerB, null)
-        coordinator.recordTerminalResult(PuzzleType.SUDOKU, Difficulty.EXPERT, solved = true)
-        assertEquals(EconomyPolicy.STARTING_GEMS + 2, playerB.state.value.gems)
+        coordinator.recordTerminalResult(solved = true, gemsEarned = 1)
+        assertEquals(EconomyPolicy.STARTING_GEMS + 1, playerB.state.value.gems)
         assertEquals(EconomyPolicy.STARTING_GEMS + 60, playerA.state.value.gems)
     }
 
@@ -73,13 +71,13 @@ class WebEconomyTest {
     fun rewardPipelineGrantsDifficultyGemsAndConsumesFailureLivesWithoutGoingNegative() {
         val repository = repository(FakeEconomyStore())
 
-        // A solved game pays only what the shared table says: Balance nothing, 2048 Expert +2.
+        // A solved game pays exactly the gems its caller worked out under the one rule.
         assertEquals(
             listOf<EconomyEvent>(EconomyEvent.GameCompleted),
-            repository.applyTerminalResult(PuzzleType.BALANCE, Difficulty.EXPERT, solved = true),
+            repository.applyTerminalResult(solved = true, gemsEarned = 0),
         )
         assertEquals(EconomyPolicy.STARTING_GEMS, repository.state.value.gems)
-        val solvedEvents = repository.applyTerminalResult(PuzzleType.GAME_2048, Difficulty.EXPERT, solved = true)
+        val solvedEvents = repository.applyTerminalResult(solved = true, gemsEarned = 2)
         assertEquals(EconomyPolicy.STARTING_GEMS + 2, repository.state.value.gems)
         assertEquals(EconomyPolicy.STARTING_LIVES, repository.state.value.lives)
         assertEquals(EconomyEvent.GameCompleted, solvedEvents[0])
@@ -88,7 +86,7 @@ class WebEconomyTest {
         assertEquals(2, granted.amount)
 
         // Failed Catalog puzzle -> -1 life, floored at zero.
-        val failedEvents = repository.applyTerminalResult(PuzzleType.WORD, Difficulty.EXPERT, solved = false)
+        val failedEvents = repository.applyTerminalResult(solved = false, gemsEarned = 0)
         assertEquals(4, repository.state.value.lives)
         assertEquals(EconomyEvent.GameFailed, failedEvents[0])
         val consumed = assertIs<EconomyEvent.ResourceConsumed>(failedEvents[1])
@@ -107,7 +105,7 @@ class WebEconomyTest {
         // A loss at zero lives changes nothing and reports no consumed life.
         assertEquals(
             listOf<EconomyEvent>(EconomyEvent.GameFailed),
-            repository.applyTerminalResult(PuzzleType.WORD, Difficulty.EASY, solved = false),
+            repository.applyTerminalResult(solved = false, gemsEarned = 0),
         )
         assertEquals(0, repository.state.value.lives)
 
@@ -125,10 +123,10 @@ class WebEconomyTest {
                 .also { it.loadLocal() }
 
         // The first loss starts the countdown; a second loss later keeps it running.
-        repository.applyTerminalResult(PuzzleType.SUDOKU, Difficulty.EASY, solved = false)
+        repository.applyTerminalResult(solved = false, gemsEarned = 0)
         assertEquals(START + INTERVAL, repository.state.value.nextLifeRestoreAtEpochMs)
         now = START + 5 * MINUTE
-        repository.applyTerminalResult(PuzzleType.SUDOKU, Difficulty.EASY, solved = false)
+        repository.applyTerminalResult(solved = false, gemsEarned = 0)
         assertEquals(3, repository.state.value.lives)
         assertEquals(START + INTERVAL, repository.state.value.nextLifeRestoreAtEpochMs)
 

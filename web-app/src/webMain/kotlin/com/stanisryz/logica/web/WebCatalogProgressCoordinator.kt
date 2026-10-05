@@ -8,6 +8,7 @@ import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.PuzzleGemReward
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import kotlinx.coroutines.flow.first
 import kotlin.jvm.JvmInline
@@ -21,7 +22,7 @@ internal value class WebPlayerContextToken(
 internal data class WebCatalogAttempt(
     val levelId: CatalogLevelId,
     val playerContextToken: WebPlayerContextToken,
-    /** A cleared level played again from the level map: it can raise its stars, never pays gems. */
+    /** A cleared level played again from the level map: it can raise its stars, and pays only by raising an Expert level to three. */
     val replay: Boolean = false,
 )
 
@@ -73,6 +74,9 @@ internal interface WebCatalogProgressAccess {
         attempt: WebCatalogAttempt,
         stars: Int? = null,
     ): WebCatalogCompletionResult
+
+    /** The attempt's level best from earlier solves (`0` without stars on record), `null` if never cleared. */
+    fun previousBestStars(attempt: WebCatalogAttempt): Int? = null
 
     fun retryContextBinding()
 
@@ -152,6 +156,12 @@ internal class WebCatalogProgressCoordinator(
         (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.token ==
             attempt.playerContextToken
 
+    override fun previousBestStars(attempt: WebCatalogAttempt): Int? {
+        val binding = playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready ?: return null
+        if (binding.token != attempt.playerContextToken) return null
+        return binding.repository.previousBestStars(attempt.levelId)
+    }
+
     override fun advanceSolved(
         attempt: WebCatalogAttempt,
         stars: Int?,
@@ -204,6 +214,8 @@ internal sealed interface WebCatalogCompletionState {
 
     data class Saved(
         val nextLevel: CatalogLevelId,
+        /** Gems the solve earned under [PuzzleGemReward], shown on the result card. */
+        val gemsEarned: Int = 0,
     ) : WebCatalogCompletionState
 
     data class SaveError(
@@ -220,9 +232,17 @@ internal class WebCatalogCompletionController(
     var state by mutableStateOf<WebCatalogCompletionState>(WebCatalogCompletionState.Idle)
         private set
 
+    /**
+     * Gems the solved attempt earned under [PuzzleGemReward], worked out at its first save from the
+     * level's best before that save, so a save retry or a repeated call never changes it.
+     */
+    var gemsEarned: Int = 0
+        private set
+
     fun startAttempt(attempt: WebCatalogAttempt) {
         this.attempt = attempt
         state = WebCatalogCompletionState.Idle
+        gemsEarned = 0
     }
 
     fun saveSolved(
@@ -231,10 +251,14 @@ internal class WebCatalogCompletionController(
     ) {
         if (this.attempt != attempt) return
         if (state != WebCatalogCompletionState.Idle && state !is WebCatalogCompletionState.SaveError) return
+        if (state == WebCatalogCompletionState.Idle) {
+            val level = attempt.levelId
+            gemsEarned = PuzzleGemReward.forSolved(level.puzzleType, level.difficulty, stars, progression.previousBestStars(attempt))
+        }
         state = WebCatalogCompletionState.Saving
         state =
             when (val result = progression.advanceSolved(attempt, stars)) {
-                is WebCatalogCompletionResult.Saved -> WebCatalogCompletionState.Saved(result.nextLevel)
+                is WebCatalogCompletionResult.Saved -> WebCatalogCompletionState.Saved(result.nextLevel, gemsEarned)
                 is WebCatalogCompletionResult.PersistenceFailed ->
                     WebCatalogCompletionState.SaveError(result.detail)
                 WebCatalogCompletionResult.Rejected ->
@@ -248,6 +272,7 @@ internal class WebCatalogCompletionController(
     fun reset() {
         attempt = null
         state = WebCatalogCompletionState.Idle
+        gemsEarned = 0
     }
 }
 

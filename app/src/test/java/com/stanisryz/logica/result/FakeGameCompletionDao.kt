@@ -63,6 +63,24 @@ internal class FakeGameCompletionDao(
 
     override suspend fun findResult(resultId: String): GameResultEntity? = results[resultId]
 
+    override suspend fun findBestSolvedCatalogStars(
+        puzzleType: String,
+        difficulty: String,
+        levelNumber: Int,
+        packVersion: Int,
+    ): Int? =
+        results.values
+            .filter {
+                it.resultScope == "CATALOG" &&
+                    it.outcome == "SOLVED" &&
+                    it.puzzleType == puzzleType &&
+                    it.difficulty == difficulty &&
+                    it.catalogLevelNumber == levelNumber &&
+                    it.catalogLevelPackVersion == packVersion
+            }.maxOfOrNull { it.stars ?: 0 }
+
+    override suspend fun findEconomyEventGems(eventId: String): Int? = economyEvents[eventId]?.gemDelta
+
     override suspend fun insertResult(result: GameResultEntity): Long = if (results.putIfAbsent(result.resultId, result) == null) 1 else -1
 
     override suspend fun findDailyChallenge(
@@ -190,6 +208,7 @@ internal class FakeGameCompletionDao(
         difficulty: Difficulty = Difficulty.EASY,
         levelNumber: Int = 1,
         attemptId: String = "attempt",
+        stars: Int? = null,
     ): GameCompletion =
         GameCompletion(
             resultId = "catalog:1:$puzzleType:$difficulty:$levelNumber:$attemptId",
@@ -203,6 +222,7 @@ internal class FakeGameCompletionDao(
             attemptsUsed = if (puzzleType == PuzzleType.WORD) WORD_ATTEMPTS else null,
             catalogLevel =
                 CatalogLevelId(puzzleType, difficulty, CatalogLevelNumber(levelNumber), CatalogLevelPackVersion.V1),
+            stars = stars,
         )
 
     fun challenge(result: GameResultEntity): DailyChallengeEntity =

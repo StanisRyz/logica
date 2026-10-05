@@ -255,7 +255,13 @@ internal class WebBlockSudokuController(
                     if (solved) WebStatisticsTerminalOutcome.SOLVED else WebStatisticsTerminalOutcome.FAILED,
                 )
         }
-        economy.recordTerminalResult(PuzzleType.BLOCK_SUDOKU, playing.source.difficulty, solved = solved)
+        val gemsEarned =
+            when {
+                !solved -> 0
+                playing.source is WebGameplaySource.CatalogLevel -> completion.gemsEarned
+                else -> WebEconomyProcessor.dailyGemsFor(PuzzleType.BLOCK_SUDOKU, playing.source.difficulty, stars = null)
+            }
+        economy.recordTerminalResult(solved = solved, gemsEarned = gemsEarned)
     }
 
     private fun resolveLevel(levelId: CatalogLevelId): CatalogLevelDefinition =

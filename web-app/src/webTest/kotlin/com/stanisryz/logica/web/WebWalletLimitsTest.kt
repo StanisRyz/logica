@@ -3,8 +3,6 @@ package com.stanisryz.logica.web
 import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.platform.PurchaseResult
 import com.stanisryz.logica.platform.PurchaseStatus
-import com.stanisryz.logica.puzzle.core.model.Difficulty
-import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -44,7 +42,7 @@ class WebWalletLimitsTest {
         assertTrue(economy.grantGems(10))
         assertEquals(EconomyPolicy.MAX_GEMS, economy.currentSnapshot.gems)
         assertTrue(economy.addGems(Int.MAX_VALUE))
-        economy.applyTerminalResult(PuzzleType.SUDOKU, Difficulty.EXPERT, solved = true)
+        economy.applyTerminalResult(solved = true, gemsEarned = 1)
         assertEquals(EconomyPolicy.MAX_GEMS, economy.currentSnapshot.gems)
         assertEquals(EconomyPolicy.MAX_GEMS, store.snapshot.gems)
     }

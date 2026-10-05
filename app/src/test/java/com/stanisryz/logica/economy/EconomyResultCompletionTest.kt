@@ -7,6 +7,7 @@ import com.stanisryz.logica.result.FakeGameCompletionDao
 import com.stanisryz.logica.result.GameCompletion
 import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.result.GameResultScope
+import com.stanisryz.logica.result.RoomGameCompletionRepository
 import com.stanisryz.logica.result.toEntity
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -25,37 +26,74 @@ class EconomyResultCompletionTest {
     private val definition = DailyChallengePolicyV2.definitionFor(LocalDate.of(2026, 8, 9))
 
     @Test
-    fun everyDifficultyGrantsItsOwnGemRewardOnceHoweverOftenItIsPersisted() =
+    fun anExpertFirstSolveWithThreeStarsPaysOneGemOnceHoweverOftenItIsPersisted() =
         runBlocking {
             val dao = FakeGameCompletionDao(definition)
-            val rewards =
-                mapOf(
-                    PuzzleType.BALANCE to Difficulty.EXPERT,
-                    PuzzleType.CROWNS to Difficulty.EXPERT,
-                    PuzzleType.WORD to Difficulty.EXPERT,
-                    PuzzleType.SUDOKU to Difficulty.HARD,
-                    PuzzleType.GAME_2048 to Difficulty.EXPERT,
+            // Each solve and the gems it is worth under the one rule.
+            val solves =
+                listOf(
+                    dao.catalogCompletion(PuzzleType.BALANCE, difficulty = Difficulty.EXPERT, stars = 3) to 1,
+                    dao.catalogCompletion(PuzzleType.CROWNS, difficulty = Difficulty.EXPERT, stars = 2) to 0,
+                    dao.catalogCompletion(PuzzleType.WORD, difficulty = Difficulty.EXPERT, stars = 3) to 1,
+                    dao.catalogCompletion(PuzzleType.SUDOKU, difficulty = Difficulty.HARD, stars = 3) to 0,
+                    // 2048 has no stars: its first cleared Expert level counts as three.
+                    dao.catalogCompletion(PuzzleType.GAME_2048, difficulty = Difficulty.EXPERT) to 1,
                 )
 
-            rewards.forEach { (puzzleType, difficulty) ->
-                val solved = dao.catalogCompletion(puzzleType, difficulty = difficulty).toEntity(NOW)
+            solves.forEach { (completion, gems) ->
+                val solved = completion.toEntity(NOW)
                 dao.complete(solved)
                 dao.complete(solved)
                 dao.complete(solved)
                 val event = dao.economyEvents.getValue(EconomyEvent.resultEventId(solved.resultId))
                 assertEquals(EconomyEventType.SOLVED_REWARD.name, event.eventType)
-                assertEquals(EconomyRules.solvedGemReward(puzzleType, difficulty), event.gemDelta)
+                assertEquals(completion.puzzleType.name, gems, event.gemDelta)
                 assertEquals(0, event.lifeDelta)
             }
 
-            // Balance 0 + Crowns 1 + Word 0 + Sudoku 1 + 2048 2, and repeating each completion three times changed nothing.
-            assertEquals(EconomyRules.STARTING_GEMS + 4, dao.wallet(NOW).gems)
+            // Repeating each completion three times changed nothing.
+            assertEquals(EconomyRules.STARTING_GEMS + 3, dao.wallet(NOW).gems)
             assertEquals(EconomyRules.STARTING_LIVES, dao.wallet(NOW).lives)
-            assertEquals(rewards.size, dao.results.size)
-            assertEquals(rewards.size, dao.economyEvents.size)
+            assertEquals(solves.size, dao.results.size)
+            assertEquals(solves.size, dao.economyEvents.size)
         }
 
-    /** The reward depends on the game and difficulty alone: a Daily entry pays what the Catalog pays. */
+    @Test
+    fun anExpertLevelPaysOnlyWhenItsBestFirstReachesThreeStarsAndTheCardSeesExactlyThat() =
+        runBlocking {
+            val dao = FakeGameCompletionDao(definition)
+            val repository = RoomGameCompletionRepository(dao) { NOW }
+
+            suspend fun solve(
+                level: Int,
+                attempt: String,
+                stars: Int,
+            ): Int =
+                repository
+                    .complete(
+                        dao.catalogCompletion(
+                            PuzzleType.SUDOKU,
+                            difficulty = Difficulty.EXPERT,
+                            levelNumber = level,
+                            attemptId = attempt,
+                            stars = stars,
+                        ),
+                    ).gemsEarned
+
+            assertEquals(0, solve(level = 1, attempt = "first", stars = 2))
+            // A replay that raises the level to three stars pays the gem.
+            assertEquals(1, solve(level = 1, attempt = "replay-3", stars = 3))
+            // Already three: no second gem, and a lower replay pays nothing either.
+            assertEquals(0, solve(level = 1, attempt = "replay-3-again", stars = 3))
+            assertEquals(0, solve(level = 1, attempt = "replay-2", stars = 2))
+            // A first solve with three stars pays at once.
+            assertEquals(1, solve(level = 2, attempt = "first", stars = 3))
+
+            assertEquals(EconomyRules.STARTING_GEMS + 2, dao.wallet(NOW).gems)
+            assertEquals(3, dao.currentLevel(PuzzleType.SUDOKU, Difficulty.EXPERT))
+        }
+
+    /** The reward never depends on the scope: a Daily entry pays what the same Catalog solve pays. */
     @Test
     fun theDailyScopeUsesTheSameDifficultyRewardAsTheCatalog() =
         runBlocking {
@@ -81,7 +119,7 @@ class EconomyResultCompletionTest {
             dao.complete(daily)
             dao.complete(catalog)
 
-            val expected = EconomyRules.solvedGemReward(entry.puzzleType, entry.difficulty)
+            val expected = EconomyRules.solvedGemReward(entry.puzzleType, entry.difficulty, stars = null, previousBestStars = null)
             assertEquals(expected, dao.economyEvents.getValue(EconomyEvent.resultEventId("daily-0")).gemDelta)
             assertEquals(
                 expected,

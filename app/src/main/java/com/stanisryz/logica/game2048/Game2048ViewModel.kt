@@ -37,6 +37,8 @@ internal sealed interface Game2048UiState {
         val game: Game2048State,
         val motionEvent: Game2048MotionEvent? = null,
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
+        /** Gems the saved result actually credited, for the result card. */
+        val gemsEarned: Int = 0,
         /**
          * Whether this Catalog level has already been cleared by crossing its score target. The board
          * keeps running afterwards, so this is a persistent presentation state rather than an ending.
@@ -226,8 +228,8 @@ internal class Game2048ViewModel(
         completionJob =
             viewModelScope.launch {
                 try {
-                    completionRepository.complete(completion)
-                    updateCompletionPersistence(current.resultId, CompletionPersistence.Saved)
+                    val saved = completionRepository.complete(completion)
+                    updateCompletionPersistence(current.resultId, CompletionPersistence.Saved, saved.gemsEarned)
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (_: Exception) {
@@ -239,10 +241,11 @@ internal class Game2048ViewModel(
     private fun updateCompletionPersistence(
         resultId: String,
         persistence: CompletionPersistence,
+        gemsEarned: Int = 0,
     ) {
         val current = mutableUiState.value
         if (current is Game2048UiState.Ready && attempt?.resultId == resultId) {
-            mutableUiState.value = current.copy(completionPersistence = persistence)
+            mutableUiState.value = current.copy(completionPersistence = persistence, gemsEarned = gemsEarned)
         }
     }
 

@@ -24,6 +24,26 @@ internal interface GameCompletionDao {
     @Query("SELECT * FROM game_results WHERE result_id = :resultId LIMIT 1")
     suspend fun findResult(resultId: String): GameResultEntity?
 
+    /**
+     * The best stars of a Catalog level's earlier solves: `0` when it was solved only without stars on
+     * record, `null` when it was never solved.
+     */
+    @Query(
+        "SELECT MAX(COALESCE(stars, 0)) FROM game_results WHERE session_scope = 'CATALOG' AND outcome = 'SOLVED' " +
+            "AND puzzle_type = :puzzleType AND difficulty = :difficulty " +
+            "AND catalog_level_number = :levelNumber AND catalog_level_pack_version = :packVersion",
+    )
+    suspend fun findBestSolvedCatalogStars(
+        puzzleType: String,
+        difficulty: String,
+        levelNumber: Int,
+        packVersion: Int,
+    ): Int?
+
+    /** The gems one ledger row moved, or `null` when there is no such row. */
+    @Query("SELECT gem_delta FROM economy_events WHERE event_id = :eventId LIMIT 1")
+    suspend fun findEconomyEventGems(eventId: String): Int?
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertResult(result: GameResultEntity): Long
 
@@ -151,22 +171,26 @@ internal interface GameCompletionDao {
                 "Catalog completion level $levelNumber is beyond the current level $authoritativeLevel."
             }
         }
-        val replay =
-            result.resultScope == GameResultScope.CATALOG.name &&
-                result.catalogLevelNumber != null &&
-                result.catalogLevelPackVersion != null &&
-                result.catalogLevelNumber <
-                (
-                    findCatalogCurrentLevel(result.puzzleType, result.difficulty, result.catalogLevelPackVersion)
-                        ?: FIRST_CATALOG_LEVEL
+        // The level's best before this attempt, read before the attempt itself is stored: the gem
+        // rule pays only when an Expert level's best first reaches three stars.
+        val previousBestStars =
+            if (result.catalogLevelNumber != null && result.catalogLevelPackVersion != null) {
+                findBestSolvedCatalogStars(
+                    puzzleType = result.puzzleType,
+                    difficulty = result.difficulty,
+                    levelNumber = result.catalogLevelNumber,
+                    packVersion = result.catalogLevelPackVersion,
                 )
+            } else {
+                null
+            }
 
         require(insertResult(result) != -1L) { "The completed result could not be inserted." }
 
         // The wallet moves in the very same transaction as the result, keyed by that result, so a
         // crash, a retried save, or a repeated callback can never pay or charge the attempt twice.
-        // A solved replay only improves stars: it pays nothing, while a failed one still costs a life.
-        if (!(replay && result.outcome == GameOutcome.SOLVED.name)) applyResultEconomy(result)
+        // A replay goes through the same rule: it pays only when it raises an Expert level to three stars.
+        applyResultEconomy(result, previousBestStars)
 
         // Progression is part of the same transaction and is monotonic per bucket: advancing to
         // level+1 only when the stored level is still behind makes a repeated completion a no-op.
@@ -234,18 +258,24 @@ internal interface GameCompletionDao {
     /**
      * One result produces exactly zero or one economy effect. Regeneration that is already due is
      * applied first, so the reward or the penalty always lands on an up-to-date wallet. The gem
-     * reward comes from the difficulty the result already carries; the life penalty is flat.
+     * reward comes from the game, difficulty, and stars the result already carries plus the level's
+     * earlier best; the life penalty is flat.
      */
-    private suspend fun applyResultEconomy(result: GameResultEntity) {
+    private suspend fun applyResultEconomy(
+        result: GameResultEntity,
+        previousBestStars: Int?,
+    ) {
         val now = result.completedAtEpochMillis
         val current = findEconomy().toPlayerEconomy(now).regenerated(now)
         val effect: EconomyEffect =
             when (result.outcome) {
                 GameOutcome.SOLVED.name ->
                     current.solvedReward(
-                        result.resultId,
-                        PuzzleType.valueOf(result.puzzleType),
-                        Difficulty.valueOf(result.difficulty),
+                        resultId = result.resultId,
+                        puzzleType = PuzzleType.valueOf(result.puzzleType),
+                        difficulty = Difficulty.valueOf(result.difficulty),
+                        stars = result.stars,
+                        previousBestStars = previousBestStars,
                     )
                 GameOutcome.FAILED.name -> current.failedPenalty(result.resultId, now)
                 else -> return

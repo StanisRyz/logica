@@ -46,6 +46,8 @@ internal sealed interface WordGameUiState {
         val rejectionRevision: Int = 0,
         val acceptedAttemptRevision: Int = 0,
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
+        /** Gems the saved result actually credited, for the result card. */
+        val gemsEarned: Int = 0,
     ) : WordGameUiState {
         val hasMeaningfulProgress: Boolean
             get() = game.hasMeaningfulProgress
@@ -195,8 +197,8 @@ internal class WordGameViewModel(
         completionJob =
             viewModelScope.launch {
                 try {
-                    completionRepository.complete(completion)
-                    updateCompletionPersistence(game, CompletionPersistence.Saved)
+                    val saved = completionRepository.complete(completion)
+                    updateCompletionPersistence(game, CompletionPersistence.Saved, saved.gemsEarned)
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (_: Exception) {
@@ -208,10 +210,11 @@ internal class WordGameViewModel(
     private fun updateCompletionPersistence(
         game: WordGameState,
         persistence: CompletionPersistence,
+        gemsEarned: Int = 0,
     ) {
         val current = mutableUiState.value
         if (current is WordGameUiState.Ready && current.game == game) {
-            mutableUiState.value = current.copy(completionPersistence = persistence)
+            mutableUiState.value = current.copy(completionPersistence = persistence, gemsEarned = gemsEarned)
         }
     }
 }

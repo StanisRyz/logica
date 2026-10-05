@@ -17,7 +17,6 @@ import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.catalog.levelNumberOrNull
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
-import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordGameState
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
 import com.stanisryz.logica.puzzle.core.word.WordGuessRejection
@@ -129,6 +128,7 @@ private fun WordGameScreen(
                 rejectionRevision = uiState.rejectionRevision,
                 acceptedAttemptRevision = uiState.acceptedAttemptRevision,
                 completionPersistence = uiState.completionPersistence,
+                gemsEarned = uiState.gemsEarned,
                 economy = economy,
                 onLetter = onLetter,
                 onClearLetter = onClearLetter,
@@ -155,6 +155,7 @@ private fun WordReadyState(
     rejectionRevision: Int,
     acceptedAttemptRevision: Int,
     completionPersistence: CompletionPersistence,
+    gemsEarned: Int,
     economy: PlayerEconomy,
     onLetter: (Int, Char) -> Unit,
     onClearLetter: (Int) -> Unit,
@@ -207,6 +208,7 @@ private fun WordReadyState(
                 game = game,
                 levelNumber = levelNumber,
                 completionPersistence = completionPersistence,
+                gemsEarned = gemsEarned,
                 economy = economy,
                 onRetryCompletion = onRetryCompletion,
                 onRetryLevel = onRetryLevel,
@@ -224,6 +226,7 @@ private fun WordTerminalCard(
     game: WordGameState,
     levelNumber: Int?,
     completionPersistence: CompletionPersistence,
+    gemsEarned: Int,
     economy: PlayerEconomy,
     onRetryCompletion: () -> Unit,
     onRetryLevel: () -> Unit,
@@ -251,7 +254,7 @@ private fun WordTerminalCard(
                 stringResource(R.string.word_answer_was, puzzle.answer.uppercase())
             },
         saveErrorDetail = stringResource(R.string.completion_save_error_body),
-        economy = resultEconomy(isSolved, PuzzleType.WORD, difficulty),
+        economy = resultEconomy(isSolved, gemsEarned),
         retryAllowed = economy.isGameplayAllowed,
         stars = if (isSolved) starsForWordAttempts(game.attempts.size) else null,
     )

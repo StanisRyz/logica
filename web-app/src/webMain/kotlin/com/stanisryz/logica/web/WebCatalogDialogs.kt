@@ -142,7 +142,6 @@ internal fun WebOrdinaryCatalogTerminalDialog(
     mistakesUsed: Int? = null,
     hintsUsed: Int? = null,
     stars: Int? = null,
-    replay: Boolean = false,
     onNextLevel: () -> Unit,
     onRetry: () -> Unit,
     onRetrySave: () -> Unit,
@@ -172,11 +171,11 @@ internal fun WebOrdinaryCatalogTerminalDialog(
         detail = if (solved) solvedDetail else failedDetail,
         saveErrorDetail = saveError?.let { stringResource(WebRes.string.web_save_error_catalog) },
         economy =
-            when {
-                // A solved replay only raises stars; it pays nothing.
-                solved && replay -> GameResultEconomy()
-                solved -> GameResultEconomy(gemsEarned = WebEconomyProcessor.gemRewardFor(puzzleType, difficulty))
-                else -> GameResultEconomy(livesLost = 1)
+            if (solved) {
+                // The gems the saved solve earned; a replay earns one only by raising an Expert level to three stars.
+                GameResultEconomy(gemsEarned = (completion as? WebCatalogCompletionState.Saved)?.gemsEarned ?: 0)
+            } else {
+                GameResultEconomy(livesLost = 1)
             },
         mistakesUsed = mistakesUsed,
         hintsUsed = hintsUsed,
@@ -221,7 +220,10 @@ internal fun WebDailyOrdinaryTerminalDialog(
         detail = scoreDetail,
         economy =
             if (solved) {
-                GameResultEconomy(gemsEarned = WebEconomyProcessor.gemRewardFor(puzzleType, difficulty))
+                GameResultEconomy(
+                    gemsEarned =
+                        WebEconomyProcessor.dailyGemsFor(puzzleType, difficulty, stars ?: mistakesUsed?.let(::starsForMistakes)),
+                )
             } else {
                 GameResultEconomy(livesLost = 1)
             },

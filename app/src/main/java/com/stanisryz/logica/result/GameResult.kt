@@ -105,10 +105,13 @@ internal data class GameResult(
     val catalogLevel: CatalogLevelId? = null,
     /** Stars the solved attempt earned; null for failures, 2048, and results recorded before stars. */
     val stars: Int? = null,
+    /** Gems this completion credited, as reported right after it was saved; not stored, 0 when read back. */
+    val gemsEarned: Int = 0,
 ) {
     init {
         require(resultId.isNotBlank()) { "Result ID must not be blank." }
         require(hintsUsed >= 0) { "Hints used must not be negative." }
+        require(gemsEarned >= 0) { "Gems earned must not be negative." }
         requireStars(outcome, stars)
         require(
             (resultScope == GameResultScope.DAILY) ==

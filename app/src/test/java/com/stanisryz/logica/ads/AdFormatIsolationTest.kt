@@ -56,7 +56,10 @@ class AdFormatIsolationTest {
 
             // The wallet after the completion transaction and before any advertising.
             val afterCompletion = dao.wallet(NOW)
-            assertEquals(EconomyRules.solvedGemReward(PuzzleType.CROWNS, Difficulty.MEDIUM), afterCompletion.gems)
+            assertEquals(
+                EconomyRules.solvedGemReward(PuzzleType.CROWNS, Difficulty.MEDIUM, stars = null, previousBestStars = null),
+                afterCompletion.gems,
+            )
             assertEquals(setOf(EconomyEvent.resultEventId(completion.resultId)), dao.economyEvents.keys)
 
             val opportunity = requireNotNull(opportunities.pending.value)

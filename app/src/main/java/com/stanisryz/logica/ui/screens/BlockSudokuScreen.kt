@@ -21,7 +21,6 @@ import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.catalog.levelNumberOrNull
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.puzzle.core.blocksudoku.BlockSudokuStatus
-import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.ui.blocksudoku.BlockSudokuContent
 import com.stanisryz.logica.ui.components.GameResultDialog
@@ -115,7 +114,7 @@ internal fun BlockSudokuRoute(
                     onExit = { onTerminalAction(onGameHub) },
                     detail = stringResource(R.string.block_sudoku_result_score, game.score),
                     saveErrorDetail = stringResource(R.string.completion_save_error_body),
-                    economy = resultEconomy(solved, PuzzleType.BLOCK_SUDOKU, launch.difficulty()),
+                    economy = resultEconomy(solved, state.gemsEarned),
                     retryAllowed = economy.isGameplayAllowed,
                 )
             }

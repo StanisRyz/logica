@@ -374,17 +374,24 @@ internal class WebNonogramController(
         when (val source = playing.source) {
             is WebGameplaySource.CatalogLevel -> {
                 if (solved) completion.saveSolved(source.attempt, PuzzleStars.forMistakes(updated.mistakesUsed))
-                // A solved replay only raises stars and pays nothing; a failed one still costs a life.
-                if (!(solved && source.attempt.replay)) {
-                    economy.recordTerminalResult(PuzzleType.NONOGRAM, source.difficulty, solved = solved)
-                }
+                // A solve pays its earned gems (a replay only by raising an Expert level to three stars),
+                // a failure — replay or not — one life.
+                economy.recordTerminalResult(solved = solved, gemsEarned = if (solved) completion.gemsEarned else 0)
             }
             is WebGameplaySource.DailyChallenge -> {
                 dailyCompletion.saveTerminal(
                     source.attempt,
                     if (solved) WebStatisticsTerminalOutcome.SOLVED else WebStatisticsTerminalOutcome.FAILED,
                 )
-                economy.recordTerminalResult(PuzzleType.NONOGRAM, source.difficulty, solved = solved)
+                economy.recordTerminalResult(
+                    solved = solved,
+                    gemsEarned =
+                        WebEconomyProcessor.dailyGemsFor(
+                            PuzzleType.NONOGRAM,
+                            source.difficulty,
+                            PuzzleStars.forMistakes(updated.mistakesUsed),
+                        ),
+                )
             }
         }
     }

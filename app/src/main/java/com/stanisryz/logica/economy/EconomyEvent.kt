@@ -109,14 +109,16 @@ internal data class EconomyEffect(
     val event: EconomyEvent,
 )
 
-/** The gem reward is derived from the completed game and difficulty, never from the scope. */
+/** The gem reward is derived from the completed game, difficulty, and stars, never from the scope. */
 internal fun PlayerEconomy.solvedReward(
     resultId: String,
     puzzleType: PuzzleType,
     difficulty: Difficulty,
+    stars: Int?,
+    previousBestStars: Int?,
 ): EconomyEffect =
     effect(
-        updated = withGemsGranted(EconomyRules.solvedGemReward(puzzleType, difficulty)),
+        updated = withGemsGranted(EconomyRules.solvedGemReward(puzzleType, difficulty, stars, previousBestStars)),
         eventId = EconomyEvent.resultEventId(resultId),
         type = EconomyEventType.SOLVED_REWARD,
         sourceId = resultId,

@@ -19,13 +19,15 @@ internal object EconomyRules {
     const val MAX_LIVES = EconomyPolicy.MAXIMUM_LIVES
 
     /**
-     * What one durable SOLVED attempt is worth: the shared [PuzzleGemReward] table by game and
-     * difficulty, the same in Catalog and in Daily.
+     * What one durable SOLVED attempt is worth: the shared [PuzzleGemReward] rule — one gem when an
+     * Expert level's best first reaches three stars — the same in Catalog and in Daily.
      */
     fun solvedGemReward(
         puzzleType: PuzzleType,
         difficulty: Difficulty,
-    ): Int = PuzzleGemReward.forSolved(puzzleType, difficulty)
+        stars: Int?,
+        previousBestStars: Int?,
+    ): Int = PuzzleGemReward.forSolved(puzzleType, difficulty, stars, previousBestStars)
 
     /** One durable FAILED attempt costs exactly this many lives, bounded at zero, at any difficulty. */
     const val FAILED_LIFE_PENALTY = EconomyPolicy.FAILED_ATTEMPT_LIFE_COST

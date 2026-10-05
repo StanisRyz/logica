@@ -290,6 +290,16 @@ internal class WebCatalogProgressRepository(
     }
 
     /**
+     * The level's best stars from earlier solves, read before this solve records anything: `0` when
+     * it was cleared without stars on record, `null` when it was never cleared.
+     */
+    fun previousBestStars(levelId: CatalogLevelId): Int? {
+        val bucket = levelId.toProgressBucket()
+        if (levelId.levelNumber.value >= currentLevel(bucket).value) return null
+        return mutableStars.value.starsOf(bucket, levelId.levelNumber.value)
+    }
+
+    /**
      * Keeps [stars] for [levelId] when they beat the level's best. Stars are best-effort: a
      * failed browser write leaves them unchanged and never affects the level's completion.
      */

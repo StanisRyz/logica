@@ -78,7 +78,6 @@ import com.stanisryz.logica.ads.TerminalActionCoordinator
 import com.stanisryz.logica.catalog.CatalogLevelRepository
 import com.stanisryz.logica.catalog.GameAttemptFactory
 import com.stanisryz.logica.catalog.GameAttemptLaunch
-import com.stanisryz.logica.catalog.isReplay
 import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.DailyGameLaunch
 import com.stanisryz.logica.daily.DailyResultRepository
@@ -108,7 +107,6 @@ import com.stanisryz.logica.ui.components.GameRulesSheet
 import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.LevelMapSheet
 import com.stanisryz.logica.ui.components.LivesDialog
-import com.stanisryz.logica.ui.components.LocalLevelReplay
 import com.stanisryz.logica.ui.components.LocalSecondChanceAd
 import com.stanisryz.logica.ui.components.PuzzleStartScreen
 import com.stanisryz.logica.ui.components.SecondChanceAd
@@ -697,42 +695,36 @@ internal fun LogicaNavigation(
                                 )
                             }
                             entry<AppDestination.BalanceGame> { destination ->
-                                // A replayed level pays no gems; its result card says so.
-                                CompositionLocalProvider(LocalLevelReplay provides destination.launch.isReplay) {
-                                    BalanceGameRoute(
-                                        launch = destination.launch,
-                                        attemptFactory = attemptFactory,
-                                        completionRepository = gameCompletionRepository,
-                                        economyRepository = economyRepository,
-                                        exitGuard = exitGuard,
-                                        hapticsEnabled = settings.hapticsEnabled,
-                                        onBack = goBack,
-                                        onNextLevel = { openNextLevel(PuzzleType.BALANCE, destination.launch) },
-                                        onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                                        onTerminalAction = onTerminalAction,
-                                        onRestoreLife = onRestoreLife,
-                                        onOpenStore = openStore,
-                                    )
-                                }
+                                BalanceGameRoute(
+                                    launch = destination.launch,
+                                    attemptFactory = attemptFactory,
+                                    completionRepository = gameCompletionRepository,
+                                    economyRepository = economyRepository,
+                                    exitGuard = exitGuard,
+                                    hapticsEnabled = settings.hapticsEnabled,
+                                    onBack = goBack,
+                                    onNextLevel = { openNextLevel(PuzzleType.BALANCE, destination.launch) },
+                                    onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                                    onTerminalAction = onTerminalAction,
+                                    onRestoreLife = onRestoreLife,
+                                    onOpenStore = openStore,
+                                )
                             }
                             entry<AppDestination.CrownsGame> { destination ->
-                                // A replayed level pays no gems; its result card says so.
-                                CompositionLocalProvider(LocalLevelReplay provides destination.launch.isReplay) {
-                                    CrownsGameRoute(
-                                        launch = destination.launch,
-                                        attemptFactory = attemptFactory,
-                                        completionRepository = gameCompletionRepository,
-                                        economyRepository = economyRepository,
-                                        exitGuard = exitGuard,
-                                        hapticsEnabled = settings.hapticsEnabled,
-                                        onBack = goBack,
-                                        onNextLevel = { openNextLevel(PuzzleType.CROWNS, destination.launch) },
-                                        onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                                        onTerminalAction = onTerminalAction,
-                                        onRestoreLife = onRestoreLife,
-                                        onOpenStore = openStore,
-                                    )
-                                }
+                                CrownsGameRoute(
+                                    launch = destination.launch,
+                                    attemptFactory = attemptFactory,
+                                    completionRepository = gameCompletionRepository,
+                                    economyRepository = economyRepository,
+                                    exitGuard = exitGuard,
+                                    hapticsEnabled = settings.hapticsEnabled,
+                                    onBack = goBack,
+                                    onNextLevel = { openNextLevel(PuzzleType.CROWNS, destination.launch) },
+                                    onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                                    onTerminalAction = onTerminalAction,
+                                    onRestoreLife = onRestoreLife,
+                                    onOpenStore = openStore,
+                                )
                             }
                             entry<AppDestination.WordGame> { destination ->
                                 WordGameRoute(
@@ -750,23 +742,20 @@ internal fun LogicaNavigation(
                                 )
                             }
                             entry<AppDestination.SudokuGame> { destination ->
-                                // A replayed level pays no gems; its result card says so.
-                                CompositionLocalProvider(LocalLevelReplay provides destination.launch.isReplay) {
-                                    SudokuGameRoute(
-                                        launch = destination.launch,
-                                        attemptFactory = attemptFactory,
-                                        completionRepository = gameCompletionRepository,
-                                        economyRepository = economyRepository,
-                                        exitGuard = exitGuard,
-                                        hapticsEnabled = settings.hapticsEnabled,
-                                        onBack = goBack,
-                                        onNextLevel = { openNextLevel(PuzzleType.SUDOKU, destination.launch) },
-                                        onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                                        onTerminalAction = onTerminalAction,
-                                        onRestoreLife = onRestoreLife,
-                                        onOpenStore = openStore,
-                                    )
-                                }
+                                SudokuGameRoute(
+                                    launch = destination.launch,
+                                    attemptFactory = attemptFactory,
+                                    completionRepository = gameCompletionRepository,
+                                    economyRepository = economyRepository,
+                                    exitGuard = exitGuard,
+                                    hapticsEnabled = settings.hapticsEnabled,
+                                    onBack = goBack,
+                                    onNextLevel = { openNextLevel(PuzzleType.SUDOKU, destination.launch) },
+                                    onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                                    onTerminalAction = onTerminalAction,
+                                    onRestoreLife = onRestoreLife,
+                                    onOpenStore = openStore,
+                                )
                             }
                             entry<AppDestination.Game2048Game> { destination ->
                                 Game2048Route(
@@ -785,23 +774,20 @@ internal fun LogicaNavigation(
                                 )
                             }
                             entry<AppDestination.NonogramGame> { destination ->
-                                // A replayed level pays no gems; its result card says so.
-                                CompositionLocalProvider(LocalLevelReplay provides destination.launch.isReplay) {
-                                    NonogramGameRoute(
-                                        launch = destination.launch,
-                                        attemptFactory = attemptFactory,
-                                        completionRepository = gameCompletionRepository,
-                                        economyRepository = economyRepository,
-                                        exitGuard = exitGuard,
-                                        hapticsEnabled = settings.hapticsEnabled,
-                                        onBack = goBack,
-                                        onNextLevel = { openNextLevel(PuzzleType.NONOGRAM, destination.launch) },
-                                        onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                                        onTerminalAction = onTerminalAction,
-                                        onRestoreLife = onRestoreLife,
-                                        onOpenStore = openStore,
-                                    )
-                                }
+                                NonogramGameRoute(
+                                    launch = destination.launch,
+                                    attemptFactory = attemptFactory,
+                                    completionRepository = gameCompletionRepository,
+                                    economyRepository = economyRepository,
+                                    exitGuard = exitGuard,
+                                    hapticsEnabled = settings.hapticsEnabled,
+                                    onBack = goBack,
+                                    onNextLevel = { openNextLevel(PuzzleType.NONOGRAM, destination.launch) },
+                                    onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
+                                    onTerminalAction = onTerminalAction,
+                                    onRestoreLife = onRestoreLife,
+                                    onOpenStore = openStore,
+                                )
                             }
                             entry<AppDestination.BlockSudokuGame> { destination ->
                                 BlockSudokuRoute(

@@ -282,15 +282,22 @@ internal class WebWordController(
                                     }
                                     // Catalog terminals feed the wallet.
                                     economy.recordTerminalResult(
-                                        PuzzleType.WORD,
-                                        source.attempt.levelId.difficulty,
                                         solved = solved,
+                                        gemsEarned = if (solved) completion.gemsEarned else 0,
                                     )
                                 }
                                 is WebGameplaySource.DailyChallenge -> {
                                     dailyCompletion.saveTerminal(source.attempt, outcome, wordAttemptsUsed)
                                     // A Daily result feeds the wallet like a Catalog one: a failure costs a life.
-                                    economy.recordTerminalResult(PuzzleType.WORD, source.difficulty, solved = solved)
+                                    economy.recordTerminalResult(
+                                        solved = solved,
+                                        gemsEarned =
+                                            WebEconomyProcessor.dailyGemsFor(
+                                                PuzzleType.WORD,
+                                                source.difficulty,
+                                                PuzzleStars.forWordAttempts(updated.game.attempts.size),
+                                            ),
+                                    )
                                 }
                             }
                         }

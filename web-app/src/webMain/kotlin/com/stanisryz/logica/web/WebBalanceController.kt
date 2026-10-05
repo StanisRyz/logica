@@ -421,23 +421,22 @@ internal class WebBalanceController(
                 ) {
                     completion.saveSolved(source.attempt, PuzzleStars.forMistakes(updated.mistakesUsed))
                 }
-                // Catalog terminals feed the wallet.
-                // A solved replay only raises stars and pays nothing; a failed one still costs a life.
-                if (!(source.attempt.replay && updated.status == BalanceGameStatus.SOLVED)) {
-                    economy.recordTerminalResult(
-                        PuzzleType.BALANCE,
-                        source.attempt.levelId.difficulty,
-                        solved = updated.status == BalanceGameStatus.SOLVED,
-                    )
-                }
+                // Catalog terminals feed the wallet: a solve its earned gems (a replay only by raising an
+                // Expert level to three stars), a failure — replay or not — one life.
+                val solved = updated.status == BalanceGameStatus.SOLVED
+                economy.recordTerminalResult(solved = solved, gemsEarned = if (solved) completion.gemsEarned else 0)
             }
             is WebGameplaySource.DailyChallenge -> {
                 dailyCompletion.saveTerminal(source.attempt, outcome)
                 // A Daily result feeds the wallet like a Catalog one: a failure costs a life.
                 economy.recordTerminalResult(
-                    PuzzleType.BALANCE,
-                    source.difficulty,
                     solved = outcome == WebStatisticsTerminalOutcome.SOLVED,
+                    gemsEarned =
+                        WebEconomyProcessor.dailyGemsFor(
+                            PuzzleType.BALANCE,
+                            source.difficulty,
+                            PuzzleStars.forMistakes(updated.mistakesUsed),
+                        ),
                 )
             }
         }

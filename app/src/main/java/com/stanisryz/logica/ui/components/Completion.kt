@@ -1,12 +1,10 @@
 package com.stanisryz.logica.ui.components
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.res.stringResource
 import com.stanisryz.logica.R
 import com.stanisryz.logica.economy.EconomyRules
 import com.stanisryz.logica.puzzle.core.model.Difficulty
-import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 
 /**
@@ -19,7 +17,6 @@ import com.stanisryz.logica.result.CompletionPersistence
  */
 @Composable
 internal fun PuzzleTerminalDialog(
-    puzzleType: PuzzleType,
     isSolved: Boolean,
     completionPersistence: CompletionPersistence,
     levelNumber: Int?,
@@ -33,7 +30,7 @@ internal fun PuzzleTerminalDialog(
     onRetryLevel: () -> Unit,
     onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
-    isReplay: Boolean = LocalLevelReplay.current,
+    gemsEarned: Int,
 ) {
     if (LocalSecondChancePending.current) return
     GameResultDialog(
@@ -47,8 +44,7 @@ internal fun PuzzleTerminalDialog(
         onRetrySave = onRetryCompletion,
         onExit = onGameHub,
         saveErrorDetail = stringResource(R.string.completion_save_error_body),
-        // A solved replay pays nothing; a failed one costs a life like any failure.
-        economy = if (isReplay && isSolved) GameResultEconomy(gemsEarned = 0) else resultEconomy(isSolved, puzzleType, difficulty),
+        economy = resultEconomy(isSolved, gemsEarned),
         mistakesUsed = mistakesUsed,
         maxMistakes = maxMistakes,
         hintsUsed = hintsUsed,
@@ -67,17 +63,16 @@ internal fun CompletionPersistence.toResultSaveState(): GameResultSaveState =
         -> GameResultSaveState.SAVING
     }
 
-/** A solved attempt pays its game and difficulty reward, a failed one costs one life (`EconomyRules`). */
+/**
+ * A solved attempt shows the gems its saved result actually credited ([gemsEarned], from the ledger
+ * row of that result); a failed one costs one life (`EconomyRules`).
+ */
 internal fun resultEconomy(
     isSolved: Boolean,
-    puzzleType: PuzzleType,
-    difficulty: Difficulty,
+    gemsEarned: Int,
 ): GameResultEconomy =
     if (isSolved) {
-        GameResultEconomy(gemsEarned = EconomyRules.solvedGemReward(puzzleType, difficulty))
+        GameResultEconomy(gemsEarned = gemsEarned)
     } else {
         GameResultEconomy(livesLost = EconomyRules.FAILED_LIFE_PENALTY)
     }
-
-/** True while the game on screen replays a cleared level from the level map. */
-internal val LocalLevelReplay = staticCompositionLocalOf { false }

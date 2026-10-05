@@ -48,6 +48,8 @@ internal sealed interface NonogramGameUiState {
         /** A hint was requested with an empty hint stock; the screen offers to restock. */
         val hintsExhausted: Boolean = false,
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
+        /** Gems the saved result actually credited, for the result card. */
+        val gemsEarned: Int = 0,
         /** The third mistake is waiting on the one ad-paid second chance; nothing is recorded yet. */
         val continueOffered: Boolean = false,
     ) : NonogramGameUiState {
@@ -235,9 +237,10 @@ internal class NonogramGameViewModel(
             )
         completionJob =
             viewModelScope.launch {
+                var gemsEarned = 0
                 val persistence =
                     try {
-                        completionRepository.complete(completion)
+                        gemsEarned = completionRepository.complete(completion).gemsEarned
                         CompletionPersistence.Saved
                     } catch (exception: CancellationException) {
                         throw exception
@@ -246,7 +249,7 @@ internal class NonogramGameViewModel(
                     }
                 val latest = mutableUiState.value
                 if (latest is NonogramGameUiState.Ready && latest.game == game) {
-                    mutableUiState.value = latest.copy(completionPersistence = persistence)
+                    mutableUiState.value = latest.copy(completionPersistence = persistence, gemsEarned = gemsEarned)
                 }
             }
     }

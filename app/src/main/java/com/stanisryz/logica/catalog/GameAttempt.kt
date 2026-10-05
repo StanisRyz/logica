@@ -23,7 +23,7 @@ internal sealed interface GameAttemptLaunch {
 
     data class Level(
         val levelId: CatalogLevelId,
-        /** A cleared level played again from the level map: it can raise its stars, never pays gems. */
+        /** A cleared level played again from the level map: it can raise its stars, and pays only by raising an Expert level to three. */
         val replay: Boolean = false,
     ) : GameAttemptLaunch {
         override val puzzleType: PuzzleType get() = levelId.puzzleType
@@ -41,9 +41,6 @@ internal sealed interface GameAttemptLaunch {
 
 /** The displayed level of a Catalog launch, or null for Daily. Presentation reads this directly. */
 internal fun GameAttemptLaunch.levelNumberOrNull(): Int? = (this as? GameAttemptLaunch.Level)?.levelId?.levelNumber?.value
-
-/** Whether this launch replays a level the player has already cleared. */
-internal val GameAttemptLaunch.isReplay: Boolean get() = (this as? GameAttemptLaunch.Level)?.replay == true
 
 /** Where a resolved attempt belongs. The context alone decides result scope and level identity. */
 internal sealed interface GameAttemptContext {

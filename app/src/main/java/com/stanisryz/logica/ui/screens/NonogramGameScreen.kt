@@ -23,7 +23,6 @@ import com.stanisryz.logica.nonogram.NonogramGameUiState
 import com.stanisryz.logica.nonogram.NonogramGameViewModel
 import com.stanisryz.logica.nonogram.NonogramGameViewModelFactory
 import com.stanisryz.logica.puzzle.core.model.PuzzleMistakes
-import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramGameStatus
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.ui.components.GameplayExitGuard
@@ -122,9 +121,9 @@ internal fun NonogramGameRoute(
                 )
                 if (game.status.isTerminal) {
                     PuzzleTerminalDialog(
-                        puzzleType = PuzzleType.NONOGRAM,
                         isSolved = game.status == NonogramGameStatus.SOLVED,
                         completionPersistence = state.completionPersistence,
+                        gemsEarned = state.gemsEarned,
                         levelNumber = levelNumber,
                         mistakesUsed = game.mistakesUsed,
                         hintsUsed = game.hintsUsed,

@@ -30,7 +30,6 @@ import com.stanisryz.logica.puzzle.core.crowns.CrownsPosition
 import com.stanisryz.logica.puzzle.core.crowns.CrownsPuzzle
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleMistakes
-import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.ui.components.GameplayExitGuard
@@ -150,6 +149,7 @@ private fun CrownsGameScreen(
                 isPencilMode = uiState.isPencilMode,
                 isHintLoading = uiState.isHintLoading,
                 completionPersistence = uiState.completionPersistence,
+                gemsEarned = uiState.gemsEarned,
                 economy = economy,
                 onCellTapped = onCellTapped,
                 onSelectValue = onSelectValue,
@@ -177,6 +177,7 @@ private fun CrownsReadyState(
     isPencilMode: Boolean,
     isHintLoading: Boolean,
     completionPersistence: CompletionPersistence,
+    gemsEarned: Int,
     economy: PlayerEconomy,
     onCellTapped: (CrownsPosition) -> Unit,
     onSelectValue: (CrownsPlayerCell) -> Unit,
@@ -244,9 +245,9 @@ private fun CrownsReadyState(
 
     if (game.status.isTerminal) {
         PuzzleTerminalDialog(
-            puzzleType = PuzzleType.CROWNS,
             isSolved = game.status == CrownsGameStatus.SOLVED,
             completionPersistence = completionPersistence,
+            gemsEarned = gemsEarned,
             levelNumber = levelNumber,
             mistakesUsed = game.mistakesUsed,
             hintsUsed = game.hintsUsed,

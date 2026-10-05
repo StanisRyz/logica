@@ -30,7 +30,6 @@ import com.stanisryz.logica.puzzle.core.balance.BalancePosition
 import com.stanisryz.logica.puzzle.core.balance.BalancePuzzle
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleMistakes
-import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.ui.balance.BalanceGameContent
@@ -152,6 +151,7 @@ private fun BalanceGameScreen(
                 uiState.isPencilMode,
                 uiState.isHintLoading,
                 uiState.completionPersistence,
+                uiState.gemsEarned,
                 economy,
                 onCellTapped,
                 onSelectValue,
@@ -179,6 +179,7 @@ private fun ReadyState(
     isPencilMode: Boolean,
     isHintLoading: Boolean,
     completionPersistence: CompletionPersistence,
+    gemsEarned: Int,
     economy: PlayerEconomy,
     onCellTapped: (BalancePosition) -> Unit,
     onSelectValue: (BalanceCell) -> Unit,
@@ -240,9 +241,9 @@ private fun ReadyState(
     )
     if (game.status.isTerminal) {
         PuzzleTerminalDialog(
-            puzzleType = PuzzleType.BALANCE,
             isSolved = game.status == BalanceGameStatus.SOLVED,
             completionPersistence = completionPersistence,
+            gemsEarned = gemsEarned,
             levelNumber = levelNumber,
             mistakesUsed = game.mistakesUsed,
             hintsUsed = game.hintsUsed,

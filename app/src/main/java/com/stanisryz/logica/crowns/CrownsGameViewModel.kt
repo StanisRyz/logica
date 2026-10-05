@@ -49,6 +49,8 @@ internal sealed interface CrownsGameUiState {
         /** A hint was requested with an empty hint stock; the screen offers to restock. */
         val hintsExhausted: Boolean = false,
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
+        /** Gems the saved result actually credited, for the result card. */
+        val gemsEarned: Int = 0,
         /** The third mistake is waiting on the one ad-paid second chance; nothing is recorded yet. */
         val continueOffered: Boolean = false,
     ) : CrownsGameUiState {
@@ -278,8 +280,8 @@ internal class CrownsGameViewModel(
         completionJob =
             viewModelScope.launch {
                 try {
-                    completionRepository.complete(completion)
-                    updateCompletionPersistence(game, CompletionPersistence.Saved)
+                    val saved = completionRepository.complete(completion)
+                    updateCompletionPersistence(game, CompletionPersistence.Saved, saved.gemsEarned)
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (_: Exception) {
@@ -291,10 +293,11 @@ internal class CrownsGameViewModel(
     private fun updateCompletionPersistence(
         game: CrownsGameState,
         persistence: CompletionPersistence,
+        gemsEarned: Int = 0,
     ) {
         val current = mutableUiState.value
         if (current is CrownsGameUiState.Ready && current.game == game) {
-            mutableUiState.value = current.copy(completionPersistence = persistence)
+            mutableUiState.value = current.copy(completionPersistence = persistence, gemsEarned = gemsEarned)
         }
     }
 }
