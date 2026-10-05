@@ -11,14 +11,10 @@ import com.stanisryz.logica.puzzle.core.sudoku.SudokuDifficulty
 import com.stanisryz.logica.puzzle.core.web.WebPuzzleData
 import org.khronos.webgl.ArrayBuffer
 import org.khronos.webgl.Uint8Array
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
 import kotlin.js.ExperimentalWasmJsInterop
 import kotlin.js.JsAny
 import kotlin.js.JsString
 import kotlin.js.Promise
-import kotlin.js.asJsException
 
 /** Fetches only the specific canonical resource requested by future Web gameplay code. */
 class BrowserPuzzleDataLoader {
@@ -82,20 +78,6 @@ private external interface BrowserFetchResponse : JsAny {
 
 @JsName("fetch")
 private external fun browserFetch(resourcePath: String): Promise<BrowserFetchResponse>
-
-private suspend fun <T : JsAny?> Promise<T>.await(): T =
-    suspendCoroutine { continuation ->
-        then(
-            onFulfilled = { value ->
-                continuation.resume(value)
-                null
-            },
-            onRejected = { reason ->
-                continuation.resumeWithException(reason.asJsException())
-                null
-            },
-        )
-    }
 
 private fun ArrayBuffer.toByteArray(): ByteArray {
     val source = Uint8Array(this)

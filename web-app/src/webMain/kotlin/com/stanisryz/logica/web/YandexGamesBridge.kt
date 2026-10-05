@@ -5,15 +5,11 @@ package com.stanisryz.logica.web
 import com.stanisryz.logica.platform.PaymentProductSnapshot
 import com.stanisryz.logica.platform.PaymentPurchaseSnapshot
 import com.stanisryz.logica.platform.PaymentResult
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
 import kotlin.js.ExperimentalWasmJsInterop
 import kotlin.js.JsAny
 import kotlin.js.JsArray
 import kotlin.js.JsString
 import kotlin.js.Promise
-import kotlin.js.asJsException
 
 /** A Kotlin-only view of the cached Yandex Player. Raw SDK values never leave the bridge. */
 internal data class YandexPlayerSnapshot(
@@ -647,20 +643,6 @@ private external interface YandexGameplayApi : JsAny {
 
     fun stop()
 }
-
-private suspend fun <T : JsAny?> Promise<T>.await(): T =
-    suspendCoroutine { continuation ->
-        then(
-            onFulfilled = { value ->
-                continuation.resume(value)
-                null
-            },
-            onRejected = { reason ->
-                continuation.resumeWithException(reason.asJsException())
-                null
-            },
-        )
-    }
 
 private fun yandexGamesOrNull(): YandexGamesGlobal? = js("typeof globalThis.YaGames === 'undefined' ? null : globalThis.YaGames")
 
