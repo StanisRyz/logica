@@ -93,19 +93,25 @@ fun Game2048Content(
 ) {
     require(game.puzzleId.difficulty == difficulty) { "2048 difficulty must match the game identity." }
     val sounds = LocalGameSounds.current
-    // A merge pops, a plain slide taps; reaching the target rings once and a lost board sighs.
-    LaunchedEffect(motionRevision) {
-        val trace = motionTrace ?: return@LaunchedEffect
-        sounds.play(if (trace.merges.isNotEmpty()) GameSound.MERGE else GameSound.TAP)
-    }
+    // A merge pops (once, however many tiles), a plain slide taps; reaching the target rings once and
+    // a lost board sighs, and the move that does either sounds only that outcome.
     val reached = game.goalReached || levelCleared
     val wasReached = remember { mutableStateOf(reached) }
     val wasTerminal = remember { mutableStateOf(game.status.isTerminal) }
-    LaunchedEffect(reached, game.status) {
-        if (reached && !wasReached.value) sounds.play(GameSound.WIN)
-        if (game.status.isTerminal && !wasTerminal.value && !reached) sounds.play(GameSound.FAIL)
+    val lastMotion = remember { mutableStateOf(motionRevision) }
+    LaunchedEffect(motionRevision, reached, game.status) {
+        val outcome =
+            when {
+                reached && !wasReached.value -> GameSound.WIN
+                game.status.isTerminal && !wasTerminal.value && !reached -> GameSound.FAIL
+                else -> null
+            }
+        val moved = motionRevision != null && motionRevision != lastMotion.value
         wasReached.value = reached
         wasTerminal.value = game.status.isTerminal
+        lastMotion.value = motionRevision
+        val move = motionTrace?.takeIf { moved }?.let { if (it.merges.isNotEmpty()) GameSound.MERGE else GameSound.TAP }
+        (outcome ?: move)?.let(sounds::play)
     }
     val difficultyLabel = stringResource(difficulty.labelResource())
     val header: @Composable () -> Unit = {

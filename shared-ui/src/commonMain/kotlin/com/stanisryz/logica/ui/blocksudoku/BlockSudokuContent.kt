@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -92,17 +93,29 @@ fun BlockSudokuContent(
     hostStatusContent: @Composable ColumnScope.() -> Unit = {},
 ) {
     val sounds = LocalGameSounds.current
-    // A placement taps, a clear pops, the target rings once, and a stuck tray sighs.
-    LaunchedEffect(state.placements) {
-        if (state.placements == 0) return@LaunchedEffect
-        sounds.play(if (state.lastCleared.isNotEmpty()) GameSound.MERGE else GameSound.TAP)
-    }
+    // A placement taps, a clear pops (once, however many lines), the target rings once, and a stuck
+    // tray sighs; the placement that ends the game sounds only its outcome, and the first frame nothing.
     val wasTerminal = remember { mutableStateOf(state.status.isTerminal) }
-    LaunchedEffect(state.status) {
-        if (state.status.isTerminal && !wasTerminal.value) {
-            sounds.play(if (state.status == BlockSudokuStatus.SOLVED) GameSound.WIN else GameSound.FAIL)
-        }
+    val lastPlacements = remember { mutableIntStateOf(state.placements) }
+    LaunchedEffect(state.placements, state.status) {
+        val outcome =
+            when {
+                !state.status.isTerminal || wasTerminal.value -> null
+                state.status == BlockSudokuStatus.SOLVED -> GameSound.WIN
+                else -> GameSound.FAIL
+            }
+        val placed = state.placements > lastPlacements.intValue
         wasTerminal.value = state.status.isTerminal
+        lastPlacements.intValue = state.placements
+        val move =
+            if (!placed) {
+                null
+            } else if (state.lastCleared.isNotEmpty()) {
+                GameSound.MERGE
+            } else {
+                GameSound.TAP
+            }
+        (outcome ?: move)?.let(sounds::play)
     }
 
     var dragging by remember { mutableStateOf<DragState?>(null) }
