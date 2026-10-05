@@ -36,7 +36,8 @@
 | 3 | tasks/stage-03-android-release.md | принята (ac71986…ae0bd8c); ручная проверка release с RuStore — за владельцем (раздел 6 отчёта) |
 | 4.1 | tasks/stage-04-1-ci-migrations-golden.md | принята (85dbd40…503b9b6), CI зелёный; найдена P0 Crowns на Android 8–14 |
 | 4.2 | tasks/stage-04-2-p0-crowns-single-rules.md | принята (cc0ded5…3fde1be), CI зелёный, dex-проверка в CI |
-| 5.1 | tasks/stage-05-1-controls-small-bugs.md | выдана |
-| 6.1 | tasks/stage-06-1-daily-v8-crowns-marks.md | готова, выдать после 5.1 |
+| 5.1 | tasks/stage-05-1-controls-small-bugs.md | принята (74b513e…71b9720), CI зелёный |
+| 5.1a | tasks/stage-05-1a-hint-finishes-level.md | выдана (срочно: подсказка на последней клетке зависает) |
+| 6.1 | tasks/stage-06-1-daily-v8-crowns-marks.md | выдана (сразу после 5.1a) |
 | 6.2 | tasks/stage-06-2-economy-2048.md | готова, выдать после 6.1 |
 
