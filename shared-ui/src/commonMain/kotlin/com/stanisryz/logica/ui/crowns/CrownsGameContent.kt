@@ -32,6 +32,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.tool_off
 import com.stanisryz.logica.shared.ui.generated.resources.tool_on
 import com.stanisryz.logica.shared.ui.generated.resources.tool_pencil
 import com.stanisryz.logica.shared.ui.generated.resources.tool_selected
+import com.stanisryz.logica.ui.components.BoardDragCallbacks
 import com.stanisryz.logica.ui.components.BoardInfoHeader
 import com.stanisryz.logica.ui.components.CellGameSounds
 import com.stanisryz.logica.ui.components.PuzzleTool
@@ -60,6 +61,7 @@ fun CrownsGameContent(
     modifier: Modifier = Modifier,
     hintCount: Int? = null,
     hostStatusContent: @Composable ColumnScope.() -> Unit = {},
+    drag: BoardDragCallbacks<CrownsPosition>? = null,
 ) {
     CellGameSounds(
         correctCells = game.cellStatuses.count { it.value == CrownsCellStatus.CORRECT },
@@ -87,6 +89,7 @@ fun CrownsGameContent(
                 puzzle = puzzle,
                 game = game,
                 onCellTapped = onCellTapped,
+                drag = drag,
                 enabled = gameplayEnabled,
                 modifier = Modifier.fillMaxSize(),
             )

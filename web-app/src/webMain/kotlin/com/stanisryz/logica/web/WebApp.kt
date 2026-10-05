@@ -88,6 +88,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.profile_page_games_tit
 import com.stanisryz.logica.shared.ui.generated.resources.profile_page_rating_title
 import com.stanisryz.logica.ui.balance.BalanceGameContent
 import com.stanisryz.logica.ui.blocksudoku.BlockSudokuContent
+import com.stanisryz.logica.ui.components.BoardDragCallbacks
 import com.stanisryz.logica.ui.components.ContinueGameCard
 import com.stanisryz.logica.ui.components.ContinueOfferKind
 import com.stanisryz.logica.ui.components.DailyRewardsCard
@@ -2015,6 +2016,10 @@ private fun PlayingBalanceContent(
             onHint = controller::requestHint,
             modifier = Modifier.weight(1f),
             hintCount = hintCount,
+            drag =
+                remember(controller) {
+                    BoardDragCallbacks(controller::onDragStart, controller::onDragCell, controller::onDragEnd)
+                },
         )
     }
 
@@ -2101,6 +2106,10 @@ private fun PlayingCrownsContent(
             onHint = controller::requestHint,
             modifier = Modifier.weight(1f),
             hintCount = hintCount,
+            drag =
+                remember(controller) {
+                    BoardDragCallbacks(controller::onDragStart, controller::onDragCell, controller::onDragEnd)
+                },
         )
     }
 

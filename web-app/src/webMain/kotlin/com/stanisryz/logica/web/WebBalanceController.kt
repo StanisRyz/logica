@@ -21,6 +21,7 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleStars
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.web.WebPuzzleData
+import com.stanisryz.logica.ui.balance.BalanceDragStroke
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -252,6 +253,28 @@ internal class WebBalanceController(
                 activeEngine.placeValue(playing.game, position, playing.selectedValue)
             }
         if (updated != playing.game) updateGame(playing, updated, isHintLoading = false)
+    }
+
+    private var dragStroke: BalanceDragStroke? = null
+
+    /** A drag stroke starts on [position]: its first cell decides whether the stroke places or removes. */
+    fun onDragStart(position: BalancePosition) {
+        val playing = state as? WebBalanceState.Playing ?: return
+        dragStroke = BalanceDragStroke(playing.game, playing.selectedValue, playing.isPencilMode, position)
+        onDragCell(position)
+    }
+
+    /** The stroke reached [position]; an accepted cell goes through the ordinary tap path. */
+    fun onDragCell(position: BalancePosition) {
+        val stroke = dragStroke ?: return
+        val before = (state as? WebBalanceState.Playing)?.game ?: return
+        if (!stroke.accepts(before, position)) return
+        onCellTapped(position)
+        (state as? WebBalanceState.Playing)?.game?.let { stroke.applied(before, it) }
+    }
+
+    fun onDragEnd() {
+        dragStroke = null
     }
 
     fun requestHint() {

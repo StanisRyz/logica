@@ -33,6 +33,7 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleMistakes
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.ui.balance.BalanceGameContent
+import com.stanisryz.logica.ui.components.BoardDragCallbacks
 import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.HintsExhaustedDialog
 import com.stanisryz.logica.ui.components.LeaveLevelGuard
@@ -92,6 +93,9 @@ internal fun BalanceGameRoute(
             { onTerminalAction(onNextLevel) },
             { onTerminalAction(onGameHub) },
             launch is GameAttemptLaunch.Daily,
+            remember(gameViewModel) {
+                BoardDragCallbacks(gameViewModel::onDragStart, gameViewModel::onDragCell, gameViewModel::onDragEnd)
+            },
             modifier,
         )
         if ((uiState as? BalanceGameUiState.Ready)?.hintsExhausted == true) {
@@ -122,6 +126,7 @@ private fun BalanceGameScreen(
     onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
     isDaily: Boolean,
+    drag: BoardDragCallbacks<BalancePosition>?,
     modifier: Modifier = Modifier,
 ) {
     when (uiState) {
@@ -164,6 +169,7 @@ private fun BalanceGameScreen(
                 onNextLevel,
                 onGameHub,
                 isDaily,
+                drag,
                 modifier,
             )
     }
@@ -192,6 +198,7 @@ private fun ReadyState(
     onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
     isDaily: Boolean,
+    drag: BoardDragCallbacks<BalancePosition>?,
     modifier: Modifier,
 ) {
     val view = LocalView.current
@@ -234,6 +241,7 @@ private fun ReadyState(
         onHint = onHint,
         modifier = modifier,
         hintCount = economy.hints,
+        drag = drag.takeIf { economy.isGameplayAllowed },
         hostStatusContent = {
             // The board stays visible at zero lives; Android economy policy only disables actions.
             ZeroLivesCard(economy, onRestoreLife)

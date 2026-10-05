@@ -32,6 +32,7 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleMistakes
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
+import com.stanisryz.logica.ui.components.BoardDragCallbacks
 import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.HintsExhaustedDialog
 import com.stanisryz.logica.ui.components.LeaveLevelGuard
@@ -90,6 +91,10 @@ internal fun CrownsGameRoute(
             onNextLevel = { onTerminalAction(onNextLevel) },
             onGameHub = { onTerminalAction(onGameHub) },
             isDaily = launch is GameAttemptLaunch.Daily,
+            drag =
+                remember(gameViewModel) {
+                    BoardDragCallbacks(gameViewModel::onDragStart, gameViewModel::onDragCell, gameViewModel::onDragEnd)
+                },
             modifier = modifier,
         )
         if ((uiState as? CrownsGameUiState.Ready)?.hintsExhausted == true) {
@@ -120,6 +125,7 @@ private fun CrownsGameScreen(
     onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
     isDaily: Boolean,
+    drag: BoardDragCallbacks<CrownsPosition>?,
     modifier: Modifier,
 ) {
     when (uiState) {
@@ -162,6 +168,7 @@ private fun CrownsGameScreen(
                 onNextLevel = onNextLevel,
                 onGameHub = onGameHub,
                 isDaily = isDaily,
+                drag = drag,
                 modifier = modifier,
             )
     }
@@ -190,6 +197,7 @@ private fun CrownsReadyState(
     onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
     isDaily: Boolean,
+    drag: BoardDragCallbacks<CrownsPosition>?,
     modifier: Modifier,
 ) {
     val view = LocalView.current
@@ -235,6 +243,7 @@ private fun CrownsReadyState(
         onSelectValue = onSelectValue,
         onTogglePencil = onTogglePencil,
         onHint = onHint,
+        drag = drag.takeIf { economy.isGameplayAllowed },
         modifier = modifier,
         hintCount = economy.hints,
         hostStatusContent = {

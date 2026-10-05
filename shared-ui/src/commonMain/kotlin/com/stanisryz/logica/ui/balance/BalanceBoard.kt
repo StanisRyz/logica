@@ -46,6 +46,9 @@ import com.stanisryz.logica.shared.ui.generated.resources.editable_cell
 import com.stanisryz.logica.shared.ui.generated.resources.fixed_cell
 import com.stanisryz.logica.shared.ui.generated.resources.incorrect_cell
 import com.stanisryz.logica.shared.ui.generated.resources.pencil_marks_suffix
+import com.stanisryz.logica.ui.components.BoardDragCallbacks
+import com.stanisryz.logica.ui.components.GridCell
+import com.stanisryz.logica.ui.components.boardDragStrokes
 import com.stanisryz.logica.ui.components.cellFeedbackMotion
 import com.stanisryz.logica.ui.theme.LightBoardTheme
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
@@ -61,7 +64,18 @@ fun BalanceBoard(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     guidedPositions: Set<BalancePosition> = emptySet(),
+    drag: BoardDragCallbacks<BalancePosition>? = null,
 ) {
+    val gridDrag =
+        remember(drag) {
+            drag?.let { host ->
+                BoardDragCallbacks<GridCell>(
+                    onStart = { host.onStart(BalancePosition(it.row, it.column)) },
+                    onCell = { host.onCell(BalancePosition(it.row, it.column)) },
+                    onEnd = host.onEnd,
+                )
+            }
+        }
     val conflictPositions = remember(game.violations) { game.violations.flatMapTo(mutableSetOf()) { it.affectedPositions } }
     val hint = game.currentHint
     // Like Crowns, the board is always drawn in the light scheme: the literal black and white
@@ -76,7 +90,13 @@ fun BalanceBoard(
             val boardSide = minOf(maxWidth, maxHeight)
             val pencilPieceSize =
                 (boardSide / puzzle.size * PENCIL_PIECE_RATIO).coerceIn(MIN_PENCIL_PIECE_SIZE, MAX_PENCIL_PIECE_SIZE)
-            Column(modifier = Modifier.size(boardSide).background(MaterialTheme.colorScheme.surface)) {
+            Column(
+                modifier =
+                    Modifier
+                        .size(boardSide)
+                        .background(MaterialTheme.colorScheme.surface)
+                        .boardDragStrokes(puzzle.size, gridDrag.takeIf { enabled && !game.status.isTerminal }),
+            ) {
                 repeat(puzzle.size) { row ->
                     Row(Modifier.fillMaxWidth().weight(1f)) {
                         repeat(puzzle.size) { column ->

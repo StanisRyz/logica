@@ -24,6 +24,7 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.result.GameOutcome
+import com.stanisryz.logica.ui.balance.BalanceDragStroke
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -144,6 +145,28 @@ internal class BalanceGameViewModel(
         } else {
             updateGame { engine, game -> engine.placeValue(game, position, value) }
         }
+    }
+
+    private var dragStroke: BalanceDragStroke? = null
+
+    /** A drag stroke starts on [position]: its first cell decides whether the stroke places or removes. */
+    fun onDragStart(position: BalancePosition) {
+        val ready = mutableUiState.value as? BalanceGameUiState.Ready ?: return
+        dragStroke = BalanceDragStroke(ready.game, ready.selectedValue, ready.isPencilMode, position)
+        onDragCell(position)
+    }
+
+    /** The stroke reached [position]; an accepted cell goes through the ordinary tap path. */
+    fun onDragCell(position: BalancePosition) {
+        val stroke = dragStroke ?: return
+        val before = (mutableUiState.value as? BalanceGameUiState.Ready)?.game ?: return
+        if (!stroke.accepts(before, position)) return
+        onCellTapped(position)
+        (mutableUiState.value as? BalanceGameUiState.Ready)?.game?.let { stroke.applied(before, it) }
+    }
+
+    fun onDragEnd() {
+        dragStroke = null
     }
 
     /**

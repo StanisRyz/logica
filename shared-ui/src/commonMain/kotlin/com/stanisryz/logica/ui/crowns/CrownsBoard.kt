@@ -55,6 +55,9 @@ import com.stanisryz.logica.shared.ui.generated.resources.hint_evidence_suffix
 import com.stanisryz.logica.shared.ui.generated.resources.hint_target_suffix
 import com.stanisryz.logica.shared.ui.generated.resources.incorrect_cell
 import com.stanisryz.logica.shared.ui.generated.resources.pencil_marks_suffix
+import com.stanisryz.logica.ui.components.BoardDragCallbacks
+import com.stanisryz.logica.ui.components.GridCell
+import com.stanisryz.logica.ui.components.boardDragStrokes
 import com.stanisryz.logica.ui.components.cellFeedbackMotion
 import com.stanisryz.logica.ui.theme.LightBoardTheme
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
@@ -69,7 +72,18 @@ fun CrownsBoard(
     guidedPositions: Set<CrownsPosition> = emptySet(),
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    drag: BoardDragCallbacks<CrownsPosition>? = null,
 ) {
+    val gridDrag =
+        remember(drag) {
+            drag?.let { host ->
+                BoardDragCallbacks<GridCell>(
+                    onStart = { host.onStart(CrownsPosition(it.row, it.column)) },
+                    onCell = { host.onCell(CrownsPosition(it.row, it.column)) },
+                    onEnd = host.onEnd,
+                )
+            }
+        }
     val conflictPositions = remember(game.violations) { game.violations.flatMapTo(mutableSetOf()) { it.affectedPositions } }
     val regionNumbers =
         remember(puzzle) {
@@ -91,7 +105,11 @@ fun CrownsBoard(
             val boardSide = minOf(maxWidth, maxHeight, MAX_BOARD_SIZE)
             val pencilSize =
                 (boardSide / puzzle.size * PENCIL_RATIO).coerceIn(MIN_PENCIL_SIZE, MAX_PENCIL_SIZE)
-            Column(Modifier.size(boardSide)) {
+            Column(
+                Modifier
+                    .size(boardSide)
+                    .boardDragStrokes(puzzle.size, gridDrag.takeIf { enabled && game.status == CrownsGameStatus.IN_PROGRESS }),
+            ) {
                 repeat(puzzle.size) { row ->
                     Row(Modifier.fillMaxWidth().weight(1f)) {
                         repeat(puzzle.size) { column ->
