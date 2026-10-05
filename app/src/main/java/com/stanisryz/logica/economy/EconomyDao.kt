@@ -159,10 +159,14 @@ internal interface EconomyDao {
         return insertEvent(event.toEntity(nowEpochMillis)) != -1L
     }
 
-    @Query("SELECT * FROM economy_events WHERE event_type = 'LOGIN_GIFT' ORDER BY created_at_epoch_millis DESC LIMIT 1")
+    /**
+     * The gift for the latest gift day, read from its `login_gift:<day>` ID rather than from when it
+     * was written, so a gift claimed under a wrong device clock cannot reorder the cycle.
+     */
+    @Query(LAST_LOGIN_GIFT_QUERY)
     fun observeLastLoginGift(): Flow<EconomyEventEntity?>
 
-    @Query("SELECT * FROM economy_events WHERE event_type = 'LOGIN_GIFT' ORDER BY created_at_epoch_millis DESC LIMIT 1")
+    @Query(LAST_LOGIN_GIFT_QUERY)
     suspend fun findLastLoginGift(): EconomyEventEntity?
 
     /**
@@ -337,3 +341,8 @@ internal interface EconomyDao {
         return EconomyGemPurchase.Granted(effect.economy, pack)
     }
 }
+
+/** `login_gift:` is 11 characters, so the gift day starts at position 12 of the event ID. */
+private const val LAST_LOGIN_GIFT_QUERY =
+    "SELECT * FROM economy_events WHERE event_type = 'LOGIN_GIFT' " +
+        "ORDER BY CAST(substr(event_id, 12) AS INTEGER) DESC LIMIT 1"

@@ -75,6 +75,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.reward_gift_open
 import com.stanisryz.logica.shared.ui.generated.resources.reward_gift_small
 import com.stanisryz.logica.shared.ui.generated.resources.rewards_claim
 import com.stanisryz.logica.shared.ui.generated.resources.rewards_claimed
+import com.stanisryz.logica.shared.ui.generated.resources.rewards_clock_changed
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.DrawableResource
@@ -99,13 +100,15 @@ data class DailyRewardsUiState(
     val giftStreakDay: Int,
     val giftClaimed: Boolean,
     val quests: List<DailyQuestUiState>,
+    /** The host noticed its clock turned back: nothing can be claimed until time catches up. */
+    val claimsPaused: Boolean = false,
 ) {
     val giftGems: Int
         get() = LoginGift.gemsFor(giftStreakDay)
 
     /** Something is waiting to be claimed, so the hub can point at it. */
     val hasClaimable: Boolean
-        get() = !giftClaimed || quests.any { it.complete && !it.claimed }
+        get() = !claimsPaused && (!giftClaimed || quests.any { it.complete && !it.claimed })
 }
 
 /** The shared rule that turns a host's durable facts for [epochDay] into the card's state. */
@@ -115,10 +118,13 @@ fun dailyRewardsUiState(
     claimedQuests: Set<Int>,
     lastGiftEpochDay: Long?,
     lastGiftStreakDay: Int,
+    claimsPaused: Boolean = false,
 ): DailyRewardsUiState =
     DailyRewardsUiState(
         giftStreakDay = LoginGift.streakDay(lastGiftEpochDay, lastGiftStreakDay, epochDay),
-        giftClaimed = lastGiftEpochDay == epochDay,
+        // A day before the last gift's day has nothing to claim either.
+        giftClaimed = lastGiftEpochDay != null && lastGiftEpochDay >= epochDay,
+        claimsPaused = claimsPaused,
         quests =
             DailyQuests.forDay(epochDay).map { quest ->
                 DailyQuestUiState(quest, quest.progress(activity), claimed = quest.index in claimedQuests)
@@ -141,6 +147,13 @@ fun DailyRewardsCard(
             modifier = Modifier.fillMaxWidth().padding(CARD_PADDING),
             verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
         ) {
+            if (state.claimsPaused) {
+                Text(
+                    text = stringResource(Res.string.rewards_clock_changed),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.error,
+                )
+            }
             GiftRow(state, onClaimGift)
             HorizontalDivider(color = colors.outlineVariant)
             Text(
@@ -148,7 +161,9 @@ fun DailyRewardsCard(
                 style = MaterialTheme.typography.titleSmall,
                 color = colors.onSurfaceVariant,
             )
-            state.quests.forEach { quest -> QuestRow(quest, onClaim = { onClaimQuest(quest.quest.index) }) }
+            state.quests.forEach { quest ->
+                QuestRow(quest, paused = state.claimsPaused, onClaim = { onClaimQuest(quest.quest.index) })
+            }
         }
     }
 }
@@ -175,7 +190,7 @@ private fun GiftRow(
             )
             CycleDots(claimedThrough = if (state.giftClaimed) state.giftStreakDay else state.giftStreakDay - 1)
         }
-        ClaimAction(gems = state.giftGems, complete = true, claimed = state.giftClaimed, onClaim = onClaim)
+        ClaimAction(gems = state.giftGems, complete = !state.claimsPaused, claimed = state.giftClaimed, onClaim = onClaim)
     }
 }
 
@@ -199,6 +214,7 @@ private fun CycleDots(claimedThrough: Int) {
 @Composable
 private fun QuestRow(
     state: DailyQuestUiState,
+    paused: Boolean,
     onClaim: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -233,7 +249,7 @@ private fun QuestRow(
                 )
             }
         }
-        ClaimAction(gems = state.quest.gems, complete = state.complete, claimed = state.claimed, onClaim = onClaim)
+        ClaimAction(gems = state.quest.gems, complete = state.complete && !paused, claimed = state.claimed, onClaim = onClaim)
     }
 }
 

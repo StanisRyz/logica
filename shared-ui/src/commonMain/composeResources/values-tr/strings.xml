@@ -399,6 +399,7 @@
     <string name="quests_title">Günlük görevler</string>
     <string name="rewards_claim">Al</string>
     <string name="rewards_claimed">Alındı</string>
+    <string name="rewards_clock_changed">Cihazın saati değişti — ödüller daha sonra alınabilecek</string>
     <string name="quest_play_few">%1$d oyun oyna</string>
     <string name="quest_play_many">%1$d oyun oyna</string>
     <string name="quest_solve_few">%1$d bulmaca çöz</string>

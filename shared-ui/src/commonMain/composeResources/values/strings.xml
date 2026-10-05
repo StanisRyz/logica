@@ -410,6 +410,7 @@
     <string name="quests_title">Задания дня</string>
     <string name="rewards_claim">Забрать</string>
     <string name="rewards_claimed">Получено</string>
+    <string name="rewards_clock_changed">Время на устройстве изменилось — награды станут доступны позже</string>
     <string name="quest_play_few">Сыграйте %1$d партии</string>
     <string name="quest_play_many">Сыграйте %1$d партий</string>
     <string name="quest_solve_few">Решите %1$d головоломки</string>

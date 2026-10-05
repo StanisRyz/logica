@@ -31,7 +31,9 @@ internal class FakeEconomyDao(
     override suspend fun findLastLoginGift(): EconomyEventEntity? = lastLoginGift()
 
     private fun lastLoginGift(): EconomyEventEntity? =
-        events.values.filter { it.eventType == EconomyEventType.LOGIN_GIFT.name }.maxByOrNull { it.createdAtEpochMillis }
+        events.values
+            .filter { it.eventType == EconomyEventType.LOGIN_GIFT.name }
+            .maxByOrNull { it.eventId.removePrefix("login_gift:").toLong() } // by gift day, like the Room query
 
     fun wallet(nowEpochMillis: Long): PlayerEconomy = economy.toPlayerEconomy(nowEpochMillis)
 }

@@ -16,6 +16,7 @@ import com.stanisryz.logica.daily.DailyResultRepository
 import com.stanisryz.logica.daily.RoomDailyChallengeRepository
 import com.stanisryz.logica.daily.RoomDailyResultRepository
 import com.stanisryz.logica.economy.DailyRewardsRepository
+import com.stanisryz.logica.economy.DataStoreEconomyTimeMark
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.OwnedPurchases
 import com.stanisryz.logica.economy.RoomEconomyRepository
@@ -45,6 +46,11 @@ private val Context.userSettingsDataStore: DataStore<Preferences> by preferences
  */
 private val Context.advertisingDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "advertising",
+)
+
+/** The latest economy time seen, which notices a device clock turned back (`EconomyTimeMark`). */
+private val Context.economyClockDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "economy_clock",
 )
 
 /** Personal records that are single growing numbers, such as the best 2048 score. */
@@ -119,7 +125,11 @@ internal class AppContainer(
     }
 
     val dailyRewardsRepository: DailyRewardsRepository by lazy {
-        DailyRewardsRepository(database.gameResultDao(), database.economyDao())
+        DailyRewardsRepository(
+            resultDao = database.gameResultDao(),
+            economyDao = database.economyDao(),
+            timeMark = DataStoreEconomyTimeMark(context.economyClockDataStore),
+        )
     }
 
     val economyRepository: EconomyRepository by lazy {

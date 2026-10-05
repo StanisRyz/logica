@@ -399,6 +399,7 @@
     <string name="quests_title">Daily quests</string>
     <string name="rewards_claim">Claim</string>
     <string name="rewards_claimed">Claimed</string>
+    <string name="rewards_clock_changed">The device time has changed — rewards will be available later</string>
     <string name="quest_play_few">Play %1$d games</string>
     <string name="quest_play_many">Play %1$d games</string>
     <string name="quest_solve_few">Solve %1$d puzzles</string>

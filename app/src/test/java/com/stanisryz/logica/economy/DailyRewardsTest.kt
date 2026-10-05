@@ -81,6 +81,83 @@ class DailyRewardsTest {
             assertEquals(setOf(Achievement.FIRST_SOLVE.id), repository.observeClaimedAchievements().first())
         }
 
+    @Test
+    fun aClockTurnedBackMoreThanTenMinutesPausesEveryClaim() =
+        runBlocking {
+            val dao = FakeEconomyDao(PlayerEconomy(gems = 0))
+            var now = DAY * MILLIS_PER_DAY + 12 * HOUR
+            val quest = DailyQuests.forDay(DAY).first { it.kind == DailyQuestKind.PLAY || it.kind == DailyQuestKind.SOLVE }
+            val results = FakeResults(List(quest.target) { solved("r$it", DAY * MILLIS_PER_DAY + 1_000L) })
+            val repository = DailyRewardsRepository(results, dao, { now }, { ZoneOffset.UTC }, InMemoryEconomyTimeMark())
+            assertFalse(repository.observe(DAY).first().claimsPaused)
+
+            // Within the tolerance nothing changes.
+            now -= 9 * MINUTE
+            assertFalse(repository.observe(DAY).first().claimsPaused)
+
+            // Further back: the card says so and neither the gift nor a quest can be claimed.
+            now -= 2 * MINUTE
+            val paused = repository.observe(DAY).first()
+            assertTrue(paused.claimsPaused)
+            assertFalse(paused.hasClaimable)
+            assertFalse(repository.claimLoginGift(DAY))
+            assertFalse(repository.claimQuest(DAY, quest.index))
+            assertEquals(0, dao.wallet(now).gems)
+
+            // Once real time catches up again, the same day's rewards are there.
+            now += 11 * MINUTE
+            assertTrue(repository.claimLoginGift(DAY))
+            assertTrue(repository.claimQuest(DAY, quest.index))
+        }
+
+    @Test
+    fun theNormalNextDayStillPays() =
+        runBlocking {
+            val dao = FakeEconomyDao(PlayerEconomy(gems = 0))
+            var now = DAY * MILLIS_PER_DAY + 12 * HOUR
+            val repository = DailyRewardsRepository(FakeResults(emptyList()), dao, { now }, { ZoneOffset.UTC }, InMemoryEconomyTimeMark())
+            assertTrue(repository.claimLoginGift(DAY))
+
+            now += MILLIS_PER_DAY
+            assertFalse(repository.observe(DAY + 1).first().claimsPaused)
+            assertTrue(repository.claimLoginGift(DAY + 1))
+            assertEquals(LoginGift.gemsFor(1) + LoginGift.gemsFor(2), dao.wallet(now).gems)
+        }
+
+    @Test
+    fun noGiftIsPaidForADayBeforeTheLastGift() =
+        runBlocking {
+            val dao = FakeEconomyDao(PlayerEconomy(gems = 0))
+            val now = DAY * MILLIS_PER_DAY + 12 * HOUR
+            val repository = DailyRewardsRepository(FakeResults(emptyList()), dao, { now }, { ZoneOffset.UTC }, InMemoryEconomyTimeMark())
+            assertTrue(repository.claimLoginGift(DAY + 3)) // claimed under a clock set ahead
+
+            assertFalse(repository.claimLoginGift(DAY + 1))
+            assertTrue(repository.observe(DAY + 1).first().giftClaimed) // nothing to claim on that day
+            assertEquals(LoginGift.gemsFor(1), dao.wallet(now).gems)
+        }
+
+    @Test
+    fun theGiftCycleFollowsTheGiftDayNotWhenItWasWritten() =
+        runBlocking {
+            val dao = FakeEconomyDao(PlayerEconomy(gems = 0))
+            var now = DAY * MILLIS_PER_DAY + 12 * HOUR
+            val repository = DailyRewardsRepository(FakeResults(emptyList()), dao, { now }, { ZoneOffset.UTC }, InMemoryEconomyTimeMark())
+            assertTrue(repository.claimLoginGift(DAY))
+            assertTrue(repository.claimLoginGift(DAY + 1))
+
+            // A wrong device clock stamped the next gift long before the earlier ones.
+            now = 1_000L
+            val earlyStamp = DailyRewardsRepository(FakeResults(emptyList()), dao, { now }, { ZoneOffset.UTC }, InMemoryEconomyTimeMark())
+            assertTrue(earlyStamp.claimLoginGift(DAY + 2))
+
+            // The cycle still continues from day DAY + 2, the third day in a row.
+            now = (DAY + 3) * MILLIS_PER_DAY + 12 * HOUR
+            assertEquals(4, repository.observe(DAY + 3).first().giftStreakDay)
+            assertTrue(repository.claimLoginGift(DAY + 3))
+            assertEquals((1..4).sumOf { LoginGift.gemsFor(it) }, dao.wallet(now).gems)
+        }
+
     private fun solved(
         id: String,
         at: Long,
@@ -120,5 +197,7 @@ class DailyRewardsTest {
     private companion object {
         const val DAY = 20_000L
         const val MILLIS_PER_DAY = 86_400_000L
+        const val HOUR = 3_600_000L
+        const val MINUTE = 60_000L
     }
 }

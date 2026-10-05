@@ -34,13 +34,15 @@ import java.time.ZoneId
  * Daily quests and the login gift over durable truth only: quest progress is derived from the
  * local day's `game_results`, and every claim is one `economy_events` row (`quest:<day>:<index>`,
  * `login_gift:<day>`, the gift's cycle day as its source), so a repeated claim pays nothing and
- * no new table or column exists for either.
+ * no new table or column exists for either. A device clock turned back behind [timeMark] pauses
+ * every claim, and a gift is never paid for a day before the last one paid.
  */
 internal class DailyRewardsRepository(
     private val resultDao: GameResultDao,
     private val economyDao: EconomyDao,
     private val clock: EconomyClock = EconomyClock.SYSTEM,
     private val zone: () -> ZoneId = ZoneId::systemDefault,
+    private val timeMark: EconomyTimeMark = InMemoryEconomyTimeMark(),
 ) {
     fun today(): Long =
         Instant
@@ -62,27 +64,39 @@ internal class DailyRewardsRepository(
                 claimedQuests = claimedIds.mapNotNull { it.substringAfterLast(':').toIntOrNull() }.toSet(),
                 lastGiftEpochDay = gift?.first,
                 lastGiftStreakDay = gift?.second ?: 0,
+                claimsPaused = timeMark.clockTurnedBack(clock.nowEpochMillis()),
             )
         }
 
-    /** Claims [epochDay]'s login gift once; false when it was already claimed. */
+    /**
+     * Claims [epochDay]'s login gift once; false when it was already claimed, when [epochDay] lies
+     * before the last gift's day, or while the device clock is turned back.
+     */
     suspend fun claimLoginGift(epochDay: Long): Boolean {
+        val now = clock.nowEpochMillis()
+        if (timeMark.clockTurnedBack(now)) return false
         val last = economyDao.findLastLoginGift()?.toGiftClaim()
+        if (last != null && epochDay < last.first) return false
         val day = LoginGift.streakDay(last?.first, last?.second ?: 0, epochDay)
         return economyDao.grantDailyReward(
             eventId = EconomyEvent.loginGiftEventId(epochDay),
             type = EconomyEventType.LOGIN_GIFT,
             sourceId = day.toString(),
             gems = LoginGift.gemsFor(day),
-            nowEpochMillis = clock.nowEpochMillis(),
+            nowEpochMillis = now,
         )
     }
 
-    /** Pays quest [index] of [epochDay] once, and only when the durable results complete it. */
+    /**
+     * Pays quest [index] of [epochDay] once, and only when the durable results complete it and the
+     * device clock is not turned back.
+     */
     suspend fun claimQuest(
         epochDay: Long,
         index: Int,
     ): Boolean {
+        val now = clock.nowEpochMillis()
+        if (timeMark.clockTurnedBack(now)) return false
         val quest = DailyQuests.forDay(epochDay).firstOrNull { it.index == index } ?: return false
         if (!quest.isComplete(observeActivity(epochDay).first())) return false
         return economyDao.grantDailyReward(
@@ -90,7 +104,7 @@ internal class DailyRewardsRepository(
             type = EconomyEventType.DAILY_QUEST_REWARD,
             sourceId = "$epochDay:$index",
             gems = quest.gems,
-            nowEpochMillis = clock.nowEpochMillis(),
+            nowEpochMillis = now,
         )
     }
 
@@ -150,24 +164,30 @@ internal class DailyRewardsRepository(
 internal class DailyRewardsViewModel(
     private val repository: DailyRewardsRepository,
 ) : ViewModel() {
-    private val day = MutableStateFlow(repository.today())
+    /** The day, plus a count so every refresh also re-checks the device clock on the same day. */
+    private data class Refresh(
+        val epochDay: Long,
+        val count: Int,
+    )
+
+    private val refreshes = MutableStateFlow(Refresh(repository.today(), 0))
 
     val uiState: StateFlow<DailyRewardsUiState?> =
-        day
-            .flatMapLatest { repository.observe(it) }
+        refreshes
+            .flatMapLatest { repository.observe(it.epochDay) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), null)
 
     fun refresh() {
-        day.value = repository.today()
+        refreshes.value = Refresh(repository.today(), refreshes.value.count + 1)
     }
 
     fun claimLoginGift() {
-        val today = day.value
+        val today = refreshes.value.epochDay
         viewModelScope.launch { runCatchingCancellable { repository.claimLoginGift(today) } }
     }
 
     fun claimQuest(index: Int) {
-        val today = day.value
+        val today = refreshes.value.epochDay
         viewModelScope.launch { runCatchingCancellable { repository.claimQuest(today, index) } }
     }
 
