@@ -59,6 +59,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.difficulty_easy
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_expert
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_hard
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_medium
+import com.stanisryz.logica.shared.ui.generated.resources.word_rejection_already_guessed
 import com.stanisryz.logica.shared.ui.generated.resources.word_rejection_finished
 import com.stanisryz.logica.shared.ui.generated.resources.word_rejection_incomplete
 import com.stanisryz.logica.shared.ui.generated.resources.word_rejection_invalid_letters
@@ -454,6 +455,7 @@ private fun WordGuessRejection.messageResource(): StringResource =
     when (this) {
         WordGuessRejection.INCOMPLETE_INPUT -> Res.string.word_rejection_incomplete
         WordGuessRejection.NOT_IN_ALLOWED_GUESSES -> Res.string.word_rejection_unknown_word
+        WordGuessRejection.ALREADY_GUESSED -> Res.string.word_rejection_already_guessed
         WordGuessRejection.NORMALIZATION_FAILED -> Res.string.word_rejection_invalid_letters
         WordGuessRejection.GAME_FINISHED -> Res.string.word_rejection_finished
     }

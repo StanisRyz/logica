@@ -68,6 +68,7 @@
     <string name="mistakes_description">Mistakes: %1$d of %2$d</string>
     <string name="word_rejection_incomplete">Enter the whole word.</string>
     <string name="word_rejection_unknown_word">That word is not in the dictionary. No try was used.</string>
+    <string name="word_rejection_already_guessed">You already tried that word. No try was used.</string>
     <string name="word_rejection_invalid_letters">Only Russian letters are allowed.</string>
     <string name="word_rejection_finished">The game is already over.</string>
     <string name="word_feedback_correct">in the right place</string>

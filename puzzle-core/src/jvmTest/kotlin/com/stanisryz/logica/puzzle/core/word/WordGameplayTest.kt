@@ -68,6 +68,23 @@ class WordGameplayTest {
         assertEquals(failed, engine.restore(currentDraft = WordDraft.empty(5), submittedWords = wrongGuesses))
     }
 
+    @Test
+    fun aRepeatedGuessIsRejectedWithoutSpendingAnAttempt() {
+        val first = submitAll(listOf("весна"))
+        val repeated = type(first, "весна")
+
+        assertEquals(
+            WordSubmitResult.Rejected(repeated, WordGuessRejection.ALREADY_GUESSED),
+            engine.submit(repeated),
+        )
+        assertEquals(1, repeated.attempts.size)
+        assertEquals(WordRules.MAXIMUM_ATTEMPTS - 1, repeated.remainingAttempts)
+        // Ё is normalized first, so a spelling variant of the same word is the same guess.
+        assertEquals(WordGuessRejection.ALREADY_GUESSED, (engine.submit(type(first, "вёсна")) as WordSubmitResult.Rejected).rejection)
+        // Restore stays as it was: already recorded attempts are rebuilt even if a word repeats.
+        assertEquals(2, engine.restore(WordDraft.empty(5), listOf("весна", "весна")).attempts.size)
+    }
+
     private fun submitAll(words: List<String>): WordGameState =
         words.fold(engine.start()) { state, word ->
             val result = engine.submit(type(state, word))

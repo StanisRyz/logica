@@ -7,14 +7,17 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Backspace
+import androidx.compose.material.icons.automirrored.rounded.KeyboardReturn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -37,8 +40,15 @@ import com.stanisryz.logica.shared.ui.generated.resources.word_backspace
 import com.stanisryz.logica.shared.ui.generated.resources.word_enter
 import com.stanisryz.logica.shared.ui.generated.resources.word_key_description
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.floor
 
-/** Shared adaptive Russian keyboard over the normalized alphabet, without a separate `ё` key. */
+/**
+ * Shared adaptive Russian keyboard over the normalized alphabet, without a separate `ё` key. Every
+ * letter key has the same width — the widest row's width over its key count — and the rows are
+ * centred. Enter and Backspace sit on the two edges of the last letter row, as in Russian Wordle-like
+ * games, each half a key wider than a letter so that row is exactly as wide as the widest one. The
+ * landscape panel keeps rows of five letters with Enter and Backspace in a row of their own.
+ */
 @Composable
 fun WordKeyboard(
     knowledge: WordLetterKnowledge,
@@ -51,48 +61,68 @@ fun WordKeyboard(
     landscapeCompact: Boolean = false,
     keySpacing: Dp = WORD_KEY_SPACING,
 ) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(keySpacing),
-    ) {
-        val rows = if (landscapeCompact) LETTER_ROWS.flatten().chunked(LANDSCAPE_LETTER_COLUMNS) else LETTER_ROWS
-        rows.forEach { rowLetters ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(keySpacing),
-            ) {
-                rowLetters.forEach { letter ->
-                    LetterKey(
-                        letter = letter,
-                        feedback = knowledge[letter],
-                        enabled = enabled,
-                        keyHeight = keyHeight,
-                        onClick = { onLetter(letter) },
-                        modifier = Modifier.weight(1f),
-                    )
+    val rows = if (landscapeCompact) LETTER_ROWS.flatten().chunked(LANDSCAPE_LETTER_COLUMNS) else LETTER_ROWS
+    val widestRow = rows.maxOf { it.size }
+    val enterKey: @Composable (Modifier) -> Unit = { keyModifier ->
+        ActionKey(
+            label = { Icon(Icons.AutoMirrored.Rounded.KeyboardReturn, contentDescription = null) },
+            description = stringResource(Res.string.word_enter),
+            enabled = enabled,
+            keyHeight = keyHeight,
+            onClick = onSubmit,
+            modifier = keyModifier,
+        )
+    }
+    val backspaceKey: @Composable (Modifier) -> Unit = { keyModifier ->
+        ActionKey(
+            label = { Icon(Icons.AutoMirrored.Rounded.Backspace, contentDescription = null) },
+            description = stringResource(Res.string.word_backspace),
+            enabled = enabled,
+            keyHeight = keyHeight,
+            onClick = onBackspace,
+            modifier = keyModifier,
+        )
+    }
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        // Whole pixels, so a full row never measures a pixel wider than the keyboard.
+        val density = LocalDensity.current
+        val letterWidth =
+            with(density) {
+                floor((maxWidth.toPx() - keySpacing.toPx() * (widestRow - 1)) / widestRow).coerceAtLeast(0f).toDp()
+            }
+        val actionWidth =
+            with(density) { floor((letterWidth * ACTION_KEY_LETTERS + keySpacing * ACTION_KEY_GAPS).toPx()).toDp() }
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(keySpacing),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            rows.forEachIndexed { rowIndex, rowLetters ->
+                val actionsOnEdges = !landscapeCompact && rowIndex == rows.lastIndex
+                Row(horizontalArrangement = Arrangement.spacedBy(keySpacing)) {
+                    if (actionsOnEdges) enterKey(Modifier.width(actionWidth))
+                    rowLetters.forEach { letter ->
+                        LetterKey(
+                            letter = letter,
+                            feedback = knowledge[letter],
+                            enabled = enabled,
+                            keyHeight = keyHeight,
+                            onClick = { onLetter(letter) },
+                            modifier = Modifier.width(letterWidth),
+                        )
+                    }
+                    if (actionsOnEdges) backspaceKey(Modifier.width(actionWidth))
                 }
             }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(keySpacing),
-        ) {
-            ActionKey(
-                label = { Text(stringResource(Res.string.word_enter), fontWeight = FontWeight.Bold) },
-                description = stringResource(Res.string.word_enter),
-                enabled = enabled,
-                keyHeight = keyHeight,
-                onClick = onSubmit,
-                modifier = Modifier.weight(2f),
-            )
-            ActionKey(
-                label = { Icon(Icons.AutoMirrored.Rounded.Backspace, contentDescription = null) },
-                description = stringResource(Res.string.word_backspace),
-                enabled = enabled,
-                keyHeight = keyHeight,
-                onClick = onBackspace,
-                modifier = Modifier.weight(1f),
-            )
+            if (landscapeCompact) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(keySpacing),
+                ) {
+                    enterKey(Modifier.weight(2f))
+                    backspaceKey(Modifier.weight(1f))
+                }
+            }
         }
     }
 }
@@ -203,14 +233,19 @@ private val LETTER_ROWS =
     )
 
 internal val WORD_KEY_SPACING = 4.dp
-internal const val WORD_KEYBOARD_ROWS = 4
+internal const val WORD_KEYBOARD_ROWS = 3
 internal const val WORD_LANDSCAPE_KEYBOARD_ROWS = 8
 
 private const val LANDSCAPE_LETTER_COLUMNS = 5
 private val DEFAULT_KEY_HEIGHT = 48.dp
 private val KEY_CORNER = 6.dp
 private val PRESENT_BORDER_WIDTH = 2.dp
-private val ACTION_PADDING = 8.dp
+private val ACTION_PADDING = 4.dp
+
+// The last row holds 9 letters and two action keys in the width of 12 letters: the three spare
+// letters and one spare gap are shared between Enter and Backspace.
+private const val ACTION_KEY_LETTERS = 1.5f
+private const val ACTION_KEY_GAPS = 0.5f
 private const val KEY_FONT_RATIO = 0.32f
 private val MIN_KEY_FONT = 12.dp
 private val MAX_KEY_FONT = 16.dp

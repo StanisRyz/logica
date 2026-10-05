@@ -58,6 +58,9 @@ class WordGameEngine(
         if (guess !in allowedGuesses) {
             return WordSubmitResult.Rejected(state, WordGuessRejection.NOT_IN_ALLOWED_GUESSES)
         }
+        if (state.attempts.any { it.word == guess }) {
+            return WordSubmitResult.Rejected(state, WordGuessRejection.ALREADY_GUESSED)
+        }
 
         val attempt = WordAttempt(guess, WordRules.evaluate(puzzle.answer, guess))
         return WordSubmitResult.Accepted(

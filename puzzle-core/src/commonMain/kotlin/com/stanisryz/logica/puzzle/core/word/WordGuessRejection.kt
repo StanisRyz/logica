@@ -6,6 +6,9 @@ enum class WordGuessRejection {
     INCOMPLETE_INPUT,
     NORMALIZATION_FAILED,
     NOT_IN_ALLOWED_GUESSES,
+
+    /** The word was already submitted in this attempt; repeating it would only waste a try. */
+    ALREADY_GUESSED,
 }
 
 sealed interface WordSubmitResult {
