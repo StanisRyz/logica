@@ -119,7 +119,7 @@
 | `./gradlew :web-app:compileKotlinWasmJs` | OK |
 | Ручная проверка Web (Playwright, standalone) | 0 жизней на карточке результата (светлая и тёмная), Esc на карточке, тёмный диалог |
 
-CI прошлого пуша (`254cba9`, этап 5.2): зелёный, https://github.com/StanisRyz/logica/actions/runs/37356403855. Ссылку на CI этого этапа допишу следующим коммитом.
+CI прошлого пуша (`254cba9`, этап 5.2): зелёный, https://github.com/StanisRyz/logica/actions/runs/37356403855. CI этого этапа (`53fb71a`): зелёный, https://github.com/StanisRyz/logica/actions/runs/37359726038 (дописано вместе с этапом 7.3).
 
 ## 5. Отклонения и вопросы
 
