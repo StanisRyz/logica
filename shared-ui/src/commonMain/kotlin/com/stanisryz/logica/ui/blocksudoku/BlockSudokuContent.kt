@@ -73,7 +73,6 @@ import com.stanisryz.logica.ui.theme.LocalLogicaPalette
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
-import kotlin.math.roundToInt
 
 /**
  * Shared Block Sudoku presentation. A piece is dragged from the tray onto the board — it floats a
@@ -114,17 +113,20 @@ fun BlockSudokuContent(
     val currentState by rememberUpdatedState(state)
     val currentOnPlace by rememberUpdatedState(onPlace)
 
-    // Where a dragged piece would land: its top-left cell on the board, or null off the board.
+    // Where a dragged piece would land: its top-left cell on the board, or null when nothing fits there.
     fun anchorFor(
         drag: DragState,
         piece: BlockPiece,
     ): BlockCell? {
         if (boardBounds.width <= 0f) return null
         val cell = boardBounds.width / BlockSudokuRules.SIZE
-        val topLeft = drag.pointer - Offset(piece.width * cell / 2f, piece.height * cell / 2f + drag.lift)
-        val column = ((topLeft.x - boardBounds.left) / cell).roundToInt()
-        val row = ((topLeft.y - boardBounds.top) / cell).roundToInt()
-        return BlockCell(row, column).takeIf { BlockSudokuRules.canPlace(currentState.board, piece, row, column) }
+        val topLeft = dragTopLeft(drag, piece, cell)
+        return blockSudokuDropAnchor(
+            board = currentState.board,
+            piece = piece,
+            exactRow = (topLeft.y - boardBounds.top) / cell,
+            exactColumn = (topLeft.x - boardBounds.left) / cell,
+        )
     }
 
     val header: @Composable () -> Unit = {
@@ -246,7 +248,7 @@ fun BlockSudokuContent(
             if (cell > 0f) {
                 val color = if (preview != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                 Canvas(Modifier.fillMaxSize()) {
-                    val topLeft = drag.pointer - Offset(piece.width * cell / 2f, piece.height * cell / 2f + drag.lift)
+                    val topLeft = dragTopLeft(drag, piece, cell)
                     piece.cells.forEach { block -> drawBlock(topLeft + Offset(block.column * cell, block.row * cell), cell, color) }
                 }
             }
@@ -260,6 +262,13 @@ private data class DragState(
     val pointer: Offset,
     val lift: Float,
 )
+
+/** The dragged piece is centred over the finger with its bottom edge [DragState.lift] above it, whatever its height. */
+private fun dragTopLeft(
+    drag: DragState,
+    piece: BlockPiece,
+    cell: Float,
+): Offset = drag.pointer - Offset(piece.width * cell / 2f, piece.height * cell + drag.lift)
 
 @Composable
 private fun BlockBoard(
@@ -392,7 +401,7 @@ private fun TraySlot(
             .then(
                 if (enabled && piece != null && fits) {
                     Modifier.pointerInput(piece) {
-                        val lift = LIFT.toPx()
+                        val lift = FINGER_GAP.toPx()
                         awaitEachGesture {
                             val down = awaitFirstDown()
                             var moved = false
@@ -501,7 +510,9 @@ private fun Difficulty.labelResource(): StringResource =
 
 private val HEADER_SPACING = 10.dp
 private val TRAY_HEIGHT = 112.dp
-private val LIFT = 56.dp
+
+/** Gap between the touch point and the dragged piece's bottom edge, so the finger never covers it. */
+private val FINGER_GAP = 24.dp
 private val WIDE_GROUP_SPACING = 40.dp
 private val WIDE_PANEL_SPACING = 28.dp
 private val WIDE_PANEL_MAX_WIDTH = 340.dp
