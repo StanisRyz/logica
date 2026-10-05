@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -60,6 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordRules
@@ -379,15 +381,22 @@ private fun SummaryCard(statistics: ProfileStatistics) {
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // Equal shares of the line, each value on one line that shrinks for large numbers at 360 dp.
             statistics.economy?.let { economy ->
-                InlineMetric(GameIcon.GEM, economy.gems.toString(), stringResource(Res.string.profile_gems))
+                InlineMetric(GameIcon.GEM, economy.gems.toString(), stringResource(Res.string.profile_gems), Modifier.weight(1f))
                 InlineMetric(
                     GameIcon.lives(economy.lives.toInt()),
                     "${economy.lives}/${economy.maximumLives}",
                     stringResource(Res.string.profile_lives),
+                    Modifier.weight(1f),
                 )
             }
-            InlineMetric(GameIcon.HINT, statistics.totalHintsUsed.toString(), stringResource(Res.string.total_hints_used))
+            InlineMetric(
+                GameIcon.HINT,
+                statistics.totalHintsUsed.toString(),
+                stringResource(Res.string.total_hints_used),
+                Modifier.weight(1f),
+            )
         }
         statistics.economy?.restoreLabel?.let { restore ->
             SupportingText(restore, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
@@ -426,16 +435,28 @@ private fun InlineMetric(
     icon: GameIcon,
     value: String,
     description: String,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier.clearAndSetSemantics { contentDescription = "$description: $value" },
+        modifier = modifier.clearAndSetSemantics { contentDescription = "$description: $value" },
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
     ) {
         GameIconImage(icon)
-        Text(value, style = MaterialTheme.typography.titleMedium)
+        Text(
+            value,
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 1,
+            autoSize =
+                TextAutoSize.StepBased(
+                    minFontSize = INLINE_METRIC_MIN_TEXT,
+                    maxFontSize = MaterialTheme.typography.titleMedium.fontSize,
+                ),
+        )
     }
 }
+
+private val INLINE_METRIC_MIN_TEXT = 11.sp
 
 /**
  * The current month of Daily history: a full Daily fills its date, a partly solved one rings it,

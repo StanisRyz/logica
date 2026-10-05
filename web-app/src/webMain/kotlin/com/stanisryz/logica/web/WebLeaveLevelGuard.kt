@@ -149,7 +149,7 @@ internal fun WebTopBar(
 }
 
 internal val GAME_HEADER_HEIGHT = 52.dp
-private val HELP_BUTTON_SIZE = 36.dp
+private val HELP_BUTTON_SIZE = 48.dp
 private val HELP_ICON_SIZE = 20.dp
 
 /** Lives and gems stay in sight during play, like Android's game bar; tapping opens the Store sheet. */

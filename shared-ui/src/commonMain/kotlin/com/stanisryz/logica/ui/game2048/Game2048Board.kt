@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,6 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.stanisryz.logica.puzzle.core.game2048.Game2048Direction
 import com.stanisryz.logica.puzzle.core.game2048.Game2048MoveTrace
 import com.stanisryz.logica.puzzle.core.game2048.Game2048State
@@ -312,7 +314,7 @@ private fun Game2048TileSurface(
     modifier: Modifier,
 ) {
     val (containerColor, contentColor) = tileColors(value, LocalLogicaPalette.current.game2048Tiles)
-    Box(
+    BoxWithConstraints(
         modifier =
             modifier
                 .clip(MaterialTheme.shapes.small)
@@ -320,19 +322,26 @@ private fun Game2048TileSurface(
                 .clearAndSetSemantics {},
         contentAlignment = Alignment.Center,
     ) {
+        // The number follows the tile the board actually gave it, so five digits still fit a small
+        // tile; the auto size only trims what a wide glyph run still needs.
+        val digits = value.toString().length
+        val ratio =
+            when (digits) {
+                1, 2 -> TILE_TEXT_RATIO_SHORT
+                3 -> TILE_TEXT_RATIO_THREE
+                4 -> TILE_TEXT_RATIO_FOUR
+                else -> TILE_TEXT_RATIO_LONG
+            }
+        val fontSize = with(LocalDensity.current) { (maxWidth * ratio).toSp() }
         Text(
             text = value.toString(),
-            modifier = Modifier.padding(LogicaSpacing.text),
+            modifier = Modifier.padding(horizontal = maxWidth * TILE_TEXT_PADDING_RATIO),
             color = contentColor,
-            style =
-                when (value.toString().length) {
-                    1, 2 -> MaterialTheme.typography.headlineMedium
-                    3 -> MaterialTheme.typography.headlineSmall
-                    else -> MaterialTheme.typography.titleLarge
-                },
+            style = MaterialTheme.typography.headlineMedium.copy(fontSize = fontSize, lineHeight = fontSize),
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
             maxLines = 1,
+            autoSize = TextAutoSize.StepBased(minFontSize = TILE_MIN_TEXT, maxFontSize = fontSize),
         )
     }
 }
@@ -416,3 +425,10 @@ private const val MERGE_HALF_MILLIS = 45
 private const val MERGE_POP_SCALE = 1.12f
 private const val SPAWN_MILLIS = 95
 private const val SPAWN_INITIAL_SCALE = 0.7f
+
+private const val TILE_TEXT_RATIO_SHORT = 0.42f
+private const val TILE_TEXT_RATIO_THREE = 0.34f
+private const val TILE_TEXT_RATIO_FOUR = 0.27f
+private const val TILE_TEXT_RATIO_LONG = 0.22f
+private const val TILE_TEXT_PADDING_RATIO = 0.06f
+private val TILE_MIN_TEXT = 8.sp

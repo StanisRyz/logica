@@ -14,10 +14,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PriorityHigh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -296,12 +296,13 @@ private fun CrownsCellView(
         val symbolTint = if (isIncorrect) colors.onErrorContainer else palette.onCrownsRegion
         when (cell) {
             CrownsPlayerCell.EMPTY -> Unit
+            // Sized from the cell, like the crown, never from a fixed text size.
             CrownsPlayerCell.MARKED ->
-                Text(
-                    text = "×",
-                    modifier = Modifier.cellFeedbackMotion(isConfirmed, isIncorrect),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = symbolTint,
+                Icon(
+                    imageVector = Icons.Rounded.Close,
+                    contentDescription = null,
+                    tint = symbolTint,
+                    modifier = Modifier.fillMaxSize(MARK_RATIO).cellFeedbackMotion(isConfirmed, isIncorrect),
                 )
             CrownsPlayerCell.CROWN -> CrownIcon(Modifier.fillMaxSize(0.55f).cellFeedbackMotion(isConfirmed, isIncorrect), symbolTint)
         }
@@ -360,6 +361,7 @@ private val MAX_BOARD_SIZE = 560.dp
 private val MIN_PENCIL_SIZE = 8.dp
 private val MAX_PENCIL_SIZE = 16.dp
 private const val PENCIL_RATIO = 0.3f
+private const val MARK_RATIO = 0.34f
 private const val PENCIL_ALPHA = 0.7f
 private const val CONFIRMED_RING_ALPHA = 0.4f
 

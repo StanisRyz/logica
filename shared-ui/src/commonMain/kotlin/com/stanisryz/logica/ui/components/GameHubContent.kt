@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Card
@@ -44,6 +45,7 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.shared.ui.generated.resources.Res
 import com.stanisryz.logica.shared.ui.generated.resources.continue_level
@@ -232,6 +234,7 @@ fun ContinueGameCard(
 }
 
 private val CONTINUE_PADDING = 12.dp
+private val CATALOG_TITLE_MIN_SIZE = 14.sp
 private val CONTINUE_ARTWORK_SIZE = 56.dp
 private val CONTINUE_PLAY_SIZE = 44.dp
 private val CONTINUE_NO_LIVES_ICON_SIZE = 26.dp
@@ -295,6 +298,8 @@ fun GameCatalogCard(
             ) {
                 // The artwork is always light, so the label keeps fixed ink colours in both themes
                 // and a soft glow instead of a scrim over the picture.
+                // One line that shrinks to fit, like the difficulty names: «Russian Word» or a long
+                // Turkish title never wraps or breaks.
                 Text(
                     text = title,
                     style =
@@ -302,6 +307,12 @@ fun GameCatalogCard(
                             shadow = Shadow(color = CATALOG_TITLE_GLOW, blurRadius = CATALOG_TITLE_GLOW_RADIUS),
                         ),
                     color = CATALOG_TITLE_INK.copy(alpha = if (enabled) 1f else DISABLED_ALPHA),
+                    maxLines = 1,
+                    autoSize =
+                        TextAutoSize.StepBased(
+                            minFontSize = CATALOG_TITLE_MIN_SIZE,
+                            maxFontSize = MaterialTheme.typography.headlineSmall.fontSize,
+                        ),
                 )
                 Surface(
                     color = Color.White.copy(alpha = if (enabled) CATALOG_ACTION_ALPHA else DISABLED_ACTION_ALPHA),

@@ -125,8 +125,9 @@ fun ZoomableBoard(
                 modifier =
                     Modifier
                         .align(Alignment.TopEnd)
-                        .padding(6.dp)
-                        .size(40.dp)
+                        .padding(4.dp)
+                        // The minimum touch target, like every tap target.
+                        .size(48.dp)
                         .clip(CircleShape)
                         .background(colors.surfaceContainerHigh.copy(alpha = 0.92f)),
             ) {

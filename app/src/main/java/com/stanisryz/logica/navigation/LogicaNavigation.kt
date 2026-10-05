@@ -1023,7 +1023,7 @@ private fun GameTopBar(
     }
 }
 
-private val HELP_BUTTON_SIZE = 36.dp
+private val HELP_BUTTON_SIZE = 48.dp
 private val HELP_ICON_SIZE = 20.dp
 private val GAME_TOP_BAR_HEIGHT = 48.dp
 private val GAME_TOP_BAR_HORIZONTAL_PADDING = 4.dp
