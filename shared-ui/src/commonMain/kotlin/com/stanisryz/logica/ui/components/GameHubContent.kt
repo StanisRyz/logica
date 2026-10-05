@@ -183,6 +183,8 @@ fun ContinueGameCard(
                 contentDescription = null,
                 filterQuality = ArtworkFilterQuality,
                 contentScale = ContentScale.Crop,
+                // The game itself sits on the right of every Catalog artwork; the centre is scenery.
+                alignment = Alignment.CenterEnd,
                 modifier = Modifier.size(CONTINUE_ARTWORK_SIZE).clip(MaterialTheme.shapes.medium),
             )
             Column(Modifier.weight(1f)) {

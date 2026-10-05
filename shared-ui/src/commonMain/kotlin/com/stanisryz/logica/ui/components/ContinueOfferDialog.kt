@@ -70,7 +70,7 @@ fun ContinueOfferDialog(
         onDismissRequest = {},
         properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
     ) {
-        Card(colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerHigh)) {
+        Card(colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerHigh), border = darkDialogEdge()) {
             Column(
                 modifier = Modifier.padding(LogicaSpacing.cardPadding),
                 horizontalAlignment = Alignment.CenterHorizontally,

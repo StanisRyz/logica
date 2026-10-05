@@ -5,6 +5,7 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -49,6 +50,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -212,6 +214,7 @@ fun GameResultCard(
         shape = MaterialTheme.shapes.extraLarge,
         color = colors.surfaceContainerHigh,
         tonalElevation = 0.dp,
+        border = darkDialogEdge(),
     ) {
         Box {
             // A solved attempt bursts a little confetti from the stars, behind the card's content.
@@ -372,6 +375,25 @@ private const val COUNTDOWN_TICK_MILLIS = 1_000L
 private const val MILLIS_PER_SECOND = 1_000L
 private const val SECONDS_PER_MINUTE = 60L
 private val LIFE_AD_ICON_SIZE = 20.dp
+
+/**
+ * In the dark theme a dialog card and the dimmed board behind it are both near black (the scrim is
+ * already black at 60%, and more black changes little), so the card gets a faint outline edge.
+ */
+@Composable
+internal fun darkDialogEdge(): BorderStroke? {
+    val colors = MaterialTheme.colorScheme
+    return if (colors.surface.luminance() <
+        DARK_SURFACE_LUMINANCE
+    ) {
+        BorderStroke(1.dp, colors.outline.copy(alpha = DIALOG_EDGE_ALPHA))
+    } else {
+        null
+    }
+}
+
+private const val DARK_SURFACE_LUMINANCE = 0.5f
+private const val DIALOG_EDGE_ALPHA = 0.45f
 
 /** One short confetti burst: pieces fly up and out from the stars, then fall and fade. */
 @Composable
