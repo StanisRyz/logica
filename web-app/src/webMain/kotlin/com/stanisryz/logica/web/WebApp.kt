@@ -1480,7 +1480,6 @@ private fun NonogramFlow(
                     onRetrySave = controller::retrySave,
                 )
                 WebOrdinaryCatalogTerminalDialog(
-                    puzzleType = PuzzleType.NONOGRAM,
                     visible = state.game.status.isTerminal && !controller.secondChanceOffered,
                     difficulty = state.source.difficulty,
                     mistakesUsed = state.game.mistakesUsed,
@@ -1567,7 +1566,6 @@ private fun BlockSudokuFlow(
                 onRetrySave = controller::retrySave,
             )
             WebOrdinaryCatalogTerminalDialog(
-                puzzleType = PuzzleType.BLOCK_SUDOKU,
                 visible = state.game.status.isTerminal,
                 difficulty = state.source.difficulty,
                 levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
@@ -2062,7 +2060,6 @@ private fun PlayingBalanceContent(
             onRetrySave = controller::retrySave,
         )
         WebOrdinaryCatalogTerminalDialog(
-            puzzleType = PuzzleType.BALANCE,
             visible = state.game.status.isTerminal && !controller.secondChanceOffered,
             difficulty = state.source.difficulty,
             mistakesUsed = state.game.mistakesUsed,
@@ -2152,7 +2149,6 @@ private fun PlayingCrownsContent(
             onRetrySave = controller::retrySave,
         )
         WebOrdinaryCatalogTerminalDialog(
-            puzzleType = PuzzleType.CROWNS,
             visible = state.game.status.isTerminal && !controller.secondChanceOffered,
             difficulty = state.source.difficulty,
             mistakesUsed = state.game.mistakesUsed,
@@ -2224,7 +2220,6 @@ private fun PlayingWordContent(
             onRetrySave = controller::retrySave,
         )
         WebOrdinaryCatalogTerminalDialog(
-            puzzleType = PuzzleType.WORD,
             visible = state.isTerminalRevealReady,
             difficulty = state.source.difficulty,
             levelNumber = requireNotNull(state.source.catalogLevelNumberOrNull),
@@ -2316,7 +2311,6 @@ private fun PlayingSudokuContent(
             onRetrySave = controller::retrySave,
         )
         WebOrdinaryCatalogTerminalDialog(
-            puzzleType = PuzzleType.SUDOKU,
             visible = state.game.status.isTerminal && !controller.secondChanceOffered,
             difficulty = state.source.difficulty,
             mistakesUsed = state.game.mistakesUsed,

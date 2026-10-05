@@ -131,7 +131,6 @@ internal fun WebCatalogLevelErrorContent(
 
 @Composable
 internal fun WebOrdinaryCatalogTerminalDialog(
-    puzzleType: PuzzleType,
     visible: Boolean,
     levelNumber: Int,
     difficulty: Difficulty,
@@ -276,7 +275,6 @@ internal fun Web2048CatalogTerminalDialog(
 ) {
     if (!visible) return
     WebOrdinaryCatalogTerminalDialog(
-        puzzleType = PuzzleType.GAME_2048,
         visible = true,
         levelNumber = levelNumber,
         difficulty = difficulty,
