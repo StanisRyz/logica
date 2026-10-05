@@ -28,6 +28,7 @@ import com.stanisryz.logica.puzzle.core.sudoku.toPlatformDifficulty
 import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.result.GameOutcome
+import com.stanisryz.logica.ui.sudoku.SudokuDigitInput
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -48,6 +49,8 @@ internal sealed interface SudokuGameUiState {
         val game: SudokuGameState,
         val selectedCell: SudokuPosition? = null,
         val isPencilMode: Boolean = false,
+        /** The digit-first active digit: board taps enter it; transient, never saved. */
+        val activeDigit: Int? = null,
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
         /** Gems the saved result actually credited, for the result card. */
         val gemsEarned: Int = 0,
@@ -115,31 +118,66 @@ internal class SudokuGameViewModel(
         load()
     }
 
+    /** Selects a cell, cell-first; it drops the active digit. */
     fun selectCell(position: SudokuPosition) {
         if (!economy.value.isGameplayAllowed) return
         val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
-        if (ready.selectedCell != position) mutableUiState.value = ready.copy(selectedCell = position)
+        if (ready.selectedCell != position || ready.activeDigit != null) {
+            mutableUiState.value = ready.copy(selectedCell = position, activeDigit = null)
+        }
     }
 
+    /** A tap on the board: selects the cell, or with an active digit enters it (see [SudokuDigitInput]). */
+    fun onCellTapped(position: SudokuPosition) {
+        if (!economy.value.isGameplayAllowed) return
+        if (hints.isCharging) return
+        val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
+        if (ready.game.status.isTerminal) return
+        apply(ready, SudokuDigitInput.onCellTap(ready.game, ready.activeDigit, position))
+    }
+
+    /** A digit from the pad: fills the selected cell, or picks the active digit. */
     fun inputDigit(digit: Int) {
         if (!economy.value.isGameplayAllowed) return
         if (hints.isCharging) return
         val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
-        val position = ready.selectedCell ?: return
-        val gameEngine = engine ?: return
-        val updated =
-            if (ready.isPencilMode) {
-                gameEngine.toggleCandidate(ready.game, position, digit)
-            } else {
-                gameEngine.placeValue(ready.game, position, digit)
+        if (ready.game.status.isTerminal) return
+        apply(ready, SudokuDigitInput.onDigit(ready.game, ready.selectedCell, ready.activeDigit, digit))
+    }
+
+    private fun apply(
+        ready: SudokuGameUiState.Ready,
+        action: SudokuDigitInput.Action,
+    ) {
+        when (action) {
+            is SudokuDigitInput.Action.Select -> selectCell(action.position)
+            // Digit-first input works without a selected cell, so picking a digit clears it.
+            is SudokuDigitInput.Action.Activate ->
+                mutableUiState.value =
+                    ready.copy(activeDigit = action.digit, selectedCell = if (action.digit == null) ready.selectedCell else null)
+            is SudokuDigitInput.Action.Enter -> {
+                val gameEngine = engine ?: return
+                val updated =
+                    if (ready.isPencilMode) {
+                        gameEngine.toggleCandidate(ready.game, action.position, action.digit)
+                    } else {
+                        gameEngine.placeValue(ready.game, action.position, action.digit)
+                    }
+                updateGame(ready, updated)
             }
-        updateGame(ready, updated)
+            SudokuDigitInput.Action.None -> Unit
+        }
     }
 
     fun eraseSelectedCell() {
         if (!economy.value.isGameplayAllowed) return
         if (hints.isCharging) return
         val ready = mutableUiState.value as? SudokuGameUiState.Ready ?: return
+        // With an active digit, Erase drops it (back to cell-first) and erases nothing.
+        if (ready.activeDigit != null) {
+            mutableUiState.value = ready.copy(activeDigit = null)
+            return
+        }
         val position = ready.selectedCell ?: return
         val updated = engine?.eraseCell(ready.game, position) ?: return
         updateGame(ready, updated)
@@ -200,7 +238,8 @@ internal class SudokuGameViewModel(
                     updateGame(
                         current,
                         updated,
-                        updated.currentHint?.position ?: current.selectedCell,
+                        // Digit-first input keeps working without a selection; the hint's cell is outlined anyway.
+                        if (current.activeDigit != null) current.selectedCell else updated.currentHint?.position ?: current.selectedCell,
                         // The hint keeps the undo history and adds no frame of its own: its cell is
                         // correct, so undo never takes it back, and its count never comes back either.
                         recordUndo = false,
@@ -285,6 +324,7 @@ internal class SudokuGameViewModel(
             ready.copy(
                 game = updated,
                 selectedCell = selectedCell,
+                activeDigit = SudokuDigitInput.afterMove(updated, ready.activeDigit),
                 canUndo = undoHistory.isNotEmpty(),
             )
         if (updated.status.isTerminal) finishOrOffer(updated)

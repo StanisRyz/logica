@@ -65,6 +65,7 @@ fun SudokuGameContent(
     modifier: Modifier = Modifier,
     hintCount: Int? = null,
     hostStatusContent: @Composable ColumnScope.() -> Unit = {},
+    activeDigit: Int? = null,
 ) {
     CellGameSounds(
         correctCells = game.cells.count { it.status == SudokuCellStatus.CORRECT },
@@ -80,20 +81,37 @@ fun SudokuGameContent(
         val sectionSpacing = if (compact) COMPACT_SECTION_SPACING else NORMAL_SECTION_SPACING
         val panelWidth = if (compact) COMPACT_WIDE_PANEL_WIDTH else WIDE_PANEL_WIDTH
         val selectedState = selectedCell?.let(game::cellAt)
+        // Erase also drops the active digit of digit-first input.
         val eraseEnabled =
             gameplayEnabled &&
-                selectedState != null &&
-                (selectedState.status == SudokuCellStatus.INCORRECT || !selectedState.candidates.isEmpty)
+                (
+                    activeDigit != null ||
+                        selectedState != null &&
+                        (selectedState.status == SudokuCellStatus.INCORRECT || !selectedState.candidates.isEmpty)
+                )
         val undoEnabled = canUndo && gameplayEnabled
         // The keypad stays live for the whole attempt; a digit simply does nothing without a cell to
         // fill, instead of the whole pad greying out after every hint or tap on a clue.
         val keypadEnabled = gameplayEnabled && game.status == SudokuGameStatus.IN_PROGRESS
         val sounds = LocalGameSounds.current
+        // A pencil note has no verdict to sound, so it just taps; choosing the active digit is silent.
         val guardedDigit: (Int) -> Unit = { digit ->
             if (inputEnabled) {
+                val action = SudokuDigitInput.onDigit(game, selectedCell, activeDigit, digit)
                 onDigit(digit)
-                // A pencil note has no verdict to sound, so it just taps.
-                if (isPencilMode) sounds.play(GameSound.TAP)
+                if (isPencilMode &&
+                    action is SudokuDigitInput.Action.Enter &&
+                    game.cellAt(action.position).status == SudokuCellStatus.EMPTY
+                ) {
+                    sounds.play(GameSound.TAP)
+                }
+            }
+        }
+        val boardTap: (SudokuPosition) -> Unit = { position ->
+            val action = SudokuDigitInput.onCellTap(game, activeDigit, position)
+            onCellSelected(position)
+            if (isPencilMode && action is SudokuDigitInput.Action.Enter && game.cellAt(position).status == SudokuCellStatus.EMPTY) {
+                sounds.play(GameSound.TAP)
             }
         }
         val confirmedCounts = IntArray(DIGIT_SLOTS)
@@ -132,7 +150,8 @@ fun SudokuGameContent(
                             game = game,
                             selectedCell = selectedCell,
                             enabled = gameplayEnabled,
-                            onCellSelected = onCellSelected,
+                            onCellSelected = boardTap,
+                            activeDigit = activeDigit,
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -173,6 +192,7 @@ fun SudokuGameContent(
                                 remaining = remaining,
                                 isPencilMode = isPencilMode,
                                 columns = WIDE_DIGIT_COLUMNS,
+                                activeDigit = activeDigit,
                             )
                         }
                     }
@@ -213,7 +233,8 @@ fun SudokuGameContent(
                                 game = game,
                                 selectedCell = selectedCell,
                                 enabled = gameplayEnabled,
-                                onCellSelected = onCellSelected,
+                                onCellSelected = boardTap,
+                                activeDigit = activeDigit,
                                 modifier = Modifier.fillMaxSize(),
                             )
                         }
@@ -243,6 +264,7 @@ fun SudokuGameContent(
                                     onDigit = guardedDigit,
                                     remaining = remaining,
                                     isPencilMode = isPencilMode,
+                                    activeDigit = activeDigit,
                                 )
                             }
                         }

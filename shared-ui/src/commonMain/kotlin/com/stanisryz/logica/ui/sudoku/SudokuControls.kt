@@ -1,5 +1,6 @@
 package com.stanisryz.logica.ui.sudoku
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.shared.ui.generated.resources.Res
 import com.stanisryz.logica.shared.ui.generated.resources.hint
 import com.stanisryz.logica.shared.ui.generated.resources.hints_left
+import com.stanisryz.logica.shared.ui.generated.resources.sudoku_digit_active
 import com.stanisryz.logica.shared.ui.generated.resources.sudoku_digits_left
 import com.stanisryz.logica.shared.ui.generated.resources.sudoku_erase
 import com.stanisryz.logica.shared.ui.generated.resources.sudoku_pencil_off_short
@@ -67,6 +69,7 @@ fun SudokuNumberPad(
     remaining: ((Int) -> Int)? = null,
     isPencilMode: Boolean = false,
     columns: Int = DIGIT_COUNT,
+    activeDigit: Int? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         (1..DIGIT_COUNT).chunked(columns).forEach { row ->
@@ -79,6 +82,7 @@ fun SudokuNumberPad(
                         visible = left != 0,
                         enabled = enabled && left != 0,
                         isPencilMode = isPencilMode,
+                        active = digit == activeDigit,
                         onClick = { onDigit(digit) },
                         modifier = Modifier.weight(1f),
                     )
@@ -95,10 +99,12 @@ private fun SudokuDigitKey(
     visible: Boolean,
     enabled: Boolean,
     isPencilMode: Boolean,
+    active: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
+    val activeDescription = if (active) stringResource(Res.string.sudoku_digit_active) else null
     val leftDescription = left?.let { stringResource(Res.string.sudoku_digits_left, it) }
     val roomy = LocalRoomyGameplayControls.current
     BoxWithConstraints(
@@ -107,10 +113,14 @@ private fun SudokuDigitKey(
                 .height(if (roomy) ROOMY_DIGIT_KEY_HEIGHT else SUDOKU_DIGIT_KEY_HEIGHT)
                 .clip(MaterialTheme.shapes.small)
                 .alpha(if (visible) 1f else 0f)
+                // The active digit of digit-first input is filled, not only coloured.
+                .then(if (active) Modifier.background(colors.primary) else Modifier)
                 .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
                 .semantics {
                     contentDescription = digit.toString()
-                    leftDescription?.let { stateDescription = it }
+                    listOfNotNull(activeDescription, leftDescription)
+                        .takeIf { it.isNotEmpty() }
+                        ?.let { stateDescription = it.joinToString(", ") }
                 },
         contentAlignment = Alignment.Center,
     ) {
@@ -126,10 +136,18 @@ private fun SudokuDigitKey(
             color =
                 when {
                     !enabled -> colors.onSurfaceVariant.copy(alpha = DISABLED_DIGIT_ALPHA)
+                    active -> colors.onPrimary
                     isPencilMode -> colors.primary.copy(alpha = PENCIL_DIGIT_ALPHA)
                     else -> colors.primary
                 },
-            fontWeight = if (isPencilMode) FontWeight.Normal else FontWeight.Medium,
+            fontWeight =
+                if (active) {
+                    FontWeight.Bold
+                } else if (isPencilMode) {
+                    FontWeight.Normal
+                } else {
+                    FontWeight.Medium
+                },
         )
     }
 }

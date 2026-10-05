@@ -19,12 +19,13 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
 
-/** Sudoku input on the Android host: undo across a hint. */
+/** Sudoku input on the Android host: undo across a hint and digit-first entry. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SudokuGameViewModelTest {
     private val work = StandardTestDispatcher()
@@ -76,6 +77,78 @@ class SudokuGameViewModelTest {
         assertEquals(SudokuCellStatus.CORRECT, ready.game.cellAt(hinted).status)
         assertEquals(1, ready.game.hintsUsed)
         assertTrue(ready.canUndo)
+    }
+
+    @Test
+    fun digitFirstEntersTheActiveDigitInEveryTappedCell() {
+        val viewModel = loadedViewModel()
+        val puzzle = viewModel.ready().puzzle
+        val digit = puzzle.solution[emptyCells(viewModel).first().index].digitToInt()
+        val right = emptyCells(viewModel).filter { puzzle.solution[it.index].digitToInt() == digit }.take(2)
+        val wrong = emptyCells(viewModel).first { puzzle.solution[it.index].digitToInt() != digit }
+        val given =
+            (0 until 81).map(SudokuPosition::fromIndex).first {
+                viewModel
+                    .ready()
+                    .game
+                    .cellAt(it)
+                    .status == SudokuCellStatus.GIVEN
+            }
+        val givenDigit =
+            viewModel
+                .ready()
+                .game
+                .cellAt(given)
+                .value
+
+        // No selection: the digit becomes the active one.
+        viewModel.inputDigit(digit)
+        assertEquals(digit, viewModel.ready().activeDigit)
+        assertNull(viewModel.ready().selectedCell)
+
+        // Taps enter it cell after cell; a wrong cell is an ordinary mistake.
+        right.forEach(viewModel::onCellTapped)
+        viewModel.onCellTapped(wrong)
+        right.forEach {
+            assertEquals(
+                SudokuCellStatus.CORRECT,
+                viewModel
+                    .ready()
+                    .game
+                    .cellAt(it)
+                    .status,
+            )
+        }
+        assertEquals(
+            SudokuCellStatus.INCORRECT,
+            viewModel
+                .ready()
+                .game
+                .cellAt(wrong)
+                .status,
+        )
+        assertEquals(1, viewModel.ready().game.mistakesUsed)
+
+        // A given cell makes its digit the active one; tapping that digit again drops it.
+        viewModel.onCellTapped(given)
+        assertEquals(givenDigit, viewModel.ready().activeDigit)
+        viewModel.inputDigit(givenDigit)
+        assertNull(viewModel.ready().activeDigit)
+
+        // Cell-first is unchanged: a tap selects, a digit fills the selected cell.
+        val next = emptyCells(viewModel).first()
+        viewModel.onCellTapped(next)
+        assertEquals(next, viewModel.ready().selectedCell)
+        viewModel.inputDigit(puzzle.solution[next.index].digitToInt())
+        assertEquals(
+            SudokuCellStatus.CORRECT,
+            viewModel
+                .ready()
+                .game
+                .cellAt(next)
+                .status,
+        )
+        assertNull(viewModel.ready().activeDigit)
     }
 
     private fun loadedViewModel(): SudokuGameViewModel {

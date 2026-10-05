@@ -20,7 +20,6 @@ import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.catalog.levelNumberOrNull
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
-import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetVersion
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDifficulty
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameState
@@ -87,7 +86,7 @@ internal fun SudokuGameRoute(
             economy = economy,
             isDaily = launch is GameAttemptLaunch.Daily,
             levelNumber = launch.levelNumberOrNull(),
-            onSelectCell = gameViewModel::selectCell,
+            onSelectCell = gameViewModel::onCellTapped,
             onDigit = gameViewModel::inputDigit,
             onTogglePencil = gameViewModel::togglePencilMode,
             onErase = gameViewModel::eraseSelectedCell,
@@ -217,14 +216,6 @@ private fun SudokuReadyState(
     }
 
     val gameplayEnabled = game.status == SudokuGameStatus.IN_PROGRESS && economy.isGameplayAllowed
-    val selectedStatus = uiState.selectedCell?.let(game::cellAt)?.status
-    val inputEnabled =
-        gameplayEnabled &&
-            if (uiState.isPencilMode) {
-                selectedStatus == SudokuCellStatus.EMPTY
-            } else {
-                selectedStatus == SudokuCellStatus.EMPTY || selectedStatus == SudokuCellStatus.INCORRECT
-            }
 
     SudokuGameContent(
         puzzle = uiState.puzzle,
@@ -233,7 +224,8 @@ private fun SudokuReadyState(
         isPencilMode = uiState.isPencilMode,
         levelNumber = levelNumber,
         gameplayEnabled = gameplayEnabled,
-        inputEnabled = inputEnabled,
+        // Digits work without a selected cell too: they pick the digit-first active digit.
+        inputEnabled = gameplayEnabled,
         canUndo = uiState.canUndo,
         onCellSelected = { position ->
             if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
@@ -249,6 +241,7 @@ private fun SudokuReadyState(
         hostStatusContent = {
             ZeroLivesCard(economy, onRestoreLife)
         },
+        activeDigit = uiState.activeDigit,
     )
 
     if (game.status.isTerminal) {

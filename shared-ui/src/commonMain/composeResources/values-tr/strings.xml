@@ -163,6 +163,7 @@
     <string name="sudoku_erase">Hücreyi temizle</string>
     <string name="sudoku_undo">Hamleyi geri al</string>
     <string name="sudoku_digits_left">Yerleştirilecek: %1$d</string>
+    <string name="sudoku_digit_active">Seçili: yerleştirmek için bir hücreye dokun</string>
     <string name="sudoku_pencil_on_short">AÇIK</string>
     <string name="sudoku_pencil_off_short">KAPALI</string>
     <string name="board_progress_description">İlerleme: %1$d / %2$d</string>
@@ -223,7 +224,7 @@
     <string name="sudoku_tutorial_rules_title">Tekrarsız sayılar</string>
     <string name="sudoku_tutorial_rules_body">1–9 arası sayıları kullan. Bir sayı her satırda, her sütunda ve her 3×3 blokta yalnızca bir kez bulunabilir.</string>
     <string name="sudoku_tutorial_input_title">Önce hücre, sonra sayı</string>
-    <string name="sudoku_tutorial_input_body">Boş bir hücre seç ve bir sayı gir. Doğru sayılar sabitlenir, yanlışlar hata sayılır.</string>
+    <string name="sudoku_tutorial_input_body">Boş bir hücre seç ve bir sayı gir. Doğru sayılar sabitlenir, yanlışlar hata sayılır. Oyunda tersi de olur: aşağıdan bir rakam seç ve hücrelere dokun, her birine o rakam yazılır. Seçimi bırakmak için rakama yeniden dokun.</string>
     <string name="sudoku_tutorial_pencil_title">Taslak adaylar</string>
     <string name="sudoku_tutorial_pencil_body">Kalemi aç, boş bir hücre seç ve olası bir sayı ekle. Notlar kontrol edilmez.</string>
     <string name="sudoku_tutorial_hint_title">Hatalar ve ipuçları</string>
@@ -331,6 +332,7 @@
     <string name="rules_crowns_3">× işareti, burada kesinlikle taç olmadığına dair notundur. Kontrol edilmez ve hata saymaz.</string>
     <string name="rules_sudoku_1">Tahtayı 1\'den 9\'a kadar rakamlarla doldur.</string>
     <string name="rules_sudoku_2">Her rakam her satırda, sütunda ve 3×3 blokta bir kez bulunur.</string>
+    <string name="rules_sudoku_3">Ya da tersine: aşağıdan bir rakam seç ve hücrelere dokun, her birine o rakam yazılır. Seçimi bırakmak için rakama yeniden dokun.</string>
     <string name="word_russian_only">Kelimeler yalnızca Rusça.</string>
     <string name="rules_word_language">Tüm kelimeler yalnızca Rusçadır; klavye Rus harflerini gösterir.</string>
     <string name="rules_word_1">Kelimeyi altı denemede bil.</string>

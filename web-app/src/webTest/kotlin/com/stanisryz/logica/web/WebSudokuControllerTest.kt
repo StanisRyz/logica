@@ -10,6 +10,7 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDataset
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetResult
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetVersion
@@ -165,6 +166,59 @@ class WebSudokuControllerTest {
             assertEquals(2, game.cellAt(SudokuPosition(0, 4)).value)
             assertEquals(1, game.hintsUsed)
             assertTrue(controller.canUndo)
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun digitFirstEntersTheActiveDigitInEveryTappedCell() =
+        runTest {
+            val controller = playingController()
+
+            fun playing() = assertIs<WebSudokuState.Playing>(controller.state)
+
+            // No selection: the digit becomes the active one.
+            controller.inputDigit(1)
+            assertEquals(1, playing().activeDigit)
+            assertEquals(null, playing().selectedCell)
+
+            // Taps enter it cell after cell; a wrong cell is an ordinary mistake.
+            controller.onCellTapped(SudokuPosition(0, 0))
+            controller.onCellTapped(SudokuPosition(1, 8))
+            controller.onCellTapped(SudokuPosition(0, 2))
+            assertEquals(SudokuCellStatus.CORRECT, playing().game.cellAt(SudokuPosition(0, 0)).status)
+            assertEquals(SudokuCellStatus.CORRECT, playing().game.cellAt(SudokuPosition(1, 8)).status)
+            assertEquals(SudokuCellStatus.INCORRECT, playing().game.cellAt(SudokuPosition(0, 2)).status)
+            assertEquals(1, playing().game.mistakesUsed)
+            assertEquals(1, playing().activeDigit)
+
+            // A given cell makes its digit the active one; tapping that digit again drops it.
+            controller.onCellTapped(SudokuPosition(0, 1))
+            assertEquals(5, playing().activeDigit)
+            controller.inputDigit(5)
+            assertEquals(null, playing().activeDigit)
+
+            // Cell-first is unchanged: a tap selects, a digit fills the selected cell.
+            controller.onCellTapped(SudokuPosition(0, 4))
+            assertEquals(SudokuPosition(0, 4), playing().selectedCell)
+            controller.inputDigit(2)
+            assertEquals(SudokuCellStatus.CORRECT, playing().game.cellAt(SudokuPosition(0, 4)).status)
+            assertEquals(null, playing().activeDigit)
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun eraseOrAnArrowDropsTheActiveDigit() =
+        runTest {
+            val controller = playingController()
+            controller.inputDigit(4)
+            controller.eraseSelectedCell()
+            assertEquals(null, assertIs<WebSudokuState.Playing>(controller.state).activeDigit)
+
+            controller.inputDigit(4)
+            controller.onHardwareKey(GameKey.Right)
+            val playing = assertIs<WebSudokuState.Playing>(controller.state)
+            assertEquals(null, playing.activeDigit)
+            assertEquals(SudokuPosition(0, 0), playing.selectedCell)
         }
 
     private fun kotlinx.coroutines.test.TestScope.playingController(): WebSudokuController {

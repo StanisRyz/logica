@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PriorityHigh
 import androidx.compose.material3.Icon
@@ -63,6 +64,7 @@ fun SudokuBoard(
     onCellSelected: (SudokuPosition) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    activeDigit: Int? = null,
 ) {
     BoxWithConstraints(
         modifier = modifier,
@@ -74,6 +76,7 @@ fun SudokuBoard(
             selectedCell = selectedCell,
             onCellSelected = onCellSelected,
             enabled = enabled,
+            activeDigit = activeDigit,
             modifier = Modifier.size(boardSide),
         )
     }
@@ -85,9 +88,12 @@ private fun SudokuGrid(
     selectedCell: SudokuPosition?,
     onCellSelected: (SudokuPosition) -> Unit,
     enabled: Boolean,
+    activeDigit: Int?,
     modifier: Modifier,
 ) {
-    val selectedValue = selectedCell?.let(game::cellAt)?.value?.takeIf { it != 0 }
+    // The digit-first active digit, otherwise the selected cell's digit, lights up every cell and
+    // pencil mark that holds it.
+    val highlightDigit = activeDigit ?: selectedCell?.let(game::cellAt)?.value?.takeIf { it != 0 }
     val colors = MaterialTheme.colorScheme
     BoxWithConstraints(
         modifier =
@@ -131,10 +137,11 @@ private fun SudokuGrid(
                             isSelected = position == selectedCell,
                             isPeer = selectedCell?.let(position::isPeerOrSameUnit) == true,
                             isSameNumber =
-                                selectedValue != null &&
+                                highlightDigit != null &&
                                     position != selectedCell &&
                                     cell.value != 0 &&
-                                    cell.value == selectedValue,
+                                    cell.value == highlightDigit,
+                            highlightCandidate = highlightDigit,
                             isHintTarget = game.currentHint?.position == position,
                             enabled = enabled && !game.status.isTerminal,
                             candidateTextSize = candidateTextSize,
@@ -156,6 +163,7 @@ private fun SudokuCell(
     isSelected: Boolean,
     isPeer: Boolean,
     isSameNumber: Boolean,
+    highlightCandidate: Int?,
     isHintTarget: Boolean,
     enabled: Boolean,
     candidateTextSize: TextUnit,
@@ -219,7 +227,7 @@ private fun SudokuCell(
         contentAlignment = Alignment.Center,
     ) {
         if (cell.status == SudokuCellStatus.EMPTY) {
-            SudokuCandidates(cell, candidateTextSize)
+            SudokuCandidates(cell, candidateTextSize, highlightCandidate)
         } else {
             Text(
                 text = cell.value.toString(),
@@ -281,19 +289,37 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawCellOutline(
 private fun SudokuCandidates(
     cell: SudokuCellState,
     textSize: TextUnit,
+    highlight: Int?,
 ) {
+    val colors = MaterialTheme.colorScheme
     Column(Modifier.fillMaxSize().padding(CANDIDATE_PADDING)) {
         repeat(BLOCK_SIZE) { candidateRow ->
             Row(Modifier.fillMaxWidth().weight(1f)) {
                 repeat(BLOCK_SIZE) { candidateColumn ->
                     val digit = candidateRow * BLOCK_SIZE + candidateColumn + 1
-                    Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                    // The highlighted digit's mark is accent-coloured, bold, and on its own disc, so it
+                    // reads without colour too.
+                    val highlighted = digit == highlight && cell.candidates.contains(digit)
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .then(
+                                if (highlighted) {
+                                    Modifier.background(colors.primary.copy(alpha = HIGHLIGHT_MARK_ALPHA), CircleShape)
+                                } else {
+                                    Modifier
+                                },
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
                         if (cell.candidates.contains(digit)) {
                             Text(
                                 text = digit.toString(),
                                 fontSize = textSize,
                                 lineHeight = textSize,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = if (highlighted) colors.primary else colors.onSurfaceVariant,
+                                fontWeight = if (highlighted) FontWeight.Bold else null,
                                 maxLines = 1,
                                 textAlign = TextAlign.Center,
                                 style = LocalTextStyle.current.merge(COMPACT_CELL_TEXT_STYLE),
@@ -354,3 +380,4 @@ private val STATUS_ICON_SIZE = 10.dp
 private const val CELL_HIGHLIGHT_MILLIS = 120
 
 private const val DARK_SURFACE_LUMINANCE = 0.5f
+private const val HIGHLIGHT_MARK_ALPHA = 0.18f

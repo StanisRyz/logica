@@ -66,7 +66,6 @@ import com.stanisryz.logica.puzzle.core.game2048.hasMeaningfulProgress
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramGameStatus
-import com.stanisryz.logica.puzzle.core.sudoku.SudokuCellStatus
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuGameStatus
 import com.stanisryz.logica.puzzle.core.sudoku.hasMeaningfulProgress
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
@@ -2245,15 +2244,7 @@ private fun PlayingSudokuContent(
             hasMeaningfulProgress = state.game.hasMeaningfulProgress || controller.secondChanceOffered,
             onExit = if (state.source.isDaily) onExitSudoku else controller::showDifficultySelector,
         )
-        val selectedStatus = state.selectedCell?.let(state.game::cellAt)?.status
         val gameplayEnabled = state.game.status == SudokuGameStatus.IN_PROGRESS
-        val inputEnabled =
-            gameplayEnabled &&
-                if (state.isPencilMode) {
-                    selectedStatus == SudokuCellStatus.EMPTY
-                } else {
-                    selectedStatus == SudokuCellStatus.EMPTY || selectedStatus == SudokuCellStatus.INCORRECT
-                }
         SudokuGameContent(
             puzzle = state.puzzle,
             game = state.game,
@@ -2262,8 +2253,9 @@ private fun PlayingSudokuContent(
             levelNumber = state.source.catalogLevelNumberOrNull,
             contextBadgeLabel = state.source.contextBadgeLabelOrNull(),
             gameplayEnabled = gameplayEnabled,
-            inputEnabled = inputEnabled,
-            onCellSelected = controller::selectCell,
+            // Digits work without a selected cell too: they pick the digit-first active digit.
+            inputEnabled = gameplayEnabled,
+            onCellSelected = controller::onCellTapped,
             onDigit = controller::inputDigit,
             onTogglePencil = controller::togglePencilMode,
             onErase = controller::eraseSelectedCell,
@@ -2272,6 +2264,7 @@ private fun PlayingSudokuContent(
             onHint = controller::requestHint,
             modifier = Modifier.weight(1f),
             hintCount = hintCount,
+            activeDigit = state.activeDigit,
         )
     }
 

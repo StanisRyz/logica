@@ -163,6 +163,7 @@
     <string name="sudoku_erase">Clear cell</string>
     <string name="sudoku_undo">Undo move</string>
     <string name="sudoku_digits_left">Left to place: %1$d</string>
+    <string name="sudoku_digit_active">Selected: tap a cell to place it</string>
     <string name="sudoku_pencil_on_short">ON</string>
     <string name="sudoku_pencil_off_short">OFF</string>
     <string name="board_progress_description">Progress: %1$d of %2$d</string>
@@ -223,7 +224,7 @@
     <string name="sudoku_tutorial_rules_title">Numbers without repeats</string>
     <string name="sudoku_tutorial_rules_body">Use the numbers 1–9. A number can appear only once in every row, every column, and every 3×3 block.</string>
     <string name="sudoku_tutorial_input_title">Cell first, then number</string>
-    <string name="sudoku_tutorial_input_body">Pick an empty cell and enter a number. Correct numbers lock in, wrong ones count as mistakes.</string>
+    <string name="sudoku_tutorial_input_body">Pick an empty cell and enter a number. Correct numbers lock in, wrong ones count as mistakes. In the game you can also go the other way round: pick a digit below and tap cells to place it in each. Tap the digit again to drop it.</string>
     <string name="sudoku_tutorial_pencil_title">Rough candidates</string>
     <string name="sudoku_tutorial_pencil_body">Turn on the pencil, pick an empty cell, and add a possible number. Notes are never checked.</string>
     <string name="sudoku_tutorial_hint_title">Mistakes and hints</string>
@@ -331,6 +332,7 @@
     <string name="rules_crowns_3">A mark × is your note that there is surely no crown here. It is never checked and never costs a mistake.</string>
     <string name="rules_sudoku_1">Fill the board with the digits 1 to 9.</string>
     <string name="rules_sudoku_2">Each digit appears once in every row, column, and 3×3 block.</string>
+    <string name="rules_sudoku_3">Or the other way round: pick a digit below and tap cells to place it in each. Tap the digit again to drop it.</string>
     <string name="word_russian_only">Words are in Russian only.</string>
     <string name="rules_word_language">All words are Russian only; the keyboard shows Russian letters.</string>
     <string name="rules_word_1">Guess the word in six tries.</string>

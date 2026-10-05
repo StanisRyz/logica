@@ -29,6 +29,7 @@ import com.stanisryz.logica.puzzle.core.sudoku.SudokuPuzzle
 import com.stanisryz.logica.puzzle.core.sudoku.toSudokuDifficulty
 import com.stanisryz.logica.puzzle.core.web.WebPuzzleData
 import com.stanisryz.logica.ui.components.GameKey
+import com.stanisryz.logica.ui.sudoku.SudokuDigitInput
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +53,8 @@ internal sealed interface WebSudokuState {
         val game: SudokuGameState,
         val selectedCell: SudokuPosition? = null,
         val isPencilMode: Boolean = false,
+        /** The digit-first active digit: board taps enter it; transient, never saved. */
+        val activeDigit: Int? = null,
     ) : WebSudokuState
 
     data class Error(
@@ -259,16 +262,46 @@ internal class WebSudokuController(
             }
     }
 
+    /** Selects a cell, cell-first (the keyboard's arrows); it drops the active digit. */
     fun selectCell(position: SudokuPosition) {
         val playing = state as? WebSudokuState.Playing ?: return
-        if (playing.game.status.isTerminal || playing.selectedCell == position) return
-        state = playing.copy(selectedCell = position)
+        if (playing.game.status.isTerminal || playing.selectedCell == position && playing.activeDigit == null) return
+        state = playing.copy(selectedCell = position, activeDigit = null)
     }
 
+    /** A tap on the board: selects the cell, or with an active digit enters it (see [SudokuDigitInput]). */
+    fun onCellTapped(position: SudokuPosition) {
+        val playing = state as? WebSudokuState.Playing ?: return
+        if (playing.game.status.isTerminal) return
+        apply(playing, SudokuDigitInput.onCellTap(playing.game, playing.activeDigit, position))
+    }
+
+    /** A digit from the pad or the keyboard: fills the selected cell, or picks the active digit. */
     fun inputDigit(digit: Int) {
         val playing = state as? WebSudokuState.Playing ?: return
         if (playing.game.status.isTerminal) return
-        val position = playing.selectedCell ?: return
+        apply(playing, SudokuDigitInput.onDigit(playing.game, playing.selectedCell, playing.activeDigit, digit))
+    }
+
+    private fun apply(
+        playing: WebSudokuState.Playing,
+        action: SudokuDigitInput.Action,
+    ) {
+        when (action) {
+            is SudokuDigitInput.Action.Select -> selectCell(action.position)
+            // Digit-first input works without a selected cell, so picking a digit clears it.
+            is SudokuDigitInput.Action.Activate ->
+                state = playing.copy(activeDigit = action.digit, selectedCell = if (action.digit == null) playing.selectedCell else null)
+            is SudokuDigitInput.Action.Enter -> enter(playing, action.position, action.digit)
+            SudokuDigitInput.Action.None -> Unit
+        }
+    }
+
+    private fun enter(
+        playing: WebSudokuState.Playing,
+        position: SudokuPosition,
+        digit: Int,
+    ) {
         val activeEngine = engine ?: return
         val cell = playing.game.cellAt(position)
         val updated =
@@ -322,6 +355,11 @@ internal class WebSudokuController(
     fun eraseSelectedCell() {
         val playing = state as? WebSudokuState.Playing ?: return
         if (playing.game.status.isTerminal) return
+        // With an active digit, Erase drops it (back to cell-first) and erases nothing.
+        if (playing.activeDigit != null) {
+            state = playing.copy(activeDigit = null)
+            return
+        }
         val position = playing.selectedCell ?: return
         val updated = engine?.eraseCell(playing.game, position) ?: return
         updateGame(playing, updated)
@@ -371,7 +409,8 @@ internal class WebSudokuController(
         updateGame(
             playing,
             updated,
-            updated.currentHint?.position ?: playing.selectedCell,
+            // Digit-first input keeps working without a selection; the hint's cell is outlined anyway.
+            if (playing.activeDigit != null) playing.selectedCell else updated.currentHint?.position ?: playing.selectedCell,
             // The hint keeps the undo history and adds no frame of its own: its cell is correct,
             // so undo never takes it back, and its count never comes back either.
             recordUndo = false,
@@ -390,7 +429,7 @@ internal class WebSudokuController(
         if (source is WebGameplaySource.CatalogLevel) completion.startAttempt(source.attempt)
         (source as? WebGameplaySource.DailyChallenge)?.let { dailyCompletion.startAttempt(it.attempt) }
         statisticsAttempt = statistics.startAttempt(PuzzleType.SUDOKU, playing.source.difficulty)
-        state = playing.copy(game = activeEngine.start(), selectedCell = null, isPencilMode = false)
+        state = playing.copy(game = activeEngine.start(), selectedCell = null, isPencilMode = false, activeDigit = null)
     }
 
     fun nextLevel() {
@@ -473,7 +512,12 @@ internal class WebSudokuController(
             undoHistory += UndoFrame(playing.game, playing.selectedCell)
             if (undoHistory.size > MAX_UNDO_HISTORY) undoHistory.removeAt(0)
         }
-        state = playing.copy(game = updated, selectedCell = selectedCell)
+        state =
+            playing.copy(
+                game = updated,
+                selectedCell = selectedCell,
+                activeDigit = SudokuDigitInput.afterMove(updated, playing.activeDigit),
+            )
         if (!playing.game.status.isTerminal && updated.status.isTerminal) {
             // The third mistake first offers the one ad-paid second chance; nothing is recorded yet.
             if (updated.status == SudokuGameStatus.FAILED && !secondChanceUsed) {

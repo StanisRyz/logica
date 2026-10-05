@@ -174,6 +174,7 @@
     <string name="sudoku_erase">Очистить клетку</string>
     <string name="sudoku_undo">Отменить ход</string>
     <string name="sudoku_digits_left">Осталось поставить: %1$d</string>
+    <string name="sudoku_digit_active">Выбрана: коснитесь клетки, чтобы поставить</string>
     <string name="sudoku_pencil_on_short">ВКЛ</string>
     <string name="sudoku_pencil_off_short">ВЫКЛ</string>
     <string name="board_progress_description">Прогресс: %1$d из %2$d</string>
@@ -234,7 +235,7 @@
     <string name="sudoku_tutorial_rules_title">Числа без повторов</string>
     <string name="sudoku_tutorial_rules_body">Используйте числа 1–9. В каждой строке, каждом столбце и каждом блоке 3×3 число может стоять только один раз.</string>
     <string name="sudoku_tutorial_input_title">Сначала клетка, затем число</string>
-    <string name="sudoku_tutorial_input_body">Выберите пустую клетку и введите число. Верные числа закрепляются, неверные считаются ошибкой.</string>
+    <string name="sudoku_tutorial_input_body">Выберите пустую клетку и введите число. Верные числа закрепляются, неверные считаются ошибкой. В игре можно и наоборот: выберите цифру внизу и касайтесь клеток — она встанет в каждую. Повторное касание цифры снимает выбор.</string>
     <string name="sudoku_tutorial_pencil_title">Черновые варианты</string>
     <string name="sudoku_tutorial_pencil_body">Включите карандаш, выберите пустую клетку и добавьте возможное число. Заметки не проверяются.</string>
     <string name="sudoku_tutorial_hint_title">Ошибки и подсказки</string>
@@ -351,6 +352,7 @@
     <string name="rules_crowns_3">Метка × — ваша заметка, что здесь короны точно нет. Она не проверяется и не стоит ошибки.</string>
     <string name="rules_sudoku_1">Заполните поле цифрами от 1 до 9.</string>
     <string name="rules_sudoku_2">В каждой строке, каждом столбце и каждом блоке 3×3 цифра встречается один раз.</string>
+    <string name="rules_sudoku_3">Можно и наоборот: выберите цифру внизу и касайтесь клеток — она встанет в каждую. Повторное касание цифры снимает выбор.</string>
     <string name="word_russian_only">Слова — только на русском языке.</string>
     <string name="rules_word_language">Все слова — только на русском языке.</string>
     <string name="rules_word_1">Отгадайте слово за шесть попыток.</string>
