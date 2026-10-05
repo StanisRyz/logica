@@ -184,6 +184,18 @@ internal class WebPlayerSessionController(
             }
 
     private var started = false
+
+    /** True while another browser tab holds the game ([relinquish]). */
+    private var relinquished = false
+
+    /**
+     * Whether this tab may bind a Player context at all (the one-active-tab lock); while false,
+     * nothing binds, loads, or writes, and [reclaim] binds once it turns true.
+     */
+    var bindingAllowed: () -> Boolean = { true }
+
+    private fun mayBind(): Boolean = !relinquished && bindingAllowed()
+
     private var contextRevision = 0L
     private var accountSelectionOpen = false
     private var operation: Job? = null
@@ -224,10 +236,10 @@ internal class WebPlayerSessionController(
 
     init {
         playerContextEvents.setAccountSelectionOpenedListener {
-            if (started) suspendForAccountSelection()
+            if (started && mayBind()) suspendForAccountSelection()
         }
         playerContextEvents.setPlayerContextChangedListener {
-            if (started) {
+            if (started && mayBind()) {
                 accountSelectionOpen = false
                 accountChangeRevision += 1L
                 bindCurrentContext()
@@ -238,7 +250,25 @@ internal class WebPlayerSessionController(
     fun start() {
         if (started) return
         started = true
-        bindCurrentContext()
+        if (mayBind()) bindCurrentContext()
+    }
+
+    /**
+     * Another tab takes over the game: the bound Player context goes away exactly like on an
+     * account switch — pending cloud writes and retries are cancelled, every token of the old
+     * context goes stale — and nothing binds, loads, or writes again until [reclaim].
+     */
+    fun relinquish() {
+        relinquished = true
+        ++contextRevision
+        accountChangeRevision += 1L
+        dropContext()
+    }
+
+    /** This tab holds the game (again): the current Player context binds afresh. */
+    fun reclaim() {
+        relinquished = false
+        if (started && mayBind()) bindCurrentContext()
     }
 
     fun dispose() {
@@ -300,7 +330,7 @@ internal class WebPlayerSessionController(
     }
 
     fun retryCurrentContext() {
-        if (started && !accountSelectionOpen) bindCurrentContext()
+        if (started && !accountSelectionOpen && mayBind()) bindCurrentContext()
     }
 
     internal fun requestCloudSynchronization(binding: WebCatalogProgressBinding.Ready) {
@@ -442,6 +472,10 @@ internal class WebPlayerSessionController(
 
     private fun suspendForAccountSelection() {
         accountSelectionOpen = true
+        dropContext()
+    }
+
+    private fun dropContext() {
         operation?.cancel()
         unifiedSaveAccess?.invalidateContext()
         contextRevisions = WebPlayerStateRevisions()

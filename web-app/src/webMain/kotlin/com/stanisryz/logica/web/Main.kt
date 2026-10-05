@@ -253,6 +253,29 @@ fun main() {
             economyCoordinator,
         )
 
+    // One active game tab per origin: another tab's «Play here» drops this tab's Player context
+    // (and its pending cloud write) and every transient attempt, without a penalty, before the
+    // lock is released. Standalone development uses the same lock.
+    val tabLock =
+        WebTabLock(
+            platform = BrowserWebTabLockPlatform(),
+            onRelinquish = {
+                controller.setGameplayActive(false)
+                stickyBannerController.applyVisibility(false)
+                playerSession.relinquish()
+                balanceController.showDifficultySelector()
+                crownsController.showDifficultySelector()
+                wordController.showDifficultySelector()
+                sudokuController.showDifficultySelector()
+                game2048Controller.showDifficultySelector()
+                nonogramController.showDifficultySelector()
+                blockSudokuController.showDifficultySelector()
+            },
+            onReclaim = { playerSession.reclaim() },
+        )
+    playerSession.bindingAllowed = { tabLock.state.value.canPlay }
+    tabLock.start()
+
     ComposeViewport {
         WebApp(
             controller,
@@ -272,6 +295,7 @@ fun main() {
             leaderboard,
             interstitialController,
             stickyBannerController,
+            tabLock,
         )
     }
     controller.start()

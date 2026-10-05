@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="web_loading">Логика загружается</string>
+    <string name="web_tab_elsewhere_title">Игра открыта в другой вкладке</string>
+    <string name="web_tab_elsewhere_body">Играть можно только в одной вкладке. Здесь игра продолжится с того же прогресса.</string>
+    <string name="web_tab_play_here">Играть здесь</string>
     <string name="web_fatal_title">Не удалось запустить Web-версию</string>
     <string name="web_settings">Настройки</string>
     <string name="web_settings_theme">Тема</string>

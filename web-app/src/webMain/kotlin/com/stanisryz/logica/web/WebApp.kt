@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -133,6 +134,9 @@ import com.stanisryz.logica.web.generated.resources.web_fatal_title
 import com.stanisryz.logica.web.generated.resources.web_loading
 import com.stanisryz.logica.web.generated.resources.web_score_final
 import com.stanisryz.logica.web.generated.resources.web_settings
+import com.stanisryz.logica.web.generated.resources.web_tab_elsewhere_body
+import com.stanisryz.logica.web.generated.resources.web_tab_elsewhere_title
+import com.stanisryz.logica.web.generated.resources.web_tab_play_here
 import com.stanisryz.logica.web.generated.resources.web_to_games
 import com.stanisryz.logica.web.generated.resources.web_to_profile
 import com.stanisryz.logica.web.generated.resources.web_word_answer
@@ -237,8 +241,10 @@ internal fun WebApp(
     leaderboard: WebLeaderboardController,
     interstitialController: WebInterstitialContinuationController,
     stickyBannerController: WebStickyBannerController,
+    tabLock: WebTabLock,
 ) {
     val lifecycleState by lifecycle.state.collectAsState()
+    val tabLockState by tabLock.state.collectAsState()
     val soundPlayer = remember(lifecycle) { WebGameSoundPlayer(lifecycle.state) }
     LaunchedEffect(soundPlayer, lifecycleState) { soundPlayer.onLifecycle(lifecycleState) }
 
@@ -283,6 +289,13 @@ internal fun WebApp(
             PortraitHostSurface {
                 when (val state = controller.state) {
                     WebBootstrapState.Loading -> LoadingContent()
+                    // Another tab runs the game: this one binds, loads, and writes nothing.
+                    is WebBootstrapState.Ready if !tabLockState.canPlay ->
+                        TabElsewhereContent(
+                            state = tabLockState,
+                            onPlayHere = tabLock::playHere,
+                            onRendered = controller::onInitialHostUiReady,
+                        )
                     is WebBootstrapState.Ready ->
                         ReadyContent(
                             mode = state.mode,
@@ -358,6 +371,42 @@ internal fun WideReadableColumn(
     }
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Box(Modifier.widthIn(max = maxWidth).fillMaxHeight()) { content() }
+    }
+}
+
+/** «The game is open in another tab», with the way to move it here. */
+@Composable
+private fun TabElsewhereContent(
+    state: WebTabLockState,
+    onPlayHere: () -> Unit,
+    onRendered: () -> Unit,
+) {
+    if (state == WebTabLockState.CHECKING) {
+        LoadingContent()
+        return
+    }
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        onRendered()
+    }
+    CenteredColumn {
+        Text(
+            text = stringResource(WebRes.string.web_tab_elsewhere_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = stringResource(WebRes.string.web_tab_elsewhere_body),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(24.dp))
+        Button(onClick = onPlayHere, enabled = state == WebTabLockState.ELSEWHERE) {
+            Text(stringResource(WebRes.string.web_tab_play_here))
+        }
     }
 }
 

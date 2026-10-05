@@ -1,6 +1,8 @@
 package com.stanisryz.logica.web
 
 import com.stanisryz.logica.platform.PaymentPurchaseSnapshot
+import com.stanisryz.logica.platform.PaymentResult
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -14,7 +16,7 @@ class WebNoAdsOwnershipTest {
     private val forgedLedger = WebPaymentsSnapshot(fulfilledTokens = mapOf("forged-token" to WebPaidProduct.NO_ADS.yandexProductId))
 
     private fun coordinator(
-        scope: kotlinx.coroutines.CoroutineScope,
+        scope: CoroutineScope,
         provider: ScriptedPaymentsProvider,
         payments: WebPlayerPaymentsRepository,
         context: () -> WebPlayerContextToken?,
@@ -77,7 +79,7 @@ class WebNoAdsOwnershipTest {
 
             // Bought in this session: confirmed by the purchase itself before the next getPurchases().
             provider.purchaseResult =
-                com.stanisryz.logica.platform.PaymentResult.Completed(
+                PaymentResult.Completed(
                     PaymentPurchaseSnapshot("real-token", WebPaidProduct.NO_ADS.yandexProductId),
                 )
             coordinator.purchase(WebPaidProduct.NO_ADS)

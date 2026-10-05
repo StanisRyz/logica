@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="web_loading">Logica is loading</string>
+    <string name="web_tab_elsewhere_title">The game is open in another tab</string>
+    <string name="web_tab_elsewhere_body">You can play in one tab at a time. Your progress carries over here.</string>
+    <string name="web_tab_play_here">Play here</string>
     <string name="web_fatal_title">The web version could not start</string>
     <string name="web_settings">Settings</string>
     <string name="web_settings_theme">Theme</string>
