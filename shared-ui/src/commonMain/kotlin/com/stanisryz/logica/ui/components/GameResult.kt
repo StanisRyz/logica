@@ -317,7 +317,8 @@ private fun ResultStars(stars: Int) {
             Icon(
                 imageVector = if (earned) Icons.Rounded.Star else Icons.Rounded.StarOutline,
                 contentDescription = null,
-                tint = if (earned) palette.star else colors.outlineVariant,
+                // Outlined, not only paler, and in the 3:1 outline role.
+                tint = if (earned) palette.star else colors.outline,
                 modifier =
                     Modifier
                         // The middle star stands a little taller, like a podium.

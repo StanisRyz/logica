@@ -62,7 +62,8 @@ private val DarkGame2048Tiles =
         Color(0xFFA5452F) to Color(0xFFFFFFFF),
         Color(0xFFB23A2D) to Color(0xFFFFFFFF),
         Color(0xFF9E8027) to Color(0xFFFFF6DC),
-        Color(0xFFB38E22) to Color(0xFFFFF8E1),
+        // Dark ink like the light ramp's gold tiles: light text on this gold stayed under 3:1.
+        Color(0xFFB38E22) to Color(0xFF3A2A02),
         Color(0xFF4F7D46) to Color(0xFFF0FFE8),
         Color(0xFF2F7A62) to Color(0xFFFFFFFF),
         Color(0xFF3D9277) to Color(0xFFFFFFFF),
@@ -77,6 +78,8 @@ internal val LightLogicaPalette =
         onSuccessContainer = Color(0xFF1B3824),
         crownsRegions = CrownsRegions,
         onCrownsRegion = Color(0xFF191C1E),
+        // A deeper gold than the dark theme's, so a star keeps 3:1 on the light result card.
+        star = Color(0xFFA8720E),
     )
 
 internal val DarkLogicaPalette =

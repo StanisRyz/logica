@@ -20,7 +20,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.rubik_regular
 import com.stanisryz.logica.shared.ui.generated.resources.rubik_semibold
 import org.jetbrains.compose.resources.Font
 
-private val LightColorScheme =
+internal val LightColorScheme =
     lightColorScheme(
         primary = Color(0xFF315B4B),
         onPrimary = Color(0xFFFFFFFF),
@@ -59,7 +59,7 @@ private val LightColorScheme =
         scrim = Color(0xFF000000),
     )
 
-private val DarkColorScheme =
+internal val DarkColorScheme =
     darkColorScheme(
         primary = Color(0xFFB7D8C4),
         onPrimary = Color(0xFF18372B),

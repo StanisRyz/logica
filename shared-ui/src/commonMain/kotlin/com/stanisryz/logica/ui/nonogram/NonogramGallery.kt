@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -338,11 +339,12 @@ private fun StarMarks(
     // A level with no stars on record (solved before stars existed) shows none rather than zero.
     if (stars <= 0) return
     val gold = LocalLogicaPalette.current.star
-    val empty = MaterialTheme.colorScheme.outlineVariant
+    val empty = MaterialTheme.colorScheme.outline
     Row {
         repeat(PuzzleStars.MAX_STARS) { index ->
+            // A missing star is outlined, not only paler.
             Icon(
-                Icons.Rounded.Star,
+                if (index < stars) Icons.Rounded.Star else Icons.Rounded.StarOutline,
                 contentDescription = null,
                 tint = if (index < stars) gold else empty,
                 modifier = Modifier.size(size),

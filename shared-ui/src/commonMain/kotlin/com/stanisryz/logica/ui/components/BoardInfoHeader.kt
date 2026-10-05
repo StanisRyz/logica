@@ -190,7 +190,7 @@ private fun MistakeMarks(
                         .size(MISTAKE_MARK_SIZE)
                         .clip(CircleShape)
                         .background(if (used) colors.error else colors.surfaceContainerHigh)
-                        .border(MISTAKE_MARK_BORDER, if (used) colors.error else colors.outlineVariant, CircleShape),
+                        .border(MISTAKE_MARK_BORDER, if (used) colors.error else colors.outline, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 if (used) {

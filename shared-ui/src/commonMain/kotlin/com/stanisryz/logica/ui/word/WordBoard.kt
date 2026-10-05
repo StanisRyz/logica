@@ -244,7 +244,8 @@ private fun WordBoardCell(
         when {
             isSelected -> colors.primary
             cell.feedback == WordLetterFeedback.PRESENT -> colors.tertiary
-            else -> colors.outlineVariant
+            // The border is all an empty tile has, so it takes the 3:1 outline role.
+            else -> colors.outline
         }
     val shape =
         if (cell.feedback == WordLetterFeedback.CORRECT) {

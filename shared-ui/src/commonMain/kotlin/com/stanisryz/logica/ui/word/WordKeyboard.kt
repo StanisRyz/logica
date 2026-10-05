@@ -141,14 +141,14 @@ private fun LetterKey(
         when (feedback) {
             WordLetterFeedback.CORRECT -> colors.primary
             WordLetterFeedback.PRESENT -> colors.tertiaryContainer
-            WordLetterFeedback.ABSENT -> colors.surfaceVariant.copy(alpha = ABSENT_ALPHA)
+            WordLetterFeedback.ABSENT -> colors.surfaceVariant.copy(alpha = ABSENT_KEY_CONTAINER_ALPHA)
             null -> colors.surfaceVariant
         }
     val targetContent =
         when (feedback) {
             WordLetterFeedback.CORRECT -> colors.onPrimary
             WordLetterFeedback.PRESENT -> colors.onTertiaryContainer
-            WordLetterFeedback.ABSENT -> colors.onSurfaceVariant.copy(alpha = ABSENT_ALPHA)
+            WordLetterFeedback.ABSENT -> colors.onSurfaceVariant.copy(alpha = ABSENT_KEY_CONTENT_ALPHA)
             null -> colors.onSurfaceVariant
         }
     val container by
@@ -249,5 +249,8 @@ private const val ACTION_KEY_GAPS = 0.5f
 private const val KEY_FONT_RATIO = 0.32f
 private val MIN_KEY_FONT = 12.dp
 private val MAX_KEY_FONT = 16.dp
-private const val ABSENT_ALPHA = 0.35f
+
+/** An absent key fades its key, not its letter: the letter keeps 4.5:1 (see `LogicaContrast`). */
+internal const val ABSENT_KEY_CONTAINER_ALPHA = 0.35f
+internal const val ABSENT_KEY_CONTENT_ALPHA = 0.8f
 private const val KEY_FEEDBACK_MILLIS = 160
