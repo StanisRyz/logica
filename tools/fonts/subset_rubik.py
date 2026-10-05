@@ -4,8 +4,9 @@
 The full Google Fonts files stay in tools/fonts/source/; this writes the subsets the app ships to
 shared-ui/src/commonMain/composeResources/font/. Rerun it after adding text instead of editing the
 outputs. The character set is every character of every strings.xml (all modules, all languages),
-every non-ASCII character in the Kotlin sources, and base ranges: Basic Latin, Latin-1, Latin
-Extended-A (Turkish), Cyrillic, digits, and common punctuation. Layout features and hinting stay.
+every non-ASCII character in the Kotlin sources, every Latin and Cyrillic character the source font
+has (player names in the leaderboards come from outside and may use Kazakh, Uzbek, or other
+letters), and common punctuation. Layout features and hinting stay.
 
 Requires fontTools (pip install fonttools). Run from the repository root:
     python3 tools/fonts/subset_rubik.py
@@ -22,11 +23,16 @@ SOURCE = os.path.join(ROOT, "tools", "fonts", "source")
 OUTPUT = os.path.join(ROOT, "shared-ui", "src", "commonMain", "composeResources", "font")
 WEIGHTS = ["regular", "medium", "semibold", "bold"]
 
+# Every character the source font has in these blocks is kept.
+SCRIPT_RANGES = [
+    (0x0000, 0x024F),  # Basic Latin, Latin-1, Latin Extended-A (Turkish) and -B
+    (0x1E00, 0x1EFF),  # Latin Extended Additional
+    (0x0400, 0x052F),  # Cyrillic and Cyrillic Supplement: ё, and Kazakh, Uzbek, Tatar, Bashkir letters
+]
+
 BASE_RANGES = [
     (0x0020, 0x007E),  # Basic Latin
     (0x00A0, 0x00FF),  # Latin-1 Supplement
-    (0x0100, 0x017F),  # Latin Extended-A: ğ ı İ ş and the rest
-    (0x0400, 0x045F),  # Cyrillic, ё included
     (0x2010, 0x2027),  # dashes, quotes, bullet, ellipsis
     (0x2030, 0x203A),  # per mille, primes, angle quotes
     (0x20BD, 0x20BD),  # rouble sign
@@ -63,8 +69,17 @@ def characters_in_kotlin():
     return characters
 
 
+def script_codepoints_in_source():
+    codepoints = set()
+    for weight in WEIGHTS:
+        font = subset.load_font(os.path.join(SOURCE, f"rubik_{weight}.ttf"), subset.Options())
+        codepoints.update(code for code in font.getBestCmap() if any(low <= code <= high for low, high in SCRIPT_RANGES))
+    return codepoints
+
+
 def wanted_codepoints():
     codepoints = {code for low, high in BASE_RANGES for code in range(low, high + 1)}
+    codepoints.update(script_codepoints_in_source())
     codepoints.update(ord(c) for c in characters_in_strings() | characters_in_kotlin() if c.isprintable() and not c.isspace())
     return sorted(codepoints)
 
