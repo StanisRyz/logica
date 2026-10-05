@@ -37,7 +37,6 @@
     <string name="searching_hint">Looking for a hint…</string>
     <string name="puzzle_solved">Puzzle solved</string>
     <string name="puzzle_failed">Attempt failed</string>
-    <string name="puzzle_failed_body">%1$d mistakes made. You can start this same puzzle again.</string>
     <string name="retry_puzzle">Play again</string>
     <string name="hints_used">Hints used: %1$d</string>
     <string name="new_puzzle">New puzzle</string>
@@ -151,7 +150,6 @@
     <string name="economy_gems_action_description">Gems: %1$d. Open the gem store.</string>
     <string name="economy_get_gems">Get gems</string>
     <string name="gem_store_title">Gem store</string>
-    <string name="gem_store_balance">You have %1$d gems.</string>
     <plurals name="gem_store_pack_gems">
         <item quantity="one">%1$d gem</item>
         <item quantity="other">%1$d gems</item>

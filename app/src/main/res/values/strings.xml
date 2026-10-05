@@ -39,7 +39,6 @@
     <string name="searching_hint">Ищем подсказку…</string>
     <string name="puzzle_solved">Головоломка решена</string>
     <string name="puzzle_failed">Попытка не пройдена</string>
-    <string name="puzzle_failed_body">Допущено %1$d ошибки. Можно начать эту же головоломку заново.</string>
     <string name="retry_puzzle">Пройти заново</string>
     <string name="hints_used">Использовано подсказок: %1$d</string>
     <string name="new_puzzle">Новая головоломка</string>
@@ -166,7 +165,6 @@
     <string name="economy_gems_action_description">Кристаллы: %1$d. Открыть магазин кристаллов.</string>
     <string name="economy_get_gems">Пополнить кристаллы</string>
     <string name="gem_store_title">Магазин кристаллов</string>
-    <string name="gem_store_balance">Сейчас у вас %1$d кристаллов.</string>
     <plurals name="gem_store_pack_gems">
         <item quantity="one">%1$d кристалл</item>
         <item quantity="few">%1$d кристалла</item>

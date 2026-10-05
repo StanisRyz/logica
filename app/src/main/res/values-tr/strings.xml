@@ -37,7 +37,6 @@
     <string name="searching_hint">İpucu aranıyor…</string>
     <string name="puzzle_solved">Bulmaca çözüldü</string>
     <string name="puzzle_failed">Deneme başarısız</string>
-    <string name="puzzle_failed_body">%1$d hata yapıldı. Aynı bulmacaya yeniden başlayabilirsin.</string>
     <string name="retry_puzzle">Yeniden oyna</string>
     <string name="hints_used">Kullanılan ipucu: %1$d</string>
     <string name="new_puzzle">Yeni bulmaca</string>
@@ -151,7 +150,6 @@
     <string name="economy_gems_action_description">Elmas: %1$d. Elmas mağazasını aç.</string>
     <string name="economy_get_gems">Elmas al</string>
     <string name="gem_store_title">Elmas mağazası</string>
-    <string name="gem_store_balance">%1$d elmasın var.</string>
     <plurals name="gem_store_pack_gems">
         <item quantity="one">%1$d elmas</item>
         <item quantity="other">%1$d elmas</item>
