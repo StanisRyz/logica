@@ -120,8 +120,8 @@ internal class WebBootstrapController(
             lifecycleListener = lifecycle,
             onReady = {
                 initTimeout?.cancel()
-                // Economy, rewards, and the Daily date run on the server-corrected clock.
-                clock.synchronize(bridge.serverTimeMs())
+                // Economy, rewards, and the Daily date read the server time from now on.
+                clock.attachServerTime(bridge::serverTimeMs)
                 // Read the real platform language once the SDK is initialized; unsupported or
                 // unexpected values resolve safely to the application default.
                 hostLanguage = resolveWebAppLanguage(bridge.platformLanguage())
