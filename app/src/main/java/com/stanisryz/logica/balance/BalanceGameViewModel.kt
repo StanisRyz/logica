@@ -208,6 +208,8 @@ internal class BalanceGameViewModel(
                         } else {
                             shown.copy(isHintLoading = false, hintsExhausted = true)
                         }
+                    // A hint that opens the last cell finishes the attempt like a move does.
+                    if (paid && hintedGame.status.isTerminal) finishOrOffer(hintedGame)
                 }
             }
     }
