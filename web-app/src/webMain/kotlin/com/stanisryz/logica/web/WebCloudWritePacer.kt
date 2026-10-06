@@ -9,8 +9,8 @@ import kotlinx.coroutines.sync.withLock
 
 /**
  * Keeps Yandex `setData` within its limit (100 calls in 5 minutes per Player): at least
- * [minSpacingMs] between any two calls, whatever their key — the unified save, the legacy keys
- * before establishment, and every retry. A write waiting for its turn is merged with a newer write
+ * [minSpacingMs] between any two calls — the unified save (the only key written), its retries,
+ * and `flushNow`. A write waiting for its turn is merged with a newer write
  * of the same key, so the newer payload goes out once and both callers get its result; nothing is
  * lost, only fewer calls are made. A write whose Player context changed while it waited
  * ([contextEpoch] differs from the one it was queued under) is dropped as failed, so a paced write
