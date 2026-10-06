@@ -23,6 +23,9 @@ import com.stanisryz.logica.puzzle.core.nonogram.NonogramPuzzle
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetVersion
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDifficulty
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuSelectorV1
+import com.stanisryz.logica.puzzle.core.word.WordGeneratorByLength
+import com.stanisryz.logica.puzzle.core.word.WordPossibleAnswers
+import com.stanisryz.logica.puzzle.core.word.WordRules
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -30,10 +33,46 @@ import kotlin.test.assertEquals
  * Golden outputs of the shipped generators. Frozen level packs and Daily entries store only seeds,
  * so Android (JVM) and Web (JS/Wasm) must build the very same puzzle from a seed. These run on every
  * target against references recorded from the JVM: a mismatch on one target is a cross-platform
- * determinism bug, never a reason to re-record. Word is left out: its lexicon is installed by the Web
- * host at runtime and is not readable from `commonTest` on JS/Wasm.
+ * determinism bug, never a reason to re-record. Word's lexicons are installed by the Web host at runtime
+ * and are not readable from `commonTest` on JS/Wasm, so Word V3/V4 selection runs here over synthetic
+ * pools of the real pool size, and `WordLanguageLexiconTest` pins real answers on the JVM.
  */
 class GoldenDeterminismTest {
+    @Test
+    fun wordV3AndV4SelectFromTheirPoolsTheSameWayOnEveryTarget() {
+        val english = WordGeneratorByLength.v3(SyntheticWordPool("abcdefghijklmnopqrstuvwxyz"))
+        val turkish = WordGeneratorByLength.v4(SyntheticWordPool("abcçdefgğhıijklmnoöprsştuüvyz"))
+        val answers =
+            listOf(english, turkish).flatMap { generator ->
+                listOf(Difficulty.EASY, Difficulty.EXPERT).flatMap { difficulty ->
+                    listOf(1L, 2L, 3L, 2026L, 123_456_789L, -7L).map { seed -> generator.generate(PuzzleSeed(seed), difficulty).answer }
+                }
+            }
+        assertEquals(WORD_V3_V4_ANSWERS, answers.joinToString(" "))
+    }
+
+    /** Pool entry i is the number i written in the alphabet's letters, padded to the difficulty's length. */
+    private class SyntheticWordPool(
+        private val alphabet: String,
+    ) : WordPossibleAnswers {
+        override val size: Int get() = POOL_SIZE * Difficulty.entries.size
+
+        override fun answers(difficulty: Difficulty): List<String> =
+            List(POOL_SIZE) { index ->
+                var rest = index
+                buildString {
+                    repeat(WordRules.wordLengthForV2(difficulty)) {
+                        append(alphabet[rest % alphabet.length])
+                        rest /= alphabet.length
+                    }
+                }
+            }
+
+        override fun difficultyOf(normalizedWord: String): Difficulty? = null
+
+        override fun all(): List<String> = Difficulty.entries.flatMap(::answers)
+    }
+
     @Test
     fun balanceV1GivensAndSolution() {
         val puzzle = BalanceGeneratorV1().generate(PuzzleSeed(7L), Difficulty.MEDIUM)
@@ -148,3 +187,7 @@ class GoldenDeterminismTest {
             )
     }
 }
+
+private const val POOL_SIZE = 500
+private const val WORD_V3_V4_ANSWERS =
+    "yiaa dcaa abaa zaaa graa moaa yiaaaaa dcaaaaa abaaaaa zaaaaaa graaaaa moaaaaa ağaa vbaa vaaa üaaa kmaa zjaa ağaaaaa vbaaaaa vaaaaaa üaaaaaa kmaaaaa zjaaaaa"

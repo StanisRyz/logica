@@ -4,7 +4,7 @@ package com.stanisryz.logica.puzzle.core.word
  * The single Russian normalization contract shared by lexicon preparation, lexicon lookup,
  * gameplay submission, and tests. Changing these rules changes the frozen lexicon.
  */
-object RussianWordNormalizer {
+object RussianWordNormalizer : WordNormalizer {
     /** Supported normalized alphabet: 32 Cyrillic letters, because `ё` always folds into `е`. */
     const val ALPHABET = "абвгдежзийклмнопрстуфхцчшщъыьэюя"
 
@@ -12,18 +12,20 @@ object RussianWordNormalizer {
     private const val YO_LOWER = 'ё'
     private const val YE_LOWER = 'е'
 
+    override val alphabet: String = ALPHABET
+
     private val supportedLetters = ALPHABET.toSet()
 
-    fun isSupportedLetter(character: Char): Boolean = normalizeLetter(character) in supportedLetters
+    override fun isSupportedLetter(character: Char): Boolean = normalizeLetter(character) in supportedLetters
 
     /** Lower-cases, folds `Ё` into `Е`, and leaves unsupported characters untouched for rejection. */
-    fun normalizeLetter(character: Char): Char =
+    override fun normalizeLetter(character: Char): Char =
         when (character) {
             YO_UPPER, YO_LOWER -> YE_LOWER
             else -> character.lowercaseChar()
         }
 
-    fun normalize(
+    override fun normalize(
         raw: String,
         expectedLength: Int,
     ): WordNormalization {
@@ -44,12 +46,12 @@ object RussianWordNormalizer {
         return WordNormalization.Normalized(normalized.toString())
     }
 
-    fun normalizeOrNull(
+    override fun normalizeOrNull(
         raw: String,
         expectedLength: Int,
     ): String? = (normalize(raw, expectedLength) as? WordNormalization.Normalized)?.word
 
-    fun isNormalized(
+    override fun isNormalized(
         word: String,
         expectedLength: Int,
     ): Boolean = normalizeOrNull(word, expectedLength) == word

@@ -26,12 +26,13 @@ enum class WordGameStatus {
 class WordAttempt internal constructor(
     val word: String,
     letters: Iterable<WordLetterResult>,
+    language: WordLanguage = WordLanguage.RUSSIAN,
 ) {
     val letters: List<WordLetterResult> = letters.toList()
 
     init {
         require(WordRules.isSupportedLength(word.length)) { "Unsupported attempt word length." }
-        WordRules.requireNormalized(word, word.length)
+        WordRules.requireNormalized(word, word.length, language)
         require(this.letters.size == word.length) { "Feedback must cover every letter of the attempt." }
         require(this.letters.mapIndexed { index, result -> result.letter == word[index] }.all { it }) {
             "Feedback letters must match the attempted word."
@@ -53,10 +54,11 @@ class WordAttempt internal constructor(
  */
 class WordLetterKnowledge internal constructor(
     byLetter: Map<Char, WordLetterFeedback>,
+    private val language: WordLanguage = WordLanguage.RUSSIAN,
 ) {
     val byLetter: Map<Char, WordLetterFeedback> = byLetter.toMap()
 
-    operator fun get(letter: Char): WordLetterFeedback? = this.byLetter[RussianWordNormalizer.normalizeLetter(letter)]
+    operator fun get(letter: Char): WordLetterFeedback? = this.byLetter[language.normalizer.normalizeLetter(letter)]
 
     override fun equals(other: Any?): Boolean = this === other || other is WordLetterKnowledge && byLetter == other.byLetter
 
@@ -65,7 +67,10 @@ class WordLetterKnowledge internal constructor(
     override fun toString(): String = "WordLetterKnowledge(byLetter=$byLetter)"
 
     companion object {
-        fun from(attempts: Iterable<WordAttempt>): WordLetterKnowledge {
+        fun from(
+            attempts: Iterable<WordAttempt>,
+            language: WordLanguage = WordLanguage.RUSSIAN,
+        ): WordLetterKnowledge {
             val strongest = mutableMapOf<Char, WordLetterFeedback>()
             attempts.forEach { attempt ->
                 attempt.letters.forEach { (letter, feedback) ->
@@ -75,7 +80,7 @@ class WordLetterKnowledge internal constructor(
                     }
                 }
             }
-            return WordLetterKnowledge(strongest)
+            return WordLetterKnowledge(strongest, language)
         }
     }
 }
@@ -88,7 +93,8 @@ class WordGameState internal constructor(
     val status: WordGameStatus,
 ) {
     val attempts: List<WordAttempt> = attempts.toList()
-    val letterKnowledge: WordLetterKnowledge = WordLetterKnowledge.from(this.attempts)
+    val letterKnowledge: WordLetterKnowledge =
+        WordLetterKnowledge.from(this.attempts, WordRuntimeResolver.language(puzzleId.generatorVersion))
 
     init {
         require(WordRules.isSupportedLength(wordLength)) { "Unsupported Word length $wordLength." }

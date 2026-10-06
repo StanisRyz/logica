@@ -4,7 +4,9 @@ class WordGameEngine(
     private val puzzle: WordPuzzle,
     private val allowedGuesses: WordAllowedGuesses,
 ) {
-    fun start(): WordGameState = createState(currentDraft = WordDraft.empty(puzzle.wordLength), attempts = emptyList())
+    private val language = puzzle.language
+
+    fun start(): WordGameState = createState(currentDraft = WordDraft.empty(puzzle.wordLength, language), attempts = emptyList())
 
     /** Sets or replaces one position. Ignored only when the game is finished. */
     fun setLetter(
@@ -14,7 +16,9 @@ class WordGameEngine(
     ): WordGameState {
         requireCompatible(state)
         require(position in 0 until puzzle.wordLength) { "Word draft position $position is out of bounds." }
-        require(RussianWordNormalizer.isSupportedLetter(letter)) { "Letter '$letter' is not a supported Russian letter." }
+        require(language.normalizer.isSupportedLetter(letter)) {
+            "Letter '$letter' is not a supported ${language.name.lowercase()} letter."
+        }
         if (state.isFinished) return state
         return createState(
             currentDraft = state.currentDraft.withLetter(position, letter),
@@ -45,7 +49,7 @@ class WordGameEngine(
         }
 
         val guess =
-            when (val normalization = WordRules.normalize(completedDraft, puzzle.wordLength)) {
+            when (val normalization = language.normalizer.normalize(completedDraft, puzzle.wordLength)) {
                 is WordNormalization.Normalized -> normalization.word
                 is WordNormalization.Rejected ->
                     return WordSubmitResult.Rejected(
@@ -62,9 +66,9 @@ class WordGameEngine(
             return WordSubmitResult.Rejected(state, WordGuessRejection.ALREADY_GUESSED)
         }
 
-        val attempt = WordAttempt(guess, WordRules.evaluate(puzzle.answer, guess))
+        val attempt = WordAttempt(guess, WordRules.evaluate(puzzle.answer, guess, language), language)
         return WordSubmitResult.Accepted(
-            state = createState(currentDraft = WordDraft.empty(puzzle.wordLength), attempts = state.attempts + attempt),
+            state = createState(currentDraft = WordDraft.empty(puzzle.wordLength, language), attempts = state.attempts + attempt),
             attempt = attempt,
         )
     }
@@ -78,15 +82,15 @@ class WordGameEngine(
         require(submittedWords.size <= WordRules.MAXIMUM_ATTEMPTS) { "Too many submitted attempts." }
         val attempts =
             submittedWords.map { submitted ->
-                val guess = WordRules.requireNormalized(submitted, puzzle.wordLength)
+                val guess = WordRules.requireNormalized(submitted, puzzle.wordLength, language)
                 require(guess in allowedGuesses) { "Submitted word '$guess' is not an allowed guess." }
-                WordAttempt(guess, WordRules.evaluate(puzzle.answer, guess))
+                WordAttempt(guess, WordRules.evaluate(puzzle.answer, guess, language), language)
             }
         require(attempts.none { it.isCorrect } || attempts.last().isCorrect) {
             "A solved game cannot contain attempts after the correct guess."
         }
         val restoredDraft =
-            if (attempts.lastOrNull()?.isCorrect == true) WordDraft.empty(puzzle.wordLength) else currentDraft
+            if (attempts.lastOrNull()?.isCorrect == true) WordDraft.empty(puzzle.wordLength, language) else currentDraft
         return createState(currentDraft = restoredDraft, attempts = attempts)
     }
 

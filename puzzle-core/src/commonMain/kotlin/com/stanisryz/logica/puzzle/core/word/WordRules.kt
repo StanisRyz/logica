@@ -2,7 +2,7 @@ package com.stanisryz.logica.puzzle.core.word
 
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 
-/** Shared Word rules. V1 always uses [V1_WORD_LENGTH]; V2 uses [wordLengthForV2]. */
+/** Shared Word rules. V1 always uses [V1_WORD_LENGTH]; V2, V3, and V4 use [wordLengthForV2]. */
 object WordRules {
     const val V1_WORD_LENGTH = 5
 
@@ -46,9 +46,10 @@ object WordRules {
     fun requireNormalized(
         word: String,
         expectedLength: Int,
+        language: WordLanguage = WordLanguage.RUSSIAN,
     ): String {
-        require(isNormalized(word, expectedLength)) {
-            "Word must be a normalized $expectedLength-letter Russian word."
+        require(language.normalizer.isNormalized(word, expectedLength)) {
+            "Word must be a normalized $expectedLength-letter ${language.name.lowercase()} word."
         }
         return word
     }
@@ -62,10 +63,11 @@ object WordRules {
     fun evaluate(
         answer: String,
         guess: String,
+        language: WordLanguage = WordLanguage.RUSSIAN,
     ): List<WordLetterResult> {
         require(isSupportedLength(answer.length)) { "Unsupported Word answer length ${answer.length}." }
-        requireNormalized(answer, answer.length)
-        requireNormalized(guess, answer.length)
+        requireNormalized(answer, answer.length, language)
+        requireNormalized(guess, answer.length, language)
 
         val feedback = MutableList(guess.length) { WordLetterFeedback.ABSENT }
         val unusedAnswerLetters = mutableMapOf<Char, Int>()

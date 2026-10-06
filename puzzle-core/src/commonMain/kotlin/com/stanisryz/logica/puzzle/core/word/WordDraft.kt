@@ -3,6 +3,8 @@ package com.stanisryz.logica.puzzle.core.word
 /** An immutable, independently editable letter position for the current unsubmitted attempt. */
 class WordDraft private constructor(
     positions: Iterable<Char?>,
+    /** The language whose normalized letters the positions hold. */
+    val language: WordLanguage,
 ) {
     val positions: List<Char?> = positions.toList()
     val wordLength: Int = this.positions.size
@@ -11,10 +13,10 @@ class WordDraft private constructor(
         require(WordRules.isSupportedLength(wordLength)) { "Unsupported Word draft length $wordLength." }
         require(
             this.positions.filterNotNull().all { letter ->
-                RussianWordNormalizer.isSupportedLetter(letter) &&
-                    RussianWordNormalizer.normalizeLetter(letter) == letter
+                language.normalizer.isSupportedLetter(letter) &&
+                    language.normalizer.normalizeLetter(letter) == letter
             },
-        ) { "Word draft positions must contain normalized Russian letters or be empty." }
+        ) { "Word draft positions must contain normalized ${language.name.lowercase()} letters or be empty." }
     }
 
     operator fun get(index: Int): Char? = positions[index]
@@ -30,17 +32,17 @@ class WordDraft private constructor(
         letter: Char,
     ): WordDraft {
         require(index in positions.indices) { "Word draft position $index is out of bounds." }
-        require(RussianWordNormalizer.isSupportedLetter(letter)) {
-            "Letter '$letter' is not a supported Russian letter."
+        require(language.normalizer.isSupportedLetter(letter)) {
+            "Letter '$letter' is not a supported ${language.name.lowercase()} letter."
         }
-        val normalized = RussianWordNormalizer.normalizeLetter(letter)
-        return WordDraft(positions.mapIndexed { position, current -> if (position == index) normalized else current })
+        val normalized = language.normalizer.normalizeLetter(letter)
+        return WordDraft(positions.mapIndexed { position, current -> if (position == index) normalized else current }, language)
     }
 
     internal fun withoutLetter(index: Int): WordDraft {
         require(index in positions.indices) { "Word draft position $index is out of bounds." }
         if (positions[index] == null) return this
-        return WordDraft(positions.mapIndexed { position, current -> if (position == index) null else current })
+        return WordDraft(positions.mapIndexed { position, current -> if (position == index) null else current }, language)
     }
 
     override fun equals(other: Any?): Boolean = this === other || other is WordDraft && positions == other.positions
@@ -50,16 +52,23 @@ class WordDraft private constructor(
     override fun toString(): String = "WordDraft(positions=$positions)"
 
     companion object {
-        fun empty(wordLength: Int): WordDraft = WordDraft(List(wordLength) { null })
+        fun empty(
+            wordLength: Int,
+            language: WordLanguage = WordLanguage.RUSSIAN,
+        ): WordDraft = WordDraft(List(wordLength) { null }, language)
 
         fun fromPrefix(
             prefix: String,
             wordLength: Int,
+            language: WordLanguage = WordLanguage.RUSSIAN,
         ): WordDraft {
             require(prefix.length <= wordLength) { "Word draft prefix is longer than the puzzle word." }
-            return fromPositions(prefix.toList() + List(wordLength - prefix.length) { null })
+            return fromPositions(prefix.toList() + List(wordLength - prefix.length) { null }, language)
         }
 
-        fun fromPositions(positions: Iterable<Char?>): WordDraft = WordDraft(positions)
+        fun fromPositions(
+            positions: Iterable<Char?>,
+            language: WordLanguage = WordLanguage.RUSSIAN,
+        ): WordDraft = WordDraft(positions, language)
     }
 }
