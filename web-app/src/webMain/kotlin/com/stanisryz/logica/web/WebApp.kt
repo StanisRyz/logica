@@ -166,11 +166,15 @@ private fun PortraitHostSurface(content: @Composable () -> Unit) {
         // wide for a phone layout, so text never wraps because the window became shorter.
         val wide = maxWidth >= WIDE_HOST_MIN_WIDTH && maxWidth > maxHeight * WIDE_HOST_ASPECT
         if (wide) {
-            Surface(
-                modifier = Modifier.widthIn(max = WIDE_HOST_MAX_WIDTH).fillMaxSize(),
-                color = MaterialTheme.colorScheme.surface,
-            ) {
-                CompositionLocalProvider(LocalWebWideLayout provides true) { content() }
+            // The sides take the screens' own colour, so the game reaches the window's edges
+            // (requirement 1.6.2.1) instead of sitting in a lighter frame.
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface), contentAlignment = Alignment.Center) {
+                Surface(
+                    modifier = Modifier.widthIn(max = WIDE_HOST_MAX_WIDTH).fillMaxSize(),
+                    color = MaterialTheme.colorScheme.surface,
+                ) {
+                    CompositionLocalProvider(LocalWebWideLayout provides true) { content() }
+                }
             }
             return@BoxWithConstraints
         }

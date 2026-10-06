@@ -121,7 +121,7 @@ internal class WebGameSoundPlayer(
 
     init {
         runCatching {
-            webAudioInstall { problem -> AppLog.warn(TAG, problem) }
+            webAudioInstall(onGesture = lifecycle::onPageInteraction) { problem -> AppLog.warn(TAG, problem) }
             webAudioSetSounds(GameSound.entries.joinToString("\n") { resolveSoundUrl(it) })
         }.onFailure { AppLog.warn(TAG, "Web Audio could not be installed", it) }
         lifecycle.onAudioConditionsChanged = ::refresh
@@ -166,9 +166,9 @@ private fun resolveSoundUrl(sound: GameSound): String =
 
 /**
  * Whether game sounds may play: the Sound setting is on and the host's audio conditions hold — the
- * host started, its tab visible, no Yandex pause, no fullscreen advertisement. Window focus is not
- * one of them: inside the Yandex page the focus can sit with the portal around the game while the
- * player plays, and Yandex asks for silence in the background and during ads, not without focus.
+ * host started, its tab visible, no Yandex pause, no fullscreen advertisement, and no window blur
+ * since the player's last focus, tap, or key press. A game that never had focus still sounds: inside
+ * the Yandex page `document.hasFocus()` starts false while the player plays.
  */
 internal fun webSoundAudible(
     soundEnabled: Boolean,
@@ -301,7 +301,10 @@ private fun settingsStorageSet(
  * listener is installed here, at startup: inside the gesture, while sound is allowed, it creates or
  * wakes the context and starts every load. Outside a gesture nothing creates a context.
  */
-private fun webAudioInstall(onProblem: (String) -> Unit) {
+private fun webAudioInstall(
+    onGesture: () -> Unit,
+    onProblem: (String) -> Unit,
+) {
     js(
         """
         (function () {
@@ -321,6 +324,8 @@ private fun webAudioInstall(onProblem: (String) -> Unit) {
           // Inside a tap or key press only: mobile Safari starts audio from nothing else, and a context
           // made earlier would stay suspended. Loads start here too, so the first move has its sound.
           var gesture = function () {
+            // The host hears of the tap first, so a blur ended by this very tap allows sound again now.
+            try { onGesture(); } catch (e) {}
             if (!a.allowed || !C) return;
             a.gestures++;
             if (!a.ctx) {

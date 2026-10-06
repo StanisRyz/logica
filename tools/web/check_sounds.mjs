@@ -3,9 +3,10 @@
 // Serves a built Web app from a nested folder (/games/logica/index.html, the way Yandex serves the
 // game), wraps the page's AudioContext before the app loads, plays 2048 through the UI, and checks:
 // sounds load from the nested path and start with decoded buffers, one sound per move, a hidden tab
-// suspends the context and plays nothing while a page without window focus keeps its sound, the
-// Sound setting silences everything, a sound waiting for its file plays only when the file is ready
-// within ~300 ms, and a tap does not wake the context while sound is not allowed.
+// suspends the context and plays nothing, a window blur silences it until the next tap while a page
+// that simply has no focus keeps its sound, the Sound setting silences everything, a sound waiting
+// for its file plays only when the file is ready within ~300 ms, and a tap does not wake the context
+// while sound is not allowed.
 //
 // YANDEX=1 runs it the way Yandex Games hosts the game instead: the page sits in an iframe of
 // another origin (a second local port), loads a stand-in `/sdk.js` (YaGames with game_api_pause /
@@ -13,8 +14,9 @@
 // Web Audio follows mobile Safari's rule — a context made outside a tap or key press stays
 // suspended and `resume()` outside one does nothing until a gesture has started it once. There it
 // checks that the context is created and started inside a gesture (never resumed outside one before
-// that), that the first moves sound, that a page without focus still plays, and that a Yandex pause,
-// a hidden tab, a fullscreen ad, and the Sound setting each silence it.
+// that), that the first moves sound, that a page without focus still plays while a blur silences it
+// until the next tap, and that a Yandex pause, a hidden tab, a fullscreen ad, and the Sound setting
+// each silence it.
 //
 // Run (the site folder holds index.html, the Wasm/JS bundle and its resources, e.g. the development
 // executable plus processed resources, skiko and @js-joda/core as ./js-joda.mjs via an import map):
@@ -238,18 +240,36 @@ if (YANDEX) {
   check('the first moves sound', audible(played).length >= 1, JSON.stringify(starts(played)));
   check('all 8 sounds decoded from the nested folder', ev.filter((e) => e.ev === 'decoded').length === 8);
 
-  // 3. The portal takes the focus: the game keeps its sound.
-  await page.focus('#portal-input');
-  await wait(300);
+  // 3. A page without window focus (none was ever given, no blur) keeps its sound.
   mark = (await log()).length;
-  const focused = await app().evaluate(() => {
+  const unfocused = await app().evaluate(() => {
+    document.hasFocus = () => false;
     const a = window.__logicaAudio;
     a.play(Object.keys(a.buffers)[0], 0.1, 300);
-    return document.hasFocus();
+    return a.allowed;
   });
   await wait(300);
   ev = await since(mark);
-  check('a page without window focus keeps its sound', !focused && audible(ev).length >= 1 && !ev.some((e) => e.ev === 'suspend'), JSON.stringify(ev));
+  check('a page without window focus keeps its sound', unfocused && audible(ev).length >= 1 && !ev.some((e) => e.ev === 'suspend'), JSON.stringify(ev));
+  await app().evaluate(() => { delete document.hasFocus; });
+
+  // 3b. The portal takes the focus (a blur event): silence until the next tap, whose first move sounds.
+  mark = (await log()).length;
+  await page.focus('#portal-input');
+  await wait(300);
+  const blurred = await app().evaluate(() => {
+    const a = window.__logicaAudio;
+    a.play(Object.keys(a.buffers)[0], 0.1, 300);
+    return { allowed: a.allowed, ctx: a.ctx.state, blockedBy: a.blockedBy };
+  });
+  ev = await since(mark);
+  check('a window blur silences the game', !blurred.allowed && starts(ev).length === 0 && blurred.ctx === 'suspended', JSON.stringify(blurred));
+  await tap(195, 120, 300);
+  mark = (await log()).length;
+  // A key may hit a direction the board cannot move in, so the first sound of the next moves counts.
+  await moves();
+  ev = await since(mark);
+  check('the first move after a tap sounds again', starts(ev).length >= 1 && starts(ev)[0].audible, JSON.stringify(starts(ev).slice(0, 2)));
 
   // 4. game_api_pause silences the game until game_api_resume.
   await tap(195, 120, 400); // focus back into the game for the keys
@@ -337,8 +357,20 @@ const hiddenState = await app().evaluate(() => window.__logicaAudio.ctx.state);
 check('keys and taps do not resume a context the host has not allowed', !ev.some((e) => e.ev === 'resume') && hiddenState === 'suspended', `state=${hiddenState} ${JSON.stringify(ev.filter((e) => e.ev !== 'start'))}`);
 await app().evaluate(() => window.__setHidden(false));
 await tap(195, 120, 500);
-// The portal around the game can hold the window focus while the player plays (Yandex), so a
-// blurred page keeps its sound: a play request still starts a buffer and nothing suspends.
+// A page without window focus (none given, no blur event: the Yandex iframe at start) keeps its sound.
+mark = (await log()).length;
+const unfocusedAllowed = await app().evaluate(() => {
+  document.hasFocus = () => false;
+  const a = window.__logicaAudio;
+  a.play(Object.keys(a.buffers)[0], 0.1, 300);
+  return a.allowed;
+});
+await wait(200);
+ev = await since(mark);
+check('a page without window focus keeps its sound', unfocusedAllowed && starts(ev).length >= 1 && !ev.some((e) => e.ev === 'suspend'), JSON.stringify(ev));
+await app().evaluate(() => { delete document.hasFocus; });
+
+// A window blur silences it (requirement 1.3) until the next tap, and the first move after that sounds.
 mark = (await log()).length;
 await app().evaluate(() => window.dispatchEvent(new Event('blur')));
 await wait(300);
@@ -347,9 +379,14 @@ const blurredAllowed = await app().evaluate(() => {
   a.play(Object.keys(a.buffers)[0], 0.1, 300);
   return a.allowed;
 });
-await wait(200);
 ev = await since(mark);
-check('a page without window focus keeps its sound', blurredAllowed && starts(ev).length >= 1 && !ev.some((e) => e.ev === 'suspend'), JSON.stringify(ev));
+check('a window blur silences the game', !blurredAllowed && starts(ev).length === 0 && ev.some((e) => e.ev === 'suspend'), JSON.stringify(ev));
+await tap(195, 120, 300);
+mark = (await log()).length;
+// A key may hit a direction the board cannot move in, so the first sound of the next moves counts.
+await moves();
+ev = await since(mark);
+check('the first move after a tap sounds again', starts(ev).length >= 1 && starts(ev)[0].ctx === 'running', JSON.stringify(starts(ev).slice(0, 2)));
 
 // 3. A sound waiting for its file plays only if the file is ready within ~300 ms.
 await page.route('**/late-*.wav', async (route) => {

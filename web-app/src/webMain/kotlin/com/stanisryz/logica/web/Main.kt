@@ -51,22 +51,26 @@ fun main() {
                 dateProvider = BrowserLocalWebDailyDateProvider,
             )
         }
+    // One pacer for every cloud key: all setData calls together stay within Yandex's rate limit.
+    val cloudWritePacer = WebCloudWritePacer()
     val playerSession =
         if (bridge.isAvailable) {
             WebPlayerSessionController(
                 playerIdentityGateway = YandexPlayerIdentityGateway(bridge),
-                cloudSaveGateway = YandexCloudSaveGateway(bridge),
+                cloudSaveGateway = YandexCloudSaveGateway(bridge, pacer = cloudWritePacer),
                 progressRepositoryFactory = progressRepositoryFactory,
                 statisticsCloudSaveGateway =
                     YandexCloudSaveGateway(
                         bridge,
                         dataKey = YandexCloudSaveGateway.STATISTICS_STATE_KEY,
+                        pacer = cloudWritePacer,
                     ),
                 statisticsRepositoryFactory = statisticsRepositoryFactory,
                 dailyCloudSaveGateway =
                     YandexCloudSaveGateway(
                         bridge,
                         dataKey = YandexCloudSaveGateway.DAILY_STATE_KEY,
+                        pacer = cloudWritePacer,
                     ),
                 dailyRepositoryFactory = dailyRepositoryFactory,
                 playerContextEvents = bridge,
@@ -83,6 +87,7 @@ fun main() {
                 playerContextEvents = bridge,
             )
         }
+    cloudWritePacer.contextEpoch = playerSession::cloudWriteEpoch
     val progressCoordinator = WebCatalogProgressCoordinator(playerSession)
     // Daily quests count exactly the terminal attempts Statistics records, in the bound Player scope.
     val statisticsCoordinator =
@@ -178,7 +183,7 @@ fun main() {
     val unifiedSaveRepository =
         if (bridge.isAvailable) {
             YandexCloudSaveRepository(
-                YandexCloudSaveGateway(bridge, dataKey = UNIFIED_SAVE_STATE_KEY),
+                YandexCloudSaveGateway(bridge, dataKey = UNIFIED_SAVE_STATE_KEY, pacer = cloudWritePacer),
             )
         } else {
             LocalSaveRepository(

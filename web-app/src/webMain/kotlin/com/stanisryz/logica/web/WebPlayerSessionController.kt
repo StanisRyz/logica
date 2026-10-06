@@ -143,6 +143,12 @@ internal class WebPlayerSessionController(
     fun isSaveTokenCurrent(token: WebPlayerContextToken): Boolean = !accountSelectionOpen && token.value == contextRevision
 
     /**
+     * The Player context cloud writes belong to: a new value on every bind, and none while the
+     * account dialog is open or another tab holds the game, so a paced write queued before stays out.
+     */
+    fun cloudWriteEpoch(): Long = if (accountSelectionOpen || relinquished) NO_CLOUD_WRITE_EPOCH else contextRevision
+
+    /**
      * The immutable current Player-context token, captured by ad sessions at start and
      * re-validated before any reward grant; null while account selection suspends the context.
      */
@@ -1025,3 +1031,6 @@ internal class WebPlayerSessionController(
 private const val PLAYER_IDENTITY_TIMEOUT_MS = 10_000L
 
 private const val TAG = "WebPlayerSession"
+
+/** No cloud write belongs to this epoch: the account dialog is open or another tab holds the game. */
+private const val NO_CLOUD_WRITE_EPOCH = -1L

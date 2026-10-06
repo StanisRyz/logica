@@ -35,6 +35,7 @@ internal class WebHostLifecycle :
                 "Yandex pause".takeIf { yandexPaused },
                 "fullscreen ad".takeIf { fullscreenAdActive },
                 "hidden tab".takeUnless { browserVisible },
+                "window blur".takeIf { blurredSinceInteraction },
             ).joinToString()
 
     private var started = false
@@ -42,15 +43,31 @@ internal class WebHostLifecycle :
     private var fullscreenAdActive = false
     private var browserVisible = isBrowserDocumentVisible()
     private var browserFocused = browserDocumentHasFocus()
+
+    // Sound stops on a blur event (requirement 1.3), not because the game never had focus: inside
+    // the Yandex iframe `document.hasFocus()` starts false. A focus event or any tap or key press ends it.
+    private var blurredSinceInteraction = false
     private val visibilityCallback = { refreshBrowserState() }
-    private val focusCallback = { setBrowserFocused(true) }
-    private val blurCallback = { setBrowserFocused(false) }
+    private val focusCallback = { onPageInteraction() }
+    private val blurCallback = {
+        blurredSinceInteraction = true
+        setBrowserFocused(false)
+    }
 
     // Inside the Yandex iframe the page can be played while `document.hasFocus()` stays false (the
     // game canvas takes the pointer without moving focus), which would keep the host INACTIVE and
     // every sound silent. A tap or key press inside the page is proof the player is here; a later
     // blur or hidden document still makes it inactive.
-    private val interactionCallback = { setBrowserFocused(true) }
+    private val interactionCallback = { onPageInteraction() }
+
+    /**
+     * The player is here: a focus event, or a tap or key press in the page. The sound player calls it
+     * from its own gesture listener too, so sound is allowed again before that gesture wakes the audio.
+     */
+    fun onPageInteraction() {
+        blurredSinceInteraction = false
+        setBrowserFocused(true)
+    }
 
     override fun start() {
         if (started) return
@@ -113,6 +130,7 @@ internal class WebHostLifecycle :
                 yandexPaused = yandexPaused,
                 fullscreenAdActive = fullscreenAdActive,
                 browserVisible = browserVisible,
+                blurredSinceInteraction = blurredSinceInteraction,
             )
         if (audible != audioConditionsMet) {
             audioConditionsMet = audible
@@ -151,16 +169,17 @@ internal object WebEffectiveLifecycle {
     ): Boolean = started && !yandexPaused && !fullscreenAdActive && browserVisible && browserFocused
 
     /**
-     * The audio rule: the same conditions without window focus. Yandex asks for silence in the
-     * background, during ads, and while it pauses the game; inside its page the focus may stay with
-     * the portal around the game while the player plays, so focus must not silence the game.
+     * The audio rule: the same conditions, but a lost focus counts only as a blur event since the
+     * player's last focus, tap, or key press (requirement 1.3). A game that never had focus — inside
+     * the Yandex iframe `document.hasFocus()` starts false — still sounds.
      */
     fun isAudible(
         started: Boolean,
         yandexPaused: Boolean,
         fullscreenAdActive: Boolean,
         browserVisible: Boolean,
-    ): Boolean = started && !yandexPaused && !fullscreenAdActive && browserVisible
+        blurredSinceInteraction: Boolean,
+    ): Boolean = started && !yandexPaused && !fullscreenAdActive && browserVisible && !blurredSinceInteraction
 }
 
 private fun isBrowserDocumentVisible(): Boolean = js("globalThis.document.visibilityState !== 'hidden'")

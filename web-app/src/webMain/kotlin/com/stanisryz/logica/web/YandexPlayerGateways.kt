@@ -62,6 +62,8 @@ internal class YandexCloudSaveGateway(
     private val dataKey: String = CLOUD_STATE_KEY,
     private val readTimeoutMs: Long = READ_TIMEOUT_MS,
     private val writeTimeoutMs: Long = WRITE_TIMEOUT_MS,
+    /** Shared by every key, so all `setData` calls together stay within Yandex's rate limit. */
+    private val pacer: WebCloudWritePacer? = null,
 ) : CloudSaveGateway {
     init {
         require(dataKey.isNotBlank()) { "A Yandex Cloud Save data key is required." }
@@ -83,6 +85,10 @@ internal class YandexCloudSaveGateway(
         }
 
     override suspend fun write(payload: ByteArray): CloudSaveWriteResult =
+        pacer?.write(dataKey) { timedWrite(payload) } ?: timedWrite(payload)
+
+    // The timeout covers the SDK call only, never the wait for the pacer's turn.
+    private suspend fun timedWrite(payload: ByteArray): CloudSaveWriteResult =
         try {
             withTimeoutOrNull(writeTimeoutMs) {
                 bridge.writePlayerData(

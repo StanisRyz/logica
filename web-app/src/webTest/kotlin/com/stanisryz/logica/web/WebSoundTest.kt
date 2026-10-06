@@ -16,13 +16,15 @@ class WebSoundTest {
     }
 
     @Test
-    fun theAudioRuleIgnoresFocusButNotTheBackgroundAPauseOrAnAd() {
+    fun theAudioRuleStopsOnABlurButNotWithoutFocusFromTheStart() {
         assertTrue(audible())
         assertFalse(audible(started = false))
         assertFalse(audible(yandexPaused = true))
         assertFalse(audible(fullscreenAdActive = true))
         assertFalse(audible(browserVisible = false))
-        // GameplayAPI still needs focus; sound does not.
+        // A blur since the last focus, tap, or key press silences it (requirement 1.3)...
+        assertFalse(audible(blurredSinceInteraction = true))
+        // ...while a game that never had focus still sounds, where GameplayAPI still needs focus.
         assertFalse(
             WebEffectiveLifecycle.isActive(
                 started = true,
@@ -39,5 +41,6 @@ class WebSoundTest {
         yandexPaused: Boolean = false,
         fullscreenAdActive: Boolean = false,
         browserVisible: Boolean = true,
-    ) = WebEffectiveLifecycle.isAudible(started, yandexPaused, fullscreenAdActive, browserVisible)
+        blurredSinceInteraction: Boolean = false,
+    ) = WebEffectiveLifecycle.isAudible(started, yandexPaused, fullscreenAdActive, browserVisible, blurredSinceInteraction)
 }
