@@ -41,5 +41,8 @@
 11. `tasks/stage-10-5-nonogram-result-picture.md` (собранная картинка Nonogram на карточке результата)
 12. `tasks/stage-10-1a-word-lexicon-decisions.md` (решения владельца по словарям EN/TR)
 13. `tasks/stage-10-2a-nonogram-library-decisions.md` (решения владельца по картинкам и чередование)
+14. `tasks/stage-10-6-licenses-portrait-scroll.md` (экран «Лицензии», портрет на телефонах, прокрутка карточки результата)
+15. `tasks/stage-10-3-word-en-tr-in-game.md` (Word EN/TR в игре, заморозка бакетов V3/V4 — одобрено владельцем)
+16. `tasks/stage-10-4-nonogram-pack-v2.md` (Nonogram пак V2 с картинками и чередованием, заморозка — одобрено владельцем)
 
-После п. 13 допиши в `reports/queue-summary-report.md` строки 10.5, 10.1a, 10.2a и остановись: замораживать паки и встраивать Word EN/TR и картинки Nonogram в игру будем отдельными задачами после проверки архитектора.
+После п. 16 допиши в `reports/queue-summary-report.md` строки 10.6, 10.3, 10.4 и остановись.
