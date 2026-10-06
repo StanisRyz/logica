@@ -39,9 +39,11 @@ import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.PlayCircleOutline
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -246,7 +248,17 @@ private fun DailyContent(
                 }
                 // The past days the player can still play, under today's.
                 onOpenArchive?.let { open ->
-                    TextButton(onClick = open, modifier = Modifier.align(Alignment.End)) {
+                    // A rounded button in the middle, in the tone of the entry cards above it.
+                    FilledTonalButton(
+                        onClick = open,
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                        colors =
+                            ButtonDefaults.filledTonalButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceBright,
+                                contentColor = MaterialTheme.colorScheme.primary,
+                            ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = DAILY_CARD_BORDER_ALPHA)),
+                    ) {
                         Icon(Icons.Rounded.History, contentDescription = null, modifier = Modifier.size(DAILY_CHIP_ICON_SIZE))
                         Spacer(Modifier.width(DAILY_CHIP_GAP))
                         Text(stringResource(Res.string.daily_archive))
