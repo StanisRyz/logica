@@ -1,0 +1,34 @@
+{
+  "easy": {
+    "size": 10,
+    "pictures": 295,
+    "sweeps_min": 2,
+    "sweeps_median": 4,
+    "sweeps_max": 9,
+    "line_updates_median": 27
+  },
+  "medium": {
+    "size": 12,
+    "pictures": 264,
+    "sweeps_min": 2,
+    "sweeps_median": 4,
+    "sweeps_max": 9,
+    "line_updates_median": 35
+  },
+  "hard": {
+    "size": 15,
+    "pictures": 137,
+    "sweeps_min": 3,
+    "sweeps_median": 4,
+    "sweeps_max": 4,
+    "line_updates_median": 41
+  },
+  "expert": {
+    "size": 15,
+    "pictures": 138,
+    "sweeps_min": 4,
+    "sweeps_median": 5,
+    "sweeps_max": 12,
+    "line_updates_median": 56
+  }
+}
