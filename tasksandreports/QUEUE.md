@@ -51,5 +51,6 @@
 20. `tasks/stage-11-4-daily-archive.md` (архив Daily)
 21. `tasks/stage-11-5-weekly-leaderboard.md` (недельный турнир звёзд, только веб)
 22. `tasks/stage-11-6-yandex-final-audit.md` (финальная проверка под Яндекс Игры и тексты для консоли)
+23. `tasks/stage-11-4a-archive-polish.md` (доработка 11.4: подпись «К архиву» в верхней панели, турецкий заголовок)
 
-После п. 22 допиши в `reports/queue-summary-report.md` строки этапа 11 и остановись.
+После п. 23 допиши в `reports/queue-summary-report.md` строки этапа 11 и остановись.
