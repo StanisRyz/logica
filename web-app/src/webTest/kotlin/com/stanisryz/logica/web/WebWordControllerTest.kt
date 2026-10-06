@@ -150,7 +150,7 @@ class WebWordControllerTest {
             generator =
                 object : PuzzleGenerator<WordPuzzle> {
                     override val type = PuzzleType.WORD
-                    override val version = GeneratorVersion(2)
+                    override val version = GeneratorVersion(5)
 
                     override fun generate(
                         seed: PuzzleSeed,
@@ -229,9 +229,16 @@ class WebWordControllerTest {
             language = WordLanguage.ENGLISH,
         )
 
+    // Russian levels come from the `word_ru` bucket, frozen by Generator V5.
     private val fixedEasyLevels =
         object : CatalogLevelPack {
-            override fun resolve(levelId: CatalogLevelId): CatalogLevelPackResult<CatalogLevelDefinition> {
+            override fun resolve(levelId: CatalogLevelId): CatalogLevelPackResult<CatalogLevelDefinition> = error("The old V2 bucket")
+
+            override fun resolve(
+                levelId: CatalogLevelId,
+                variant: CatalogContentVariant?,
+            ): CatalogLevelPackResult<CatalogLevelDefinition> {
+                assertEquals("ru", variant?.key)
                 assertEquals(PuzzleType.WORD, levelId.puzzleType)
                 assertEquals(Difficulty.EASY, levelId.difficulty)
                 assertTrue(levelId.levelNumber.value == 7 || levelId.levelNumber.value == 8)
@@ -240,7 +247,7 @@ class WebWordControllerTest {
                     CatalogLevelDefinition(
                         levelId = levelId,
                         seed = PuzzleSeed(17),
-                        generatorVersion = GeneratorVersion(2),
+                        generatorVersion = GeneratorVersion(5),
                     ),
                 )
             }

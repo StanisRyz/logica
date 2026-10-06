@@ -12,6 +12,7 @@ import com.stanisryz.logica.economy.EconomyRewardedLife
 import com.stanisryz.logica.economy.HintOffer
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.economy.RecordingCompletionRepository
+import com.stanisryz.logica.puzzle.core.catalog.CatalogContentVariant
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelDefinition
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
@@ -94,7 +95,7 @@ class WordHintChargeTest {
         return viewModel
     }
 
-    /** Russian Word level 1 on Medium: Generator V2, like the frozen Russian bucket. */
+    /** Russian Word level 1 on Medium: Generator V5, like the frozen `word_ru` bucket. */
     private class WordLevel : CatalogLevelRepository {
         val level = CatalogLevelId(PuzzleType.WORD, Difficulty.MEDIUM, CatalogLevelNumber(1))
 
@@ -111,7 +112,12 @@ class WordHintChargeTest {
         ): CatalogLevelId = level
 
         override suspend fun resolve(levelId: CatalogLevelId): CatalogLevelDefinition =
-            CatalogLevelDefinition(levelId, PuzzleSeed(7L), GeneratorVersion(2))
+            CatalogLevelDefinition(levelId, PuzzleSeed(7L), GeneratorVersion(5))
+
+        override suspend fun resolve(
+            levelId: CatalogLevelId,
+            variant: CatalogContentVariant?,
+        ): CatalogLevelDefinition = resolve(levelId)
     }
 
     /** A wallet with [hints] in stock that spends them one by one. */

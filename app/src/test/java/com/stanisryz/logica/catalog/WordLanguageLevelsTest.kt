@@ -45,7 +45,7 @@ class WordLanguageLevelsTest {
                     GameAttemptFactory(BundledLevels, wordLanguage = { language }) { "attempt" }
                         .create(GameAttemptLaunch.Level(level3), PuzzleType.WORD)
                 }
-            assertEquals(GeneratorVersion(2), attempts.getValue(WordLanguage.RUSSIAN).generatorVersion)
+            assertEquals(GeneratorVersion(5), attempts.getValue(WordLanguage.RUSSIAN).generatorVersion)
             assertEquals(GeneratorVersion(3), attempts.getValue(WordLanguage.ENGLISH).generatorVersion)
             assertEquals(GeneratorVersion(4), attempts.getValue(WordLanguage.TURKISH).generatorVersion)
             attempts.forEach { (language, attempt) ->

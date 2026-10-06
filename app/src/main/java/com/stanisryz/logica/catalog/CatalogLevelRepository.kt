@@ -30,7 +30,7 @@ internal class AndroidCatalogLevelPackSource(
         difficulty: Difficulty,
     ): InputStream? = openAsset(CatalogLevelPackFormat.assetPath(packVersion, puzzleType, difficulty))
 
-    /** Word's language buckets (`levels/v1/word_en/`, `word_tr/`), bundled beside the Russian ones. */
+    /** Word's language buckets (`levels/v1/word_ru/`, `word_en/`, `word_tr/`), bundled beside the old Russian V2 ones. */
     override fun openVariant(
         packVersion: CatalogLevelPackVersion,
         puzzleType: PuzzleType,
@@ -83,7 +83,7 @@ internal interface CatalogLevelRepository {
     /** Resolves the frozen definition, or throws [CatalogLevelUnavailableException]. */
     suspend fun resolve(levelId: CatalogLevelId): CatalogLevelDefinition
 
-    /** The same level from a content variant's bucket (Word's English and Turkish levels). */
+    /** The same level from a content variant's bucket (Word's Russian, English, and Turkish levels). */
     suspend fun resolve(
         levelId: CatalogLevelId,
         variant: CatalogContentVariant?,

@@ -96,6 +96,8 @@ tasks.register<Zip>("packageYandexDistribution") {
             "word/v2/answers.txt",
             "word/v3/answers.txt",
             "word/v4/answers.txt",
+            "word/v5/answers.txt",
+            "levels/v1/word_ru/easy.lvp",
             "levels/v1/word_en/easy.lvp",
             "levels/v1/word_tr/easy.lvp",
             "levels/v2/checksums.sha256",
