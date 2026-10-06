@@ -38,5 +38,8 @@
 8. `tasks/stage-08-1a-font-subset-coverage.md` (доработка 8.1: шрифт потерял казахские и узбекские буквы)
 9. `tasks/stage-10-1-word-en-tr-lexicons.md` (этап 10: словари Word EN/TR, без интерфейса и без заморозки)
 10. `tasks/stage-10-2-nonogram-pictures-library.md` (этап 10: библиотека картинок Nonogram, превью и проект перехода, без изменений в игре)
+11. `tasks/stage-10-5-nonogram-result-picture.md` (собранная картинка Nonogram на карточке результата)
+12. `tasks/stage-10-1a-word-lexicon-decisions.md` (решения владельца по словарям EN/TR)
+13. `tasks/stage-10-2a-nonogram-library-decisions.md` (решения владельца по картинкам и чередование)
 
-После п. 10 допиши в `reports/queue-summary-report.md` раздел «Этап 10» и остановись: дальше нужно решение владельца по образцам.
+После п. 13 допиши в `reports/queue-summary-report.md` строки 10.5, 10.1a, 10.2a и остановись: замораживать паки и встраивать Word EN/TR и картинки Nonogram в игру будем отдельными задачами после проверки архитектора.
