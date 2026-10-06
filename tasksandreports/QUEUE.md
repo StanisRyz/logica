@@ -45,4 +45,11 @@
 15. `tasks/stage-10-3-word-en-tr-in-game.md` (Word EN/TR в игре, заморозка бакетов V3/V4 — одобрено владельцем)
 16. `tasks/stage-10-4-nonogram-pack-v2.md` (Nonogram пак V2 с картинками и чередованием, заморозка — одобрено владельцем)
 
-После п. 16 допиши в `reports/queue-summary-report.md` строки 10.6, 10.3, 10.4 и остановись.
+17. `tasks/stage-11-1-yandex-prelaunch-fixes.md` (этап 11: название «Головоломки», «Лицензии» без ссылок на вебе, проверки требований Яндекса)
+18. `tasks/stage-11-2-word-hint.md` (подсказка в Word)
+19. `tasks/stage-11-3-streak-save.md` (сохранение серии Daily)
+20. `tasks/stage-11-4-daily-archive.md` (архив Daily)
+21. `tasks/stage-11-5-weekly-leaderboard.md` (недельный турнир звёзд, только веб)
+22. `tasks/stage-11-6-yandex-final-audit.md` (финальная проверка под Яндекс Игры и тексты для консоли)
+
+После п. 22 допиши в `reports/queue-summary-report.md` строки этапа 11 и остановись.
