@@ -12,9 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -31,6 +29,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -174,6 +173,10 @@ fun DailyArchiveDayContent(
                 .padding(horizontal = LogicaSpacing.screenHorizontal, vertical = LogicaSpacing.screenVertical),
         verticalArrangement = Arrangement.spacedBy(LogicaSpacing.section),
     ) {
+        // A locked day offers its unlock first, above the list of its games.
+        if (!playable) {
+            DailyArchiveUnlockCard(unlockPrice, gems, adState, onUnlockWithGems, onWatchAd)
+        }
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.large,
@@ -195,21 +198,11 @@ fun DailyArchiveDayContent(
                         color = colors.primary,
                     )
                 }
-                val rowState = rememberLazyListState()
-                LazyRow(
-                    state = rowState,
-                    modifier = Modifier.mouseDragScroll(rowState),
-                    horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = LogicaSpacing.text),
-                ) {
-                    items(entries, key = { it.puzzleType }) { entry ->
-                        DailyEntryCard(entry, gameplayAllowed && playable, onStart)
-                    }
+                // One game under another, so the day fills the screen instead of one short row.
+                entries.forEach { entry ->
+                    key(entry.puzzleType) { DailyEntryCard(entry, gameplayAllowed && playable, onStart, asListRow = true) }
                 }
             }
-        }
-        if (!playable) {
-            DailyArchiveUnlockCard(unlockPrice, gems, adState, onUnlockWithGems, onWatchAd)
         }
     }
 }

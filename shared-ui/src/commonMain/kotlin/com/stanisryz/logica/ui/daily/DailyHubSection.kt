@@ -376,6 +376,7 @@ internal fun DailyEntryCard(
     entry: DailyHubEntry,
     gameplayAllowed: Boolean,
     onStart: (PuzzleType) -> Unit,
+    asListRow: Boolean = false,
 ) {
     // On Web the first read of a title and artwork the catalog below also shows can stay empty for
     // good (the card was blank until the tab was reopened); reading them again a moment later comes
@@ -406,9 +407,9 @@ internal fun DailyEntryCard(
         Card(
             modifier =
                 Modifier
-                    .width(DAILY_CARD_WIDTH)
-                    .heightIn(min = DAILY_CARD_MIN_HEIGHT)
-                    .animateContentSize()
+                    .then(
+                        if (asListRow) Modifier.fillMaxWidth() else Modifier.width(DAILY_CARD_WIDTH).heightIn(min = DAILY_CARD_MIN_HEIGHT),
+                    ).animateContentSize()
                     // The press and hover highlight follows the card's rounded shape.
                     .clip(CardDefaults.shape)
                     .then(
@@ -434,24 +435,39 @@ internal fun DailyEntryCard(
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = DAILY_CARD_BORDER_ALPHA)),
             elevation = CardDefaults.cardElevation(defaultElevation = DAILY_ENTRY_ELEVATION),
         ) {
-            Column(
-                modifier = Modifier.padding(LogicaSpacing.cardContent).fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Image(
-                    bitmap = imageResource(entry.puzzleType.catalogArtworkResource()),
-                    contentDescription = null,
-                    filterQuality = ArtworkFilterQuality,
-                    contentScale = ContentScale.Crop,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(DAILY_ARTWORK_HEIGHT)
-                            .clip(MaterialTheme.shapes.medium),
-                )
-                Text(text = title, style = MaterialTheme.typography.titleMedium)
-                DailyEntryStateChip(entry.state, stateLabel)
+            val artwork =
+                @Composable { artworkModifier: Modifier ->
+                    Image(
+                        bitmap = imageResource(entry.puzzleType.catalogArtworkResource()),
+                        contentDescription = null,
+                        filterQuality = ArtworkFilterQuality,
+                        contentScale = ContentScale.Crop,
+                        modifier = artworkModifier.clip(MaterialTheme.shapes.medium),
+                    )
+                }
+            if (asListRow) {
+                // The archive lists a day's games one under another: the artwork on the left.
+                Row(
+                    modifier = Modifier.padding(LogicaSpacing.cardContent).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    artwork(Modifier.width(DAILY_ROW_ARTWORK_WIDTH).height(DAILY_ROW_ARTWORK_HEIGHT))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
+                        Text(text = title, style = MaterialTheme.typography.titleMedium)
+                        DailyEntryStateChip(entry.state, stateLabel)
+                    }
+                }
+            } else {
+                Column(
+                    modifier = Modifier.padding(LogicaSpacing.cardContent).fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    artwork(Modifier.fillMaxWidth().height(DAILY_ARTWORK_HEIGHT))
+                    Text(text = title, style = MaterialTheme.typography.titleMedium)
+                    DailyEntryStateChip(entry.state, stateLabel)
+                }
             }
         }
     }
@@ -632,6 +648,8 @@ private const val DAILY_RESOURCE_RETRY_MILLIS = 600L
 /** A minimum, never a fixed height: the card grows with a larger font scale instead of clipping. */
 private val DAILY_CARD_MIN_HEIGHT = 184.dp
 private val DAILY_ARTWORK_HEIGHT = 78.dp
+private val DAILY_ROW_ARTWORK_WIDTH = 112.dp
+private val DAILY_ROW_ARTWORK_HEIGHT = 56.dp
 private val DAILY_CHIP_ICON_SIZE = 16.dp
 private val DAILY_CHIP_GAP = 4.dp
 private val DAILY_CHIP_VERTICAL_PADDING = 2.dp
