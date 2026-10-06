@@ -19,6 +19,11 @@ MINIMUM_ANSWER_ZIPF = 3.0
 DIFFICULTY_BY_LENGTH = {4: "EASY", 5: "MEDIUM", 6: "HARD", 7: "EXPERT"}
 SAMPLE_SEED = 20261006
 COMMENT = "#"
+# The family filter's topics (owner decision, stage 10.1a); a word in one of them is never an answer.
+TOPICS = frozenset(
+    {"alcohol", "tobacco", "drugs", "gambling", "weapons", "death", "violence", "crime", "disease", "religion", "politics", "profanity", "sexual"}
+)
+TOPIC_REASON = "TOPIC"
 
 
 def sha256_of(path: Path) -> str:
@@ -54,6 +59,34 @@ def read_manual_words(path: Path, normalize: Callable[[str], str | None]) -> lis
         seen.add(word)
         words.append(word)
     return words
+
+
+def read_pairs(path: Path) -> list[tuple[str, str]]:
+    """Two whitespace-separated fields per line (comments and blank lines skipped), in file order."""
+    if not path.is_file():
+        raise FileNotFoundError(f"Missing manual lexicon file: {path}")
+    pairs: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        raw = line.split(COMMENT, 1)[0].split()
+        if not raw:
+            continue
+        if len(raw) != 2:
+            raise ValueError(f"{path}: expected two fields in {line!r}")
+        if raw[0] in seen:
+            raise ValueError(f"{path}: duplicate entry {raw[0]!r}")
+        seen.add(raw[0])
+        pairs.append((raw[0], raw[1]))
+    return pairs
+
+
+def read_topics(path: Path) -> dict[str, str]:
+    """A family-filter list: `<entry> <topic>` per line, every topic one of [TOPICS]."""
+    topics = dict(read_pairs(path))
+    unknown = sorted(set(topics.values()) - TOPICS)
+    if unknown:
+        raise ValueError(f"{path}: unknown topics {unknown}")
+    return topics
 
 
 def select_answers(
@@ -112,15 +145,22 @@ def samples(
     rejected: list[tuple[str, str, float]],
     obvious_reasons: frozenset[str],
 ) -> dict[str, dict[str, object]]:
-    """Per length: 40 deterministic answer samples and the 20 most frequent words the answer filter dropped
-    for a reason worth reviewing (not the [obvious_reasons], which are mostly function words)."""
+    """Per length: 40 deterministic answer samples, the 20 most frequent words the answer filter dropped
+    for a reason worth reviewing (not the [obvious_reasons], which are mostly function words), and the 20
+    most frequent words the family filter dropped."""
     result: dict[str, dict[str, object]] = {}
     for length in SUPPORTED_LENGTHS:
         pool = sorted(word for word in answers if len(word) == length)
-        dropped = [entry for entry in rejected if len(entry[0]) == length and entry[1] not in obvious_reasons][:20]
+        dropped = [
+            entry
+            for entry in rejected
+            if len(entry[0]) == length and entry[1] not in obvious_reasons and not entry[1].startswith(TOPIC_REASON)
+        ][:20]
+        topic = [entry for entry in rejected if len(entry[0]) == length and entry[1].startswith(TOPIC_REASON)][:20]
         result[str(length)] = {
             "answers": sorted(random.Random(SAMPLE_SEED + length).sample(pool, 40)),
             "dropped": [{"word": word, "reason": reason, "zipf": round(zipf, 2)} for word, reason, zipf in dropped],
+            "topic_dropped": [{"word": word, "reason": reason, "zipf": round(zipf, 2)} for word, reason, zipf in topic],
         }
     return result
 

@@ -22,6 +22,26 @@ class WordLanguageLexiconTest {
             }
     }
 
+    /** Owner decisions of stage 10.1a: the family filter, American spelling, and the circumflex nouns. */
+    @Test
+    fun answersKeepTheFamilyFilterAndTheSpellingDecisions() {
+        val english = Difficulty.entries.flatMap { WordLexiconV3.possibleAnswers.answers(it) }.toSet()
+        val turkish = Difficulty.entries.flatMap { WordLexiconV4.possibleAnswers.answers(it) }.toSet()
+        // The words the architect still found in the stage 10.1 answers.
+        val englishControls = listOf("death", "curse", "coup", "scam", "prison", "pistol", "bullet", "casino", "beer", "tobacco")
+        val turkishControls = listOf("fatiha", "mücahit", "bira", "içki", "şarap", "sigara", "kumar")
+        assertEquals(emptyList(), englishControls.filter { it in english })
+        assertEquals(emptyList(), turkishControls.filter { it in turkish })
+        // British spellings stay guesses but never answers; the American forms can be answers.
+        val british =
+            listOf("colour", "honour", "centre", "defence", "theatre", "licence", "armour", "flavour", "labour", "favour", "humour")
+        assertEquals(emptyList(), british.filter { it in english })
+        assertTrue(british.all { it in WordLexiconV3.allowedGuesses })
+        assertTrue(listOf("color", "honor", "center", "theater", "license", "flavor", "labor", "favor", "humor").all { it in english })
+        // Frequent circumflex nouns are answers again, without the circumflex.
+        assertTrue(listOf("hikaye", "rüzgar", "şikayet", "dükkan", "kağıt").all { it in turkish })
+    }
+
     @Test
     fun theRuntimeResolvesTheLanguageVersions() {
         val english = WordRuntimeResolver.resolve(GeneratorVersion(3))
@@ -74,6 +94,6 @@ class WordLanguageLexiconTest {
 
     private companion object {
         const val GOLDEN_ANSWERS =
-            "joke card lobby brass layout buffer husband browser kişi bent korku boyun kuaför bolluk kokteyl bezelye"
+            "joke cane liner bread legion bumper hunting breakup kent bant kiraz boğaz kuzgun boykot kesinti başvuru"
     }
 }

@@ -17,7 +17,9 @@
     "target_answers_per_length": 500,
     "minimum_answer_zipf": 3.0,
     "normalization": "Turkish lower case (I -> ı, İ -> i), â/î/û folded to a/i/u, 29 letters without q, w, x",
-    "answer_filter": "a Zemberek lemma that is only a common noun, written without a circumflex, never analyzed as a verb form, a -sal/-sel adjective, a plural of another lemma, or another inflection of a lemma 0.5 Zipf more frequent"
+    "answer_filter": "a Zemberek lemma that is only a common noun, written without a circumflex, never analyzed as a verb form, a -sal/-sel adjective, a plural of another lemma, or another inflection of a lemma 0.5 Zipf more frequent",
+    "family_filter": "not in topic_words.txt (alcohol, tobacco, drugs, gambling, weapons, death, violence, crime, disease, religion, politics, profanity, sexual)",
+    "circumflex": "frequent circumflexed nouns enter only through answer_allowlist.txt, in their circumflex-free form"
   },
   "counts": {
     "4": {
@@ -25,34 +27,35 @@
       "guess_lemmas": 2015,
       "guess_inflected_forms": 638,
       "answers": 500,
-      "answer_candidates": 697
+      "answer_candidates": 664
     },
     "5": {
       "guesses": 7018,
       "guess_lemmas": 5043,
       "guess_inflected_forms": 1975,
       "answers": 500,
-      "answer_candidates": 1279
+      "answer_candidates": 1233
     },
     "6": {
       "guesses": 9017,
       "guess_lemmas": 4825,
       "guess_inflected_forms": 4192,
       "answers": 500,
-      "answer_candidates": 1000
+      "answer_candidates": 962
     },
     "7": {
       "guesses": 11096,
       "guess_lemmas": 4524,
       "guess_inflected_forms": 6572,
       "answers": 500,
-      "answer_candidates": 738
+      "answer_candidates": 709
     }
   },
   "manual": {
     "guess_blocklist": 0,
     "answer_blocklist": 325,
-    "answer_allowlist": 86
+    "answer_allowlist": 126,
+    "topic_words": 168
   },
   "rejection_reasons": {
     "ADJECTIVE_FORM": 2,
@@ -62,50 +65,63 @@
     "NOT_A_LEMMA": 13377,
     "NOT_A_NOUN": 3353,
     "RARE": 7163,
-    "VERB_FORM": 332
+    "TOPIC:alcohol": 10,
+    "TOPIC:crime": 22,
+    "TOPIC:death": 11,
+    "TOPIC:disease": 16,
+    "TOPIC:drugs": 4,
+    "TOPIC:gambling": 6,
+    "TOPIC:politics": 15,
+    "TOPIC:profanity": 2,
+    "TOPIC:religion": 31,
+    "TOPIC:sexual": 3,
+    "TOPIC:tobacco": 4,
+    "TOPIC:violence": 17,
+    "TOPIC:weapons": 12,
+    "VERB_FORM": 325
   },
   "samples": {
     "4": {
       "answers": [
         "adak",
-        "arpa",
-        "atom",
-        "ağıt",
-        "baca",
-        "bent",
-        "defa",
-        "demo",
-        "depo",
-        "dram",
-        "ezgi",
-        "faul",
-        "felç",
-        "filo",
+        "argo",
+        "ateş",
+        "azot",
+        "ağız",
+        "bant",
+        "dane",
+        "dart",
+        "data",
+        "dizi",
+        "etek",
+        "eşya",
+        "faks",
+        "feda",
+        "fren",
+        "gaga",
         "gaye",
-        "gece",
-        "golf",
-        "harf",
-        "harp",
-        "hobi",
-        "iade",
-        "idil",
-        "iyot",
-        "içki",
-        "kedi",
-        "kişi",
-        "lale",
-        "mira",
-        "oluk",
-        "papa",
-        "puma",
-        "rica",
-        "soru",
-        "sure",
-        "sıra",
-        "tarz",
-        "tema",
-        "tren",
-        "vade",
+        "hane",
+        "hara",
+        "hibe",
+        "hoca",
+        "icap",
+        "imza",
+        "iyon",
+        "kase",
+        "kent",
+        "küme",
+        "mayo",
+        "odak",
+        "otel",
+        "port",
+        "reis",
+        "soda",
+        "stop",
+        "suşi",
+        "tane",
+        "tapu",
+        "tork",
+        "uğur",
         "şaka"
       ],
       "dropped": [
@@ -209,50 +225,152 @@
           "reason": "ALSO_OTHER_PART_OF_SPEECH",
           "zipf": 5.43
         }
+      ],
+      "topic_dropped": [
+        {
+          "word": "seks",
+          "reason": "TOPIC:sexual",
+          "zipf": 5.21
+        },
+        {
+          "word": "ceza",
+          "reason": "TOPIC:crime",
+          "zipf": 5.08
+        },
+        {
+          "word": "dava",
+          "reason": "TOPIC:crime",
+          "zipf": 5.03
+        },
+        {
+          "word": "gazi",
+          "reason": "TOPIC:violence",
+          "zipf": 4.9
+        },
+        {
+          "word": "imam",
+          "reason": "TOPIC:religion",
+          "zipf": 4.83
+        },
+        {
+          "word": "vali",
+          "reason": "TOPIC:politics",
+          "zipf": 4.76
+        },
+        {
+          "word": "ağrı",
+          "reason": "TOPIC:disease",
+          "zipf": 4.75
+        },
+        {
+          "word": "idam",
+          "reason": "TOPIC:death",
+          "zipf": 4.73
+        },
+        {
+          "word": "yara",
+          "reason": "TOPIC:disease",
+          "zipf": 4.61
+        },
+        {
+          "word": "iman",
+          "reason": "TOPIC:religion",
+          "zipf": 4.59
+        },
+        {
+          "word": "bira",
+          "reason": "TOPIC:alcohol",
+          "zipf": 4.55
+        },
+        {
+          "word": "şeyh",
+          "reason": "TOPIC:religion",
+          "zipf": 4.5
+        },
+        {
+          "word": "içki",
+          "reason": "TOPIC:alcohol",
+          "zipf": 4.45
+        },
+        {
+          "word": "papa",
+          "reason": "TOPIC:religion",
+          "zipf": 4.33
+        },
+        {
+          "word": "füze",
+          "reason": "TOPIC:weapons",
+          "zipf": 4.26
+        },
+        {
+          "word": "harp",
+          "reason": "TOPIC:violence",
+          "zipf": 4.26
+        },
+        {
+          "word": "oruç",
+          "reason": "TOPIC:religion",
+          "zipf": 4.21
+        },
+        {
+          "word": "felç",
+          "reason": "TOPIC:disease",
+          "zipf": 4.18
+        },
+        {
+          "word": "peri",
+          "reason": "TOPIC:religion",
+          "zipf": 4.16
+        },
+        {
+          "word": "çete",
+          "reason": "TOPIC:crime",
+          "zipf": 4.15
+        }
       ]
     },
     "5": {
       "answers": [
         "ahlak",
         "albüm",
-        "anket",
-        "asist",
+        "anlam",
         "aslan",
-        "balon",
-        "cadde",
-        "delil",
-        "duvar",
-        "esnaf",
+        "ayrım",
+        "banka",
+        "ceket",
+        "delta",
+        "duygu",
+        "espri",
         "eylem",
         "fikir",
         "göbek",
-        "hüzün",
-        "idrak",
-        "ifade",
-        "ikram",
-        "ipucu",
-        "korku",
-        "kusur",
+        "hücre",
+        "idare",
+        "iddia",
+        "ihmal",
+        "imkan",
+        "kiraz",
+        "kukla",
+        "kurgu",
         "köfte",
-        "kırım",
-        "lazer",
-        "mesaj",
-        "perde",
-        "poker",
-        "sakal",
-        "saray",
-        "sergi",
-        "sonuç",
-        "stres",
-        "tekne",
-        "vatan",
-        "yürek",
-        "yıkım",
-        "çarşı",
-        "çevre",
-        "çorap",
-        "ısrar",
-        "şükür"
+        "köprü",
+        "medya",
+        "panik",
+        "pazar",
+        "sabır",
+        "salon",
+        "sefer",
+        "sinek",
+        "sorun",
+        "tavuk",
+        "tıraş",
+        "yeşim",
+        "yüzde",
+        "çanta",
+        "çekim",
+        "çocuk",
+        "ıslah",
+        "şubat"
       ],
       "dropped": [
         {
@@ -355,49 +473,151 @@
           "reason": "ALSO_OTHER_PART_OF_SPEECH",
           "zipf": 5.64
         }
+      ],
+      "topic_dropped": [
+        {
+          "word": "parti",
+          "reason": "TOPIC:politics",
+          "zipf": 5.48
+        },
+        {
+          "word": "savaş",
+          "reason": "TOPIC:violence",
+          "zipf": 5.42
+        },
+        {
+          "word": "seçim",
+          "reason": "TOPIC:politics",
+          "zipf": 5.32
+        },
+        {
+          "word": "terör",
+          "reason": "TOPIC:violence",
+          "zipf": 5.12
+        },
+        {
+          "word": "bakan",
+          "reason": "TOPIC:politics",
+          "zipf": 5.04
+        },
+        {
+          "word": "darbe",
+          "reason": "TOPIC:politics",
+          "zipf": 5.0
+        },
+        {
+          "word": "kavga",
+          "reason": "TOPIC:violence",
+          "zipf": 4.91
+        },
+        {
+          "word": "tanrı",
+          "reason": "TOPIC:religion",
+          "zipf": 4.91
+        },
+        {
+          "word": "bomba",
+          "reason": "TOPIC:weapons",
+          "zipf": 4.82
+        },
+        {
+          "word": "şükür",
+          "reason": "TOPIC:religion",
+          "zipf": 4.72
+        },
+        {
+          "word": "kılıç",
+          "reason": "TOPIC:weapons",
+          "zipf": 4.69
+        },
+        {
+          "word": "vefat",
+          "reason": "TOPIC:death",
+          "zipf": 4.68
+        },
+        {
+          "word": "yargı",
+          "reason": "TOPIC:crime",
+          "zipf": 4.67
+        },
+        {
+          "word": "alkol",
+          "reason": "TOPIC:alcohol",
+          "zipf": 4.65
+        },
+        {
+          "word": "isyan",
+          "reason": "TOPIC:violence",
+          "zipf": 4.65
+        },
+        {
+          "word": "namaz",
+          "reason": "TOPIC:religion",
+          "zipf": 4.61
+        },
+        {
+          "word": "melek",
+          "reason": "TOPIC:religion",
+          "zipf": 4.57
+        },
+        {
+          "word": "şarap",
+          "reason": "TOPIC:alcohol",
+          "zipf": 4.57
+        },
+        {
+          "word": "bahis",
+          "reason": "TOPIC:gambling",
+          "zipf": 4.45
+        },
+        {
+          "word": "virüs",
+          "reason": "TOPIC:disease",
+          "zipf": 4.44
+        }
       ]
     },
     "6": {
       "answers": [
         "abartı",
-        "afiyet",
-        "avukat",
-        "bahane",
-        "baykuş",
-        "başarı",
-        "beceri",
-        "bozkır",
-        "büyücü",
-        "devlet",
-        "eziyet",
-        "fatiha",
+        "akasya",
+        "aşiret",
+        "bakkal",
+        "bayram",
+        "başlık",
+        "benlik",
+        "bulgur",
+        "cazibe",
+        "direnç",
         "ferman",
-        "gümrük",
-        "hikmet",
-        "inşaat",
-        "kardeş",
-        "kayısı",
-        "kongre",
-        "mektup",
-        "mercek",
+        "format",
+        "forvet",
+        "hafıza",
+        "hürmet",
+        "itiraf",
+        "kavram",
+        "kibrit",
+        "kovboy",
+        "mendil",
         "merkez",
-        "meteor",
+        "mesire",
         "meydan",
         "miktar",
-        "numara",
-        "otoyol",
+        "millet",
+        "omurga",
+        "pancar",
         "rağbet",
         "reçete",
-        "stoper",
+        "stüdyo",
         "tahlil",
-        "tasarı",
-        "tehdit",
-        "teşvik",
-        "vampir",
+        "tarçın",
+        "teftiş",
+        "teşhis",
+        "uçurum",
         "vazife",
-        "vizyon",
-        "yelken",
-        "çevrim",
+        "vicdan",
+        "yağmur",
+        "çeviri",
         "şirket"
       ],
       "dropped": [
@@ -501,50 +721,152 @@
           "reason": "ALSO_OTHER_PART_OF_SPEECH",
           "zipf": 5.11
         }
+      ],
+      "topic_dropped": [
+        {
+          "word": "sigara",
+          "reason": "TOPIC:tobacco",
+          "zipf": 5.03
+        },
+        {
+          "word": "meclis",
+          "reason": "TOPIC:politics",
+          "zipf": 4.95
+        },
+        {
+          "word": "şiddet",
+          "reason": "TOPIC:violence",
+          "zipf": 4.73
+        },
+        {
+          "word": "ihanet",
+          "reason": "TOPIC:crime",
+          "zipf": 4.72
+        },
+        {
+          "word": "devrim",
+          "reason": "TOPIC:politics",
+          "zipf": 4.63
+        },
+        {
+          "word": "kanser",
+          "reason": "TOPIC:disease",
+          "zipf": 4.63
+        },
+        {
+          "word": "cenaze",
+          "reason": "TOPIC:death",
+          "zipf": 4.58
+        },
+        {
+          "word": "hırsız",
+          "reason": "TOPIC:crime",
+          "zipf": 4.54
+        },
+        {
+          "word": "kongre",
+          "reason": "TOPIC:politics",
+          "zipf": 4.53
+        },
+        {
+          "word": "kilise",
+          "reason": "TOPIC:religion",
+          "zipf": 4.5
+        },
+        {
+          "word": "ibadet",
+          "reason": "TOPIC:religion",
+          "zipf": 4.38
+        },
+        {
+          "word": "seçmen",
+          "reason": "TOPIC:politics",
+          "zipf": 4.2
+        },
+        {
+          "word": "vampir",
+          "reason": "TOPIC:religion",
+          "zipf": 4.19
+        },
+        {
+          "word": "adliye",
+          "reason": "TOPIC:crime",
+          "zipf": 4.11
+        },
+        {
+          "word": "eziyet",
+          "reason": "TOPIC:violence",
+          "zipf": 4.06
+        },
+        {
+          "word": "yargıç",
+          "reason": "TOPIC:crime",
+          "zipf": 4.04
+        },
+        {
+          "word": "halife",
+          "reason": "TOPIC:religion",
+          "zipf": 4.03
+        },
+        {
+          "word": "derviş",
+          "reason": "TOPIC:religion",
+          "zipf": 4.02
+        },
+        {
+          "word": "mezhep",
+          "reason": "TOPIC:religion",
+          "zipf": 4.02
+        },
+        {
+          "word": "akıncı",
+          "reason": "TOPIC:violence",
+          "zipf": 3.99
+        }
       ]
     },
     "7": {
       "answers": [
-        "altyapı",
-        "asansör",
-        "ağustos",
-        "basamak",
-        "belirti",
-        "bunalım",
+        "alabora",
+        "armağan",
+        "azınlık",
+        "barikat",
+        "batarya",
+        "botanik",
         "dağıtım",
-        "ekipman",
-        "ekonomi",
-        "eşofman",
-        "feragat",
-        "fiyasko",
-        "hükümet",
-        "karaoke",
+        "eklenti",
+        "ekvator",
+        "erozyon",
+        "fazilet",
+        "fikstür",
+        "hemşire",
+        "karakol",
+        "kereste",
         "kiremit",
-        "kolordu",
-        "kraliçe",
-        "kuyumcu",
-        "mobilya",
-        "muhatap",
-        "mücahit",
-        "müşteri",
-        "nezaket",
-        "nitelik",
-        "ortaçağ",
-        "padişah",
-        "palmiye",
+        "kontrat",
+        "kurbağa",
+        "mineral",
+        "muhabir",
+        "muhafız",
+        "mülteci",
+        "nasihat",
+        "nirvana",
+        "ortalık",
+        "oyuncak",
+        "palavra",
         "sağanak",
         "segment",
         "senaryo",
-        "senatör",
-        "senfoni",
-        "telefon",
-        "telgraf",
-        "tersane",
-        "vardiya",
-        "vasiyet",
-        "yumurta",
-        "öğrenci",
-        "öğrenim"
+        "sendika",
+        "sermaye",
+        "teminat",
+        "terakki",
+        "ticaret",
+        "veraset",
+        "vesayet",
+        "yurttaş",
+        "öğrenim",
+        "öğretim"
       ],
       "dropped": [
         {
@@ -646,6 +968,108 @@
           "word": "şikayet",
           "reason": "CIRCUMFLEX",
           "zipf": 4.7
+        }
+      ],
+      "topic_dropped": [
+        {
+          "word": "saldırı",
+          "reason": "TOPIC:violence",
+          "zipf": 5.0
+        },
+        {
+          "word": "siyaset",
+          "reason": "TOPIC:politics",
+          "zipf": 4.97
+        },
+        {
+          "word": "hükümet",
+          "reason": "TOPIC:politics",
+          "zipf": 4.89
+        },
+        {
+          "word": "intihar",
+          "reason": "TOPIC:death",
+          "zipf": 4.87
+        },
+        {
+          "word": "mahkeme",
+          "reason": "TOPIC:crime",
+          "zipf": 4.76
+        },
+        {
+          "word": "iktidar",
+          "reason": "TOPIC:politics",
+          "zipf": 4.73
+        },
+        {
+          "word": "işkence",
+          "reason": "TOPIC:violence",
+          "zipf": 4.62
+        },
+        {
+          "word": "cinayet",
+          "reason": "TOPIC:death",
+          "zipf": 4.51
+        },
+        {
+          "word": "katliam",
+          "reason": "TOPIC:violence",
+          "zipf": 4.13
+        },
+        {
+          "word": "cezaevi",
+          "reason": "TOPIC:crime",
+          "zipf": 4.12
+        },
+        {
+          "word": "tabanca",
+          "reason": "TOPIC:weapons",
+          "zipf": 4.12
+        },
+        {
+          "word": "duruşma",
+          "reason": "TOPIC:crime",
+          "zipf": 4.02
+        },
+        {
+          "word": "tarikat",
+          "reason": "TOPIC:religion",
+          "zipf": 3.97
+        },
+        {
+          "word": "senatör",
+          "reason": "TOPIC:politics",
+          "zipf": 3.95
+        },
+        {
+          "word": "tapınak",
+          "reason": "TOPIC:religion",
+          "zipf": 3.94
+        },
+        {
+          "word": "sivilce",
+          "reason": "TOPIC:disease",
+          "zipf": 3.8
+        },
+        {
+          "word": "piyango",
+          "reason": "TOPIC:gambling",
+          "zipf": 3.77
+        },
+        {
+          "word": "taarruz",
+          "reason": "TOPIC:violence",
+          "zipf": 3.75
+        },
+        {
+          "word": "kelepçe",
+          "reason": "TOPIC:crime",
+          "zipf": 3.7
+        },
+        {
+          "word": "kokteyl",
+          "reason": "TOPIC:alcohol",
+          "zipf": 3.7
         }
       ]
     }

@@ -1,0 +1,194 @@
+# Word V4 (Turkish) family filter: never an answer, still an allowed guess. Zemberek has no meaning
+# data, so the list is by hand. It was reviewed against KeNet (the Starlang Turkish WordNet) whose
+# English links reach the Word V3 topic_roots.txt trees; only the resulting decisions are kept here,
+# and the tool does not read KeNet. Format: <word> <topic>. '#' starts a comment.
+
+# Alcohol.
+alkol     alcohol
+bira      alcohol
+içki      alcohol
+kokteyl   alcohol
+meyhane   alcohol    # tavern
+rakı      alcohol
+sarhoş    alcohol    # drunkard
+soma      alcohol    # a kind of rakı
+şarap     alcohol
+viski     alcohol
+votka     alcohol
+
+# Tobacco and drugs.
+nargile   tobacco
+puro      tobacco    # cigar
+sigara    tobacco
+tütün     tobacco
+afyon     drugs      # opium
+eroin     drugs
+esrar     drugs      # hashish
+kokain    drugs
+
+# Gambling.
+bahis     gambling   # bet
+kumar     gambling
+piyango   gambling   # lottery
+poker     gambling
+rulet     gambling
+toto      gambling   # football pools
+
+# Weapons.
+barut     weapons    # gunpowder
+bomba     weapons
+bıçak     weapons    # knife; kept as a weapon, matching the dictionary sense KeNet links
+cephane   weapons    # ammunition
+füze      weapons    # missile
+hançer    weapons    # dagger
+kılıç     weapons    # sword
+mermi     weapons    # bullet
+mızrak    weapons    # spear
+pala      weapons    # scimitar
+silah     weapons
+tabanca   weapons    # pistol
+tüfek     weapons    # rifle
+
+# Death.
+cenaze    death      # funeral
+ceset     death      # corpse
+cinayet   death      # murder
+idam      death      # execution
+intihar   death      # suicide
+katil     death      # murderer
+kefen     death      # shroud
+kırım     death      # massacre
+mezar     death      # grave
+ölüm      death
+tabut     death      # coffin
+vefat     death      # passing away
+zombi     death
+
+# Violence and war.
+abluka    violence   # blockade
+akıncı    violence   # raider
+dayak     violence   # beating
+düello    violence   # duel
+eziyet    violence   # torment
+gazi      violence   # a war veteran
+harp      violence   # war
+isyan     violence   # revolt
+işkence   violence   # torture
+katliam   violence   # massacre
+kavga     violence   # fight
+saldırı   violence   # attack
+savaş     violence   # war
+şiddet    violence
+taarruz   violence   # assault
+terör     violence
+zulüm     violence   # oppression
+
+# Crime, prison, and courts.
+adliye    crime      # courthouse
+ceza      crime      # punishment
+cezaevi   crime      # prison
+çete      crime      # gang
+dava      crime      # lawsuit
+duruşma   crime      # court hearing
+hapis     crime      # imprisonment
+hırsız    crime      # thief
+kelepçe   crime      # handcuffs
+ihanet    crime      # betrayal, treason
+kabahat   crime      # misdemeanour
+kadı      crime      # judge (Ottoman)
+mafya     crime
+mahkeme   crime      # court
+rehine    crime      # hostage
+sanık     crime      # the accused
+savcı     crime      # prosecutor
+soygun    crime      # robbery
+suçlu     crime      # criminal
+şantaj    crime      # blackmail
+temyiz    crime      # appeal
+yargı     crime      # judiciary, judgment
+yargıç    crime      # judge
+zindan    crime      # dungeon
+
+# Disease.
+ağrı      disease    # pain
+bulantı   disease    # nausea
+felç      disease    # paralysis
+grip      disease    # flu
+kanser    disease
+ödem      disease    # oedema
+öksürük   disease    # cough
+salgın    disease    # epidemic
+semptom   disease    # symptom
+sendrom   disease
+sıtma     disease    # malaria
+sivilce   disease    # pimple
+sızı      disease    # ache
+travma    disease
+veba      disease    # plague
+verem     disease    # tuberculosis
+virüs     disease
+yara      disease    # wound
+
+# Religion.
+abdest    religion   # ablution
+cami      religion   # mosque
+cennet    religion   # paradise
+cihat     religion   # jihad
+derviş    religion
+ezan      religion   # call to prayer
+fatiha    religion   # first sura of the Quran
+günah     religion   # sin
+halife    religion   # caliph
+ibadet    religion   # worship
+imam      religion
+iman      religion   # faith
+kilise    religion   # church
+kült      religion   # cult
+kurban    religion   # sacrifice
+meal      religion   # a translation of the Quran
+melek     religion   # angel
+mescit    religion   # small mosque
+mezhep    religion   # sect
+minare    religion   # minaret
+mücahit   religion   # mujahid
+namaz     religion   # ritual prayer
+oruç      religion   # fasting
+papa      religion   # pope
+peri      religion   # fairy; a spiritual being like the English "fairy"
+rahibe    religion   # nun
+rahip     religion   # priest
+şeyh      religion   # sheikh
+şeytan    religion   # devil
+sure      religion   # a chapter of the Quran
+şükür     religion   # thanks to God
+tanrı     religion   # god
+tapınak   religion   # temple
+tarikat   religion   # religious order
+vaaz      religion   # sermon
+vampir    religion   # vampire (supernatural being)
+
+# Politics.
+bakan     politics   # minister
+darbe     politics   # coup
+devrim    politics   # revolution
+hükümet   politics   # government
+ihtilal   politics   # revolution
+iktidar   politics   # ruling power
+kongre    politics   # congress
+meclis    politics   # parliament
+parti     politics   # party
+rejim     politics   # regime
+seçim     politics   # election
+seçmen    politics   # voter
+senato    politics
+senatör   politics
+siyaset   politics   # politics
+vali      politics   # governor
+
+# Profanity and sex.
+beddua    profanity  # curse
+küfür     profanity  # swearing
+lanet     profanity  # curse
+fuhuş     sexual     # prostitution
+seks      sexual
+şehvet    sexual     # lust

@@ -1,0 +1,92 @@
+# Word V3 (English) answers use American spelling: a British form listed here is never an answer,
+# while both forms stay allowed guesses. Format: <British> <American>. '#' starts a comment.
+# The American form must be an ENABLE word; it becomes an answer only through the ordinary filters.
+
+# -our / -or
+arbour arbor
+ardour ardor
+armour armor
+candour candor
+clamour clamor
+colour color
+dolour dolor
+favour favor
+fervour fervor
+flavour flavor
+harbour harbor
+honour honor
+humour humor
+labour labor
+odour odor
+parlour parlor
+rancour rancor
+rigour rigor
+rumour rumor
+saviour savior
+savour savor
+succour succor
+tabour tabor
+tenour tenor
+tumour tumor
+valour valor
+vapour vapor
+vigour vigor
+sapour sapor
+paviour pavior
+
+# -re / -er
+bistre bister
+calibre caliber
+centre center
+dioptre diopter
+fibre fiber
+goitre goiter
+litre liter
+louvre louver
+lustre luster
+meagre meager
+metre meter
+mitre miter
+nitre niter
+ochre ocher
+philtre philter
+piastre piaster
+sabre saber
+sceptre scepter
+sombre somber
+spectre specter
+theatre theater
+titre titer
+zaffre zaffer
+
+# -ence / -ense
+defence defense
+licence license
+offence offense
+
+# ae, oe / e
+aeon eon
+anaemia anemia
+caesium cesium
+faeces feces
+foetus fetus
+hyaena hyena
+oedema edema
+
+# Other spellings
+annexe annex
+cheque check
+cosy cozy
+draught draft
+gaol jail
+grey gray
+kerb curb
+mould mold
+moult molt
+pedlar peddler
+plough plow
+sceptic skeptic
+storey story
+sulphur sulfur
+tyre tire
+whisky whiskey

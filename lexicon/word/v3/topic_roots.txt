@@ -1,0 +1,122 @@
+# Word V3 (English) family filter: Open English WordNet 2023 synsets whose whole hyponym tree is
+# kept out of the answers (the words stay allowed guesses). A word is out when its first noun sense
+# lies in such a tree; topic_words.txt adds words whose topical sense comes later. Format:
+# <synset id> <topic>, then a comment with the lemma and gloss.
+# Ids belong to the pinned 2023 edition; the tool refuses an id it does not know.
+
+# Alcohol, tobacco, and drugs.
+oewn-07900542-n  alcohol    # alcohol: a liquor or brew containing alcohol as the active agent
+oewn-02800154-n  alcohol    # barroom: where alcoholic drinks are served over a counter
+oewn-04403010-n  alcohol    # tavern: a building with a bar licensed to sell alcoholic drinks
+oewn-02900520-n  alcohol    # brewery
+oewn-14042038-n  alcohol    # drunkenness: the temporary state
+oewn-14088126-n  alcohol    # drunkenness: habitual intoxication
+oewn-00749813-n  alcohol    # drunkenness: the act of drinking to excess
+oewn-10053926-n  alcohol    # drinker: a person who drinks alcoholic beverages
+oewn-09801608-n  alcohol    # alcoholic: a person who drinks alcohol to excess habitually
+oewn-04449965-n  tobacco    # tobacco: leaves prepared for smoking or ingestion
+oewn-12928225-n  tobacco    # tobacco: the plant
+oewn-00836297-n  tobacco    # smoking: the act of smoking tobacco or other substances
+oewn-10634492-n  tobacco    # smoker: a person who smokes tobacco
+oewn-03814104-n  drugs      # narcotic: a drug that produces numbness or stupor
+
+# Gambling.
+oewn-00431125-n  gambling   # gambling: playing for stakes
+oewn-13364541-n  gambling   # bet: the money risked on a gamble
+oewn-02981395-n  gambling   # casino: a public building for gambling
+oewn-00509102-n  gambling   # lottery: chances bought and prizes distributed by lots
+oewn-00495779-n  gambling   # poker: card games in which players bet
+
+# Weapons.
+oewn-04572661-n  weapons    # weapon: any instrument used in fighting or hunting
+oewn-02741036-n  weapons    # armament: weaponry used by military or naval force
+oewn-02706134-n  weapons    # ammunition: projectiles to be fired from a gun
+oewn-03309675-n  weapons    # explosive: a substance that undergoes a rapid chemical change
+oewn-02869918-n  weapons    # bomb: an explosive device
+
+# Death.
+oewn-07370091-n  death      # death: the event of dying
+oewn-11464213-n  death      # death: the permanent end of all life functions
+oewn-13985834-n  death      # death: the state of being dead
+oewn-15168236-n  death      # death: the time at which life ends
+oewn-07376176-n  death      # killing: an event that causes someone to die
+oewn-00219879-n  death      # killing: the act of terminating a life (murder, suicide, execution)
+oewn-07466063-n  death      # funeral
+oewn-07466297-n  death      # burial: placing a corpse in a grave
+oewn-08538806-n  death      # cemetery
+oewn-03459977-n  death      # grave, tomb
+oewn-03068762-n  death      # coffin
+oewn-05225393-n  death      # corpse
+oewn-14012765-n  death      # mourning: sorrow over a death
+oewn-10250784-n  death      # killer: someone who causes the death of a person or animal
+
+# Violence and war.
+oewn-00966680-n  violence   # aggression: violence, attack, assault
+oewn-00955074-n  violence   # military action: war, battle, invasion
+oewn-00961007-n  violence   # battle: an open clash between two opposing groups
+oewn-00422440-n  violence   # torture
+oewn-00420921-n  violence   # abuse: cruel or inhumane treatment
+oewn-00760853-n  violence   # terror: the use of extreme fear to coerce people
+
+# Crime, prison, and courts.
+oewn-00767761-n  crime      # crime: an act punishable by law
+oewn-00768966-n  crime      # crime: an evil act not necessarily punishable by law
+oewn-00770581-n  crime      # fraud: intentional deception resulting in injury
+oewn-00755028-n  crime      # fraud: deliberate trickery (scam, con)
+oewn-00781784-n  crime      # swindle
+oewn-09997190-n  crime      # criminal
+oewn-09657157-n  crime      # wrongdoer
+oewn-08260983-n  crime      # gang: an association of criminals
+oewn-03116341-n  crime      # correctional institution: prison, jail
+oewn-10495671-n  crime      # prisoner
+oewn-08346380-n  crime      # court: an assembly to conduct judicial business
+oewn-03125429-n  crime      # court: a room in which a law court sits
+oewn-01187304-n  crime      # proceeding: trial, lawsuit
+oewn-01162829-n  crime      # punishment
+oewn-10244889-n  crime      # judge: an official who decides questions brought before a court
+
+# Disease and injury.
+oewn-14075399-n  disease    # pathological state: illness, disease, injury, wound
+oewn-14323139-n  disease    # symptom
+oewn-13519607-n  disease    # infection: the invasion of the body by pathogens
+
+# Religion.
+oewn-08098545-n  religion   # religion: an institution to express belief in a divine power
+oewn-05955536-n  religion   # religion, faith: belief in a supernatural power
+oewn-09527267-n  religion   # spiritual being: deity, god, angel, devil
+oewn-09528285-n  religion   # spiritual leader: clergyman, priest
+oewn-03959692-n  religion   # place of worship: church, mosque, temple
+oewn-01030024-n  religion   # religious ceremony: rite, mass
+oewn-01030597-n  religion   # worship
+oewn-06441260-n  religion   # sacred text: scripture, bible
+oewn-01044000-n  religion   # prayer: the act
+oewn-07203790-n  religion   # prayer: reverent petition to a deity
+oewn-06467660-n  religion   # prayer: a fixed text used in praying
+oewn-00758433-n  religion   # sin: a transgression of God's will
+oewn-04835188-n  religion   # sin: estrangement from god
+oewn-06191860-n  religion   # theology
+oewn-06193615-n  religion   # theology: a system of religious beliefs
+oewn-08600365-n  religion   # hell
+
+# Politics.
+oewn-13862918-n  politics   # politics: social relations to gain authority or power
+oewn-06157599-n  politics   # politics: the study of government
+oewn-00613259-n  politics   # politics: the profession
+oewn-01126829-n  politics   # politics: managing a state or a government
+oewn-06158643-n  politics   # politics: political opinion
+oewn-08273889-n  politics   # party: an organization to gain political power
+oewn-10469877-n  politics   # politician: a person active in party politics
+oewn-10470837-n  politics   # politician: a leader in civil administration
+oewn-08067430-n  politics   # government: the governing authority of a political unit
+oewn-08180172-n  politics   # legislature: parliament, congress
+oewn-00182630-n  politics   # election: a vote for a political office
+oewn-00964833-n  politics   # revolution: the overthrow of a government
+oewn-01147528-n  politics   # coup: a change of government by force
+oewn-06222574-n  politics   # ideology
+
+# Profanity and sex.
+oewn-07143235-n  profanity  # profanity: vulgar or irreverent speech
+oewn-07139804-n  profanity  # curse: a profane or obscene expression
+oewn-07248294-n  profanity  # curse: an appeal to a supernatural power to inflict evil
+oewn-00845915-n  sexual     # sex: activities associated with sexual intercourse
+oewn-00749453-n  sexual     # prostitution

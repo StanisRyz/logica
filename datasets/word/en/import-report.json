@@ -22,86 +22,106 @@
   "rules": {
     "target_answers_per_length": 500,
     "minimum_answer_zipf": 3.0,
-    "answer_filter": "lower-case WordNet lemma, noun senses >= other senses, not a regular plural of another noun, not a one-sense verb form, not a name or place with at most two common noun senses"
+    "answer_filter": "lower-case WordNet lemma, noun senses >= other senses, not a regular plural of another noun, not a one-sense verb form, not a name or place with at most two common noun senses",
+    "american_spelling": "a British form from british_spellings.txt is never an answer",
+    "family_filter": "the first noun sense does not lie under a topic_roots.txt synset and the word is not in topic_words.txt (alcohol, tobacco, drugs, gambling, weapons, death, violence, crime, disease, religion, politics, profanity, sexual)"
   },
   "counts": {
     "4": {
       "guesses": 3903,
       "answers": 500,
-      "answer_candidates": 864
+      "answer_candidates": 809
     },
     "5": {
       "guesses": 8636,
       "answers": 500,
-      "answer_candidates": 1040
+      "answer_candidates": 975
     },
     "6": {
       "guesses": 15232,
       "answers": 500,
-      "answer_candidates": 1186
+      "answer_candidates": 1093
     },
     "7": {
       "guesses": 23109,
       "answers": 500,
-      "answer_candidates": 1236
+      "answer_candidates": 1146
     }
   },
   "manual": {
     "guess_blocklist": 0,
     "answer_blocklist": 240,
-    "answer_allowlist": 0
+    "answer_allowlist": 0,
+    "topic_roots": 97,
+    "topic_words": 14,
+    "topic_synsets": 4850,
+    "british_spellings": 79
   },
   "rejection_reasons": {
+    "BRITISH_SPELLING": 65,
     "NAME_OR_PLACE": 438,
     "NOT_A_WORDNET_NOUN": 36222,
     "NOT_NOUN_DOMINANT": 1387,
     "PLURAL_FORM": 291,
     "PROPER_ONLY": 521,
-    "RARE": 7400,
+    "RARE": 6913,
+    "TOPIC:alcohol": 74,
+    "TOPIC:crime": 142,
+    "TOPIC:death": 29,
+    "TOPIC:disease": 212,
+    "TOPIC:drugs": 16,
+    "TOPIC:gambling": 11,
+    "TOPIC:politics": 23,
+    "TOPIC:profanity": 4,
+    "TOPIC:religion": 106,
+    "TOPIC:sexual": 13,
+    "TOPIC:tobacco": 15,
+    "TOPIC:violence": 19,
+    "TOPIC:weapons": 61,
     "VERB_FORM": 295
   },
   "samples": {
     "4": {
       "answers": [
-        "aide",
-        "beam",
-        "bite",
-        "buck",
-        "bush",
-        "card",
-        "coup",
-        "crab",
-        "crew",
-        "dawn",
-        "dose",
-        "east",
-        "edge",
-        "expo",
+        "ally",
+        "bath",
+        "bird",
+        "bowl",
+        "bulk",
+        "cane",
+        "cork",
+        "cost",
+        "cove",
+        "date",
+        "door",
+        "duty",
+        "ease",
+        "euro",
+        "fist",
         "flaw",
         "foam",
-        "folk",
-        "gaze",
-        "gear",
-        "goal",
-        "gown",
-        "grip",
-        "herb",
-        "hill",
-        "isle",
+        "game",
+        "gate",
+        "glen",
+        "gold",
+        "grid",
+        "herd",
+        "hind",
+        "iron",
         "joke",
-        "logo",
-        "mine",
-        "noun",
-        "park",
-        "plea",
-        "pony",
-        "root",
-        "scam",
+        "load",
+        "mesh",
+        "nest",
+        "pace",
+        "pine",
+        "plus",
+        "role",
+        "sage",
         "self",
-        "size",
-        "slam",
-        "sofa",
-        "stop",
+        "skin",
+        "slip",
+        "soil",
+        "suit",
         "wing"
       ],
       "dropped": [
@@ -205,50 +225,152 @@
           "reason": "NOT_NOUN_DOMINANT",
           "zipf": 5.81
         }
+      ],
+      "topic_dropped": [
+        {
+          "word": "fuck",
+          "reason": "TOPIC:sexual",
+          "zipf": 5.39
+        },
+        {
+          "word": "shot",
+          "reason": "TOPIC:weapons",
+          "zipf": 5.22
+        },
+        {
+          "word": "vote",
+          "reason": "TOPIC:politics",
+          "zipf": 5.11
+        },
+        {
+          "word": "hell",
+          "reason": "TOPIC:religion",
+          "zipf": 5.1
+        },
+        {
+          "word": "pain",
+          "reason": "TOPIC:disease",
+          "zipf": 5.03
+        },
+        {
+          "word": "wine",
+          "reason": "TOPIC:alcohol",
+          "zipf": 4.74
+        },
+        {
+          "word": "beer",
+          "reason": "TOPIC:alcohol",
+          "zipf": 4.7
+        },
+        {
+          "word": "jail",
+          "reason": "TOPIC:crime",
+          "zipf": 4.62
+        },
+        {
+          "word": "bomb",
+          "reason": "TOPIC:weapons",
+          "zipf": 4.6
+        },
+        {
+          "word": "gang",
+          "reason": "TOPIC:crime",
+          "zipf": 4.5
+        },
+        {
+          "word": "harm",
+          "reason": "TOPIC:disease",
+          "zipf": 4.47
+        },
+        {
+          "word": "sake",
+          "reason": "TOPIC:alcohol",
+          "zipf": 4.4
+        },
+        {
+          "word": "rick",
+          "reason": "TOPIC:disease",
+          "zipf": 4.32
+        },
+        {
+          "word": "bite",
+          "reason": "TOPIC:disease",
+          "zipf": 4.31
+        },
+        {
+          "word": "weed",
+          "reason": "TOPIC:drugs",
+          "zipf": 4.27
+        },
+        {
+          "word": "hood",
+          "reason": "TOPIC:crime",
+          "zipf": 4.21
+        },
+        {
+          "word": "punk",
+          "reason": "TOPIC:crime",
+          "zipf": 4.2
+        },
+        {
+          "word": "cult",
+          "reason": "TOPIC:religion",
+          "zipf": 4.09
+        },
+        {
+          "word": "riot",
+          "reason": "TOPIC:violence",
+          "zipf": 4.09
+        },
+        {
+          "word": "marc",
+          "reason": "TOPIC:alcohol",
+          "zipf": 4.03
+        }
       ]
     },
     "5": {
       "answers": [
-        "actor",
-        "album",
-        "amino",
-        "arena",
-        "armor",
-        "badge",
-        "cabin",
-        "charm",
-        "color",
-        "curse",
-        "death",
-        "derby",
-        "elbow",
+        "adult",
+        "alien",
+        "anger",
+        "array",
+        "arrow",
+        "baron",
+        "cable",
+        "chaos",
+        "cloth",
+        "creep",
+        "dairy",
+        "depot",
+        "eagle",
         "fruit",
         "giant",
         "glass",
         "grade",
         "grief",
-        "lobby",
-        "mayor",
-        "metal",
-        "month",
-        "mouse",
-        "orbit",
-        "print",
-        "promo",
-        "river",
-        "rugby",
-        "scent",
+        "liner",
+        "maple",
+        "merit",
+        "monte",
+        "motto",
+        "onion",
+        "price",
+        "prior",
+        "retro",
+        "rogue",
+        "scare",
+        "sense",
         "shade",
-        "share",
-        "spear",
-        "stone",
-        "thing",
+        "south",
+        "stock",
+        "thumb",
         "toast",
-        "trial",
-        "truck",
-        "usage",
+        "trend",
+        "trout",
+        "union",
         "water",
-        "yacht"
+        "yeast"
       ],
       "dropped": [
         {
@@ -351,50 +473,152 @@
           "reason": "NOT_NOUN_DOMINANT",
           "zipf": 5.46
         }
+      ],
+      "topic_dropped": [
+        {
+          "word": "party",
+          "reason": "TOPIC:politics",
+          "zipf": 5.49
+        },
+        {
+          "word": "court",
+          "reason": "TOPIC:crime",
+          "zipf": 5.41
+        },
+        {
+          "word": "death",
+          "reason": "TOPIC:death",
+          "zipf": 5.4
+        },
+        {
+          "word": "fight",
+          "reason": "TOPIC:violence",
+          "zipf": 5.23
+        },
+        {
+          "word": "round",
+          "reason": "TOPIC:weapons",
+          "zipf": 5.14
+        },
+        {
+          "word": "crime",
+          "reason": "TOPIC:crime",
+          "zipf": 4.89
+        },
+        {
+          "word": "trial",
+          "reason": "TOPIC:crime",
+          "zipf": 4.87
+        },
+        {
+          "word": "faith",
+          "reason": "TOPIC:religion",
+          "zipf": 4.82
+        },
+        {
+          "word": "mayor",
+          "reason": "TOPIC:politics",
+          "zipf": 4.62
+        },
+        {
+          "word": "drunk",
+          "reason": "TOPIC:alcohol",
+          "zipf": 4.61
+        },
+        {
+          "word": "angel",
+          "reason": "TOPIC:religion",
+          "zipf": 4.45
+        },
+        {
+          "word": "virus",
+          "reason": "TOPIC:disease",
+          "zipf": 4.42
+        },
+        {
+          "word": "saint",
+          "reason": "TOPIC:religion",
+          "zipf": 4.41
+        },
+        {
+          "word": "shell",
+          "reason": "TOPIC:weapons",
+          "zipf": 4.39
+        },
+        {
+          "word": "fraud",
+          "reason": "TOPIC:crime",
+          "zipf": 4.37
+        },
+        {
+          "word": "sword",
+          "reason": "TOPIC:weapons",
+          "zipf": 4.37
+        },
+        {
+          "word": "devil",
+          "reason": "TOPIC:religion",
+          "zipf": 4.3
+        },
+        {
+          "word": "wound",
+          "reason": "TOPIC:disease",
+          "zipf": 4.24
+        },
+        {
+          "word": "fever",
+          "reason": "TOPIC:disease",
+          "zipf": 4.22
+        },
+        {
+          "word": "theft",
+          "reason": "TOPIC:crime",
+          "zipf": 4.13
+        }
       ]
     },
     "6": {
       "answers": [
         "accent",
-        "advice",
-        "author",
-        "backup",
-        "beacon",
-        "belief",
-        "border",
-        "bureau",
-        "candle",
-        "cinema",
-        "cousin",
-        "critic",
-        "damage",
-        "editor",
-        "family",
-        "fossil",
-        "height",
-        "hunter",
-        "jungle",
-        "minute",
+        "addict",
+        "avatar",
+        "badass",
+        "beauty",
+        "binary",
+        "bottle",
+        "butter",
+        "canyon",
+        "closet",
+        "danger",
+        "decade",
+        "defect",
+        "energy",
+        "finale",
+        "galaxy",
+        "holder",
+        "income",
+        "knight",
         "monkey",
-        "mother",
-        "nation",
+        "museum",
         "needle",
-        "nephew",
-        "palace",
-        "parole",
-        "portal",
+        "notion",
+        "object",
+        "office",
+        "parody",
+        "people",
         "prince",
-        "roller",
-        "school",
-        "shield",
-        "spirit",
+        "rabbit",
+        "safety",
+        "season",
+        "sleeve",
+        "sprint",
         "subway",
         "tenant",
         "tenure",
         "threat",
-        "tongue",
-        "virtue",
-        "worker"
+        "tomato",
+        "violin",
+        "wonder"
       ],
       "dropped": [
         {
@@ -497,6 +721,108 @@
           "reason": "MANUAL_BLOCK",
           "zipf": 5.16
         }
+      ],
+      "topic_dropped": [
+        {
+          "word": "church",
+          "reason": "TOPIC:religion",
+          "zipf": 5.16
+        },
+        {
+          "word": "attack",
+          "reason": "TOPIC:violence",
+          "zipf": 5.09
+        },
+        {
+          "word": "battle",
+          "reason": "TOPIC:violence",
+          "zipf": 4.94
+        },
+        {
+          "word": "prison",
+          "reason": "TOPIC:crime",
+          "zipf": 4.8
+        },
+        {
+          "word": "injury",
+          "reason": "TOPIC:disease",
+          "zipf": 4.74
+        },
+        {
+          "word": "combat",
+          "reason": "TOPIC:violence",
+          "zipf": 4.56
+        },
+        {
+          "word": "weapon",
+          "reason": "TOPIC:weapons",
+          "zipf": 4.54
+        },
+        {
+          "word": "killer",
+          "reason": "TOPIC:death",
+          "zipf": 4.47
+        },
+        {
+          "word": "temple",
+          "reason": "TOPIC:religion",
+          "zipf": 4.45
+        },
+        {
+          "word": "prayer",
+          "reason": "TOPIC:religion",
+          "zipf": 4.42
+        },
+        {
+          "word": "bishop",
+          "reason": "TOPIC:religion",
+          "zipf": 4.38
+        },
+        {
+          "word": "priest",
+          "reason": "TOPIC:religion",
+          "zipf": 4.33
+        },
+        {
+          "word": "regime",
+          "reason": "TOPIC:politics",
+          "zipf": 4.3
+        },
+        {
+          "word": "bullet",
+          "reason": "TOPIC:weapons",
+          "zipf": 4.24
+        },
+        {
+          "word": "runner",
+          "reason": "TOPIC:crime",
+          "zipf": 4.18
+        },
+        {
+          "word": "casino",
+          "reason": "TOPIC:gambling",
+          "zipf": 4.16
+        },
+        {
+          "word": "trauma",
+          "reason": "TOPIC:disease",
+          "zipf": 4.14
+        },
+        {
+          "word": "chapel",
+          "reason": "TOPIC:religion",
+          "zipf": 4.03
+        },
+        {
+          "word": "cannon",
+          "reason": "TOPIC:weapons",
+          "zipf": 4.02
+        },
+        {
+          "word": "liquor",
+          "reason": "TOPIC:alcohol",
+          "zipf": 4.01
+        }
       ]
     },
     "7": {
@@ -504,43 +830,43 @@
         "airport",
         "athlete",
         "barrier",
-        "borough",
-        "brigade",
-        "captive",
-        "chapter",
-        "concern",
-        "contact",
-        "country",
-        "current",
-        "defence",
-        "example",
-        "grocery",
-        "hunting",
-        "illness",
+        "blossom",
+        "boycott",
+        "capital",
+        "century",
+        "comment",
+        "complex",
+        "costume",
+        "cricket",
+        "custody",
+        "erosion",
+        "grandpa",
+        "housing",
+        "hygiene",
         "interim",
-        "lawsuit",
-        "mistake",
-        "network",
-        "nominee",
-        "opening",
-        "outlook",
+        "leather",
+        "monarch",
+        "nursery",
+        "nursing",
+        "outline",
         "package",
-        "partner",
-        "pathway",
-        "patriot",
-        "reading",
-        "receipt",
-        "release",
-        "removal",
-        "reserve",
-        "storage",
-        "student",
-        "surgery",
+        "palette",
+        "passage",
+        "patient",
+        "pattern",
+        "reality",
+        "refugee",
+        "renewal",
+        "replica",
+        "retreat",
+        "stomach",
+        "striker",
+        "surgeon",
+        "tracker",
         "tractor",
-        "traffic",
-        "utility",
-        "warrant",
-        "warrior"
+        "upgrade",
+        "warning",
+        "warrant"
       ],
       "dropped": [
         {
@@ -642,6 +968,108 @@
           "word": "average",
           "reason": "NOT_NOUN_DOMINANT",
           "zipf": 5.16
+        }
+      ],
+      "topic_dropped": [
+        {
+          "word": "defense",
+          "reason": "TOPIC:violence",
+          "zipf": 4.93
+        },
+        {
+          "word": "disease",
+          "reason": "TOPIC:disease",
+          "zipf": 4.9
+        },
+        {
+          "word": "killing",
+          "reason": "TOPIC:death",
+          "zipf": 4.88
+        },
+        {
+          "word": "primary",
+          "reason": "TOPIC:politics",
+          "zipf": 4.88
+        },
+        {
+          "word": "hearing",
+          "reason": "TOPIC:crime",
+          "zipf": 4.82
+        },
+        {
+          "word": "suicide",
+          "reason": "TOPIC:death",
+          "zipf": 4.62
+        },
+        {
+          "word": "alcohol",
+          "reason": "TOPIC:alcohol",
+          "zipf": 4.61
+        },
+        {
+          "word": "senator",
+          "reason": "TOPIC:politics",
+          "zipf": 4.58
+        },
+        {
+          "word": "smoking",
+          "reason": "TOPIC:tobacco",
+          "zipf": 4.52
+        },
+        {
+          "word": "hanging",
+          "reason": "TOPIC:death",
+          "zipf": 4.5
+        },
+        {
+          "word": "penalty",
+          "reason": "TOPIC:crime",
+          "zipf": 4.45
+        },
+        {
+          "word": "assault",
+          "reason": "TOPIC:violence",
+          "zipf": 4.44
+        },
+        {
+          "word": "beating",
+          "reason": "TOPIC:violence",
+          "zipf": 4.43
+        },
+        {
+          "word": "illness",
+          "reason": "TOPIC:disease",
+          "zipf": 4.41
+        },
+        {
+          "word": "funeral",
+          "reason": "TOPIC:death",
+          "zipf": 4.37
+        },
+        {
+          "word": "arsenal",
+          "reason": "TOPIC:weapons",
+          "zipf": 4.31
+        },
+        {
+          "word": "tobacco",
+          "reason": "TOPIC:tobacco",
+          "zipf": 4.19
+        },
+        {
+          "word": "vintage",
+          "reason": "TOPIC:alcohol",
+          "zipf": 4.18
+        },
+        {
+          "word": "scratch",
+          "reason": "TOPIC:disease",
+          "zipf": 4.16
+        },
+        {
+          "word": "missile",
+          "reason": "TOPIC:weapons",
+          "zipf": 4.14
         }
       ]
     }

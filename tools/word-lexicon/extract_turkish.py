@@ -30,7 +30,9 @@ from lexicon_common import (
     MINIMUM_ANSWER_ZIPF,
     SUPPORTED_LENGTHS,
     TARGET_ANSWER_COUNT,
+    TOPIC_REASON,
     read_manual_words,
+    read_topics,
     samples,
     select_answers,
     write_report,
@@ -88,6 +90,7 @@ def generate(project_root: Path) -> dict[str, object]:
     guess_blocklist = set(read_manual_words(lexicon_root / "guess_blocklist.txt", normalize))
     answer_blocklist = set(read_manual_words(lexicon_root / "answer_blocklist.txt", normalize))
     allowlist = read_manual_words(lexicon_root / "answer_allowlist.txt", normalize)
+    topic_words = read_topics(lexicon_root / "topic_words.txt")
 
     parts_of_speech: dict[str, set[str]] = defaultdict(set)
     circumflexed: set[str] = set()
@@ -112,6 +115,12 @@ def generate(project_root: Path) -> dict[str, object]:
             inflected.add(word)
     guesses = sorted((set(parts_of_speech) | inflected) - guess_blocklist)
     guess_set = set(guesses)
+    unknown_topic_words = sorted(set(topic_words) - guess_set)
+    if unknown_topic_words:
+        raise ValueError(f"topic_words.txt lists words that are not guesses: {unknown_topic_words}")
+    topic_allowed = sorted(set(allowlist) & set(topic_words))
+    if topic_allowed:
+        raise ValueError(f"Allowlisted answers in a family-filter topic: {topic_allowed}")
 
     ranked: dict[int, list[tuple[str, float]]] = {length: [] for length in SUPPORTED_LENGTHS}
     rejected: list[tuple[str, str, float]] = []
@@ -127,6 +136,8 @@ def generate(project_root: Path) -> dict[str, object]:
             reason = "ALSO_OTHER_PART_OF_SPEECH"
         elif word in circumflexed:
             reason = "CIRCUMFLEX"
+        elif word in topic_words:
+            reason = f"{TOPIC_REASON}:{topic_words[word]}"
         elif zipf < MINIMUM_ANSWER_ZIPF:
             reason = "RARE"
         elif (reason := morphology_rejection(morphology, word, zipf)) is not None:
@@ -173,6 +184,8 @@ def generate(project_root: Path) -> dict[str, object]:
                 "a Zemberek lemma that is only a common noun, written without a circumflex, never analyzed as a verb form, "
                 "a -sal/-sel adjective, a plural of another lemma, or another inflection of a lemma 0.5 Zipf more frequent"
             ),
+            "family_filter": "not in topic_words.txt (alcohol, tobacco, drugs, gambling, weapons, death, violence, crime, disease, religion, politics, profanity, sexual)",
+            "circumflex": "frequent circumflexed nouns enter only through answer_allowlist.txt, in their circumflex-free form",
         },
         "counts": {
             str(length): {
@@ -184,7 +197,12 @@ def generate(project_root: Path) -> dict[str, object]:
             }
             for length in SUPPORTED_LENGTHS
         },
-        "manual": {"guess_blocklist": len(guess_blocklist), "answer_blocklist": len(answer_blocklist), "answer_allowlist": len(allowlist)},
+        "manual": {
+            "guess_blocklist": len(guess_blocklist),
+            "answer_blocklist": len(answer_blocklist),
+            "answer_allowlist": len(allowlist),
+            "topic_words": len(topic_words),
+        },
         "rejection_reasons": dict(sorted(reasons.items())),
         "samples": samples(answers, rejected, frozenset({"NOT_A_NOUN", "NOT_A_LEMMA"})),
     }

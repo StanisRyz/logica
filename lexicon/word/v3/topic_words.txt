@@ -1,0 +1,33 @@
+# Word V3 (English) family filter, by hand: words whose first WordNet noun sense lies outside the
+# topic_roots.txt trees but whose topical sense is a common one. Never an answer, still an allowed
+# guess. Format: <word> <topic>. '#' starts a comment.
+
+# Alcohol and drugs.
+sake      alcohol    # rice wine (first sense: "for the sake of")
+hash      drugs      # hashish
+weed      drugs      # marijuana
+
+# Gambling.
+lottery   gambling
+poker     gambling   # first sense: the fire iron
+
+# Weapons.
+shot      weapons    # the firing of a gun
+shooter   weapons    # a gunman
+sniper    weapons
+
+# Violence.
+attack    violence   # first sense: a military offensive, outside the aggression tree
+
+# Death.
+hanging   death      # an execution
+zombie    death      # a reanimated corpse
+
+# Crime and courts.
+trial     crime      # a court trial (first sense: a test)
+
+# Disease.
+virus     disease    # first sense: the microorganism
+
+# Politics.
+vote      politics   # an election (first sense: any choice made by counting)

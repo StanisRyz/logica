@@ -28,7 +28,10 @@ from lexicon_common import (
     MINIMUM_ANSWER_ZIPF,
     SUPPORTED_LENGTHS,
     TARGET_ANSWER_COUNT,
+    TOPIC_REASON,
     read_manual_words,
+    read_pairs,
+    read_topics,
     require_sha256,
     samples,
     select_answers,
@@ -43,6 +46,9 @@ ENABLE_SHA256 = "3f16130220645692ed49c7134e24a18504c2ca55b3c012f7290e3e77c63b1a8
 OEWN_FILE = "english-wordnet-2023.xml.gz"
 OEWN_SHA256 = "d516489cdeb72b1a332eefd9f63a9941aa2c8dcd5b5c7e4f41c5f48bea9d75cd"
 WORD = re.compile(r"[a-z]{4,7}")
+# The family filter reads a word's leading noun senses: its main meanings, not every rare one
+# ("suit" goes for its lawsuit sense, "bar" stays despite a barroom sense far down its list).
+TOPIC_SENSES = 1
 
 
 def normalize(raw: str) -> str | None:
@@ -50,16 +56,58 @@ def normalize(raw: str) -> str | None:
     return value if re.fullmatch(r"[a-z]+", value) else None
 
 
-def wordnet_senses(path: Path) -> dict[str, Counter[str]]:
-    """Sense counts per part of speech for every written lemma form, case kept (proper nouns are capitalized)."""
-    senses: dict[str, Counter[str]] = defaultdict(Counter)
-    with gzip.open(path) as stream:
-        for _event, element in ElementTree.iterparse(stream, events=("end",)):
-            if element.tag == "LexicalEntry":
-                lemma = element.find("Lemma")
-                senses[lemma.get("writtenForm")][lemma.get("partOfSpeech")] += len(element.findall("Sense"))
-                element.clear()
-    return senses
+class WordNet:
+    """What the filters read from WordNet: sense counts per part of speech for every written lemma form
+    (case kept, so proper nouns are capitalized), each form's noun synsets in sense order, and every
+    synset's hypernyms (instance hypernyms included)."""
+
+    def __init__(self, path: Path) -> None:
+        self.senses: dict[str, Counter[str]] = defaultdict(Counter)
+        self.noun_synsets: dict[str, list[str]] = defaultdict(list)
+        self.hypernyms: dict[str, list[str]] = {}
+        with gzip.open(path) as stream:
+            for _event, element in ElementTree.iterparse(stream, events=("end",)):
+                if element.tag == "LexicalEntry":
+                    lemma = element.find("Lemma")
+                    form, pos = lemma.get("writtenForm"), lemma.get("partOfSpeech")
+                    synsets = [sense.get("synset") for sense in element.findall("Sense")]
+                    self.senses[form][pos] += len(synsets)
+                    if pos == "n":
+                        self.noun_synsets[form] += synsets
+                    element.clear()
+                elif element.tag == "Synset":
+                    self.hypernyms[element.get("id")] = [
+                        relation.get("target")
+                        for relation in element.findall("SynsetRelation")
+                        if relation.get("relType") in ("hypernym", "instance_hypernym")
+                    ]
+                    element.clear()
+
+    def topic_trees(self, roots: dict[str, str]) -> dict[str, str]:
+        """Every synset under a root (the root included), mapped to the root's topic."""
+        unknown = sorted(set(roots) - set(self.hypernyms))
+        if unknown:
+            raise ValueError(f"Topic roots unknown to the pinned WordNet: {unknown}")
+        children: dict[str, list[str]] = defaultdict(list)
+        for synset, parents in self.hypernyms.items():
+            for parent in parents:
+                children[parent].append(synset)
+        trees: dict[str, str] = {}
+        for root in sorted(roots):
+            pending = [root]
+            while pending:
+                synset = pending.pop()
+                if synset not in trees:
+                    trees[synset] = roots[root]
+                    pending += children[synset]
+        return trees
+
+    def topic(self, word: str, trees: dict[str, str]) -> str | None:
+        """The topic of the first of the word's leading noun senses that lies in a topic tree."""
+        for synset in self.noun_synsets.get(word, [])[:TOPIC_SENSES]:
+            if synset in trees:
+                return trees[synset]
+        return None
 
 
 def verb_stems(word: str) -> list[str]:
@@ -109,12 +157,28 @@ def generate(project_root: Path, sources: Path) -> dict[str, object]:
     guess_blocklist = set(read_manual_words(lexicon_root / "guess_blocklist.txt", normalize))
     answer_blocklist = set(read_manual_words(lexicon_root / "answer_blocklist.txt", normalize))
     allowlist = read_manual_words(lexicon_root / "answer_allowlist.txt", normalize)
+    topic_roots = read_topics(lexicon_root / "topic_roots.txt")
+    topic_words = read_topics(lexicon_root / "topic_words.txt")
+    british = dict(read_pairs(lexicon_root / "british_spellings.txt"))
 
     enable = [line.strip() for line in enable_path.read_text(encoding="ascii").splitlines()]
     guesses = sorted({word for word in enable if WORD.fullmatch(word)} - guess_blocklist)
     guess_set = set(guesses)
+    enable_set = set(enable)
+    for british_form, american_form in british.items():
+        if british_form not in guess_set or american_form not in enable_set:
+            raise ValueError(f"british_spellings.txt: {british_form} -> {american_form} is not a guess and an ENABLE word.")
 
-    senses = wordnet_senses(oewn_path)
+    unknown_topic_words = sorted(set(topic_words) - guess_set)
+    if unknown_topic_words:
+        raise ValueError(f"topic_words.txt lists words that are not guesses: {unknown_topic_words}")
+
+    wordnet = WordNet(oewn_path)
+    senses = wordnet.senses
+    trees = wordnet.topic_trees(topic_roots)
+
+    def topic_of(word: str) -> str | None:
+        return topic_words.get(word) or wordnet.topic(word, trees)
     nouns = {form for form, counts in senses.items() if counts["n"] > 0 and re.fullmatch(r"[a-z]+", form)}
     verbs = {form for form, counts in senses.items() if counts["v"] > 0 and re.fullmatch(r"[a-z]+", form)}
 
@@ -124,6 +188,10 @@ def generate(project_root: Path, sources: Path) -> dict[str, object]:
     for word in guesses:
         zipf = zipf_frequency(word, "en")
         reason = answer_rejection(word, senses, nouns, verbs)
+        if reason is None and word in british:
+            reason = "BRITISH_SPELLING"
+        if reason is None and (topic := topic_of(word)) is not None:
+            reason = f"{TOPIC_REASON}:{topic}"
         if reason is None and zipf < MINIMUM_ANSWER_ZIPF:
             reason = "RARE"
         if reason is None:
@@ -140,6 +208,9 @@ def generate(project_root: Path, sources: Path) -> dict[str, object]:
             rejected.append((word, "MANUAL_BLOCK", zipf))
     rejected.sort(key=lambda item: (-item[2], item[0]))
 
+    for word in allowlist:
+        if word in british or topic_of(word) is not None:
+            raise ValueError(f"Allowlisted answer {word!r} is a British spelling or in a family-filter topic.")
     selected = select_answers(ranked, allowlist, answer_blocklist, guess_set)
     answers = sorted(selected)
     write_runtime(project_root / "puzzle-core" / "src" / "commonMain" / "resources" / "word" / "v3", "extract_english.py", "V3", guesses, answers)
@@ -179,6 +250,11 @@ def generate(project_root: Path, sources: Path) -> dict[str, object]:
                 "lower-case WordNet lemma, noun senses >= other senses, not a regular plural of another noun, "
                 "not a one-sense verb form, not a name or place with at most two common noun senses"
             ),
+            "american_spelling": "a British form from british_spellings.txt is never an answer",
+            "family_filter": (
+                "the first noun sense does not lie under a topic_roots.txt synset and the word is not in topic_words.txt "
+                "(alcohol, tobacco, drugs, gambling, weapons, death, violence, crime, disease, religion, politics, profanity, sexual)"
+            ),
         },
         "counts": {
             str(length): {
@@ -188,7 +264,15 @@ def generate(project_root: Path, sources: Path) -> dict[str, object]:
             }
             for length in SUPPORTED_LENGTHS
         },
-        "manual": {"guess_blocklist": len(guess_blocklist), "answer_blocklist": len(answer_blocklist), "answer_allowlist": len(allowlist)},
+        "manual": {
+            "guess_blocklist": len(guess_blocklist),
+            "answer_blocklist": len(answer_blocklist),
+            "answer_allowlist": len(allowlist),
+            "topic_roots": len(topic_roots),
+            "topic_words": len(topic_words),
+            "topic_synsets": len(trees),
+            "british_spellings": len(british),
+        },
         "rejection_reasons": dict(sorted(reasons.items())),
         "samples": samples(answers, rejected, frozenset({"NOT_A_WORDNET_NOUN"})),
     }
