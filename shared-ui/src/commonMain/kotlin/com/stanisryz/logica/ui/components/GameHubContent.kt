@@ -34,8 +34,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -69,6 +73,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.game_title_sudoku
 import com.stanisryz.logica.shared.ui.generated.resources.game_title_word
 import com.stanisryz.logica.shared.ui.generated.resources.game_word
 import com.stanisryz.logica.ui.theme.LogicaSpacing
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.imageResource
@@ -247,96 +252,108 @@ fun GameCatalogCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
-    val title = stringResource(puzzleType.catalogTitleResource())
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val cardScale by
-        animateFloatAsState(
-            targetValue = if (pressed && enabled) CATALOG_CARD_PRESSED_SCALE else 1f,
-            animationSpec =
-                spring(
-                    dampingRatio = CATALOG_CARD_SPRING_DAMPING,
-                    stiffness = CATALOG_CARD_SPRING_STIFFNESS,
-                ),
-            label = "catalog-card-scale",
-        )
-    Card(
-        modifier = modifier.fillMaxWidth().height(GAME_CATALOG_CARD_HEIGHT).scale(cardScale),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = if (enabled) colors.surfaceContainerLow else colors.surfaceContainerHighest,
-                contentColor = if (enabled) colors.onSurface else colors.onSurfaceVariant.copy(alpha = DISABLED_ALPHA),
-            ),
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .clip(MaterialTheme.shapes.medium)
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = LocalIndication.current,
-                        enabled = enabled,
-                        role = Role.Button,
-                        onClickLabel = stringResource(Res.string.game_catalog_play_label, title),
-                        onClick = onClick,
+    // On Web a title or label first read while the hub composes can stay empty for good (the Turkish
+    // «Oyna» was blank on some cards); reading them again a moment later comes from the cache.
+    var attempt by remember { mutableIntStateOf(0) }
+    key(attempt) {
+        val colors = MaterialTheme.colorScheme
+        val title = stringResource(puzzleType.catalogTitleResource())
+        val action = stringResource(Res.string.game_catalog_action)
+        if ((title.isEmpty() || action.isEmpty()) && attempt < CATALOG_RESOURCE_RETRIES) {
+            LaunchedEffect(Unit) {
+                delay(CATALOG_RESOURCE_RETRY_MILLIS)
+                attempt++
+            }
+        }
+        val interactionSource = remember { MutableInteractionSource() }
+        val pressed by interactionSource.collectIsPressedAsState()
+        val cardScale by
+            animateFloatAsState(
+                targetValue = if (pressed && enabled) CATALOG_CARD_PRESSED_SCALE else 1f,
+                animationSpec =
+                    spring(
+                        dampingRatio = CATALOG_CARD_SPRING_DAMPING,
+                        stiffness = CATALOG_CARD_SPRING_STIFFNESS,
                     ),
-            contentAlignment = Alignment.CenterStart,
-        ) {
-            Image(
-                bitmap = imageResource(puzzleType.catalogArtworkResource()),
-                contentDescription = null,
-                filterQuality = ArtworkFilterQuality,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
+                label = "catalog-card-scale",
             )
-            Column(
-                modifier = Modifier.fillMaxWidth(0.68f).padding(start = GAME_CATALOG_LABEL_PADDING),
-                verticalArrangement = Arrangement.spacedBy(CATALOG_ACTION_GAP),
-                horizontalAlignment = Alignment.Start,
+        Card(
+            modifier = modifier.fillMaxWidth().height(GAME_CATALOG_CARD_HEIGHT).scale(cardScale),
+            colors =
+                CardDefaults.cardColors(
+                    containerColor = if (enabled) colors.surfaceContainerLow else colors.surfaceContainerHighest,
+                    contentColor = if (enabled) colors.onSurface else colors.onSurfaceVariant.copy(alpha = DISABLED_ALPHA),
+                ),
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .clip(MaterialTheme.shapes.medium)
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = LocalIndication.current,
+                            enabled = enabled,
+                            role = Role.Button,
+                            onClickLabel = stringResource(Res.string.game_catalog_play_label, title),
+                            onClick = onClick,
+                        ),
+                contentAlignment = Alignment.CenterStart,
             ) {
-                // The artwork is always light, so the label keeps fixed ink colours in both themes
-                // and a soft glow instead of a scrim over the picture.
-                // One line that shrinks to fit, like the difficulty names: «Russian Word» or a long
-                // Turkish title never wraps or breaks.
-                Text(
-                    text = title,
-                    style =
-                        MaterialTheme.typography.headlineSmall.copy(
-                            shadow = Shadow(color = CATALOG_TITLE_GLOW, blurRadius = CATALOG_TITLE_GLOW_RADIUS),
-                        ),
-                    color = CATALOG_TITLE_INK.copy(alpha = if (enabled) 1f else DISABLED_ALPHA),
-                    maxLines = 1,
-                    autoSize =
-                        TextAutoSize.StepBased(
-                            minFontSize = CATALOG_TITLE_MIN_SIZE,
-                            maxFontSize = MaterialTheme.typography.headlineSmall.fontSize,
-                        ),
+                Image(
+                    bitmap = imageResource(puzzleType.catalogArtworkResource()),
+                    contentDescription = null,
+                    filterQuality = ArtworkFilterQuality,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
                 )
-                Surface(
-                    color = Color.White.copy(alpha = if (enabled) CATALOG_ACTION_ALPHA else DISABLED_ACTION_ALPHA),
-                    contentColor = if (enabled) CATALOG_ACTION_INK else CATALOG_TITLE_INK.copy(alpha = DISABLED_ALPHA),
-                    shape = CircleShape,
+                Column(
+                    modifier = Modifier.fillMaxWidth(0.68f).padding(start = GAME_CATALOG_LABEL_PADDING),
+                    verticalArrangement = Arrangement.spacedBy(CATALOG_ACTION_GAP),
+                    horizontalAlignment = Alignment.Start,
                 ) {
-                    Row(
-                        modifier =
-                            Modifier.padding(
-                                horizontal = CATALOG_ACTION_HORIZONTAL_PADDING,
-                                vertical = CATALOG_ACTION_VERTICAL_PADDING,
+                    // The artwork is always light, so the label keeps fixed ink colours in both themes
+                    // and a soft glow instead of a scrim over the picture.
+                    // One line that shrinks to fit, like the difficulty names: «Russian Word» or a long
+                    // Turkish title never wraps or breaks.
+                    Text(
+                        text = title,
+                        style =
+                            MaterialTheme.typography.headlineSmall.copy(
+                                shadow = Shadow(color = CATALOG_TITLE_GLOW, blurRadius = CATALOG_TITLE_GLOW_RADIUS),
                             ),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(CATALOG_ACTION_ICON_GAP),
+                        color = CATALOG_TITLE_INK.copy(alpha = if (enabled) 1f else DISABLED_ALPHA),
+                        maxLines = 1,
+                        autoSize =
+                            TextAutoSize.StepBased(
+                                minFontSize = CATALOG_TITLE_MIN_SIZE,
+                                maxFontSize = MaterialTheme.typography.headlineSmall.fontSize,
+                            ),
+                    )
+                    Surface(
+                        color = Color.White.copy(alpha = if (enabled) CATALOG_ACTION_ALPHA else DISABLED_ACTION_ALPHA),
+                        contentColor = if (enabled) CATALOG_ACTION_INK else CATALOG_TITLE_INK.copy(alpha = DISABLED_ALPHA),
+                        shape = CircleShape,
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.PlayArrow,
-                            contentDescription = null,
-                            modifier = Modifier.size(CATALOG_ACTION_ICON_SIZE),
-                        )
-                        Text(
-                            text = stringResource(Res.string.game_catalog_action),
-                            style = MaterialTheme.typography.labelLarge,
-                        )
+                        Row(
+                            modifier =
+                                Modifier.padding(
+                                    horizontal = CATALOG_ACTION_HORIZONTAL_PADDING,
+                                    vertical = CATALOG_ACTION_VERTICAL_PADDING,
+                                ),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(CATALOG_ACTION_ICON_GAP),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.PlayArrow,
+                                contentDescription = null,
+                                modifier = Modifier.size(CATALOG_ACTION_ICON_SIZE),
+                            )
+                            Text(
+                                text = action,
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        }
                     }
                 }
             }
@@ -369,6 +386,8 @@ fun PuzzleType.catalogTitleResource(): StringResource =
     }
 
 private val GAME_CATALOG_CARD_HEIGHT = 148.dp
+private const val CATALOG_RESOURCE_RETRIES = 5
+private const val CATALOG_RESOURCE_RETRY_MILLIS = 600L
 private val GAME_CATALOG_LABEL_PADDING = 24.dp
 private val CATALOG_ACTION_HORIZONTAL_PADDING = 12.dp
 private val CATALOG_ACTION_VERTICAL_PADDING = 6.dp
