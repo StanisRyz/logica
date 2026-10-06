@@ -101,6 +101,8 @@ tasks.register<Zip>("packageYandexDistribution") {
             "levels/v2/checksums.sha256",
             "levels/v2/nonogram/easy.lvp",
             "nonogram/v3/easy.txt",
+            // The game sounds, fetched relative to the page like everything above.
+            "composeResources/com.stanisryz.logica.shared.ui.generated.resources/files/sounds/tap.wav",
         ).forEach { path ->
             check(distributionRoot.resolve(path).isFile) {
                 "The Yandex distribution is missing canonical asset $path."

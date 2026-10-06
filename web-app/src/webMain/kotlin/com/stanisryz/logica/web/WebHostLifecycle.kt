@@ -17,6 +17,26 @@ internal class WebHostLifecycle :
     private val mutableState = MutableStateFlow(PlatformLifecycleState.INACTIVE)
     override val state: StateFlow<PlatformLifecycleState> = mutableState.asStateFlow()
 
+    /** Whether sound may play by the host's conditions ([WebEffectiveLifecycle.isAudible]); focus plays no part. */
+    var audioConditionsMet = false
+        private set
+
+    /**
+     * Told synchronously whenever [audioConditionsMet] changes, inside the very event that changed
+     * it, so the page's audio state is already decided when a tap reaches its own listener.
+     */
+    var onAudioConditionsChanged: (() -> Unit)? = null
+
+    /** The host conditions that keep sound off right now, for the console diagnostics; empty when none. */
+    val audioBlockers: String
+        get() =
+            listOfNotNull(
+                "not started".takeUnless { started },
+                "Yandex pause".takeIf { yandexPaused },
+                "fullscreen ad".takeIf { fullscreenAdActive },
+                "hidden tab".takeUnless { browserVisible },
+            ).joinToString()
+
     private var started = false
     private var yandexPaused = false
     private var fullscreenAdActive = false
@@ -87,6 +107,17 @@ internal class WebHostLifecycle :
     }
 
     private fun updateState() {
+        val audible =
+            WebEffectiveLifecycle.isAudible(
+                started = started,
+                yandexPaused = yandexPaused,
+                fullscreenAdActive = fullscreenAdActive,
+                browserVisible = browserVisible,
+            )
+        if (audible != audioConditionsMet) {
+            audioConditionsMet = audible
+            onAudioConditionsChanged?.invoke()
+        }
         mutableState.value =
             if (
                 WebEffectiveLifecycle.isActive(
@@ -105,7 +136,7 @@ internal class WebHostLifecycle :
 }
 
 /**
- * The one effective Web lifecycle rule shared by GameplayAPI and audio consumers:
+ * The one effective Web lifecycle rule for GameplayAPI (audio follows [isAudible], the same without focus):
  * ACTIVE requires the host started, no Yandex pause, no fullscreen advertisement,
  * a visible document, and window focus. One direction only:
  * raw conditions (+ fullscreen-ad flag) -> effective state -> consumers.
@@ -118,6 +149,18 @@ internal object WebEffectiveLifecycle {
         browserVisible: Boolean,
         browserFocused: Boolean,
     ): Boolean = started && !yandexPaused && !fullscreenAdActive && browserVisible && browserFocused
+
+    /**
+     * The audio rule: the same conditions without window focus. Yandex asks for silence in the
+     * background, during ads, and while it pauses the game; inside its page the focus may stay with
+     * the portal around the game while the player plays, so focus must not silence the game.
+     */
+    fun isAudible(
+        started: Boolean,
+        yandexPaused: Boolean,
+        fullscreenAdActive: Boolean,
+        browserVisible: Boolean,
+    ): Boolean = started && !yandexPaused && !fullscreenAdActive && browserVisible
 }
 
 private fun isBrowserDocumentVisible(): Boolean = js("globalThis.document.visibilityState !== 'hidden'")
