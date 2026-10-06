@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="color-scheme" content="light dark">
-    <title>Логика</title>
+    <title>Головоломки</title>
     <!-- Relative paths: Yandex serves the game from a nested folder. Made by tools/art/make_app_icon.py. -->
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="favicon-192.png">
@@ -24,6 +24,11 @@
             padding: 0;
             overflow: hidden;
             overscroll-behavior: none;
+            /* A long press selects nothing and opens no callout (Yandex requirement 1.6). */
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         /*
@@ -112,14 +117,21 @@
 <body>
 <div id="ComposeApp"></div>
 <div id="logica-loader" aria-hidden="true">
-    <div class="title">Логика</div>
+    <div class="title">Головоломки</div>
     <div class="bar"></div>
 </div>
+<script>
+    // No browser context menu over the game, by right click or long press (Yandex requirement 1.6).
+    document.addEventListener("contextmenu", function (event) { event.preventDefault(); }, true);
+</script>
 <script>
     // The loader speaks the page's probable language; the SDK's own language is known only later.
     try {
         var lang = (new URLSearchParams(location.search).get("lang") || navigator.language || "ru").slice(0, 2).toLowerCase();
-        if (["ru", "be", "kk", "uk", "uz"].indexOf(lang) < 0) document.querySelector("#logica-loader .title").textContent = "Logica";
+        // The same name as the Yandex promo in each language (requirement 5.1).
+        var name = ["ru", "be", "kk", "uk", "uz"].indexOf(lang) >= 0 ? "Головоломки" : lang === "tr" ? "Bulmacalar" : "Puzzles";
+        document.querySelector("#logica-loader .title").textContent = name;
+        document.title = name;
     } catch (e) {}
 </script>
 <script src="/sdk.js"></script>

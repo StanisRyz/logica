@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="web_loading">Logica yükleniyor</string>
+    <string name="web_loading">Bulmacalar yükleniyor</string>
     <string name="web_tab_elsewhere_title">Oyun başka bir sekmede açık</string>
     <string name="web_tab_elsewhere_body">Aynı anda yalnızca bir sekmede oynayabilirsin. İlerlemen burada devam eder.</string>
     <string name="web_tab_play_here">Burada oyna</string>
@@ -68,7 +68,7 @@
     <string name="web_paid_unavailable">Ödeme şu anda kullanılamıyor.</string>
     <string name="web_paid_error">Satın alma tamamlanamadı. Lütfen tekrar dene.</string>
     <string name="web_ad_in_progress">Oynatılıyor…</string>
-    <string name="web_ad_watch">İzle</string>
+    <string name="web_ad_watch">Reklam izle</string>
     <string name="web_ad_dismissed">Ödül alınmadı: reklam erken kapatıldı.</string>
     <string name="web_ad_unavailable">Reklam şu anda kullanılamıyor. Daha sonra tekrar dene.</string>
     <string name="web_ad_cooldown">Sonraki reklamdan önce biraz bekle.</string>

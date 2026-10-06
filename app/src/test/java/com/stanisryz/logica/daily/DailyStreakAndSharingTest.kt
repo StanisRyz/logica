@@ -97,7 +97,7 @@ class DailyStreakAndSharingTest {
         val text = DailyShareFormatter.format(summary)
 
         assertEquals(
-            "Логика дня — 11 августа\n\n" +
+            "Головоломки дня — 11 августа\n\n" +
                 "Баланс  ✓\n" +
                 "Короны  ✓\n" +
                 "Слово   4/6\n" +

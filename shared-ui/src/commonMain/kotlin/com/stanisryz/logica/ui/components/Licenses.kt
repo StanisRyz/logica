@@ -34,7 +34,10 @@ data class LicenseNotice(
     val name: String,
     val holder: String,
     val license: String,
-    val url: String,
+    /** Where the work comes from; the Web build shows no addresses (Yandex requirement 8.4). */
+    val url: String?,
+    /** The licence's own address, for licences whose text is not bundled. */
+    val licenseUrl: String? = null,
     /** A `files/licenses/` resource with the full text, for licences that ask to keep it. */
     val textFile: String? = null,
     /** Only in the Android build (its advertising and payment SDKs). */
@@ -73,7 +76,8 @@ val LICENSE_NOTICES: List<LicenseNotice> =
         LicenseNotice(
             name = "Open English WordNet 2023",
             holder = "Open English WordNet contributors",
-            license = "CC BY 4.0 — https://creativecommons.org/licenses/by/4.0/ (English word answers)",
+            license = "CC BY 4.0 (English word answers)",
+            licenseUrl = "https://creativecommons.org/licenses/by/4.0/",
             url = "https://en-word.net",
         ),
         LicenseNotice(
@@ -87,16 +91,16 @@ val LICENSE_NOTICES: List<LicenseNotice> =
             holder =
                 "Copyright 2022 Robyn Speer; data from Google Books Ngrams, Leeds Internet Corpus, Wikipedia, " +
                     "ParaCrawl, OPUS OpenSubtitles, SUBTLEX, and other corpora",
-            license =
-                "Data: CC BY-SA 4.0 — https://creativecommons.org/licenses/by-sa/4.0/; code: Apache License 2.0 " +
-                    "(word frequency ranking)",
+            license = "Data: CC BY-SA 4.0; code: Apache License 2.0 (word frequency ranking)",
+            licenseUrl = "https://creativecommons.org/licenses/by-sa/4.0/",
             url = "https://github.com/rspeer/wordfreq",
             textFile = APACHE_2_0,
         ),
         LicenseNotice(
             name = "OpenCorpora (via pymorphy3-dicts-ru)",
             holder = "OpenCorpora contributors",
-            license = "CC BY-SA 3.0 — https://creativecommons.org/licenses/by-sa/3.0/ (Russian words)",
+            license = "CC BY-SA 3.0 (Russian words)",
+            licenseUrl = "https://creativecommons.org/licenses/by-sa/3.0/",
             url = "http://opencorpora.org",
         ),
         LicenseNotice(
@@ -128,8 +132,13 @@ val LICENSE_NOTICES: List<LicenseNotice> =
         ),
     )
 
-/** The notices one platform shows: the Web build carries no Android advertising or payment SDK. */
-fun licenseNoticesFor(android: Boolean): List<LicenseNotice> = LICENSE_NOTICES.filter { android || !it.androidOnly }
+/**
+ * The notices one platform shows. The Web build carries no Android advertising or payment SDK, and
+ * shows no addresses at all: a Yandex game never leads to outside resources (requirement 8.4), so the
+ * name, holder, licence, and full text stay while the source and licence addresses go.
+ */
+fun licenseNoticesFor(android: Boolean): List<LicenseNotice> =
+    if (android) LICENSE_NOTICES else LICENSE_NOTICES.filter { !it.androidOnly }.map { it.copy(url = null, licenseUrl = null) }
 
 /**
  * The shared «Licences» page: one card per work with its authors, licence, and source, and the full
@@ -168,7 +177,10 @@ private fun LicenseCard(notice: LicenseNotice) {
             Text(notice.name, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
             Text(notice.holder, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(notice.license, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
-            Text(notice.url, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+            // Plain text, never a link: nothing on this page opens an address.
+            listOfNotNull(notice.licenseUrl, notice.url).forEach { address ->
+                Text(address, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             notice.textFile?.let { file ->
                 TextButton(onClick = { expanded = !expanded }) {
                     Text(stringResource(if (expanded) Res.string.licenses_hide_text else Res.string.licenses_show_text))

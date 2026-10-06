@@ -35,7 +35,7 @@ class DailyShareFormatterTest {
         val text = DailyShareFormatter.format(summary!!)
 
         assertEquals(
-            "Логика дня — 9 августа\n\n" +
+            "Головоломки дня — 9 августа\n\n" +
                 "Баланс  ✓\n" +
                 "Короны  ✓\n" +
                 "Слово   4/6\n\n" +

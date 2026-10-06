@@ -2,7 +2,7 @@
 <resources>
     <string name="app_language">en</string>
     <string name="how_to_play_question">How to play?</string>
-    <string name="app_name">Logica</string>
+    <string name="app_name">Puzzles</string>
     <string name="tab_game">Games</string>
     <string name="game_rules">Rules</string>
     <string name="tab_store">Store</string>
@@ -233,7 +233,7 @@
     <string name="store_rewarded_gem_title">+1 gem</string>
     <string name="store_rewarded_life_title">+1 life</string>
     <string name="store_rewarded_offer">For watching a short ad</string>
-    <string name="store_rewarded_watch">Watch</string>
+    <string name="store_rewarded_watch">Watch ad</string>
     <string name="store_rewarded_unavailable">Ads are unavailable right now.</string>
     <string name="nonogram">Nonogram</string>
     <string name="nonogram_tutorial_title">Nonogram tutorial</string>

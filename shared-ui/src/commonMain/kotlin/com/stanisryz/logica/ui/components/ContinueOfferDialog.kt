@@ -28,6 +28,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.stanisryz.logica.shared.ui.generated.resources.Res
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_undo_offer_body
 import com.stanisryz.logica.shared.ui.generated.resources.game_2048_undo_offer_title
+import com.stanisryz.logica.shared.ui.generated.resources.game_2048_undo_offer_watch
 import com.stanisryz.logica.shared.ui.generated.resources.second_chance_body
 import com.stanisryz.logica.shared.ui.generated.resources.second_chance_decline
 import com.stanisryz.logica.shared.ui.generated.resources.second_chance_loading
@@ -103,7 +104,15 @@ fun ContinueOfferDialog(
                         Button(onClick = onWatch, modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Rounded.PlayCircle, contentDescription = null, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text(stringResource(Res.string.second_chance_watch))
+                            // The button says it is an ad and what it gives (Yandex requirement 4.5).
+                            Text(
+                                stringResource(
+                                    when (kind) {
+                                        ContinueOfferKind.UNDO_LAST_MOVE -> Res.string.game_2048_undo_offer_watch
+                                        ContinueOfferKind.THIRD_MISTAKE -> Res.string.second_chance_watch
+                                    },
+                                ),
+                            )
                         }
                     ContinueAdAvailability.LOADING ->
                         Button(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth()) {

@@ -31,6 +31,13 @@ class LicensesTest {
     }
 
     @Test
+    fun theWebListShowsNoAddresses() {
+        val shown = licenseNoticesFor(android = false).flatMap { listOfNotNull(it.name, it.holder, it.license, it.url, it.licenseUrl) }
+        assertTrue(shown.none { text -> listOf("http", "www.", ".org", ".com", ".net").any { it in text } })
+        assertTrue(licenseNoticesFor(android = true).all { it.url != null })
+    }
+
+    @Test
     fun reflowJoinsTheLinesOfAParagraphAndKeepsParagraphs() {
         assertEquals(
             "MIT License\n\nPermission is hereby granted, free of charge.",

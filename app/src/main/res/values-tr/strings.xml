@@ -2,7 +2,7 @@
 <resources>
     <string name="app_language">tr</string>
     <string name="how_to_play_question">Nasıl oynanır?</string>
-    <string name="app_name">Logica</string>
+    <string name="app_name">Bulmacalar</string>
     <string name="tab_game">Oyunlar</string>
     <string name="game_rules">Kurallar</string>
     <string name="tab_store">Mağaza</string>
@@ -233,7 +233,7 @@
     <string name="store_rewarded_gem_title">+1 elmas</string>
     <string name="store_rewarded_life_title">+1 can</string>
     <string name="store_rewarded_offer">Kısa bir reklam izleyerek</string>
-    <string name="store_rewarded_watch">İzle</string>
+    <string name="store_rewarded_watch">Reklam izle</string>
     <string name="store_rewarded_unavailable">Reklam şu anda kullanılamıyor.</string>
     <string name="nonogram">Nonogram</string>
     <string name="nonogram_tutorial_title">Nonogram eğitimi</string>

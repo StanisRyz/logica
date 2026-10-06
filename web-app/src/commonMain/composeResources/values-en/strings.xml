@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="web_loading">Logica is loading</string>
+    <string name="web_loading">Puzzles are loading</string>
     <string name="web_tab_elsewhere_title">The game is open in another tab</string>
     <string name="web_tab_elsewhere_body">You can play in one tab at a time. Your progress carries over here.</string>
     <string name="web_tab_play_here">Play here</string>
@@ -68,7 +68,7 @@
     <string name="web_paid_unavailable">Payments are unavailable right now.</string>
     <string name="web_paid_error">The purchase could not be completed. Please try again.</string>
     <string name="web_ad_in_progress">Playing…</string>
-    <string name="web_ad_watch">Watch</string>
+    <string name="web_ad_watch">Watch ad</string>
     <string name="web_ad_dismissed">No reward: the ad was closed early.</string>
     <string name="web_ad_unavailable">Ads are unavailable right now. Try again later.</string>
     <string name="web_ad_cooldown">Please wait a moment before the next ad.</string>

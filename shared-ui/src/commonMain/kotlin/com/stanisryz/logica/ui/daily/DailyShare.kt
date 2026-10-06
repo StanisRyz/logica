@@ -59,9 +59,9 @@ object DailyShareFormatter {
         val lines = mutableListOf<String>()
         lines +=
             when (language) {
-                DailyShareLanguage.RUSSIAN -> "Логика дня — ${payload.dateLabel}"
-                DailyShareLanguage.ENGLISH -> "Logica daily — ${payload.dateLabel}"
-                DailyShareLanguage.TURKISH -> "Logica günlük — ${payload.dateLabel}"
+                DailyShareLanguage.RUSSIAN -> "Головоломки дня — ${payload.dateLabel}"
+                DailyShareLanguage.ENGLISH -> "Puzzles daily — ${payload.dateLabel}"
+                DailyShareLanguage.TURKISH -> "Bulmacalar günlük — ${payload.dateLabel}"
             }
         lines += ""
         payload.entries.forEach { entry -> lines += formatEntry(entry, language) }

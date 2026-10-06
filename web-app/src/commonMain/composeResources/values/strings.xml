@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="web_loading">Логика загружается</string>
+    <string name="web_loading">Головоломки загружаются</string>
     <string name="web_tab_elsewhere_title">Игра открыта в другой вкладке</string>
     <string name="web_tab_elsewhere_body">Играть можно только в одной вкладке. Здесь игра продолжится с того же прогресса.</string>
     <string name="web_tab_play_here">Играть здесь</string>
@@ -68,7 +68,7 @@
     <string name="web_paid_unavailable">Оплата сейчас недоступна.</string>
     <string name="web_paid_error">Не удалось завершить покупку. Попробуйте ещё раз.</string>
     <string name="web_ad_in_progress">Идёт…</string>
-    <string name="web_ad_watch">Смотреть</string>
+    <string name="web_ad_watch">Смотреть рекламу</string>
     <string name="web_ad_dismissed">Награда не получена: реклама закрыта раньше времени.</string>
     <string name="web_ad_unavailable">Реклама сейчас недоступна. Попробуйте позже.</string>
     <string name="web_ad_cooldown">Подождите немного перед следующей рекламой.</string>

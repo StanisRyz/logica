@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="how_to_play_question">Как играть?</string>
-    <string name="app_name">Логика дня</string>
+    <string name="app_name">Головоломки</string>
     <!-- The language these resources resolved to; drives host-formatted dates and share text. -->
     <string name="app_language">ru</string>
     <string name="tab_game">Игры</string>
@@ -255,7 +255,7 @@
     <string name="store_rewarded_gem_title">+1 кристалл</string>
     <string name="store_rewarded_life_title">+1 жизнь</string>
     <string name="store_rewarded_offer">За просмотр короткой рекламы</string>
-    <string name="store_rewarded_watch">Смотреть</string>
+    <string name="store_rewarded_watch">Смотреть рекламу</string>
     <string name="store_rewarded_unavailable">Реклама сейчас недоступна.</string>
     <string name="nonogram">Нонограмма</string>
     <string name="nonogram_tutorial_title">Обучение «Нонограмма»</string>

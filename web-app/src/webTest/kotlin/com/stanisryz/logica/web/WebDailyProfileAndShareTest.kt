@@ -94,7 +94,7 @@ class WebDailyProfileAndShareTest {
         val text = DailyShareFormatter.format(payload!!)
         val expected =
             listOf(
-                "Логика дня — 24 августа",
+                "Головоломки дня — 24 августа",
                 "",
                 "Баланс  ✓",
                 "Короны  ✓",
