@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.stanisryz.logica.platform.EconomyPolicy
+import com.stanisryz.logica.puzzle.core.daily.DailyArchive
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengeDefinition
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
 import com.stanisryz.logica.puzzle.core.daily.DailyDate
@@ -29,6 +30,8 @@ internal data class WebDailyAttempt(
     val playerContextToken: WebPlayerContextToken,
     val definition: DailyChallengeDefinition,
     val puzzleType: PuzzleType,
+    /** Started from the Daily archive: a past day, whose solve fills the day but never the streak. */
+    val archive: Boolean = false,
 ) {
     val entry: DailyPuzzleEntry =
         requireNotNull(definition.entries.firstOrNull { it.puzzleType == puzzleType }) {
@@ -99,11 +102,22 @@ internal class WebDailyGameplayCoordinator(
     var lastStartWasRejected by mutableStateOf(false)
         private set
 
-    fun start(puzzleType: PuzzleType): WebDailyStartResult {
+    /**
+     * Starts today's entry, or with [archiveDate] an entry of a past day the caller has opened in
+     * the Daily archive. The day keeps its persisted policy or gets the newest one, as today does.
+     */
+    fun start(
+        puzzleType: PuzzleType,
+        archiveDate: DailyDate? = null,
+    ): WebDailyStartResult {
         val binding = playerSession.dailyBinding.value as? WebDailyBinding.Ready
         if (binding == null) return rejected(WebDailyStartResult.Unavailable)
+        val today = dateProvider.currentDate()
+        if (archiveDate != null && !DailyArchive.contains(today, archiveDate, EconomyPolicy.DAILY_ARCHIVE_DAYS)) {
+            return WebDailyStartResult.NotStarted
+        }
         // The attempt keeps the challenge date on which it started even across midnight.
-        val runState = binding.repository.stateFor(dateProvider.currentDate())
+        val runState = binding.repository.stateFor(archiveDate ?: today)
         val entry = runState.definition.entries.firstOrNull { it.puzzleType == puzzleType }
         if (entry == null || runState.entries[puzzleType] == WebDailyEntryState.COMPLETED) {
             return rejected(WebDailyStartResult.NotStarted)
@@ -117,6 +131,7 @@ internal class WebDailyGameplayCoordinator(
                         playerContextToken = binding.token,
                         definition = runState.definition,
                         puzzleType = puzzleType,
+                        archive = archiveDate != null,
                     ),
                 )
             }
@@ -145,6 +160,7 @@ internal class WebDailyGameplayCoordinator(
                         attempt.definition,
                         attempt.puzzleType,
                         wordAttemptsUsed.takeIf { attempt.puzzleType == PuzzleType.WORD },
+                        onTime = !attempt.archive,
                     )
                 WebStatisticsTerminalOutcome.FAILED ->
                     binding.repository.recordFailed(attempt.definition, attempt.puzzleType)
@@ -267,6 +283,8 @@ private fun dailyCalendarMonth(
         month = month,
         today = currentDate.getDayOfMonth(),
         days = days,
+        // Every earlier day of the month lies within the archive's reach, so each opens there.
+        openableDays = (1 until currentDate.getDayOfMonth()).toSet(),
     )
 }
 

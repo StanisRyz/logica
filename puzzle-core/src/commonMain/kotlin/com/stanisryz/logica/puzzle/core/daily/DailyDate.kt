@@ -8,3 +8,6 @@ expect class DailyDate {
 
     fun getDayOfMonth(): Int
 }
+
+/** The date of a [toDailyEpochDay] value, the inverse of it on every target. */
+expect fun dailyDateOfEpochDay(epochDay: Long): DailyDate

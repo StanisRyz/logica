@@ -42,7 +42,7 @@ internal fun TodayUiState.toDailyHubUiState(): DailyHubUiState =
 @Composable
 private fun TodayUiState.Content.toDailyHubContent(): DailyHubUiState.Content {
     val context = LocalContext.current
-    val dateLabel = formattedDateLabel(definition.challengeDate)
+    val dateLabel = formatDailyDateLabel(definition.challengeDate)
     return DailyHubUiState.Content(
         dateLabel = dateLabel,
         entries =
@@ -84,7 +84,8 @@ private fun TodayUiState.Content.toDailyHubContent(): DailyHubUiState.Content {
 }
 
 @Composable
-private fun formattedDateLabel(challengeDate: java.time.LocalDate): String {
+/** A Daily date as the interface language writes it ("6 октября 2026 г."). */
+internal fun formatDailyDateLabel(challengeDate: java.time.LocalDate): String {
     // The interface is Russian-only, so the date is too, whatever the device language is.
     val formatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(AppLanguage.locale)
     return formatter.format(challengeDate)
@@ -106,3 +107,7 @@ internal fun Context.shareDailyResult(summary: DailyResultSummary) {
         }
     startActivity(Intent.createChooser(sendIntent, null))
 }
+
+/** A Daily date without its year ("5 октября", "October 5"), for the archive and its result cards. */
+internal fun formatDailyShortDate(challengeDate: java.time.LocalDate): String =
+    DateTimeFormatter.ofPattern(if (AppLanguage.tag == "en") "MMMM d" else "d MMMM", AppLanguage.locale).format(challengeDate)

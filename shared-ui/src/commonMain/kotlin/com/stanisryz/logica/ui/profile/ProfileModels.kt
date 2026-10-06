@@ -131,6 +131,8 @@ data class DailyCalendarMonth(
     val month: Int,
     val today: Int?,
     val days: Map<Int, DailyCalendarDayState>,
+    /** Past days of this month that open in the Daily archive when tapped. */
+    val openableDays: Set<Int> = emptySet(),
 ) {
     init {
         require(month in 1..12)

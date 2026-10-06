@@ -135,6 +135,7 @@ fun main() {
             life = rewardedController(WebRewardedPlacementController.LIFE_REWARD),
             secondChance = rewardedController(reward = null),
             streakRestore = rewardedController(reward = null),
+            dailyArchive = rewardedController(reward = null),
         )
     // Real-money consumable pipeline (client-side Yandex Payments flow).
     val paymentsCoordinator =

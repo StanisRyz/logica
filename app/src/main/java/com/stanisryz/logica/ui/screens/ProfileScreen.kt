@@ -66,11 +66,12 @@ internal fun ProfilePageRoute(
     page: ProfilePage,
     repository: StatisticsRepository,
     modifier: Modifier = Modifier,
+    onOpenDailyDay: ((Int) -> Unit)? = null,
 ) {
     val factory = remember(repository) { StatisticsViewModelFactory(repository) }
     val statisticsViewModel: StatisticsViewModel = viewModel(factory = factory)
     val statisticsState by statisticsViewModel.uiState.collectAsStateWithLifecycle()
-    ProfilePageContent(page, statisticsState.toProfileUiState(), modifier)
+    ProfilePageContent(page, statisticsState.toProfileUiState(), modifier, onOpenDailyDay)
 }
 
 /** The paid achievement ids and the way to pay one, or null until the ledger has been read. */

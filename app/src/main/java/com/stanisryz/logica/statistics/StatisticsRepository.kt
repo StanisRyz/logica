@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import java.time.Instant
 import java.time.LocalDate
 
 internal interface StatisticsRepository {
@@ -26,14 +27,19 @@ internal class RoomStatisticsRepository(
     private val dailyRunDao: DailyRunDao,
     /** Saved streak days from the economy ledger (`streak_restore:<day>`). */
     private val restoredStreakDays: Flow<Set<Long>> = flowOf(emptySet()),
+    /** Opened Daily archive days from the economy ledger (`daily_archive:<day>`) with when each was opened. */
+    private val archiveUnlocks: Flow<Map<Long, Long>> = flowOf(emptyMap()),
 ) : StatisticsRepository {
     override fun observe(currentDate: LocalDate): Flow<StatisticsSnapshot> =
         combine(
             gameResultDao.observeAll().map { entities -> entities.mapNotNull(GameResultEntity::toGameResultOrNull) },
             dailyRunDao.observeCompletedDates().map { dates -> dates.mapNotNull(::parseDateOrNull) },
             restoredStreakDays,
-        ) { results, completedDailyDates, restored ->
-            StatisticsAggregator.aggregate(currentDate, results, completedDailyDates, restored)
+            archiveUnlocks.map { unlocks ->
+                unlocks.entries.associate { (day, openedAt) -> LocalDate.ofEpochDay(day) to Instant.ofEpochMilli(openedAt) }
+            },
+        ) { results, completedDailyDates, restored, archive ->
+            StatisticsAggregator.aggregate(currentDate, results, completedDailyDates, restored, archive)
         }
 
     override fun observeSolvedDailyPictures(): Flow<List<Pair<LocalDate, Long>>> =

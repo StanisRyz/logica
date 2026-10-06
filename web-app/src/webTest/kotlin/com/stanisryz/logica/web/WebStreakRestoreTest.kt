@@ -20,12 +20,13 @@ class WebStreakRestoreTest {
     private val yesterday = todayEpochDay - 1L
 
     @Test
-    fun theRecordWritesLgdr3AndStillReadsLgdr2() {
+    fun theRecordWritesItsNewestVersionAndStillReadsLgdr2() {
         val snapshot = WebDailyRewardsSnapshot(claimedAchievements = setOf("first"), restoredStreakDays = setOf(20_000L, 20_010L))
 
         val encoded = WebDailyRewardsCodec.encode(snapshot)
 
-        assertTrue(encoded.decodeToString().startsWith("LGDR3|"))
+        // LGDR4 since the Daily archive (stage 11.4) added its opened days.
+        assertTrue(encoded.decodeToString().startsWith("LGDR4|"))
         assertEquals(snapshot, WebDailyRewardsCodec.decode(encoded))
         // A record written before saved days existed reads with none.
         val v2 = WebDailyRewardsCodec.decode("LGDR2|20000|1|0|0|19999|2||first".encodeToByteArray())

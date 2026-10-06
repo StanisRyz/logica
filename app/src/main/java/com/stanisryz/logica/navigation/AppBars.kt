@@ -232,6 +232,7 @@ internal fun destinationTitle(
             AppDestination.Settings -> R.string.settings
             AppDestination.Licenses -> R.string.licenses
             AppDestination.Achievements -> R.string.achievements
+            AppDestination.DailyArchive, is AppDestination.DailyArchiveDay -> R.string.daily_archive
             is AppDestination.ProfileSection ->
                 when (destination.page) {
                     ProfilePage.DAILY -> R.string.profile_daily_calendar

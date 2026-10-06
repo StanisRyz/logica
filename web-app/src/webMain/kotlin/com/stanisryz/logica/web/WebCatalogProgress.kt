@@ -439,6 +439,16 @@ internal class WebCatalogProgressRepository(
         return saveRewards(current.copy(restoredStreakDays = current.restoredStreakDays + epochDay))
     }
 
+    /**
+     * Opens the Daily archive day [epochDay] for good; true only for the first, durable open. The
+     * caller pays only after this, so a lost browser write charges nothing, and a repeat nothing again.
+     */
+    fun claimDailyArchive(epochDay: Long): Boolean {
+        val current = mutableRewards.value
+        if (epochDay in current.unlockedArchiveDays) return false
+        return saveRewards(current.copy(unlockedArchiveDays = current.unlockedArchiveDays + epochDay))
+    }
+
     /** Day-aware merge with the cloud copy. */
     fun mergeCloudRewards(cloud: WebDailyRewardsSnapshot): WebCloudValueMergeResult {
         val local = mutableRewards.value

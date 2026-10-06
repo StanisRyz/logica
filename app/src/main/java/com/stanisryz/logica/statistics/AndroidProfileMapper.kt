@@ -71,6 +71,8 @@ private fun DailyMonthHistory.toCalendarMonth(): DailyCalendarMonth {
             savedDays.associateWith { DailyCalendarDayState.STREAK_SAVED } +
                 completedDays.associateWith { DailyCalendarDayState.COMPLETED } +
                 partialDays.associateWith { DailyCalendarDayState.PARTIAL },
+        // Every earlier day of the month lies within the archive's reach, so each opens there.
+        openableDays = (1 until currentDate.dayOfMonth).toSet(),
     )
 }
 

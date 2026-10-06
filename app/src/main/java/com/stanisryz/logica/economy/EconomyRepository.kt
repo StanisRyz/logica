@@ -63,6 +63,38 @@ internal interface EconomyRepository {
         epochDay: Long,
         withGems: Boolean,
     ): StreakRestoreOutcome = StreakRestoreOutcome.AlreadyRestored
+
+    /** The opened Daily archive days, as epoch day to the moment each was opened. */
+    fun observeDailyArchiveUnlocks(): Flow<Map<Long, Long>> = flowOf(emptyMap())
+
+    /** Opens the archive day [epochDay] with [payment]; a repeat does nothing. */
+    suspend fun unlockDailyArchive(
+        epochDay: Long,
+        payment: DailyArchivePayment,
+    ): DailyArchiveUnlockOutcome = DailyArchiveUnlockOutcome.AlreadyUnlocked
+}
+
+/** How an archive day is opened; [source] is its ledger row's source. */
+internal enum class DailyArchivePayment(
+    val source: String,
+) {
+    GEMS("gems"),
+    REWARDED("rewarded"),
+
+    /** A day the player already started on its own date is theirs already. */
+    FREE("free"),
+}
+
+/** What one archive unlock did. */
+internal sealed interface DailyArchiveUnlockOutcome {
+    data object Unlocked : DailyArchiveUnlockOutcome
+
+    /** That day was already open; nothing was charged again. */
+    data object AlreadyUnlocked : DailyArchiveUnlockOutcome
+
+    data class NotEnoughGems(
+        val missing: Int,
+    ) : DailyArchiveUnlockOutcome
 }
 
 /** What one streak save did. */
@@ -112,6 +144,22 @@ internal class RoomEconomyRepository(
         epochDay: Long,
         withGems: Boolean,
     ): StreakRestoreOutcome = dao.restoreStreak(epochDay, withGems, clock.nowEpochMillis())
+
+    override fun observeDailyArchiveUnlocks(): Flow<Map<Long, Long>> =
+        dao.observeEvents(EconomyEvent.DAILY_ARCHIVE_PREFIX).map { events ->
+            events
+                .mapNotNull { event ->
+                    event.eventId
+                        .removePrefix(EconomyEvent.DAILY_ARCHIVE_PREFIX)
+                        .toLongOrNull()
+                        ?.let { it to event.createdAtEpochMillis }
+                }.toMap()
+        }
+
+    override suspend fun unlockDailyArchive(
+        epochDay: Long,
+        payment: DailyArchivePayment,
+    ): DailyArchiveUnlockOutcome = dao.unlockDailyArchive(epochDay, payment, clock.nowEpochMillis())
 
     override suspend fun refillLifeWithGems(actionId: String): EconomyRefill = dao.refillLifeWithGems(actionId, clock.nowEpochMillis())
 

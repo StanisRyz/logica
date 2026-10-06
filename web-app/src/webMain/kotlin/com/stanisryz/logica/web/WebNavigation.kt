@@ -55,6 +55,9 @@ internal sealed interface WebRoute {
 
     data object Store : WebRoute
 
+    /** The Daily archive, opened from the Game hub or a past day of the Profile calendar. */
+    data object DailyArchive : WebRoute
+
     data object Balance : WebRoute
 
     data object Crowns : WebRoute
@@ -81,7 +84,7 @@ internal fun routeHasActivePuzzle(
     blockSudokuState: WebBlockSudokuState,
 ): Boolean =
     when (route) {
-        WebRoute.GameHub, WebRoute.Profile, WebRoute.Store -> false
+        WebRoute.GameHub, WebRoute.Profile, WebRoute.Store, WebRoute.DailyArchive -> false
         WebRoute.Balance ->
             balanceState is WebBalanceState.Playing &&
                 balanceState.game.status == BalanceGameStatus.IN_PROGRESS
@@ -114,7 +117,7 @@ internal fun stickyBannerVisible(
     hasActivePuzzle: Boolean,
 ): Boolean =
     when (route) {
-        WebRoute.GameHub, WebRoute.Profile, WebRoute.Store -> true
+        WebRoute.GameHub, WebRoute.Profile, WebRoute.Store, WebRoute.DailyArchive -> true
         else -> !hasActivePuzzle
     }
 

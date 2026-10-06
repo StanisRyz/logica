@@ -50,6 +50,14 @@ internal sealed interface AppDestination {
         val page: ProfilePage,
     ) : AppDestination
 
+    /** The Daily archive's past days, opened from the Game hub. */
+    data object DailyArchive : AppDestination
+
+    /** One archive day, opened from the archive list or a past day of the Profile calendar. */
+    data class DailyArchiveDay(
+        val epochDay: Long,
+    ) : AppDestination
+
     data object BalanceStart : AppDestination
 
     data object BalanceTutorial : AppDestination
@@ -120,6 +128,8 @@ internal fun AppDestination.showsSettingsAction(): Boolean = this != AppDestinat
 internal fun AppDestination.showsWallet(): Boolean =
     when (this) {
         AppDestination.Home,
+        AppDestination.DailyArchive,
+        is AppDestination.DailyArchiveDay,
         AppDestination.BalanceStart,
         AppDestination.CrownsStart,
         AppDestination.WordStart,

@@ -41,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
@@ -70,6 +71,8 @@ import androidx.compose.ui.window.DialogProperties
 import com.stanisryz.logica.puzzle.core.model.PuzzleMistakes
 import com.stanisryz.logica.puzzle.core.model.PuzzleStars
 import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.result_archive_failed
+import com.stanisryz.logica.shared.ui.generated.resources.result_archive_solved
 import com.stanisryz.logica.shared.ui.generated.resources.result_daily_failed
 import com.stanisryz.logica.shared.ui.generated.resources.result_daily_solved
 import com.stanisryz.logica.shared.ui.generated.resources.result_failed
@@ -89,6 +92,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.result_save_error
 import com.stanisryz.logica.shared.ui.generated.resources.result_saving
 import com.stanisryz.logica.shared.ui.generated.resources.result_solved
 import com.stanisryz.logica.shared.ui.generated.resources.result_stars
+import com.stanisryz.logica.shared.ui.generated.resources.result_to_archive
 import com.stanisryz.logica.shared.ui.generated.resources.result_to_difficulty
 import com.stanisryz.logica.shared.ui.generated.resources.result_to_games
 import com.stanisryz.logica.shared.ui.generated.resources.second_chance_loading
@@ -168,6 +172,12 @@ fun gameResultPrimaryAction(
 fun gameResultShowsArtwork(solved: Boolean): Boolean = solved
 
 /**
+ * The day of a Daily archive attempt, already formatted by the host, or null for today's Daily.
+ * Hosts provide it around an archive game so its result card names the day it belongs to.
+ */
+val LocalDailyResultDateLabel = compositionLocalOf<String?> { null }
+
+/**
  * The one result card for every game on both platforms: an outcome mark, the level (or Daily)
  * title and difficulty, a host detail line (score, answer, attempts), a row of tiles for the
  * reward, lost life, mistakes, and hints, then one full-width primary action and the way out.
@@ -208,7 +218,10 @@ fun GameResultCard(
     val resolvedTitle =
         title ?: when {
             saveError -> stringResource(Res.string.result_save_error)
-            isDaily -> stringResource(if (solved) Res.string.result_daily_solved else Res.string.result_daily_failed)
+            isDaily ->
+                LocalDailyResultDateLabel.current?.let { date ->
+                    stringResource(if (solved) Res.string.result_archive_solved else Res.string.result_archive_failed, date)
+                } ?: stringResource(if (solved) Res.string.result_daily_solved else Res.string.result_daily_failed)
             levelNumber != null ->
                 stringResource(if (solved) Res.string.result_level_solved else Res.string.result_level_failed, levelNumber)
             else -> stringResource(if (solved) Res.string.result_solved else Res.string.result_failed)
@@ -315,7 +328,15 @@ fun GameResultCard(
                     GameResultPrimaryAction.LIFE_OFFER -> lifeOffer?.let { ResultLifeOffer(it, primaryModifier) }
                     GameResultPrimaryAction.NONE -> Unit
                 }
-                val exitLabel = stringResource(if (exitToDifficulty) Res.string.result_to_difficulty else Res.string.result_to_games)
+                val exitLabel =
+                    stringResource(
+                        when {
+                            exitToDifficulty -> Res.string.result_to_difficulty
+                            // An archive game goes back to its archive day.
+                            isDaily && LocalDailyResultDateLabel.current != null -> Res.string.result_to_archive
+                            else -> Res.string.result_to_games
+                        },
+                    )
                 if (solved && isDaily && saveState == GameResultSaveState.SAVED) {
                     // A solved Daily entry is done for the day: leaving is the one action, so it leads.
                     Button(onClick = onExit, modifier = primaryModifier) { Text(exitLabel) }

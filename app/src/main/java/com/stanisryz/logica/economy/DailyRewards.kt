@@ -135,10 +135,11 @@ internal class DailyRewardsRepository(
                 .atStartOfDay(zone())
                 .toInstant()
                 .toEpochMilli()
-        return resultDao.observeCompletedBetween(from, until).map { it.toActivity() }
+        return resultDao.observeCompletedBetween(from, until).map { it.toActivity(date.toString()) }
     }
 
-    private fun List<GameResultEntity>.toActivity(): DailyQuestActivity =
+    /** The Daily quest counts today's Daily only; an archive day's solves count as games like any. */
+    private fun List<GameResultEntity>.toActivity(today: String): DailyQuestActivity =
         fold(DailyQuestActivity()) { activity, result ->
             val puzzleType = runCatching { PuzzleType.valueOf(result.puzzleType) }.getOrNull() ?: return@fold activity
             val difficulty = runCatching { Difficulty.valueOf(result.difficulty) }.getOrNull() ?: return@fold activity
@@ -146,7 +147,7 @@ internal class DailyRewardsRepository(
                 puzzleType = puzzleType,
                 difficulty = difficulty,
                 solved = result.outcome == "SOLVED",
-                daily = result.resultScope == GameResultScope.DAILY.name,
+                daily = result.resultScope == GameResultScope.DAILY.name && result.challengeDate == today,
             )
         }
 

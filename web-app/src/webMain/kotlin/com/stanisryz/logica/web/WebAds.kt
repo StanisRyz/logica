@@ -159,6 +159,8 @@ internal class WebRewardedAds(
     val secondChance: WebRewardedPlacementController? = null,
     /** Saves a Daily streak broken yesterday; it pays nothing into the wallet, the save is its reward. */
     val streakRestore: WebRewardedPlacementController? = null,
+    /** Opens a Daily archive day; it pays nothing into the wallet, the open day is its reward. */
+    val dailyArchive: WebRewardedPlacementController? = null,
 )
 
 /**

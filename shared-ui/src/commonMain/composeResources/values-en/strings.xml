@@ -502,4 +502,21 @@
         <item quantity="other">%1$d more gems needed</item>
     </plurals>
     <string name="profile_calendar_saved">streak saved</string>
+    <string name="daily_archive">Archive</string>
+    <plurals name="daily_archive_description">
+        <item quantity="one">Daily puzzles of the last %1$d day</item>
+        <item quantity="other">Daily puzzles of the last %1$d days</item>
+    </plurals>
+    <string name="daily_archive_locked">Locked</string>
+    <string name="daily_archive_unlock_title">Unlock this day</string>
+    <string name="daily_archive_unlock_body">An unlocked day stays unlocked for good. Solves in the archive fill the calendar, not the streak.</string>
+    <string name="daily_archive_watch_ad">Unlock for an ad</string>
+    <plurals name="daily_archive_missing_gems">
+        <item quantity="one">%1$d more gem needed</item>
+        <item quantity="other">%1$d more gems needed</item>
+    </plurals>
+    <string name="daily_archive_open_day">Open in the archive</string>
+    <string name="result_archive_solved">Daily puzzle of %1$s solved</string>
+    <string name="result_archive_failed">Daily puzzle of %1$s not solved</string>
+    <string name="result_to_archive">To the archive</string>
 </resources>

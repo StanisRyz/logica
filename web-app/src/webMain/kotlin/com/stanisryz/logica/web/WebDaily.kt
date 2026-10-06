@@ -17,13 +17,18 @@ internal data class WebDailyEntryFacts(
     val solved: Boolean = false,
 )
 
-/** One durable calendar day. Masks use [WebDailyPuzzleOrder] and contain lifecycle facts, never attempts. */
+/**
+ * One durable calendar day. Masks use [WebDailyPuzzleOrder] and contain lifecycle facts, never
+ * attempts. [onTimeSolvedMask] holds the entries solved by an attempt started on the day itself,
+ * never from the Daily archive: only those keep the streak, while [solvedMask] holds every solve.
+ */
 internal data class WebDailyDayRecord(
     val date: DailyDate,
     val policyVersion: DailyPolicyVersion,
     val failedMask: Int = 0,
     val solvedMask: Int = 0,
     val wordSolvedAttemptsUsed: Int? = null,
+    val onTimeSolvedMask: Int = solvedMask,
 ) {
     init {
         require(date.getYear() in MIN_YEAR..MAX_YEAR) { "Web Daily dates must use years $MIN_YEAR..$MAX_YEAR." }
@@ -32,6 +37,7 @@ internal data class WebDailyDayRecord(
         }
         require(failedMask and WebDailyPuzzleOrder.ALL_MASK == failedMask) { "Web Daily failed mask is invalid." }
         require(solvedMask and WebDailyPuzzleOrder.ALL_MASK == solvedMask) { "Web Daily solved mask is invalid." }
+        require(onTimeSolvedMask and solvedMask == onTimeSolvedMask) { "Web Daily on-time solves must be solves." }
 
         val definition = DailyChallengePolicyResolver.definitionFor(date, policyVersion)
         val requiredMask = WebDailyPuzzleOrder.maskOf(definition.entries.map { it.puzzleType })
@@ -68,12 +74,13 @@ internal data class WebDailyDayRecord(
     val fullyCompleted: Boolean
         get() = solvedMask and requiredMask == requiredMask
 
+    /** Only solves made on the day itself keep the streak; archive play never does. */
     val qualifiedForStreak: Boolean
         get() =
             if (DailyChallengePolicyResolver.qualifiesStreakOnAnySolvedEntry(policyVersion)) {
-                solvedMask != 0
+                onTimeSolvedMask != 0
             } else {
-                fullyCompleted
+                onTimeSolvedMask and requiredMask == requiredMask
             }
 
     companion object {
@@ -173,6 +180,7 @@ internal object WebDailyMerger {
                             policyVersion = firstRecord.policyVersion,
                             failedMask = firstRecord.failedMask or secondRecord.failedMask,
                             solvedMask = firstRecord.solvedMask or secondRecord.solvedMask,
+                            onTimeSolvedMask = firstRecord.onTimeSolvedMask or secondRecord.onTimeSolvedMask,
                             wordSolvedAttemptsUsed =
                                 listOfNotNull(
                                     firstRecord.wordSolvedAttemptsUsed,
@@ -185,23 +193,37 @@ internal object WebDailyMerger {
     }
 }
 
-/** Eight-byte records keep complete history within a conservative 24 KiB raw payload budget. */
+/**
+ * Eight-byte records keep complete history within a conservative 24 KiB raw payload budget. Schema 2
+ * adds a ninth byte, the on-time solved mask; a snapshot whose solves were all made on their own day
+ * is still written as schema 1, so older builds keep reading it, and a schema-1 record reads with
+ * every solve on time, which is what every solve before the archive was.
+ */
 internal object WebDailyCodec {
     private val magic = byteArrayOf('L'.code.toByte(), 'G'.code.toByte(), 'D'.code.toByte(), 'Y'.code.toByte())
     private const val HEADER_SIZE = 8
-    private const val RECORD_SIZE = 8
+    private const val LEGACY_SCHEMA_VERSION = 1
+    private const val ON_TIME_SCHEMA_VERSION = 2
+    private const val LEGACY_RECORD_SIZE = 8
+    private const val ON_TIME_RECORD_SIZE = 9
     internal const val MAX_PAYLOAD_SIZE = 24 * 1024
-    private const val MAX_RECORDS = (MAX_PAYLOAD_SIZE - HEADER_SIZE) / RECORD_SIZE
+
+    private fun recordSize(schema: Int): Int = if (schema == ON_TIME_SCHEMA_VERSION) ON_TIME_RECORD_SIZE else LEGACY_RECORD_SIZE
+
+    private fun maxRecords(schema: Int): Int = (MAX_PAYLOAD_SIZE - HEADER_SIZE) / recordSize(schema)
 
     fun encode(snapshot: WebDailySnapshotV1): ByteArray {
         val records =
             snapshot.days.values.sortedWith(
                 Comparator { first, second -> webDailyDateComparator.compare(first.date, second.date) },
             )
-        require(records.size <= MAX_RECORDS) { "Web Daily payload is too large; history cannot be pruned." }
-        val result = ByteArray(HEADER_SIZE + records.size * RECORD_SIZE)
+        val schema =
+            if (records.all { it.onTimeSolvedMask == it.solvedMask }) LEGACY_SCHEMA_VERSION else ON_TIME_SCHEMA_VERSION
+        val recordSize = recordSize(schema)
+        require(records.size <= maxRecords(schema)) { "Web Daily payload is too large; history cannot be pruned." }
+        val result = ByteArray(HEADER_SIZE + records.size * recordSize)
         magic.copyInto(result)
-        result[4] = snapshot.schemaVersion.toByte()
+        result[4] = schema.toByte()
         result[5] = 0
         writeUnsignedShort(result, 6, records.size)
         var offset = HEADER_SIZE
@@ -213,7 +235,8 @@ internal object WebDailyCodec {
             result[offset + 5] = record.failedMask.toByte()
             result[offset + 6] = record.solvedMask.toByte()
             result[offset + 7] = (record.wordSolvedAttemptsUsed ?: 0).toByte()
-            offset += RECORD_SIZE
+            if (schema == ON_TIME_SCHEMA_VERSION) result[offset + 8] = record.onTimeSolvedMask.toByte()
+            offset += recordSize
         }
         return result
     }
@@ -222,11 +245,13 @@ internal object WebDailyCodec {
         runCatching {
             require(payload.size in HEADER_SIZE..MAX_PAYLOAD_SIZE)
             require(magic.indices.all { payload[it] == magic[it] })
-            require((payload[4].toInt() and 0xff) == WebDailySnapshotV1.CURRENT_SCHEMA_VERSION)
+            val schema = payload[4].toInt() and 0xff
+            require(schema == LEGACY_SCHEMA_VERSION || schema == ON_TIME_SCHEMA_VERSION)
             require(payload[5].toInt() == 0)
+            val recordSize = recordSize(schema)
             val recordCount = readUnsignedShort(payload, 6)
-            require(recordCount in 0..MAX_RECORDS)
-            require(payload.size == HEADER_SIZE + recordCount * RECORD_SIZE)
+            require(recordCount in 0..maxRecords(schema))
+            require(payload.size == HEADER_SIZE + recordCount * recordSize)
 
             val records = linkedMapOf<DailyDate, WebDailyDayRecord>()
             var offset = HEADER_SIZE
@@ -238,16 +263,18 @@ internal object WebDailyCodec {
                         payload[offset + 3].toInt() and 0xff,
                     )
                 val attempts = (payload[offset + 7].toInt() and 0xff).takeUnless { it == 0 }
+                val solvedMask = payload[offset + 6].toInt() and 0xff
                 val record =
                     WebDailyDayRecord(
                         date = date,
                         policyVersion = DailyPolicyVersion(payload[offset + 4].toInt() and 0xff),
                         failedMask = payload[offset + 5].toInt() and 0xff,
-                        solvedMask = payload[offset + 6].toInt() and 0xff,
+                        solvedMask = solvedMask,
                         wordSolvedAttemptsUsed = attempts,
+                        onTimeSolvedMask = if (schema == ON_TIME_SCHEMA_VERSION) payload[offset + 8].toInt() and 0xff else solvedMask,
                     )
                 require(records.put(date, record) == null) { "Duplicate Web Daily date." }
-                offset += RECORD_SIZE
+                offset += recordSize
             }
             WebDailySnapshotV1(days = records)
         }.getOrNull()

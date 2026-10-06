@@ -40,6 +40,8 @@ internal sealed interface GameAttemptLaunch {
         val difficulty: Difficulty,
         val seed: PuzzleSeed,
         val generatorVersion: GeneratorVersion,
+        /** Opened from the Daily archive: a past day, which returns to the archive when left. */
+        val archive: Boolean = false,
     ) : GameAttemptLaunch
 }
 

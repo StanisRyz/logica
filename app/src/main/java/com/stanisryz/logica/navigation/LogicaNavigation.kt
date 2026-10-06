@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -54,6 +55,7 @@ import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.daily.DailyChallengeRepository
 import com.stanisryz.logica.daily.DailyGameLaunch
 import com.stanisryz.logica.daily.DailyResultRepository
+import com.stanisryz.logica.daily.formatDailyShortDate
 import com.stanisryz.logica.economy.DailyRewardsRepository
 import com.stanisryz.logica.economy.EconomyRepository
 import com.stanisryz.logica.economy.PlayerEconomy
@@ -76,13 +78,14 @@ import com.stanisryz.logica.ui.components.GameRulesSheet
 import com.stanisryz.logica.ui.components.GameplayExitGuard
 import com.stanisryz.logica.ui.components.LicensesContent
 import com.stanisryz.logica.ui.components.LivesDialog
+import com.stanisryz.logica.ui.components.LocalDailyResultDateLabel
 import com.stanisryz.logica.ui.components.LocalResultLives
 import com.stanisryz.logica.ui.components.LocalSecondChanceAd
 import com.stanisryz.logica.ui.components.PuzzleStartScreen
 import com.stanisryz.logica.ui.components.ResultLives
 import com.stanisryz.logica.ui.components.SecondChanceAd
 import com.stanisryz.logica.ui.components.licenseNoticesFor
-import com.stanisryz.logica.ui.daily.StreakRestoreAdState
+import com.stanisryz.logica.ui.daily.DailyRewardedAdState
 import com.stanisryz.logica.ui.screens.AchievementsRoute
 import com.stanisryz.logica.ui.screens.BalanceGameRoute
 import com.stanisryz.logica.ui.screens.BalanceTutorialRoute
@@ -90,6 +93,8 @@ import com.stanisryz.logica.ui.screens.BlockSudokuRoute
 import com.stanisryz.logica.ui.screens.BlockSudokuTutorialRoute
 import com.stanisryz.logica.ui.screens.CrownsGameRoute
 import com.stanisryz.logica.ui.screens.CrownsTutorialRoute
+import com.stanisryz.logica.ui.screens.DailyArchiveDayRoute
+import com.stanisryz.logica.ui.screens.DailyArchiveRoute
 import com.stanisryz.logica.ui.screens.Game2048Route
 import com.stanisryz.logica.ui.screens.Game2048TutorialRoute
 import com.stanisryz.logica.ui.screens.GameHubRoute
@@ -106,6 +111,7 @@ import com.stanisryz.logica.ui.screens.SudokuTutorialRoute
 import com.stanisryz.logica.ui.screens.WordGameRoute
 import com.stanisryz.logica.ui.screens.WordTutorialRoute
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.util.UUID
 
 @Composable
@@ -130,6 +136,7 @@ internal fun LogicaNavigation(
     onReleaseRewardedAd: () -> Unit,
     onWatchRewardedAd: (Activity, RewardedAdKind) -> Unit,
     onWatchStreakRestoreAd: (Activity, Long) -> Unit = { _, _ -> },
+    onWatchDailyArchiveAd: (Activity, Long) -> Unit = { _, _ -> },
     onWatchContinueAd: (Activity, () -> Unit) -> Unit,
     onRetryRewardedAd: () -> Unit,
     onGameplayStarted: () -> Unit,
@@ -218,8 +225,11 @@ internal fun LogicaNavigation(
     var secondChanceVisible by remember { mutableStateOf(false) }
     // The Game Hub offering to save a streak broken yesterday, one option of which is a rewarded ad.
     var streakRestoreVisible by remember { mutableStateOf(false) }
+    // A locked Daily archive day, one way to open which is a rewarded ad.
+    var archiveOfferVisible by remember { mutableStateOf(false) }
     val rewardedOfferVisible =
         secondChanceVisible ||
+            (archiveOfferVisible && currentDestination is AppDestination.DailyArchiveDay) ||
             (streakRestoreVisible && currentDestination == AppDestination.Home && selectedTab == PrimaryTab.GAME) ||
             storeVisible ||
             (!economy.isFull && showLivesDialog) ||
@@ -276,6 +286,19 @@ internal fun LogicaNavigation(
     }
     val openDaily: (DailyGameLaunch) -> Unit = { dailyLaunch ->
         backStack.add(dailyLaunch.puzzleType.gameDestination(dailyLaunch.launch))
+    }
+
+    /**
+     * Every way out of a game: an archive Daily goes back to its archive day, everything else to
+     * the Game hub.
+     */
+    val leaveGame: (GameAttemptLaunch) -> Unit = { launch ->
+        val archiveDay = backStack.indexOfLast { it is AppDestination.DailyArchiveDay }
+        if ((launch as? GameAttemptLaunch.Daily)?.archive == true && archiveDay > 0) {
+            backStack.subList(archiveDay + 1, backStack.size).clear()
+        } else {
+            returnToGameHub(backStack) { selectedTab = it }
+        }
     }
 
     /** Resolve the selected difficulty directly; observed level maps are presentation only. */
@@ -468,7 +491,7 @@ internal fun LogicaNavigation(
                                                                             settings.lastPlayedDifficulty?.let { puzzle to it }
                                                                         },
                                                                     catalogLevelRepository = catalogLevelRepository,
-                                                                    streakRestoreAdState = rewardedState.toStreakRestoreAdState(),
+                                                                    streakRestoreAdState = rewardedState.toDailyRewardedAdState(),
                                                                     onStreakRestoreVisible = { streakRestoreVisible = it },
                                                                     onRestoreStreakWithGems = { day ->
                                                                         navigationScope.launch {
@@ -481,6 +504,7 @@ internal fun LogicaNavigation(
                                                                     onWatchStreakRestoreAd = { day ->
                                                                         activity?.let { onWatchStreakRestoreAd(it, day) }
                                                                     },
+                                                                    onOpenArchive = { backStack.add(AppDestination.DailyArchive) },
                                                                     onContinue = { puzzle, difficulty ->
                                                                         if (economy.isGameplayAllowed) {
                                                                             openLevel(puzzle, difficulty)
@@ -532,7 +556,39 @@ internal fun LogicaNavigation(
                                 AchievementsRoute(statisticsRepository, dailyRewardsRepository)
                             }
                             entry<AppDestination.ProfileSection> { destination ->
-                                ProfilePageRoute(destination.page, statisticsRepository)
+                                ProfilePageRoute(
+                                    destination.page,
+                                    statisticsRepository,
+                                    onOpenDailyDay = { day ->
+                                        backStack.add(AppDestination.DailyArchiveDay(LocalDate.now().withDayOfMonth(day).toEpochDay()))
+                                    },
+                                )
+                            }
+                            entry<AppDestination.DailyArchive> {
+                                WideReadableWidth(PROFILE_MAX_WIDTH) {
+                                    DailyArchiveRoute(
+                                        dailyChallengeRepository = dailyChallengeRepository,
+                                        dailyResultRepository = dailyResultRepository,
+                                        economyRepository = economyRepository,
+                                        onOpenDay = { day -> backStack.add(AppDestination.DailyArchiveDay(day)) },
+                                    )
+                                }
+                            }
+                            entry<AppDestination.DailyArchiveDay> { destination ->
+                                WideReadableWidth(PROFILE_MAX_WIDTH) {
+                                    DailyArchiveDayRoute(
+                                        epochDay = destination.epochDay,
+                                        dailyChallengeRepository = dailyChallengeRepository,
+                                        dailyResultRepository = dailyResultRepository,
+                                        economyRepository = economyRepository,
+                                        economy = economy,
+                                        adState = rewardedState.toDailyRewardedAdState(),
+                                        onOpenDaily = openDaily,
+                                        onWatchAd = { day -> activity?.let { onWatchDailyArchiveAd(it, day) } },
+                                        onRewardedOfferVisible = { archiveOfferVisible = it },
+                                        onRestoreLife = onRestoreLife,
+                                    )
+                                }
                             }
                             entry<AppDestination.Settings> {
                                 SettingsScreen(
@@ -710,115 +766,129 @@ internal fun LogicaNavigation(
                                 )
                             }
                             entry<AppDestination.BalanceGame> { destination ->
-                                BalanceGameRoute(
-                                    launch = destination.launch,
-                                    attemptFactory = attemptFactory,
-                                    completionRepository = gameCompletionRepository,
-                                    economyRepository = economyRepository,
-                                    exitGuard = exitGuard,
-                                    hapticsEnabled = settings.hapticsEnabled,
-                                    onBack = goBack,
-                                    onNextLevel = { openNextLevel(PuzzleType.BALANCE, destination.launch) },
-                                    onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                                    onTerminalAction = onTerminalAction,
-                                    onRestoreLife = onRestoreLife,
-                                    onOpenStore = openStore,
-                                )
+                                ArchiveDateLabel(destination.launch) {
+                                    BalanceGameRoute(
+                                        launch = destination.launch,
+                                        attemptFactory = attemptFactory,
+                                        completionRepository = gameCompletionRepository,
+                                        economyRepository = economyRepository,
+                                        exitGuard = exitGuard,
+                                        hapticsEnabled = settings.hapticsEnabled,
+                                        onBack = goBack,
+                                        onNextLevel = { openNextLevel(PuzzleType.BALANCE, destination.launch) },
+                                        onGameHub = { leaveGame(destination.launch) },
+                                        onTerminalAction = onTerminalAction,
+                                        onRestoreLife = onRestoreLife,
+                                        onOpenStore = openStore,
+                                    )
+                                }
                             }
                             entry<AppDestination.CrownsGame> { destination ->
-                                CrownsGameRoute(
-                                    launch = destination.launch,
-                                    attemptFactory = attemptFactory,
-                                    completionRepository = gameCompletionRepository,
-                                    economyRepository = economyRepository,
-                                    exitGuard = exitGuard,
-                                    hapticsEnabled = settings.hapticsEnabled,
-                                    onBack = goBack,
-                                    onNextLevel = { openNextLevel(PuzzleType.CROWNS, destination.launch) },
-                                    onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                                    onTerminalAction = onTerminalAction,
-                                    onRestoreLife = onRestoreLife,
-                                    onOpenStore = openStore,
-                                )
+                                ArchiveDateLabel(destination.launch) {
+                                    CrownsGameRoute(
+                                        launch = destination.launch,
+                                        attemptFactory = attemptFactory,
+                                        completionRepository = gameCompletionRepository,
+                                        economyRepository = economyRepository,
+                                        exitGuard = exitGuard,
+                                        hapticsEnabled = settings.hapticsEnabled,
+                                        onBack = goBack,
+                                        onNextLevel = { openNextLevel(PuzzleType.CROWNS, destination.launch) },
+                                        onGameHub = { leaveGame(destination.launch) },
+                                        onTerminalAction = onTerminalAction,
+                                        onRestoreLife = onRestoreLife,
+                                        onOpenStore = openStore,
+                                    )
+                                }
                             }
                             entry<AppDestination.WordGame> { destination ->
-                                WordGameRoute(
-                                    launch = destination.launch,
-                                    attemptFactory = attemptFactory,
-                                    completionRepository = gameCompletionRepository,
-                                    economyRepository = economyRepository,
-                                    exitGuard = exitGuard,
-                                    hapticsEnabled = settings.hapticsEnabled,
-                                    onBack = goBack,
-                                    onNextLevel = { openNextLevel(PuzzleType.WORD, destination.launch) },
-                                    onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                                    onTerminalAction = onTerminalAction,
-                                    onRestoreLife = onRestoreLife,
-                                    onOpenStore = openStore,
-                                )
+                                ArchiveDateLabel(destination.launch) {
+                                    WordGameRoute(
+                                        launch = destination.launch,
+                                        attemptFactory = attemptFactory,
+                                        completionRepository = gameCompletionRepository,
+                                        economyRepository = economyRepository,
+                                        exitGuard = exitGuard,
+                                        hapticsEnabled = settings.hapticsEnabled,
+                                        onBack = goBack,
+                                        onNextLevel = { openNextLevel(PuzzleType.WORD, destination.launch) },
+                                        onGameHub = { leaveGame(destination.launch) },
+                                        onTerminalAction = onTerminalAction,
+                                        onRestoreLife = onRestoreLife,
+                                        onOpenStore = openStore,
+                                    )
+                                }
                             }
                             entry<AppDestination.SudokuGame> { destination ->
-                                SudokuGameRoute(
-                                    launch = destination.launch,
-                                    attemptFactory = attemptFactory,
-                                    completionRepository = gameCompletionRepository,
-                                    economyRepository = economyRepository,
-                                    exitGuard = exitGuard,
-                                    hapticsEnabled = settings.hapticsEnabled,
-                                    onBack = goBack,
-                                    onNextLevel = { openNextLevel(PuzzleType.SUDOKU, destination.launch) },
-                                    onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                                    onTerminalAction = onTerminalAction,
-                                    onRestoreLife = onRestoreLife,
-                                    onOpenStore = openStore,
-                                )
+                                ArchiveDateLabel(destination.launch) {
+                                    SudokuGameRoute(
+                                        launch = destination.launch,
+                                        attemptFactory = attemptFactory,
+                                        completionRepository = gameCompletionRepository,
+                                        economyRepository = economyRepository,
+                                        exitGuard = exitGuard,
+                                        hapticsEnabled = settings.hapticsEnabled,
+                                        onBack = goBack,
+                                        onNextLevel = { openNextLevel(PuzzleType.SUDOKU, destination.launch) },
+                                        onGameHub = { leaveGame(destination.launch) },
+                                        onTerminalAction = onTerminalAction,
+                                        onRestoreLife = onRestoreLife,
+                                        onOpenStore = openStore,
+                                    )
+                                }
                             }
                             entry<AppDestination.Game2048Game> { destination ->
-                                Game2048Route(
-                                    launch = destination.launch,
-                                    attemptFactory = attemptFactory,
-                                    completionRepository = gameCompletionRepository,
-                                    economyRepository = economyRepository,
-                                    bestScore = game2048BestScore,
-                                    exitGuard = exitGuard,
-                                    hapticsEnabled = settings.hapticsEnabled,
-                                    onBack = goBack,
-                                    onNextLevel = { openNextLevel(PuzzleType.GAME_2048, destination.launch) },
-                                    onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                                    onTerminalAction = onTerminalAction,
-                                    onRestoreLife = onRestoreLife,
-                                )
+                                ArchiveDateLabel(destination.launch) {
+                                    Game2048Route(
+                                        launch = destination.launch,
+                                        attemptFactory = attemptFactory,
+                                        completionRepository = gameCompletionRepository,
+                                        economyRepository = economyRepository,
+                                        bestScore = game2048BestScore,
+                                        exitGuard = exitGuard,
+                                        hapticsEnabled = settings.hapticsEnabled,
+                                        onBack = goBack,
+                                        onNextLevel = { openNextLevel(PuzzleType.GAME_2048, destination.launch) },
+                                        onGameHub = { leaveGame(destination.launch) },
+                                        onTerminalAction = onTerminalAction,
+                                        onRestoreLife = onRestoreLife,
+                                    )
+                                }
                             }
                             entry<AppDestination.NonogramGame> { destination ->
-                                NonogramGameRoute(
-                                    launch = destination.launch,
-                                    attemptFactory = attemptFactory,
-                                    completionRepository = gameCompletionRepository,
-                                    economyRepository = economyRepository,
-                                    exitGuard = exitGuard,
-                                    hapticsEnabled = settings.hapticsEnabled,
-                                    onBack = goBack,
-                                    onNextLevel = { openNextLevel(PuzzleType.NONOGRAM, destination.launch) },
-                                    onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                                    onTerminalAction = onTerminalAction,
-                                    onRestoreLife = onRestoreLife,
-                                    onOpenStore = openStore,
-                                )
+                                ArchiveDateLabel(destination.launch) {
+                                    NonogramGameRoute(
+                                        launch = destination.launch,
+                                        attemptFactory = attemptFactory,
+                                        completionRepository = gameCompletionRepository,
+                                        economyRepository = economyRepository,
+                                        exitGuard = exitGuard,
+                                        hapticsEnabled = settings.hapticsEnabled,
+                                        onBack = goBack,
+                                        onNextLevel = { openNextLevel(PuzzleType.NONOGRAM, destination.launch) },
+                                        onGameHub = { leaveGame(destination.launch) },
+                                        onTerminalAction = onTerminalAction,
+                                        onRestoreLife = onRestoreLife,
+                                        onOpenStore = openStore,
+                                    )
+                                }
                             }
                             entry<AppDestination.BlockSudokuGame> { destination ->
-                                BlockSudokuRoute(
-                                    launch = destination.launch,
-                                    attemptFactory = attemptFactory,
-                                    completionRepository = gameCompletionRepository,
-                                    economyRepository = economyRepository,
-                                    exitGuard = exitGuard,
-                                    hapticsEnabled = settings.hapticsEnabled,
-                                    onBack = goBack,
-                                    onNextLevel = { openNextLevel(PuzzleType.BLOCK_SUDOKU, destination.launch) },
-                                    onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
-                                    onTerminalAction = onTerminalAction,
-                                    onRestoreLife = onRestoreLife,
-                                )
+                                ArchiveDateLabel(destination.launch) {
+                                    BlockSudokuRoute(
+                                        launch = destination.launch,
+                                        attemptFactory = attemptFactory,
+                                        completionRepository = gameCompletionRepository,
+                                        economyRepository = economyRepository,
+                                        exitGuard = exitGuard,
+                                        hapticsEnabled = settings.hapticsEnabled,
+                                        onBack = goBack,
+                                        onNextLevel = { openNextLevel(PuzzleType.BLOCK_SUDOKU, destination.launch) },
+                                        onGameHub = { leaveGame(destination.launch) },
+                                        onTerminalAction = onTerminalAction,
+                                        onRestoreLife = onRestoreLife,
+                                    )
+                                }
                             }
                         },
                 )
@@ -897,9 +967,30 @@ private val STORE_MAX_WIDTH = 640.dp
 /** Used for the first measure only; [AppBottomBar] immediately supplies its actual inset. */
 private val PRIMARY_NAVIGATION_BAR_FALLBACK_HEIGHT = 80.dp
 
-private fun RewardedAdState.toStreakRestoreAdState(): StreakRestoreAdState =
+private fun RewardedAdState.toDailyRewardedAdState(): DailyRewardedAdState =
     when (this) {
-        RewardedAdState.READY -> StreakRestoreAdState.READY
-        RewardedAdState.IDLE, RewardedAdState.LOADING, RewardedAdState.SHOWING -> StreakRestoreAdState.LOADING
-        RewardedAdState.UNAVAILABLE -> StreakRestoreAdState.UNAVAILABLE
+        RewardedAdState.READY -> DailyRewardedAdState.READY
+        RewardedAdState.IDLE, RewardedAdState.LOADING, RewardedAdState.SHOWING -> DailyRewardedAdState.LOADING
+        RewardedAdState.UNAVAILABLE -> DailyRewardedAdState.UNAVAILABLE
     }
+
+/** An archive Daily's result card names its day; every other game's card stays as it was. */
+@Composable
+private fun ArchiveDateLabel(
+    launch: GameAttemptLaunch,
+    content: @Composable () -> Unit,
+) {
+    val archiveDate = (launch as? GameAttemptLaunch.Daily)?.takeIf { it.archive }?.challengeDate
+    CompositionLocalProvider(LocalDailyResultDateLabel provides archiveDate?.let(::formatDailyShortDate), content = content)
+}
+
+/** A secondary screen keeps a readable width in a wide window, like the Profile tab. */
+@Composable
+private fun WideReadableWidth(
+    maxWidth: Dp,
+    content: @Composable () -> Unit,
+) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        ReadableWidth(this.maxWidth >= WIDE_LAYOUT_MIN_WIDTH, maxWidth, content)
+    }
+}

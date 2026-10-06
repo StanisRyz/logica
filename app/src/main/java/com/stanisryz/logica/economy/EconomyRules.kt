@@ -38,6 +38,8 @@ internal object EconomyRules {
     const val STREAK_RESTORE_GEMS = EconomyPolicy.STREAK_RESTORE_GEMS
     const val STREAK_RESTORE_MIN_STREAK = EconomyPolicy.STREAK_RESTORE_MIN_STREAK
     const val STREAK_RESTORE_COOLDOWN_DAYS = EconomyPolicy.STREAK_RESTORE_COOLDOWN_DAYS
+    const val DAILY_ARCHIVE_DAYS = EconomyPolicy.DAILY_ARCHIVE_DAYS
+    const val DAILY_ARCHIVE_UNLOCK_GEMS = EconomyPolicy.DAILY_ARCHIVE_UNLOCK_GEMS
 
     /** What one watched Store rewarded ad is worth. */
     const val REWARDED_AD_GEMS = EconomyPolicy.REWARDED_AD_GEMS

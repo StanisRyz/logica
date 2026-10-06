@@ -38,3 +38,17 @@ actual class DailyDate(
         fun isLeapYear(year: Int): Boolean = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
     }
 }
+
+/** Civil date from days since 1970-01-01 (proleptic Gregorian), matching `LocalDate.ofEpochDay`. */
+actual fun dailyDateOfEpochDay(epochDay: Long): DailyDate {
+    val shifted = epochDay + 719_468L
+    val era = (if (shifted >= 0L) shifted else shifted - 146_096L) / 146_097L
+    val dayOfEra = shifted - era * 146_097L
+    val yearOfEra = (dayOfEra - dayOfEra / 1_460L + dayOfEra / 36_524L - dayOfEra / 146_096L) / 365L
+    val dayOfYear = dayOfEra - (365L * yearOfEra + yearOfEra / 4L - yearOfEra / 100L)
+    val monthIndex = (5L * dayOfYear + 2L) / 153L
+    val day = dayOfYear - (153L * monthIndex + 2L) / 5L + 1L
+    val month = if (monthIndex < 10L) monthIndex + 3L else monthIndex - 9L
+    val year = yearOfEra + era * 400L + if (month <= 2L) 1L else 0L
+    return DailyDate(year.toInt(), month.toInt(), day.toInt())
+}

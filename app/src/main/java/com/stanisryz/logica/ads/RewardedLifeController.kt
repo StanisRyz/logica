@@ -57,11 +57,23 @@ internal class RewardedLifeController(
     fun showStreakRestore(
         host: AdDisplayHost,
         epochDay: Long,
+    ) = showForDay(host, RewardedAdKind.STREAK_RESTORE, epochDay)
+
+    /** Opens the Daily archive day [epochDay] once the official reward callback arrives, never before. */
+    fun showDailyArchive(
+        host: AdDisplayHost,
+        epochDay: Long,
+    ) = showForDay(host, RewardedAdKind.DAILY_ARCHIVE, epochDay)
+
+    private fun showForDay(
+        host: AdDisplayHost,
+        kind: RewardedAdKind,
+        epochDay: Long,
     ) {
         if (state.value != RewardedAdState.READY) return
         ads.show(
             host = host,
-            onWillShow = { reward.beginShow(RewardedAdKind.STREAK_RESTORE, epochDay) },
+            onWillShow = { reward.beginShow(kind, epochDay) },
             onEvent = { event ->
                 when (event) {
                     RewardedAdEvent.Rewarded -> viewModelScope.launch { reward.onRewarded() }

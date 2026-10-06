@@ -143,6 +143,10 @@ internal interface EconomyDao {
     @Query("SELECT event_id FROM economy_events WHERE event_id LIKE :prefix || '%'")
     fun observeEventIds(prefix: String): Flow<List<String>>
 
+    /** Ledger rows whose ID starts with [prefix], with the moment each was written. */
+    @Query("SELECT * FROM economy_events WHERE event_id LIKE :prefix || '%'")
+    fun observeEvents(prefix: String): Flow<List<EconomyEventEntity>>
+
     @Query("SELECT EXISTS(SELECT 1 FROM economy_events WHERE event_type = :type)")
     fun observeHasEventType(type: String): Flow<Boolean>
 
@@ -214,6 +218,34 @@ internal interface EconomyDao {
         if (insertEvent(event.toEntity(nowEpochMillis)) == -1L) return StreakRestoreOutcome.AlreadyRestored
         if (price > 0) upsert(current.copy(gems = current.gems - price).toEntity(nowEpochMillis))
         return StreakRestoreOutcome.Restored
+    }
+
+    /**
+     * Opens the Daily archive day [epochDay] once, paying [payment]: gems re-read and spent here in
+     * the same transaction, nothing for a watched ad or a day the player already started. The
+     * ledger row keyed by the day is the duplicate boundary, so a repeat opens and charges nothing.
+     */
+    @Transaction
+    suspend fun unlockDailyArchive(
+        epochDay: Long,
+        payment: DailyArchivePayment,
+        nowEpochMillis: Long,
+    ): DailyArchiveUnlockOutcome {
+        val current = find().toPlayerEconomy(nowEpochMillis).regenerated(nowEpochMillis)
+        if (hasEvent(EconomyEvent.dailyArchiveEventId(epochDay))) return DailyArchiveUnlockOutcome.AlreadyUnlocked
+        val price = if (payment == DailyArchivePayment.GEMS) EconomyRules.DAILY_ARCHIVE_UNLOCK_GEMS else 0
+        if (current.gems < price) return DailyArchiveUnlockOutcome.NotEnoughGems(price - current.gems)
+        val event =
+            EconomyEvent(
+                eventId = EconomyEvent.dailyArchiveEventId(epochDay),
+                type = EconomyEventType.DAILY_ARCHIVE_UNLOCK,
+                sourceId = payment.source,
+                gemDelta = -price,
+                lifeDelta = 0,
+            )
+        if (insertEvent(event.toEntity(nowEpochMillis)) == -1L) return DailyArchiveUnlockOutcome.AlreadyUnlocked
+        if (price > 0) upsert(current.copy(gems = current.gems - price).toEntity(nowEpochMillis))
+        return DailyArchiveUnlockOutcome.Unlocked
     }
 
     /** Persists whatever regeneration is already due; the wallet is seeded on first use. */

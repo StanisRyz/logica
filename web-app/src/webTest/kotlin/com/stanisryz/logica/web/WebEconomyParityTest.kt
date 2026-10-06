@@ -53,4 +53,10 @@ class WebEconomyParityTest {
             listOf(EconomyPolicy.STREAK_RESTORE_GEMS, EconomyPolicy.STREAK_RESTORE_MIN_STREAK, EconomyPolicy.STREAK_RESTORE_COOLDOWN_DAYS),
         )
     }
+
+    @Test
+    fun theDailyArchiveReadsThePolicy() {
+        // The Web archive has no numbers of its own: its window and its price are these, as on Android.
+        assertEquals(listOf(30, 5), listOf(EconomyPolicy.DAILY_ARCHIVE_DAYS, EconomyPolicy.DAILY_ARCHIVE_UNLOCK_GEMS))
+    }
 }

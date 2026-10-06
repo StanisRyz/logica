@@ -24,6 +24,9 @@ internal class FakeEconomyDao(
 
     override fun observeEventIds(prefix: String): Flow<List<String>> = flowOf(events.keys.filter { it.startsWith(prefix) })
 
+    override fun observeEvents(prefix: String): Flow<List<EconomyEventEntity>> =
+        flowOf(events.values.filter { it.eventId.startsWith(prefix) })
+
     override fun observeHasEventType(type: String): Flow<Boolean> = flowOf(events.values.any { it.eventType == type })
 
     override fun observeLastLoginGift(): Flow<EconomyEventEntity?> = flowOf(lastLoginGift())

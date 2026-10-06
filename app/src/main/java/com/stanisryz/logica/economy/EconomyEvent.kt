@@ -44,6 +44,9 @@ internal enum class EconomyEventType {
 
     /** One saved Daily streak day, paid with gems or a rewarded ad; its row is also the saved day. */
     STREAK_RESTORE,
+
+    /** One opened Daily archive day, paid with gems or a rewarded ad, or free for a day already started. */
+    DAILY_ARCHIVE_UNLOCK,
 }
 
 /**
@@ -112,6 +115,14 @@ internal data class EconomyEvent(
         /** The ledger's source for a day saved with a rewarded ad rather than with gems. */
         const val STREAK_RESTORE_REWARDED_SOURCE = "rewarded"
         const val STREAK_RESTORE_GEMS_SOURCE = "gems"
+
+        /**
+         * One opened Daily archive day, keyed by that day. Its `created_at` is also the moment from
+         * which a result of that day no longer counts for the streak.
+         */
+        fun dailyArchiveEventId(epochDay: Long): String = "$DAILY_ARCHIVE_PREFIX$epochDay"
+
+        const val DAILY_ARCHIVE_PREFIX = "daily_archive:"
     }
 }
 

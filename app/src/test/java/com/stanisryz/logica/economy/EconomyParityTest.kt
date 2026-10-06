@@ -67,4 +67,13 @@ class EconomyParityTest {
             StarterPackContents.GEMS to StarterPackContents.HINTS,
         )
     }
+
+    @Test
+    fun theDailyArchiveReadsThePolicy() {
+        assertEquals(listOf(30, 5), listOf(EconomyPolicy.DAILY_ARCHIVE_DAYS, EconomyPolicy.DAILY_ARCHIVE_UNLOCK_GEMS))
+        assertEquals(
+            listOf(EconomyPolicy.DAILY_ARCHIVE_DAYS, EconomyPolicy.DAILY_ARCHIVE_UNLOCK_GEMS),
+            listOf(EconomyRules.DAILY_ARCHIVE_DAYS, EconomyRules.DAILY_ARCHIVE_UNLOCK_GEMS),
+        )
+    }
 }

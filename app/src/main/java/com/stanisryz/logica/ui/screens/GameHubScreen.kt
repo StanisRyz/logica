@@ -46,7 +46,7 @@ import com.stanisryz.logica.ui.components.GameHubContent
 import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.components.russianLabel
 import com.stanisryz.logica.ui.daily.DailyHubSection
-import com.stanisryz.logica.ui.daily.StreakRestoreAdState
+import com.stanisryz.logica.ui.daily.DailyRewardedAdState
 import com.stanisryz.logica.ui.daily.StreakRestoreCard
 import com.stanisryz.logica.ui.theme.LogicaMotion
 import com.stanisryz.logica.ui.theme.LogicaSpacing
@@ -77,10 +77,11 @@ internal fun GameHubRoute(
     catalogLevelRepository: CatalogLevelRepository,
     onContinue: (PuzzleType, Difficulty) -> Unit,
     modifier: Modifier = Modifier,
-    streakRestoreAdState: StreakRestoreAdState = StreakRestoreAdState.UNAVAILABLE,
+    streakRestoreAdState: DailyRewardedAdState = DailyRewardedAdState.UNAVAILABLE,
     onStreakRestoreVisible: (Boolean) -> Unit = {},
     onRestoreStreakWithGems: (Long) -> Unit = {},
     onWatchStreakRestoreAd: (Long) -> Unit = {},
+    onOpenArchive: (() -> Unit)? = null,
 ) {
     var resumes by remember { mutableIntStateOf(0) }
     var continueLevel by remember(continueGame) { mutableStateOf<Int?>(null) }
@@ -153,6 +154,7 @@ internal fun GameHubRoute(
         onRestoreLife = onRestoreLife,
         onGameSelected = onGameSelected,
         modifier = modifier,
+        onOpenArchive = onOpenArchive,
         streakRestoreContent =
             streakRestore?.let { offer ->
                 {
@@ -210,6 +212,7 @@ private fun GameHubScreen(
     continueContent: (@Composable () -> Unit)? = null,
     rewardsContent: (@Composable () -> Unit)? = null,
     streakRestoreContent: (@Composable () -> Unit)? = null,
+    onOpenArchive: (() -> Unit)? = null,
 ) {
     GameHubContent(
         puzzleTypes = catalog,
@@ -225,6 +228,7 @@ private fun GameHubScreen(
                     gameplayAllowed = economy.isGameplayAllowed,
                     onStart = onStartDaily,
                     onRetryLoad = onRetryDaily,
+                    onOpenArchive = onOpenArchive,
                 )
                 streakRestoreContent?.invoke()
             }

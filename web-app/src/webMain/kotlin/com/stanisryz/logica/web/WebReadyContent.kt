@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.platform.PlatformLifecycleState
+import com.stanisryz.logica.puzzle.core.daily.DailyDate
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.shared.ui.generated.resources.Res
@@ -33,6 +34,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.profile_page_rating_ti
 import com.stanisryz.logica.ui.components.ContinueGameCard
 import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
 import com.stanisryz.logica.ui.components.GameHubContent
+import com.stanisryz.logica.ui.components.LocalDailyResultDateLabel
 import com.stanisryz.logica.ui.profile.Achievement
 import com.stanisryz.logica.ui.profile.AchievementAnnouncementHost
 import com.stanisryz.logica.ui.profile.AchievementAnnouncer
@@ -249,6 +251,58 @@ internal fun ReadyContent(
         )
     }
 
+    // The Daily archive page and the day open on it; an archive game returns there when left.
+    var archiveDay by remember { mutableStateOf<Long?>(null) }
+    var archiveLaunchDate by remember { mutableStateOf<DailyDate?>(null) }
+    val exitGameRoute: () -> WebRoute = { if (archiveLaunchDate != null) WebRoute.DailyArchive else WebRoute.GameHub }
+    // Every game reached from the Game hub (and every account switch, which returns there) is no archive game.
+    LaunchedEffect(route) { if (route == WebRoute.GameHub) archiveLaunchDate = null }
+
+    /** Today's Daily entry, or an entry of an open archive day ([archiveDate]). */
+    val startDaily: (PuzzleType, DailyDate?) -> Unit = { puzzleType, archiveDate ->
+        // A Daily attempt costs a life when lost, so it needs one to start, like the Catalog.
+        livesUi.guard {
+            when (val started = dailyCoordinator.start(puzzleType, archiveDate)) {
+                is WebDailyStartResult.Started -> {
+                    archiveLaunchDate = archiveDate
+                    route =
+                        when (puzzleType) {
+                            PuzzleType.BALANCE -> {
+                                balanceController.startDaily(started.attempt)
+                                WebRoute.Balance
+                            }
+                            PuzzleType.CROWNS -> {
+                                crownsController.startDaily(started.attempt)
+                                WebRoute.Crowns
+                            }
+                            PuzzleType.WORD -> {
+                                wordController.startDaily(started.attempt)
+                                WebRoute.Word
+                            }
+                            PuzzleType.SUDOKU -> {
+                                sudokuController.startDaily(started.attempt)
+                                WebRoute.Sudoku
+                            }
+                            PuzzleType.GAME_2048 -> {
+                                game2048Controller.startDaily(started.attempt)
+                                WebRoute.Game2048
+                            }
+                            PuzzleType.NONOGRAM -> {
+                                nonogramController.startDaily(started.attempt)
+                                WebRoute.Nonogram
+                            }
+                            PuzzleType.BLOCK_SUDOKU -> {
+                                blockSudokuController.startDaily(started.attempt)
+                                WebRoute.BlockSudoku
+                            }
+                            else -> error("$puzzleType has no Daily gameplay.")
+                        }
+                }
+                else -> Unit // surfaced as a start error by the shared hub section
+            }
+        }
+    }
+
     val storeBinding by playerSession.storeBinding.collectAsState()
     val hintCount =
         (storeBinding as? WebStoreBinding.Ready)?.repository?.let { repository ->
@@ -297,6 +351,8 @@ internal fun ReadyContent(
         LocalWebTransitionAd provides runTransitionAd,
         LocalWebAbandonAttempt provides abandonAttempt,
         LocalOpenTutorial provides { puzzleType -> tutorialFor = puzzleType },
+        // An archive game's result card names its day.
+        LocalDailyResultDateLabel provides archiveLaunchDate?.let(::formatWebDailyShortDate),
     ) {
         tutorialFor?.let { puzzleType ->
             WideReadableColumn(WIDE_TUTORIAL_MAX_WIDTH) {
@@ -420,47 +476,10 @@ internal fun ReadyContent(
                                 coordinator = dailyCoordinator,
                                 currentDate = dailyDate,
                                 streakRestoreAd = rewardedAds.streakRestore,
-                                onStartDaily = { puzzleType ->
-                                    // A Daily attempt costs a life when lost, so it needs one to start, like the Catalog.
-                                    livesUi.guard {
-                                        when (val started = dailyCoordinator.start(puzzleType)) {
-                                            is WebDailyStartResult.Started -> {
-                                                route =
-                                                    when (puzzleType) {
-                                                        PuzzleType.BALANCE -> {
-                                                            balanceController.startDaily(started.attempt)
-                                                            WebRoute.Balance
-                                                        }
-                                                        PuzzleType.CROWNS -> {
-                                                            crownsController.startDaily(started.attempt)
-                                                            WebRoute.Crowns
-                                                        }
-                                                        PuzzleType.WORD -> {
-                                                            wordController.startDaily(started.attempt)
-                                                            WebRoute.Word
-                                                        }
-                                                        PuzzleType.SUDOKU -> {
-                                                            sudokuController.startDaily(started.attempt)
-                                                            WebRoute.Sudoku
-                                                        }
-                                                        PuzzleType.GAME_2048 -> {
-                                                            game2048Controller.startDaily(started.attempt)
-                                                            WebRoute.Game2048
-                                                        }
-                                                        PuzzleType.NONOGRAM -> {
-                                                            nonogramController.startDaily(started.attempt)
-                                                            WebRoute.Nonogram
-                                                        }
-                                                        PuzzleType.BLOCK_SUDOKU -> {
-                                                            blockSudokuController.startDaily(started.attempt)
-                                                            WebRoute.BlockSudoku
-                                                        }
-                                                        else -> error("$puzzleType has no Daily gameplay.")
-                                                    }
-                                            }
-                                            else -> Unit // surfaced as a start error by the shared hub section
-                                        }
-                                    }
+                                onStartDaily = { puzzleType -> startDaily(puzzleType, null) },
+                                onOpenArchive = {
+                                    archiveDay = null
+                                    route = WebRoute.DailyArchive
                                 },
                             )
                         },
@@ -513,7 +532,14 @@ internal fun ReadyContent(
                                         is WebStatisticsBinding.Unavailable -> ProfileUiState.Error
                                         else -> ProfileUiState.Loading
                                     }
-                                ProfilePageContent(page, uiState)
+                                ProfilePageContent(
+                                    page,
+                                    uiState,
+                                    onOpenDailyDay = { day ->
+                                        archiveDay = webEpochDayInMonth(dailyDate, day)
+                                        route = WebRoute.DailyArchive
+                                    },
+                                )
                             }
                         }
                     }
@@ -551,6 +577,16 @@ internal fun ReadyContent(
                         )
                     }
                 }
+            WebRoute.DailyArchive ->
+                WebDailyArchiveRoute(
+                    playerSession = playerSession,
+                    today = dailyDate,
+                    selectedDay = archiveDay,
+                    onSelectDay = { archiveDay = it },
+                    onBack = { route = WebRoute.GameHub },
+                    ad = rewardedAds.dailyArchive,
+                    onStart = startDaily,
+                )
             WebRoute.Balance ->
                 BalanceFlow(
                     state = balanceState,
@@ -560,7 +596,7 @@ internal fun ReadyContent(
                     onSolvedNextLevel = runSolvedNextLevel,
                     onExitBalance = {
                         balanceController.showDifficultySelector()
-                        route = WebRoute.GameHub
+                        route = exitGameRoute()
                     },
                 )
             WebRoute.Crowns ->
@@ -572,7 +608,7 @@ internal fun ReadyContent(
                     onSolvedNextLevel = runSolvedNextLevel,
                     onExitCrowns = {
                         crownsController.showDifficultySelector()
-                        route = WebRoute.GameHub
+                        route = exitGameRoute()
                     },
                 )
             WebRoute.Word ->
@@ -585,7 +621,7 @@ internal fun ReadyContent(
                     onSolvedNextLevel = runSolvedNextLevel,
                     onExitWord = {
                         wordController.showDifficultySelector()
-                        route = WebRoute.GameHub
+                        route = exitGameRoute()
                     },
                 )
             WebRoute.Sudoku ->
@@ -597,7 +633,7 @@ internal fun ReadyContent(
                     onSolvedNextLevel = runSolvedNextLevel,
                     onExitSudoku = {
                         sudokuController.showDifficultySelector()
-                        route = WebRoute.GameHub
+                        route = exitGameRoute()
                     },
                 )
             WebRoute.Game2048 ->
@@ -607,7 +643,7 @@ internal fun ReadyContent(
                     onSolvedNextLevel = runSolvedNextLevel,
                     onExitGame2048 = {
                         game2048Controller.showDifficultySelector()
-                        route = WebRoute.GameHub
+                        route = exitGameRoute()
                     },
                 )
             WebRoute.Nonogram ->
@@ -619,7 +655,7 @@ internal fun ReadyContent(
                     onSolvedNextLevel = runSolvedNextLevel,
                     onExitNonogram = {
                         nonogramController.showDifficultySelector()
-                        route = WebRoute.GameHub
+                        route = exitGameRoute()
                     },
                 )
             WebRoute.BlockSudoku ->
@@ -629,7 +665,7 @@ internal fun ReadyContent(
                     onSolvedNextLevel = runSolvedNextLevel,
                     onExit = {
                         blockSudokuController.showDifficultySelector()
-                        route = WebRoute.GameHub
+                        route = exitGameRoute()
                     },
                 )
         }

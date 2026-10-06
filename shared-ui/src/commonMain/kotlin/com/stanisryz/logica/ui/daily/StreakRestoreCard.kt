@@ -33,8 +33,8 @@ import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
-/** Whether the rewarded ad that saves a streak can be shown now. */
-enum class StreakRestoreAdState {
+/** Whether the rewarded ad of a Daily offer (a streak save, an archive day) can be shown now. */
+enum class DailyRewardedAdState {
     READY,
     LOADING,
     UNAVAILABLE,
@@ -50,7 +50,7 @@ fun StreakRestoreCard(
     streakLength: Int,
     gems: Int,
     price: Int,
-    adState: StreakRestoreAdState,
+    adState: DailyRewardedAdState,
     onRestoreWithGems: () -> Unit,
     onWatchAd: () -> Unit,
     modifier: Modifier = Modifier,
@@ -74,18 +74,18 @@ fun StreakRestoreCard(
             )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
                 GemPriceButton(price = price, enabled = gems >= price, onClick = onRestoreWithGems)
-                OutlinedButton(onClick = onWatchAd, enabled = adState == StreakRestoreAdState.READY) {
+                OutlinedButton(onClick = onWatchAd, enabled = adState == DailyRewardedAdState.READY) {
                     when (adState) {
-                        StreakRestoreAdState.LOADING -> CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                        DailyRewardedAdState.LOADING -> CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                         else -> Icon(Icons.Rounded.PlayCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                     }
                     Spacer(Modifier.width(6.dp))
                     Text(
                         stringResource(
                             when (adState) {
-                                StreakRestoreAdState.READY -> Res.string.streak_restore_watch_ad
-                                StreakRestoreAdState.LOADING -> Res.string.second_chance_loading
-                                StreakRestoreAdState.UNAVAILABLE -> Res.string.second_chance_unavailable
+                                DailyRewardedAdState.READY -> Res.string.streak_restore_watch_ad
+                                DailyRewardedAdState.LOADING -> Res.string.second_chance_loading
+                                DailyRewardedAdState.UNAVAILABLE -> Res.string.second_chance_unavailable
                             },
                         ),
                     )

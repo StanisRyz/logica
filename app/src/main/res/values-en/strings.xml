@@ -243,4 +243,5 @@
     <string name="gem_store_ads_removed">Ads between levels are off for good</string>
     <string name="profile_daily_calendar">Calendar</string>
     <string name="profile_game_statistics">Game statistics</string>
+    <string name="daily_archive">Daily archive</string>
 </resources>

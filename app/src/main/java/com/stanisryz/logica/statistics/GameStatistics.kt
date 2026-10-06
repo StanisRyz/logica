@@ -11,6 +11,7 @@ import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.result.GameResult
 import com.stanisryz.logica.result.GameResultScope
 import com.stanisryz.logica.ui.profile.LevelStarRecord
+import java.time.Instant
 import java.time.LocalDate
 
 internal data class GameStatistics(
@@ -113,11 +114,13 @@ internal object StatisticsAggregator {
         results: List<GameResult>,
         completedDailyDates: Iterable<LocalDate>,
         restoredStreakDays: Set<Long> = emptySet(),
+        archiveUnlockedAt: Map<LocalDate, Instant> = emptyMap(),
     ): StatisticsSnapshot {
         // Two different concepts: how many Dailies were finished in full, and which dates keep the
         // streak alive. From Policy V5 on one solved entry qualifies a date without completing it.
         val fullyCompletedDailyDates = completedDailyDates.filterNot { it.isAfter(currentDate) }.toSet()
-        val streakDates = DailyStreakQualification.qualifiedDates(fullyCompletedDailyDates, results)
+        // Play in the Daily archive fills the calendar and the full-Daily count, never the streak.
+        val streakDates = DailyStreakQualification.qualifiedDates(fullyCompletedDailyDates, results, archiveUnlockedAt)
         // A saved day keeps the streak alive, and nothing else: it is no played or completed Daily.
         val streak = DailyStreakCalculator.calculate(currentDate, streakDates, restoredStreakDays)
         val streakRestore =

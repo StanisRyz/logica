@@ -27,6 +27,8 @@ internal data class WebDailyRewardsSnapshot(
     val claimedAchievements: Set<String> = emptySet(),
     /** Daily streak days saved for gems or an ad, as epoch days; never cleared by a new day. */
     val restoredStreakDays: Set<Long> = emptySet(),
+    /** Daily archive days opened for gems or an ad, as epoch days; never cleared by a new day. */
+    val unlockedArchiveDays: Set<Long> = emptySet(),
 ) {
     fun activity(
         today: Long,
@@ -108,6 +110,7 @@ internal data class WebDailyRewardsSnapshot(
             giftStreakDay = gift.giftStreakDay,
             claimedAchievements = claimedAchievements + other.claimedAchievements,
             restoredStreakDays = restoredStreakDays + other.restoredStreakDays,
+            unlockedArchiveDays = unlockedArchiveDays + other.unlockedArchiveDays,
         )
     }
 
@@ -118,11 +121,14 @@ internal data class WebDailyRewardsSnapshot(
 }
 
 /**
- * A small text record: `LGDR3|day|played|hard|claimed|giftDay|giftStreak|TYPE=n,…|achievement,…|savedDay,…`.
- * `LGDR2` records (no saved streak days) and `LGDR1` records (no achievements either) still decode.
+ * A small text record:
+ * `LGDR4|day|played|hard|claimed|giftDay|giftStreak|TYPE=n,…|achievement,…|savedDay,…|archiveDay,…`.
+ * `LGDR3` (no archive days), `LGDR2` (no saved streak days either), and `LGDR1` (no achievements
+ * either) records still decode.
  */
 internal object WebDailyRewardsCodec {
-    private const val HEADER = "LGDR3"
+    private const val HEADER = "LGDR4"
+    private const val V3_HEADER = "LGDR3"
     private const val V2_HEADER = "LGDR2"
     private const val LEGACY_HEADER = "LGDR1"
 
@@ -138,13 +144,15 @@ internal object WebDailyRewardsCodec {
             snapshot.solvedByType.entries.joinToString(",") { "${it.key.name}=${it.value}" },
             snapshot.claimedAchievements.sorted().joinToString(","),
             snapshot.restoredStreakDays.sorted().joinToString(","),
+            snapshot.unlockedArchiveDays.sorted().joinToString(","),
         ).joinToString("|").encodeToByteArray()
 
     fun decode(payload: ByteArray): WebDailyRewardsSnapshot? =
         runCatching {
             val parts = payload.decodeToString().split("|")
             require(
-                (parts.size == 10 && parts[0] == HEADER) ||
+                (parts.size == 11 && parts[0] == HEADER) ||
+                    (parts.size == 10 && parts[0] == V3_HEADER) ||
                     (parts.size == 9 && parts[0] == V2_HEADER) ||
                     (parts.size == 8 && parts[0] == LEGACY_HEADER),
             )
@@ -167,15 +175,17 @@ internal object WebDailyRewardsCodec {
                         ?.split(",")
                         ?.filter { it.isNotEmpty() }
                         ?.toSet() ?: emptySet(),
-                restoredStreakDays =
-                    parts
-                        .getOrNull(9)
-                        ?.split(",")
-                        ?.filter { it.isNotEmpty() }
-                        ?.mapTo(mutableSetOf()) { it.toLong() } ?: emptySet(),
+                restoredStreakDays = parts.daysAt(9),
+                unlockedArchiveDays = parts.daysAt(10),
             )
         }.getOrNull()
 }
+
+private fun List<String>.daysAt(index: Int): Set<Long> =
+    getOrNull(index)
+        ?.split(",")
+        ?.filter { it.isNotEmpty() }
+        ?.mapTo(mutableSetOf()) { it.toLong() } ?: emptySet()
 
 internal interface WebDailyRewardsStore {
     fun load(): WebDailyRewardsSnapshot

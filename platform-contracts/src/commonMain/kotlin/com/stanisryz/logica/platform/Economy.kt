@@ -61,6 +61,12 @@ object EconomyPolicy {
 
     /** Two saved days are at least this many days apart. */
     const val STREAK_RESTORE_COOLDOWN_DAYS = 7
+
+    /** How many past days the Daily archive holds, yesterday included and today not. */
+    const val DAILY_ARCHIVE_DAYS = 30
+
+    /** Gems that open one archive day for good; one rewarded ad opens it too. */
+    const val DAILY_ARCHIVE_UNLOCK_GEMS = 5
 }
 
 enum class EconomyRewardType {

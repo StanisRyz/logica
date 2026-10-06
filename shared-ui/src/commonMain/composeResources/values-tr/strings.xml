@@ -502,4 +502,21 @@
         <item quantity="other">%1$d elmas eksik</item>
     </plurals>
     <string name="profile_calendar_saved">seri kurtarıldı</string>
+    <string name="daily_archive">Arşiv</string>
+    <plurals name="daily_archive_description">
+        <item quantity="one">Son %1$d günün bulmacaları</item>
+        <item quantity="other">Son %1$d günün bulmacaları</item>
+    </plurals>
+    <string name="daily_archive_locked">Kilitli</string>
+    <string name="daily_archive_unlock_title">Bu günü aç</string>
+    <string name="daily_archive_unlock_body">Açtığın gün hep açık kalır. Arşivdeki çözümler takvimi doldurur, seriyi değil.</string>
+    <string name="daily_archive_watch_ad">Reklamla aç</string>
+    <plurals name="daily_archive_missing_gems">
+        <item quantity="one">%1$d elmas eksik</item>
+        <item quantity="other">%1$d elmas eksik</item>
+    </plurals>
+    <string name="daily_archive_open_day">Arşivde aç</string>
+    <string name="result_archive_solved">%1$s günün bulmacası çözüldü</string>
+    <string name="result_archive_failed">%1$s günün bulmacası çözülemedi</string>
+    <string name="result_to_archive">Arşive dön</string>
 </resources>

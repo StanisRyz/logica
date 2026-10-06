@@ -20,9 +20,9 @@ import com.stanisryz.logica.ui.components.dailyRewardsUiState
 import com.stanisryz.logica.ui.daily.DailyHubResultRow
 import com.stanisryz.logica.ui.daily.DailyHubSection
 import com.stanisryz.logica.ui.daily.DailyHubUiState
+import com.stanisryz.logica.ui.daily.DailyRewardedAdState
 import com.stanisryz.logica.ui.daily.DailyShareFormatter
 import com.stanisryz.logica.ui.daily.DailyShareLanguage
-import com.stanisryz.logica.ui.daily.StreakRestoreAdState
 import com.stanisryz.logica.ui.daily.StreakRestoreCard
 import com.stanisryz.logica.ui.profile.AchievementRewards
 import com.stanisryz.logica.ui.profile.DailyProfileMetrics
@@ -91,6 +91,7 @@ internal fun WebDailyHubRoute(
     currentDate: DailyDate,
     onStartDaily: (PuzzleType) -> Unit,
     streakRestoreAd: WebRewardedPlacementController? = null,
+    onOpenArchive: (() -> Unit)? = null,
 ) {
     val binding by playerSession.dailyBinding.collectAsState()
     when (val current = binding) {
@@ -167,6 +168,7 @@ internal fun WebDailyHubRoute(
                         gameplayAllowed = true,
                         onStart = onStartDaily,
                         onRetryLoad = coordinator::clearStartRejection,
+                        onOpenArchive = onOpenArchive,
                     )
                     val offer = webStreakRestoreOfferOrNull(snapshot, currentDate, restoredStreakDays)
                     if (offer != null && progressRepository != null) {
@@ -210,9 +212,9 @@ private fun WebStreakRestoreOffer(
         price = EconomyPolicy.STREAK_RESTORE_GEMS,
         adState =
             when (adState) {
-                null, WebRewardedAdState.Unavailable -> StreakRestoreAdState.UNAVAILABLE
-                WebRewardedAdState.Showing -> StreakRestoreAdState.LOADING
-                else -> StreakRestoreAdState.READY
+                null, WebRewardedAdState.Unavailable -> DailyRewardedAdState.UNAVAILABLE
+                WebRewardedAdState.Showing -> DailyRewardedAdState.LOADING
+                else -> DailyRewardedAdState.READY
             },
         onRestoreWithGems = {
             val economy = economyRepository

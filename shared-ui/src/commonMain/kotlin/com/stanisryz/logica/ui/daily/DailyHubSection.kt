@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.HighlightOff
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.PlayCircleOutline
 import androidx.compose.material3.Button
@@ -69,6 +71,7 @@ import com.stanisryz.logica.puzzle.core.word.WordRules
 import com.stanisryz.logica.shared.ui.generated.resources.Res
 import com.stanisryz.logica.shared.ui.generated.resources.best_daily_streak
 import com.stanisryz.logica.shared.ui.generated.resources.current_daily_streak
+import com.stanisryz.logica.shared.ui.generated.resources.daily_archive
 import com.stanisryz.logica.shared.ui.generated.resources.daily_available
 import com.stanisryz.logica.shared.ui.generated.resources.daily_challenge
 import com.stanisryz.logica.shared.ui.generated.resources.daily_completed
@@ -114,6 +117,7 @@ fun DailyHubSection(
     onStart: (PuzzleType) -> Unit,
     modifier: Modifier = Modifier,
     onRetryLoad: () -> Unit = {},
+    onOpenArchive: (() -> Unit)? = null,
 ) {
     when (uiState) {
         DailyHubUiState.Loading -> DailyLoadingCard(modifier)
@@ -124,6 +128,7 @@ fun DailyHubSection(
                 gameplayAllowed = gameplayAllowed,
                 onStart = onStart,
                 modifier = modifier,
+                onOpenArchive = onOpenArchive,
             )
     }
 }
@@ -161,6 +166,7 @@ private fun DailyContent(
     gameplayAllowed: Boolean,
     onStart: (PuzzleType) -> Unit,
     modifier: Modifier,
+    onOpenArchive: (() -> Unit)?,
 ) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
         val progressDescription =
@@ -237,6 +243,14 @@ private fun DailyContent(
                         DailyEntryCard(entry, gameplayAllowed, onStart)
                     }
                 }
+                // The past days the player can still play, under today's.
+                onOpenArchive?.let { open ->
+                    TextButton(onClick = open, modifier = Modifier.align(Alignment.End)) {
+                        Icon(Icons.Rounded.History, contentDescription = null, modifier = Modifier.size(DAILY_CHIP_ICON_SIZE))
+                        Spacer(Modifier.width(DAILY_CHIP_GAP))
+                        Text(stringResource(Res.string.daily_archive))
+                    }
+                }
             }
         }
         AnimatedVisibility(
@@ -254,7 +268,7 @@ private fun DailyContent(
  * only, so without this a desktop player could not reach the entries past the visible edge.
  * Only mouse gestures are intercepted, and a real drag swallows the release so it opens nothing.
  */
-private fun Modifier.mouseDragScroll(state: LazyListState): Modifier =
+internal fun Modifier.mouseDragScroll(state: LazyListState): Modifier =
     pointerInput(state) {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
@@ -358,7 +372,7 @@ private fun DailyStreakChip(streak: DailyHubStreak) {
 }
 
 @Composable
-private fun DailyEntryCard(
+internal fun DailyEntryCard(
     entry: DailyHubEntry,
     gameplayAllowed: Boolean,
     onStart: (PuzzleType) -> Unit,

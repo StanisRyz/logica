@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.hideFromAccessibility
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -66,6 +67,7 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordRules
 import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.daily_archive_open_day
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_easy
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_expert
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_hard
@@ -286,6 +288,7 @@ fun ProfilePageContent(
     page: ProfilePage,
     uiState: ProfileUiState,
     modifier: Modifier = Modifier,
+    onOpenDailyDay: ((day: Int) -> Unit)? = null,
 ) {
     val statistics = (uiState as? ProfileUiState.Ready)?.statistics
     if (statistics == null) {
@@ -310,7 +313,7 @@ fun ProfilePageContent(
             ProfilePage.DAILY -> {
                 val calendar = statistics.dailyMetrics?.calendar
                 if (calendar != null) {
-                    DailyCalendarCard(calendar)
+                    DailyCalendarCard(calendar, onOpenDailyDay)
                 } else {
                     statistics.dailyMetrics?.recentDays?.takeIf { it.isNotEmpty() }?.let { days ->
                         ProfileSection(stringResource(Res.string.profile_recent_days)) { RecentDaysRow(days) }
@@ -465,7 +468,10 @@ private val INLINE_METRIC_MIN_TEXT = 11.sp
  * and today carries an outline. Every state also has a text description, never colour alone.
  */
 @Composable
-private fun DailyCalendarCard(month: DailyCalendarMonth) {
+private fun DailyCalendarCard(
+    month: DailyCalendarMonth,
+    onOpenDay: ((Int) -> Unit)?,
+) {
     val colors = MaterialTheme.colorScheme
     val palette = LocalLogicaPalette.current
     val weekdays = stringArrayResource(Res.array.profile_calendar_weekdays)
@@ -473,6 +479,7 @@ private fun DailyCalendarCard(month: DailyCalendarMonth) {
     val partialLabel = stringResource(Res.string.profile_calendar_partial)
     val noneLabel = stringResource(Res.string.profile_calendar_none)
     val savedLabel = stringResource(Res.string.profile_calendar_saved)
+    val openLabel = stringResource(Res.string.daily_archive_open_day)
     val hasSavedDays = DailyCalendarDayState.STREAK_SAVED in month.days.values
     ProfileCard(verticalSpacing = LogicaSpacing.text) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -551,6 +558,18 @@ private fun DailyCalendarCard(month: DailyCalendarMonth) {
                                                     else -> Color.Transparent
                                                 },
                                             shape = CircleShape,
+                                        ).then(
+                                            // A past day in the archive's reach opens there.
+                                            if (onOpenDay != null && day in month.openableDays) {
+                                                Modifier.clickable(onClickLabel = openLabel) { onOpenDay(day) }.semantics {
+                                                    onClick(openLabel) {
+                                                        onOpenDay(day)
+                                                        true
+                                                    }
+                                                }
+                                            } else {
+                                                Modifier
+                                            },
                                         ).clearAndSetSemantics { contentDescription = description },
                                 contentAlignment = Alignment.Center,
                             ) {

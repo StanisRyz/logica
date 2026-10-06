@@ -158,10 +158,12 @@ internal class WebDailyRepository(
             record.copy(failedMask = record.failedMask or bit)
         }
 
+    /** [onTime] is false for an attempt started from the Daily archive: it fills the day, not the streak. */
     fun recordSolved(
         definition: DailyChallengeDefinition,
         puzzleType: PuzzleType,
         wordAttemptsUsed: Int? = null,
+        onTime: Boolean = true,
     ): WebDailyMutationResult =
         mutate(definition, requireExisting = true) { record ->
             val bit = definition.requirePuzzleBit(puzzleType)
@@ -175,6 +177,7 @@ internal class WebDailyRepository(
             }
             record.copy(
                 solvedMask = record.solvedMask or bit,
+                onTimeSolvedMask = if (onTime) record.onTimeSolvedMask or bit else record.onTimeSolvedMask,
                 wordSolvedAttemptsUsed =
                     if (puzzleType == PuzzleType.WORD) {
                         listOfNotNull(record.wordSolvedAttemptsUsed, wordAttemptsUsed).minOrNull()
