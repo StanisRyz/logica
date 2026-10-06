@@ -4,7 +4,7 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 
 /**
  * A bundled lexicon whose answers are tagged by difficulty and whose answer length follows
- * [WordRules.wordLengthForV2], read in [language]. Word V3 (English) and V4 (Turkish) use it; their
+ * [WordRules.wordLengthForV2], read in [language]. Word V3 (English), V4 (Turkish), and V5's answers use it; their
  * answer contents and ordering are generator compatibility data once a level pack depends on them.
  */
 class WordLexiconByLength internal constructor(
@@ -104,4 +104,19 @@ object WordLexiconV4 {
     private val lexicon = WordLexiconByLength("V4", WordLanguage.TURKISH, ALLOWED_GUESSES_RESOURCE, ANSWERS_RESOURCE)
     val allowedGuesses: WordAllowedGuesses = lexicon.allowedGuesses
     val possibleAnswers: WordPossibleAnswers = lexicon.possibleAnswers
+}
+
+/**
+ * Word V5, Russian with V2's rules: V2's allowed guesses unchanged, and answers generated offline by
+ * `tools/word-lexicon/extract_pymorphy3.py --version 5` like V2's but through the family filter
+ * `lexicon/word/v5/topic_words.txt` (religion, politics, war, death, and the other topics V3 and V4
+ * keep out), each length topped up to 500 with the next common nouns. A filtered word stays a guess.
+ */
+object WordLexiconV5 {
+    const val ALLOWED_GUESSES_RESOURCE = WordLexiconV2.ALLOWED_GUESSES_RESOURCE
+    const val ANSWERS_RESOURCE = "/word/v5/answers.txt"
+
+    val allowedGuesses: WordAllowedGuesses = WordLexiconV2.allowedGuesses
+    val possibleAnswers: WordPossibleAnswers =
+        WordLexiconByLength("V5", WordLanguage.RUSSIAN, ALLOWED_GUESSES_RESOURCE, ANSWERS_RESOURCE).possibleAnswers
 }

@@ -11,23 +11,25 @@ import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 /**
  * Word plays in the interface language, with one shared level progression: level N of a difficulty is
  * the same level in every language, and its content comes from that language's frozen bucket —
- * Russian from the default `word/` buckets (Generator V2), English from `word_en/` (V3), Turkish from
- * `word_tr/` (V4). A bucket whose generator version is not its language's fails cleanly.
+ * Russian from `word_ru/` (Generator V5, the family-filtered answers), English from `word_en/` (V3),
+ * Turkish from `word_tr/` (V4). The default `word/` buckets (V2) stay frozen for older app versions
+ * and old results. A bucket whose generator version is not its language's fails cleanly.
  */
 object WordCatalogContent {
+    val RUSSIAN_VARIANT = CatalogContentVariant("ru")
     val ENGLISH_VARIANT = CatalogContentVariant("en")
     val TURKISH_VARIANT = CatalogContentVariant("tr")
 
-    fun variant(language: WordLanguage): CatalogContentVariant? =
+    fun variant(language: WordLanguage): CatalogContentVariant =
         when (language) {
-            WordLanguage.RUSSIAN -> null
+            WordLanguage.RUSSIAN -> RUSSIAN_VARIANT
             WordLanguage.ENGLISH -> ENGLISH_VARIANT
             WordLanguage.TURKISH -> TURKISH_VARIANT
         }
 
     fun generatorVersion(language: WordLanguage): GeneratorVersion =
         when (language) {
-            WordLanguage.RUSSIAN -> GeneratorVersion(2)
+            WordLanguage.RUSSIAN -> GeneratorVersion(5)
             WordLanguage.ENGLISH -> GeneratorVersion(3)
             WordLanguage.TURKISH -> GeneratorVersion(4)
         }

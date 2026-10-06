@@ -16,6 +16,7 @@ import com.stanisryz.logica.puzzle.core.word.WordLexiconV1
 import com.stanisryz.logica.puzzle.core.word.WordLexiconV2
 import com.stanisryz.logica.puzzle.core.word.WordLexiconV3
 import com.stanisryz.logica.puzzle.core.word.WordLexiconV4
+import com.stanisryz.logica.puzzle.core.word.WordLexiconV5
 
 /**
  * Synchronous browser boundary for the bundled data types the core currently consumes.
@@ -101,7 +102,8 @@ object WebPuzzleData : CatalogLevelPackSource, SudokuDatasetSource {
             this == WordLexiconV3.ALLOWED_GUESSES_RESOURCE ||
             this == WordLexiconV3.ANSWERS_RESOURCE ||
             this == WordLexiconV4.ALLOWED_GUESSES_RESOURCE ||
-            this == WordLexiconV4.ANSWERS_RESOURCE
+            this == WordLexiconV4.ANSWERS_RESOURCE ||
+            this == WordLexiconV5.ANSWERS_RESOURCE
 
     private data class SudokuDatasetKey(
         val version: SudokuDatasetVersion,

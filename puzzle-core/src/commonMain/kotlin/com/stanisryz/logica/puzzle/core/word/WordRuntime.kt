@@ -12,14 +12,14 @@ data class WordRuntime(
 )
 
 /**
- * One platform-neutral source of truth for Word generator, lexicon, and language compatibility: V1 and
- * V2 are Russian, V3 English, V4 Turkish. A result or level that stores its generator version therefore
+ * One platform-neutral source of truth for Word generator, lexicon, and language compatibility: V1, V2,
+ * and V5 are Russian, V3 English, V4 Turkish. A result or level that stores its generator version therefore
  * also says its language.
  */
 object WordRuntimeResolver {
     fun language(generatorVersion: GeneratorVersion): WordLanguage =
         when (generatorVersion.value) {
-            1, 2 -> WordLanguage.RUSSIAN
+            1, 2, 5 -> WordLanguage.RUSSIAN
             3 -> WordLanguage.ENGLISH
             4 -> WordLanguage.TURKISH
             else -> error("Unsupported Word generator version ${generatorVersion.value}.")
@@ -62,6 +62,13 @@ object WordRuntimeResolver {
                     allowedGuesses = WordLexiconV4.allowedGuesses,
                     requiredResourcePaths = listOf(WordLexiconV4.ALLOWED_GUESSES_RESOURCE, WordLexiconV4.ANSWERS_RESOURCE),
                     language = WordLanguage.TURKISH,
+                )
+            5 ->
+                WordRuntime(
+                    generator = WordGeneratorByLength.v5(),
+                    allowedGuesses = WordLexiconV5.allowedGuesses,
+                    requiredResourcePaths = listOf(WordLexiconV5.ALLOWED_GUESSES_RESOURCE, WordLexiconV5.ANSWERS_RESOURCE),
+                    language = WordLanguage.RUSSIAN,
                 )
             else -> error("Unsupported Word generator version ${generatorVersion.value}.")
         }

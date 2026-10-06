@@ -10,7 +10,8 @@ import com.stanisryz.logica.puzzle.core.random.PuzzleRandomV1
 
 /**
  * V2's selection — one draw of the project random stream over a length-defined answer pool — for the
- * language versions: V3 (English) and V4 (Turkish), each over its own lexicon.
+ * language versions: V3 (English), V4 (Turkish), and V5 (Russian with the family filter), each over its
+ * own lexicon.
  */
 class WordGeneratorByLength(
     override val version: GeneratorVersion,
@@ -19,7 +20,7 @@ class WordGeneratorByLength(
     override val type = PuzzleType.WORD
 
     init {
-        require(version.value == 3 || version.value == 4) { "Word generator version ${version.value} is not a language version." }
+        require(version.value in 3..5) { "Word generator version ${version.value} is not a language version." }
     }
 
     override fun generate(
@@ -41,5 +42,8 @@ class WordGeneratorByLength(
 
         fun v4(possibleAnswers: WordPossibleAnswers = WordLexiconV4.possibleAnswers) =
             WordGeneratorByLength(GeneratorVersion(4), possibleAnswers)
+
+        fun v5(possibleAnswers: WordPossibleAnswers = WordLexiconV5.possibleAnswers) =
+            WordGeneratorByLength(GeneratorVersion(5), possibleAnswers)
     }
 }

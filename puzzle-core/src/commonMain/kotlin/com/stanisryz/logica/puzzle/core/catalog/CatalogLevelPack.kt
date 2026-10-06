@@ -90,8 +90,8 @@ sealed interface CatalogLevelPackResult<out T> {
 }
 
 /**
- * A content variant of one game's frozen buckets, frozen beside its default buckets: Word's English
- * and Turkish levels (`levels/v1/word_en/`, `levels/v1/word_tr/`). A level's identity and progress
+ * A content variant of one game's frozen buckets, frozen beside its default buckets: Word's Russian,
+ * English, and Turkish levels (`levels/v1/word_ru/`, `word_en/`, `word_tr/`). A level's identity and progress
  * never carry it; the bucket's generator version tells which content a level was built from.
  */
 data class CatalogContentVariant(

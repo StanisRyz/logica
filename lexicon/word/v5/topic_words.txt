@@ -1,0 +1,178 @@
+# Word V5 (Russian, V2 rules) family filter: never an answer, still an allowed guess. The topics
+# follow Word V3/V4 (tools/word-lexicon/extract_english.py topic roots, lexicon/word/v4/topic_words.txt)
+# with the owner's decision: military words and weapons stay (армия, солдат, танк, ракета, оружие),
+# while «война» and «террор» go (Yandex requirement 3.4.4 names wars). Format: <word> <topic>, then
+# an optional comment. '#' starts a comment. Read by tools/word-lexicon/extract_pymorphy3.py --version 5.
+
+# Religion (requirement 3.4.5).
+алтарь    religion
+батюшка   religion   # a priest
+ковчег    religion   # the Ark
+апостол   religion
+библия    religion
+богиня    religion
+вера      religion   # faith
+владыка   religion   # a bishop's title, the Lord
+грех      religion
+гуру      religion
+епископ   religion
+жрец      religion
+идол      religion
+икона     religion
+крест     religion
+молитва   religion
+монах     religion
+мечеть    religion
+обет      religion   # a vow, mostly monastic
+обитель   religion   # a cloister
+пастор    religion
+пророк    religion
+религия   religion
+ритуал    religion
+собор     religion   # a cathedral
+храм      religion
+церковь   religion
+пустынь   religion   # a hermitage
+
+# The occult.
+ведьма    occult
+вампир    occult
+дьявол    occult
+призрак   occult     # a ghost
+таро      occult
+
+# Politics and state power (requirement 3.4.4).
+эмир      politics
+либерал   politics
+власть    politics
+выборы    politics
+дебаты    politics
+депутат   politics
+дума      politics
+заговор   politics   # a conspiracy
+канцлер   politics
+лозунг    politics
+майдан    politics
+мандат    politics
+министр   politics
+митинг    politics
+партия    politics
+патриот   politics
+политик   politics
+премьер   politics
+протест   politics
+раскол    politics   # a schism
+реформа   politics
+саммит    politics
+сейм      politics
+сенатор   politics
+спикер    politics
+указ      politics   # a decree
+фашизм    politics
+фракция   politics
+цензура   politics
+шейх      politics
+эмбарго   politics
+вето      politics
+
+# War and terror (requirement 3.4.4); other military words stay by the owner's decision.
+война     war
+теракт    war
+боевик    war        # a militant (also an action film)
+террор    war
+
+# Death, killing, and funerals.
+гибель    death
+гроб      death
+жертва    death      # a victim, a sacrifice
+могила    death
+морг      death
+мертвый   death
+останки   death
+прах      death
+смерть    death
+труп      death
+убийца    death
+
+# Violence and crime.
+главарь   crime      # a gang leader
+угон      crime      # a car theft
+бандит    crime
+бунт      violence   # a riot
+допрос    crime      # an interrogation
+драка     violence
+измена    crime      # treason, adultery
+маньяк    crime
+насилие   violence
+обыск     crime
+рабство   violence
+розыск    crime
+тюрьма    crime
+улика     crime
+
+# Alcohol, tobacco, drugs, and gambling.
+коньяк    alcohol
+мартини   alcohol
+вино      alcohol
+пиво      alcohol
+пьяный    alcohol
+табак     tobacco
+курение   tobacco
+допинг    drugs
+доза      drugs
+дурь      drugs
+кайф      drugs
+кокс      drugs      # coke, slang for cocaine
+героин    drugs
+сома      drugs      # soma, also an obscure biology term
+казино    gambling
+
+# Disease and injury.
+кашель    disease
+кома      disease
+болезнь   disease
+грипп     disease
+диабет    disease
+диагноз   disease
+вирус     disease
+инсульт   disease
+инфаркт   disease
+обморок   disease
+ожог      injury
+озноб     disease
+опухоль   disease
+перелом   injury
+порез     injury
+приступ   disease
+рана      injury
+ранение   injury
+синдром   disease
+синяк     injury
+травма    injury
+чума      disease
+язва      disease
+
+# Insults and rude words.
+бомж      profanity
+братан    profanity
+карлик    profanity
+рыло      profanity
+дура      profanity
+дурочка   profanity
+отстой    profanity
+псих      profanity
+раса      profanity  # race, kept out with the ethnic slurs of the V2 blocklist
+рожа      profanity
+урод      profanity
+янки      profanity
+
+# Nationalities: never insults, but kept out of answers like the slurs of the V2 blocklist.
+араб      nationality
+белорус   nationality
+грек      nationality
+финн      nationality
+француз   nationality
+швед      nationality
+
+# Brand names.
+ауди      brand

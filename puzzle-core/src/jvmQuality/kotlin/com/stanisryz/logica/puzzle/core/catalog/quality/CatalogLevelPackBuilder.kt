@@ -35,6 +35,7 @@ import com.stanisryz.logica.puzzle.core.word.WordLanguage
 import com.stanisryz.logica.puzzle.core.word.WordLexiconV2
 import com.stanisryz.logica.puzzle.core.word.WordLexiconV3
 import com.stanisryz.logica.puzzle.core.word.WordLexiconV4
+import com.stanisryz.logica.puzzle.core.word.WordLexiconV5
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.stream.Collectors
@@ -94,7 +95,7 @@ object CatalogLevelPackBuilder {
 
     /**
      * One frozen bucket family: a game in one pack version, or one of its content variants (Word's
-     * `word_en`, `word_tr`).
+     * `word_ru`, `word_en`, `word_tr`).
      */
     internal data class BucketTarget(
         val puzzleType: PuzzleType,
@@ -111,6 +112,7 @@ object CatalogLevelPackBuilder {
     internal val V1_TARGETS: List<BucketTarget> =
         CatalogLevelPacks.PUZZLE_TYPES.map { BucketTarget(it) } +
             listOf(
+                BucketTarget(PuzzleType.WORD, WordCatalogContent.RUSSIAN_VARIANT),
                 BucketTarget(PuzzleType.WORD, WordCatalogContent.ENGLISH_VARIANT),
                 BucketTarget(PuzzleType.WORD, WordCatalogContent.TURKISH_VARIANT),
             )
@@ -145,7 +147,7 @@ object CatalogLevelPackBuilder {
             when (puzzleType) {
                 PuzzleType.BALANCE -> balanceBucket(difficulty, slots)
                 PuzzleType.CROWNS -> crownsBucket(difficulty, slots)
-                PuzzleType.WORD -> wordBucket(difficulty, slots, wordLanguage(target.variant))
+                PuzzleType.WORD -> wordBucket(difficulty, slots, target.variant)
                 PuzzleType.SUDOKU -> sudokuBucket(puzzleDataDirectory, difficulty, slots)
                 PuzzleType.GAME_2048 -> game2048Bucket(difficulty, slots)
                 PuzzleType.NONOGRAM ->
@@ -169,9 +171,6 @@ object CatalogLevelPackBuilder {
         }
         return write(puzzleDataDirectory, target, difficulty, bucket)
     }
-
-    private fun wordLanguage(variant: CatalogContentVariant?): WordLanguage =
-        WordLanguage.entries.single { WordCatalogContent.variant(it) == variant }
 
     private fun write(
         puzzleDataDirectory: File,
@@ -315,20 +314,23 @@ object CatalogLevelPackBuilder {
     }
 
     /**
-     * Word keeps each language's frozen answer pool (V2 Russian, V3 English, V4 Turkish, the same draw
-     * as its generator): a seed is accepted only when it selects an answer this
+     * Word keeps each bucket's frozen answer pool, the same draw as its generator: the default `word/`
+     * buckets V2 (Russian before the family filter), and each language variant its language's version
+     * (V5 Russian, V3 English, V4 Turkish). A seed is accepted only when it selects an answer this
      * cycle has not used yet, so every available word appears before any repetition, and repeats
      * afterwards are a deterministic continuation of the same scan.
      */
     private fun wordBucket(
         difficulty: Difficulty,
         slots: Int,
-        language: WordLanguage,
+        variant: CatalogContentVariant?,
     ): Bucket {
-        val generatorVersion = WordCatalogContent.generatorVersion(language)
+        val language = variant?.let { key -> WordLanguage.entries.single { WordCatalogContent.variant(it) == key } }
+        val generatorVersion = language?.let(WordCatalogContent::generatorVersion) ?: GeneratorVersion(2)
         val answers =
             when (language) {
-                WordLanguage.RUSSIAN -> WordLexiconV2.possibleAnswers
+                null -> WordLexiconV2.possibleAnswers
+                WordLanguage.RUSSIAN -> WordLexiconV5.possibleAnswers
                 WordLanguage.ENGLISH -> WordLexiconV3.possibleAnswers
                 WordLanguage.TURKISH -> WordLexiconV4.possibleAnswers
             }
