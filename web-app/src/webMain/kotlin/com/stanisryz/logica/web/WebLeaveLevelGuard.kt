@@ -1,7 +1,6 @@
 package com.stanisryz.logica.web
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -9,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -27,9 +27,11 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
@@ -121,30 +123,56 @@ internal fun WebTopBar(
     // Reaching a game screen means the player has tapped: a good moment to load the sounds.
     val sounds = LocalGameSounds.current
     LaunchedEffect(sounds) { (sounds as? WebGameSoundPlayer)?.preload() }
-    Box(
-        modifier = Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        TextButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) { Text(backLabel) }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-            )
-            if (helpFor != null) {
-                IconButton(onClick = { rulesOpen = true }, modifier = Modifier.size(HELP_BUTTON_SIZE)) {
-                    Icon(
-                        Icons.AutoMirrored.Rounded.HelpOutline,
-                        contentDescription = stringResource(WebRes.string.web_rules),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(HELP_ICON_SIZE),
+    val rulesLabel = stringResource(WebRes.string.web_rules)
+    // The title stays truly centred; the way back keeps its words while they fit beside it and
+    // turns into an arrow (still named for screen readers) when a long label would run into it.
+    SubcomposeLayout(Modifier.fillMaxWidth().height(GAME_HEADER_HEIGHT).padding(horizontal = 8.dp)) { constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val wallet = subcompose("wallet") { WebGameplayWallet() }.map { it.measure(loose) }
+        val walletWidth = wallet.maxOfOrNull { it.width } ?: 0
+        val backIcon =
+            subcompose("backIcon") {
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = backLabel) }
+            }.map { it.measure(loose) }
+        // The help button's invisible touch margin may reach into the gap beside the wallet.
+        val helpMargin = if (helpFor != null) (HELP_BUTTON_SIZE - HELP_ICON_SIZE).roundToPx() / 2 else 0
+        val sideReserve = maxOf(walletWidth, backIcon.maxOfOrNull { it.width } ?: 0) - helpMargin
+        val titleRow =
+            subcompose("title") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
                     )
+                    if (helpFor != null) {
+                        IconButton(onClick = { rulesOpen = true }, modifier = Modifier.size(HELP_BUTTON_SIZE)) {
+                            Icon(
+                                Icons.AutoMirrored.Rounded.HelpOutline,
+                                contentDescription = rulesLabel,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(HELP_ICON_SIZE),
+                            )
+                        }
+                    }
                 }
-            }
+            }.map { it.measure(loose.copy(maxWidth = (constraints.maxWidth - 2 * sideReserve).coerceAtLeast(0))) }
+        val titleWidth = titleRow.maxOfOrNull { it.width } ?: 0
+        val leftSpace = (constraints.maxWidth - titleWidth) / 2
+        val backText =
+            subcompose("backText") {
+                TextButton(onClick = onBack) { Text(backLabel, maxLines = 1, softWrap = false) }
+            }.map { it.measure(loose) }
+        val back = if ((backText.maxOfOrNull { it.width } ?: 0) <= leftSpace) backText else backIcon
+        val height = constraints.maxHeight
+        layout(constraints.maxWidth, height) {
+            back.forEach { it.placeRelative(0, (height - it.height) / 2) }
+            titleRow.forEach { it.placeRelative((constraints.maxWidth - it.width) / 2, (height - it.height) / 2) }
+            wallet.forEach { it.placeRelative(constraints.maxWidth - it.width, (height - it.height) / 2) }
         }
-        Box(Modifier.align(Alignment.CenterEnd)) { WebGameplayWallet() }
     }
 }
 
