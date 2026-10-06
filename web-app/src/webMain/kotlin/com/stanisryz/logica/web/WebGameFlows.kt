@@ -356,6 +356,8 @@ internal fun WordFlow(
     hardwareKeys: Flow<GameKey>,
     onExitWord: () -> Unit,
     onSolvedNextLevel: (() -> Unit) -> Unit,
+    hintCount: Int? = null,
+    onOpenStore: () -> Unit = {},
 ) {
     when (state) {
         WebWordState.DifficultySelection ->
@@ -396,6 +398,8 @@ internal fun WordFlow(
                 hardwareKeys = hardwareKeys,
                 onExitWord = onExitWord,
                 onSolvedNextLevel = onSolvedNextLevel,
+                hintCount = hintCount,
+                onOpenStore = onOpenStore,
             )
     }
 }

@@ -105,6 +105,46 @@ class WebWordControllerTest {
             )
         }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun aHintCostsOneHintAndAnEmptyStockOpensNothing() =
+        runTest {
+            var stock = 1
+            var consumed = 0
+            val controller =
+                WebWordController(
+                    loadPack = {},
+                    loadRuntimeResources = {},
+                    progression = FakeWebCatalogProgressAccess(initialLevel = 7),
+                    levelPack = fixedEasyLevels,
+                    runtimeResolver = { testRuntime },
+                    scope = this,
+                    store =
+                        object : WebGameplayStore {
+                            override fun tryConsumeHint(): Boolean {
+                                consumed += 1
+                                if (stock == 0) return false
+                                stock -= 1
+                                return true
+                            }
+                        },
+                )
+            controller.selectDifficulty(Difficulty.EASY)
+            advanceUntilIdle()
+
+            controller.requestHint()
+            val hinted = assertIs<WebWordState.Playing>(controller.state)
+            assertEquals(1, consumed)
+            assertEquals(mapOf(0 to TEST_ANSWER[0]), hinted.game.revealedLetters)
+            assertEquals(0, hinted.game.attempts.size)
+
+            // The stock is now empty: the next hint opens nothing and points to the Store.
+            controller.requestHint()
+            assertEquals(hinted.game, assertIs<WebWordState.Playing>(controller.state).game)
+            assertTrue(controller.hintsExhaustedNotice)
+            assertEquals(2, consumed)
+        }
+
     private val testRuntime =
         WordRuntime(
             generator =

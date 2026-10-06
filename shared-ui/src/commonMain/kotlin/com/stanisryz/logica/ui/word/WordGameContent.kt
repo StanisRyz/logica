@@ -19,10 +19,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Lightbulb
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -37,12 +42,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -53,11 +60,14 @@ import com.stanisryz.logica.puzzle.core.word.WordGameStatus
 import com.stanisryz.logica.puzzle.core.word.WordGuessRejection
 import com.stanisryz.logica.puzzle.core.word.WordPuzzle
 import com.stanisryz.logica.puzzle.core.word.WordRules
+import com.stanisryz.logica.puzzle.core.word.nextHintPosition
 import com.stanisryz.logica.shared.ui.generated.resources.Res
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_easy
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_expert
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_hard
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_medium
+import com.stanisryz.logica.shared.ui.generated.resources.hints_left
+import com.stanisryz.logica.shared.ui.generated.resources.word_hint_button
 import com.stanisryz.logica.shared.ui.generated.resources.word_rejection_already_guessed
 import com.stanisryz.logica.shared.ui.generated.resources.word_rejection_finished
 import com.stanisryz.logica.shared.ui.generated.resources.word_rejection_incomplete
@@ -100,6 +110,10 @@ fun WordGameContent(
     hardwareKeys: Flow<GameKey>? = null,
     hostStatusContent: @Composable ColumnScope.() -> Unit = {},
     terminalContent: @Composable ColumnScope.() -> Unit = {},
+    /** The host's hint stock, shown on the hint button; null hides the count. */
+    hintCount: Int? = null,
+    /** Opens one letter for a hint from the host's stock; null shows no hint button (worked examples). */
+    onHint: (() -> Unit)? = null,
 ) {
     val shakeDistance = with(LocalDensity.current) { SHAKE_DISTANCE.toPx() }
     var selectedCellIndex by
@@ -154,6 +168,10 @@ fun WordGameContent(
             selectedCellIndex = initialWordSelection(game)
         }
     }
+    // A hint that locks the selected cell moves the selection on to the next free one.
+    LaunchedEffect(game.revealedLetters) {
+        if (selectedCellIndex in game.revealedLetters) selectedCellIndex = initialWordSelection(game)
+    }
 
     // A hardware keyboard edits the same draft and selection as the on-screen keys.
     val currentGame by rememberUpdatedState(game)
@@ -175,7 +193,7 @@ fun WordGameContent(
                     val letter = normalizer.normalizeLetter(key.char)
                     currentOnInputInteraction()
                     currentOnDismissRejection()
-                    val editedPosition = selectedCellIndex
+                    val editedPosition = editablePosition(currentGame, selectedCellIndex)
                     currentOnLetter(editedPosition, letter)
                     sounds.play(GameSound.TAP)
                     selectedCellIndex = nextWordSelection(draft, editedPosition)
@@ -183,7 +201,7 @@ fun WordGameContent(
                 GameKey.Backspace, GameKey.Delete -> {
                     currentOnInputInteraction()
                     currentOnDismissRejection()
-                    positionToClear(draft, selectedCellIndex)?.let { position ->
+                    positionToClear(currentGame, selectedCellIndex)?.let { position ->
                         currentOnClearLetter(position)
                         selectedCellIndex = position
                     }
@@ -238,6 +256,14 @@ fun WordGameContent(
                         levelNumber = levelNumber,
                         contextBadgeLabel = contextBadgeLabel,
                         rejectionMessage = rejectionMessage,
+                        hint =
+                            onHint?.takeIf { isPlaying }?.let {
+                                WordHint(
+                                    hintCount,
+                                    game.nextHintPosition != null && gameplayEnabled,
+                                    it,
+                                )
+                            },
                     )
                     hostStatusContent()
                     Box(
@@ -269,7 +295,7 @@ fun WordGameContent(
                     onLetter = { letter ->
                         onInputInteraction()
                         onDismissRejection()
-                        val editedPosition = selectedCellIndex
+                        val editedPosition = editablePosition(game, selectedCellIndex)
                         onLetter(editedPosition, letter)
                         sounds.play(GameSound.TAP)
                         selectedCellIndex = nextWordSelection(game.currentDraft, editedPosition)
@@ -277,7 +303,7 @@ fun WordGameContent(
                     onBackspace = {
                         onInputInteraction()
                         onDismissRejection()
-                        positionToClear(game.currentDraft, selectedCellIndex)?.let { position ->
+                        positionToClear(game, selectedCellIndex)?.let { position ->
                             onClearLetter(position)
                             selectedCellIndex = position
                         }
@@ -305,6 +331,7 @@ fun WordGameContent(
                     levelNumber = levelNumber,
                     contextBadgeLabel = contextBadgeLabel,
                     rejectionMessage = rejectionMessage,
+                    hint = onHint?.takeIf { isPlaying }?.let { WordHint(hintCount, game.nextHintPosition != null && gameplayEnabled, it) },
                 )
                 hostStatusContent()
                 Column(
@@ -355,7 +382,7 @@ fun WordGameContent(
                         onLetter = { letter ->
                             onInputInteraction()
                             onDismissRejection()
-                            val editedPosition = selectedCellIndex
+                            val editedPosition = editablePosition(game, selectedCellIndex)
                             onLetter(editedPosition, letter)
                             sounds.play(GameSound.TAP)
                             selectedCellIndex = nextWordSelection(game.currentDraft, editedPosition)
@@ -363,7 +390,7 @@ fun WordGameContent(
                         onBackspace = {
                             onInputInteraction()
                             onDismissRejection()
-                            positionToClear(game.currentDraft, selectedCellIndex)?.let { position ->
+                            positionToClear(game, selectedCellIndex)?.let { position ->
                                 onClearLetter(position)
                                 selectedCellIndex = position
                             }
@@ -377,12 +404,24 @@ fun WordGameContent(
     }
 }
 
+/** The hint button's state: the host's stock, whether a letter can be opened now, and the action. */
+private class WordHint(
+    val count: Int?,
+    val enabled: Boolean,
+    val onClick: () -> Unit,
+)
+
+/**
+ * The header row: the title in the middle and, on its right, the hint button. The row already has
+ * its height in the layout budget, so the button costs the board and keyboard nothing.
+ */
 @Composable
 private fun WordGameHeader(
     puzzle: WordPuzzle,
     levelNumber: Int?,
     contextBadgeLabel: String?,
     rejectionMessage: String?,
+    hint: WordHint? = null,
 ) {
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         BoardTitle(
@@ -391,6 +430,7 @@ private fun WordGameHeader(
             contextLabel = contextBadgeLabel,
             compact = true,
         )
+        hint?.let { WordHintButton(it, Modifier.align(Alignment.CenterEnd)) }
         if (rejectionMessage != null) {
             Box(
                 modifier =
@@ -399,6 +439,52 @@ private fun WordGameHeader(
                         contentDescription = rejectionMessage
                     },
             )
+        }
+    }
+}
+
+/** The hint as a small tool tile: a lightbulb with the stock as a corner badge, like the other games' hint tool. */
+@Composable
+private fun WordHintButton(
+    hint: WordHint,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    val label = stringResource(Res.string.word_hint_button)
+    val countLabel = hint.count?.let { stringResource(Res.string.hints_left, it) }
+    Box(modifier.size(HINT_BUTTON_SIZE + HINT_BADGE_OVERHANG)) {
+        Surface(
+            onClick = hint.onClick,
+            enabled = hint.enabled,
+            modifier =
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .size(HINT_BUTTON_SIZE)
+                    // Never keeps keyboard focus: Enter submits the guess and must not tap the hint again.
+                    .focusProperties { canFocus = false }
+                    .semantics {
+                        contentDescription = label
+                        countLabel?.let { stateDescription = it }
+                    },
+            shape = MaterialTheme.shapes.medium,
+            color = colors.surfaceContainerHigh,
+            contentColor = if (hint.enabled) colors.onSurface else colors.onSurface.copy(alpha = DISABLED_HINT_ALPHA),
+        ) {
+            Box(contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Lightbulb, contentDescription = null) }
+        }
+        hint.count?.let { count ->
+            Surface(
+                modifier = Modifier.align(Alignment.TopEnd).clearAndSetSemantics {},
+                shape = CircleShape,
+                color = colors.primary,
+                contentColor = colors.onPrimary,
+            ) {
+                Text(
+                    text = count.toString(),
+                    modifier = Modifier.padding(horizontal = HINT_BADGE_PADDING),
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
         }
     }
 }
@@ -435,6 +521,12 @@ private fun WordRejectionNote(
 
 private fun initialWordSelection(game: WordGameState): Int = game.currentDraft.firstEmptyIndex() ?: game.wordLength - 1
 
+/** Where a typed letter goes: the selected cell, or the next free one when a hint locked the selected cell. */
+private fun editablePosition(
+    game: WordGameState,
+    selectedPosition: Int,
+): Int = if (selectedPosition in game.revealedLetters) nextWordSelection(game.currentDraft, selectedPosition) else selectedPosition
+
 private fun nextWordSelection(
     draft: WordDraft,
     editedPosition: Int,
@@ -444,15 +536,16 @@ private fun nextWordSelection(
     return editedPosition
 }
 
+/** The letter Backspace clears: the selected one or the nearest one before it, never a hinted letter. */
 private fun positionToClear(
-    draft: WordDraft,
+    game: WordGameState,
     selectedPosition: Int,
-): Int? =
-    if (draft[selectedPosition] != null) {
-        selectedPosition
-    } else {
-        (selectedPosition - 1 downTo 0).firstOrNull { draft[it] != null }
-    }
+): Int? {
+    val draft = game.currentDraft
+
+    fun clearable(position: Int) = draft[position] != null && position !in game.revealedLetters
+    return if (clearable(selectedPosition)) selectedPosition else (selectedPosition - 1 downTo 0).firstOrNull(::clearable)
+}
 
 private fun WordGuessRejection.messageResource(): StringResource =
     when (this) {
@@ -472,6 +565,10 @@ private fun Difficulty.labelResource(): StringResource =
     }
 
 private val SHAKE_DISTANCE = 8.dp
+private val HINT_BUTTON_SIZE = 36.dp
+private val HINT_BADGE_OVERHANG = 6.dp
+private val HINT_BADGE_PADDING = 5.dp
+private const val DISABLED_HINT_ALPHA = 0.38f
 private const val REJECTION_NOTE_MILLIS = 2_500L
 private const val REJECTION_NOTE_FADE_MILLIS = 150
 private val REJECTION_NOTE_ELEVATION = 4.dp

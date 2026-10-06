@@ -370,6 +370,9 @@
     <string name="rules_word_1">Отгадайте слово за шесть попыток.</string>
     <string name="rules_word_2">Заливка — буква на своём месте, рамка — буква есть, но в другом месте.</string>
     <string name="rules_word_3">Погасшей буквы в слове нет.</string>
+    <string name="rules_word_hint">Подсказка откроет одну букву на её месте — не больше двух за попытку; попытку она не тратит.</string>
+    <string name="word_hinted_letter">подсказка</string>
+    <string name="word_hint_button">Подсказка: открыть букву</string>
     <string name="rules_2048_1">Смахивайте или нажимайте стрелки: все плитки сдвигаются в эту сторону.</string>
     <string name="rules_2048_2">Две равные плитки сливаются в одну и приносят очки.</string>
     <string name="rules_2048_3">Наберите цель уровня, пока на поле остаются ходы.</string>

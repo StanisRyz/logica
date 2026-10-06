@@ -79,6 +79,7 @@ internal class WebWordController(
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
     /** Word plays in the interface language; a Catalog level's content comes from that language's bucket. */
     private val language: () -> WordLanguage = { WordLanguage.RUSSIAN },
+    private val store: WebGameplayStore = DisabledWebGameplayStore,
 ) {
     private var operation: Job? = null
     private var engine: WordGameEngine? = null
@@ -95,6 +96,31 @@ internal class WebWordController(
 
     val dailyCompletionState: WebDailyCompletionState
         get() = dailyCompletion.state
+
+    /** Set when a hint was requested with an empty hint inventory; the host shows where to get more. */
+    var hintsExhaustedNotice by mutableStateOf(false)
+        private set
+
+    /**
+     * Opens one answer letter for one hint from the Player's inventory. The letter is computed first;
+     * the board check, the synchronous [WebGameplayStore.tryConsumeHint], and the update follow with no
+     * suspension between them, so a charged hint is always shown. A hint spends no guess.
+     */
+    fun requestHint() {
+        val playing = state as? WebWordState.Playing ?: return
+        val activeEngine = engine ?: return
+        val hinted = activeEngine.revealHint(playing.game)
+        if (hinted == playing.game) return
+        if (!store.tryConsumeHint()) {
+            hintsExhaustedNotice = true
+            return
+        }
+        state = playing.copy(game = hinted, rejection = null)
+    }
+
+    fun dismissHintsExhaustedNotice() {
+        hintsExhaustedNotice = false
+    }
 
     fun selectDifficulty(difficulty: Difficulty) {
         operation?.cancel()
@@ -269,6 +295,7 @@ internal class WebWordController(
                                 statisticsAttempt = statisticsAttempt,
                                 solved = solved,
                                 stars = PuzzleStars.forWordAttempts(updated.game.attempts.size),
+                                hintsUsed = updated.game.hintsUsed,
                                 wordAttemptsUsed =
                                     updated.game.attempts.size
                                         .takeIf { solved },
@@ -372,6 +399,7 @@ internal class WebWordController(
             statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
             daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
             economy: WebGameplayEconomy = DisabledWebGameplayEconomy,
+            store: WebGameplayStore = DisabledWebGameplayStore,
         ): WebWordController {
             val language = { WordLanguage.forInterfaceTag(currentWebAppLanguage.tag) }
             return WebWordController(
@@ -389,6 +417,7 @@ internal class WebWordController(
                 daily = daily,
                 economy = economy,
                 language = language,
+                store = store,
             )
         }
     }

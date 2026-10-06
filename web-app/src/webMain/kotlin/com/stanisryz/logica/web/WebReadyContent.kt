@@ -579,6 +579,8 @@ internal fun ReadyContent(
                     state = wordState,
                     controller = wordController,
                     hardwareKeys = keyboard.keys,
+                    hintCount = hintCount,
+                    onOpenStore = openStore,
                     onSolvedNextLevel = runSolvedNextLevel,
                     onExitWord = {
                         wordController.showDifficultySelector()

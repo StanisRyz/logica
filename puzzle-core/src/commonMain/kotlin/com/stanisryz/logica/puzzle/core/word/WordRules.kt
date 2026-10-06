@@ -9,6 +9,13 @@ object WordRules {
     /** Kept as a source-compatible V1 alias. New gameplay must use its puzzle's word length. */
     const val WORD_LENGTH = V1_WORD_LENGTH
     const val MAXIMUM_ATTEMPTS = 6
+
+    /** Hints one attempt may show; never the whole word (see [maximumHints]). */
+    const val MAXIMUM_HINTS = 2
+
+    /** At most [MAXIMUM_HINTS], and always fewer than the word's letters, so a hint never opens all of it. */
+    fun maximumHints(wordLength: Int): Int = minOf(MAXIMUM_HINTS, wordLength - 1)
+
     const val MINIMUM_WORD_LENGTH = 4
     const val MAXIMUM_WORD_LENGTH = 7
 

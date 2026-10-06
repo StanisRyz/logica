@@ -223,6 +223,8 @@ internal fun PlayingWordContent(
     hardwareKeys: Flow<GameKey>,
     onExitWord: () -> Unit,
     onSolvedNextLevel: (() -> Unit) -> Unit,
+    hintCount: Int? = null,
+    onOpenStore: () -> Unit = {},
 ) {
     val livesGuard = LocalWebLives.current.guard
     val transitionAd = LocalWebTransitionAd.current
@@ -249,6 +251,17 @@ internal fun PlayingWordContent(
             onAcceptedAttemptRevealed = controller::onAcceptedAttemptRevealed,
             modifier = Modifier.weight(1f),
             hardwareKeys = hardwareKeys,
+            hintCount = hintCount,
+            onHint = controller::requestHint,
+        )
+    }
+    if (controller.hintsExhaustedNotice) {
+        WebHintsExhaustedDialog(
+            onOpenStore = {
+                controller.dismissHintsExhaustedNotice()
+                onOpenStore()
+            },
+            onDismiss = controller::dismissHintsExhaustedNotice,
         )
     }
 

@@ -91,8 +91,18 @@ class WordGameState internal constructor(
     val currentDraft: WordDraft,
     attempts: Iterable<WordAttempt>,
     val status: WordGameStatus,
+    revealedLetters: Map<Int, Char> = emptyMap(),
 ) {
     val attempts: List<WordAttempt> = attempts.toList()
+
+    /**
+     * Answer letters opened by hints, by position. Each stays in its place in the draft until the
+     * attempt ends: it cannot be cleared or replaced, and every new row starts with it.
+     */
+    val revealedLetters: Map<Int, Char> = revealedLetters.toMap()
+
+    /** Hints shown in this attempt. */
+    val hintsUsed: Int get() = revealedLetters.size
 
     /** The language this game plays in, from its generator version. */
     val language: WordLanguage get() = WordRuntimeResolver.language(puzzleId.generatorVersion)
@@ -104,6 +114,9 @@ class WordGameState internal constructor(
         require(this.attempts.size <= WordRules.MAXIMUM_ATTEMPTS) { "Too many submitted attempts." }
         require(this.attempts.all { it.word.length == wordLength }) {
             "Every submitted attempt must match the puzzle word length."
+        }
+        require(this.revealedLetters.all { (position, letter) -> currentDraft.positions.getOrNull(position) == letter }) {
+            "A revealed letter must stand in its place in the draft."
         }
     }
 
@@ -117,7 +130,8 @@ class WordGameState internal constructor(
             wordLength == other.wordLength &&
             currentDraft == other.currentDraft &&
             attempts == other.attempts &&
-            status == other.status
+            status == other.status &&
+            revealedLetters == other.revealedLetters
 
     override fun hashCode(): Int {
         var result = puzzleId.hashCode()
@@ -125,11 +139,13 @@ class WordGameState internal constructor(
         result = 31 * result + currentDraft.hashCode()
         result = 31 * result + attempts.hashCode()
         result = 31 * result + status.hashCode()
+        result = 31 * result + revealedLetters.hashCode()
         return result
     }
 
     override fun toString(): String =
-        "WordGameState(puzzleId=$puzzleId, wordLength=$wordLength, currentDraft=$currentDraft, attempts=$attempts, status=$status)"
+        "WordGameState(puzzleId=$puzzleId, wordLength=$wordLength, currentDraft=$currentDraft, attempts=$attempts, " +
+            "status=$status, revealedLetters=$revealedLetters)"
 }
 
 /**
@@ -138,3 +154,15 @@ class WordGameState internal constructor(
  */
 val WordGameState.hasMeaningfulProgress: Boolean
     get() = !isFinished && (attempts.isNotEmpty() || currentDraft.positions.any { it != null })
+
+/**
+ * The position a hint would open: the leftmost one no submitted attempt has guessed exactly and no
+ * hint has opened yet; null when the game is over, the attempt's hints are used up, or none is left.
+ */
+val WordGameState.nextHintPosition: Int?
+    get() {
+        if (isFinished || hintsUsed >= WordRules.maximumHints(wordLength)) return null
+        return (0 until wordLength).firstOrNull { position ->
+            position !in revealedLetters && attempts.none { it.letters[position].feedback == WordLetterFeedback.CORRECT }
+        }
+    }

@@ -736,6 +736,7 @@ internal fun LogicaNavigation(
                                     onGameHub = { returnToGameHub(backStack) { selectedTab = it } },
                                     onTerminalAction = onTerminalAction,
                                     onRestoreLife = onRestoreLife,
+                                    onOpenStore = openStore,
                                 )
                             }
                             entry<AppDestination.SudokuGame> { destination ->

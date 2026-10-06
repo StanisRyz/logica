@@ -18,9 +18,13 @@ import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Lightbulb
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,6 +66,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.word_feedback_absent
 import com.stanisryz.logica.shared.ui.generated.resources.word_feedback_correct
 import com.stanisryz.logica.shared.ui.generated.resources.word_feedback_present
 import com.stanisryz.logica.shared.ui.generated.resources.word_feedback_unknown
+import com.stanisryz.logica.shared.ui.generated.resources.word_hinted_letter
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -69,6 +74,8 @@ import org.jetbrains.compose.resources.stringResource
 private data class WordCell(
     val letter: Char?,
     val feedback: WordLetterFeedback?,
+    /** Opened by a hint: shown as an exact letter with a lightbulb mark, and locked. */
+    val hinted: Boolean = false,
 )
 
 /** Shared adaptive Word board with draft pop/fade and accepted-attempt reveal animations. */
@@ -279,6 +286,7 @@ private fun WordBoardCell(
         } else {
             RoundedCornerShape(CELL_CORNER)
         }
+    val hintedLabel = stringResource(Res.string.word_hinted_letter)
     val cellDescription =
         if (cell.letter == null) {
             stringResource(Res.string.word_editable_cell_empty, position + 1, wordLength)
@@ -288,7 +296,7 @@ private fun WordBoardCell(
                 position + 1,
                 wordLength,
                 LocalWordLanguage.current.displayUppercase(cell.letter).toString(),
-            )
+            ) + if (cell.hinted) ", $hintedLabel" else ""
         }
     val scale = remember { Animatable(1f) }
     var previousLetter by remember { mutableStateOf(cell.letter) }
@@ -318,7 +326,7 @@ private fun WordBoardCell(
                 ).then(
                     if (isCurrent) {
                         Modifier
-                            .clickable(enabled = editableEnabled, role = Role.Button, onClick = onClick)
+                            .clickable(enabled = editableEnabled && !cell.hinted, role = Role.Button, onClick = onClick)
                             .semantics {
                                 contentDescription = cellDescription
                                 selected = isSelected
@@ -362,6 +370,15 @@ private fun WordBoardCell(
                     ),
             )
         }
+        // A hinted letter carries a mark, so it is told apart from a guessed one without colour.
+        if (cell.hinted) {
+            Icon(
+                Icons.Rounded.Lightbulb,
+                contentDescription = null,
+                tint = content,
+                modifier = Modifier.align(Alignment.TopEnd).padding(cellSize * HINT_MARK_INSET).size(cellSize * HINT_MARK_SIZE),
+            )
+        }
     }
 }
 
@@ -373,7 +390,12 @@ private fun buildRows(game: WordGameState): List<List<WordCell>> =
         if (size < WordRules.MAXIMUM_ATTEMPTS) {
             add(
                 List(game.wordLength) { index ->
-                    WordCell(game.currentDraft[index], null)
+                    when {
+                        // A finished game has no row in progress, hinted letters included.
+                        game.isFinished -> WordCell(null, null)
+                        index in game.revealedLetters -> WordCell(game.currentDraft[index], WordLetterFeedback.CORRECT, hinted = true)
+                        else -> WordCell(game.currentDraft[index], null)
+                    }
                 },
             )
         }
@@ -406,3 +428,5 @@ private const val LETTER_POP_SCALE = 1.1f
 private const val LETTER_POP_MILLIS = 120
 private const val REPLACE_FADE_MILLIS = 80
 private const val REVEAL_STEP_MILLIS = 85L
+private const val HINT_MARK_SIZE = 0.28f
+private const val HINT_MARK_INSET = 0.06f

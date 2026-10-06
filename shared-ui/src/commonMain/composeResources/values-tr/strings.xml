@@ -346,6 +346,9 @@
     <string name="rules_word_1">Kelimeyi altı denemede bil.</string>
     <string name="rules_word_2">Dolu harf doğru yerdedir; çerçeveli harf kelimede var ama başka yerdedir.</string>
     <string name="rules_word_3">Soluk harf kelimede yoktur.</string>
+    <string name="rules_word_hint">İpucu bir harfi yerinde açar; her denemede en fazla iki tane, tahmin hakkı harcamaz.</string>
+    <string name="word_hinted_letter">ipucu</string>
+    <string name="word_hint_button">İpucu: bir harf aç</string>
     <string name="rules_2048_1">Kaydır ya da ok tuşlarına bas: tüm karolar o yöne kayar.</string>
     <string name="rules_2048_2">İki eşit karo birleşir ve puan kazandırır.</string>
     <string name="rules_2048_3">Tahtada hamle varken seviye hedefine ulaş.</string>

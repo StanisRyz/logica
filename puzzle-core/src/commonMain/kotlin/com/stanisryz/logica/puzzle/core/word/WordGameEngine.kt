@@ -19,24 +19,49 @@ class WordGameEngine(
         require(language.normalizer.isSupportedLetter(letter)) {
             "Letter '$letter' is not a supported ${language.name.lowercase()} letter."
         }
-        if (state.isFinished) return state
+        if (state.isFinished || position in state.revealedLetters) return state
         return createState(
             currentDraft = state.currentDraft.withLetter(position, letter),
             attempts = state.attempts,
+            revealedLetters = state.revealedLetters,
         )
     }
 
-    /** Clears one position. Ignored only when the game is finished or that position is empty. */
+    /** Clears one position. Ignored when the game is finished, the position is empty, or a hint opened it. */
     fun clearLetter(
         state: WordGameState,
         position: Int,
     ): WordGameState {
         requireCompatible(state)
         require(position in 0 until puzzle.wordLength) { "Word draft position $position is out of bounds." }
-        if (state.isFinished) return state
+        if (state.isFinished || position in state.revealedLetters) return state
         return createState(
             currentDraft = state.currentDraft.withoutLetter(position),
             attempts = state.attempts,
+            revealedLetters = state.revealedLetters,
+        )
+    }
+
+    /**
+     * The position a hint would open: the leftmost one no submitted attempt has guessed exactly and no
+     * hint has opened yet, or null when none is left, the limit is reached, or the game is over.
+     */
+    fun nextHintPosition(state: WordGameState): Int? {
+        requireCompatible(state)
+        return state.nextHintPosition
+    }
+
+    /**
+     * Opens one answer letter in its place ([nextHintPosition]); it stays there for the rest of the
+     * attempt. A hint never spends a guess. Without a position to open the state is returned as it is.
+     */
+    fun revealHint(state: WordGameState): WordGameState {
+        val position = nextHintPosition(state) ?: return state
+        val letter = puzzle.answer[position]
+        return createState(
+            currentDraft = state.currentDraft.withLetter(position, letter),
+            attempts = state.attempts,
+            revealedLetters = state.revealedLetters + (position to letter),
         )
     }
 
@@ -68,7 +93,13 @@ class WordGameEngine(
 
         val attempt = WordAttempt(guess, WordRules.evaluate(puzzle.answer, guess, language), language)
         return WordSubmitResult.Accepted(
-            state = createState(currentDraft = WordDraft.empty(puzzle.wordLength, language), attempts = state.attempts + attempt),
+            // Every new row starts with the letters hints opened.
+            state =
+                createState(
+                    currentDraft = draftWith(state.revealedLetters),
+                    attempts = state.attempts + attempt,
+                    revealedLetters = state.revealedLetters,
+                ),
             attempt = attempt,
         )
     }
@@ -94,9 +125,13 @@ class WordGameEngine(
         return createState(currentDraft = restoredDraft, attempts = attempts)
     }
 
+    private fun draftWith(revealedLetters: Map<Int, Char>): WordDraft =
+        WordDraft.fromPositions(List(puzzle.wordLength) { revealedLetters[it] }, language)
+
     private fun createState(
         currentDraft: WordDraft,
         attempts: List<WordAttempt>,
+        revealedLetters: Map<Int, Char> = emptyMap(),
     ): WordGameState =
         WordGameState(
             puzzleId = puzzle.id,
@@ -104,6 +139,7 @@ class WordGameEngine(
             currentDraft = currentDraft,
             attempts = attempts,
             status = statusOf(attempts),
+            revealedLetters = revealedLetters,
         )
 
     private fun statusOf(attempts: List<WordAttempt>): WordGameStatus =

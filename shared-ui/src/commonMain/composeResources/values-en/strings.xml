@@ -346,6 +346,9 @@
     <string name="rules_word_1">Guess the word in six tries.</string>
     <string name="rules_word_2">A filled letter is in the right place; a framed letter is in the word but elsewhere.</string>
     <string name="rules_word_3">A faded letter is not in the word.</string>
+    <string name="rules_word_hint">A hint opens one letter in its place — up to two per attempt; it costs no guess.</string>
+    <string name="word_hinted_letter">hint</string>
+    <string name="word_hint_button">Hint: open a letter</string>
     <string name="rules_2048_1">Swipe or press the arrows: all tiles slide that way.</string>
     <string name="rules_2048_2">Two equal tiles merge into one and score points.</string>
     <string name="rules_2048_3">Reach the level target while moves remain on the board.</string>

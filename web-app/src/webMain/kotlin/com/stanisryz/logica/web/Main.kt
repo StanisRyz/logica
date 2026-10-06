@@ -237,6 +237,7 @@ fun main() {
             statisticsCoordinator,
             dailyCoordinator,
             economyCoordinator,
+            storeCoordinator,
         )
     val sudokuController =
         WebSudokuController.create(

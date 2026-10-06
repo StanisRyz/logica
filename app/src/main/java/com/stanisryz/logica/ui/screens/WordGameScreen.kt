@@ -25,6 +25,7 @@ import com.stanisryz.logica.result.CompletionPersistence
 import com.stanisryz.logica.result.GameCompletionRepository
 import com.stanisryz.logica.ui.components.GameResultCard
 import com.stanisryz.logica.ui.components.GameplayExitGuard
+import com.stanisryz.logica.ui.components.HintsExhaustedDialog
 import com.stanisryz.logica.ui.components.LeaveLevelGuard
 import com.stanisryz.logica.ui.components.LoadingState
 import com.stanisryz.logica.ui.components.RetryableErrorState
@@ -54,6 +55,7 @@ internal fun WordGameRoute(
     onRestoreLife: () -> Unit,
     modifier: Modifier = Modifier,
     onTerminalAction: (() -> Unit) -> Unit = { it() },
+    onOpenStore: () -> Unit = {},
 ) {
     val factory =
         remember(launch, attemptFactory, completionRepository, economyRepository) {
@@ -91,7 +93,16 @@ internal fun WordGameRoute(
         onGameHub = { onTerminalAction(onGameHub) },
         isDaily = launch is GameAttemptLaunch.Daily,
         modifier = modifier,
+        onHint = gameViewModel::requestHint,
     )
+    if (ready?.hintsExhausted == true) {
+        HintsExhaustedDialog(
+            economy = economy,
+            onBuy = gameViewModel::buyHints,
+            onDismiss = gameViewModel::dismissHintsExhausted,
+            onOpenStore = onOpenStore,
+        )
+    }
 }
 
 @Composable
@@ -112,6 +123,7 @@ private fun WordGameScreen(
     onGameHub: () -> Unit,
     isDaily: Boolean,
     modifier: Modifier,
+    onHint: () -> Unit,
 ) {
     when (uiState) {
         WordGameUiState.Loading -> LoadingState(modifier, stringResource(R.string.creating_puzzle))
@@ -153,6 +165,7 @@ private fun WordGameScreen(
                 onGameHub = onGameHub,
                 isDaily = isDaily,
                 modifier = modifier,
+                onHint = onHint,
             )
     }
 }
@@ -180,6 +193,7 @@ private fun WordReadyState(
     onGameHub: () -> Unit,
     isDaily: Boolean,
     modifier: Modifier,
+    onHint: () -> Unit,
 ) {
     val view = LocalView.current
     LaunchedEffect(game.status) {
@@ -213,6 +227,8 @@ private fun WordReadyState(
         hostStatusContent = {
             ZeroLivesCard(economy, onRestoreLife)
         },
+        hintCount = economy.hints,
+        onHint = onHint,
         terminalContent = {
             WordTerminalCard(
                 puzzle = puzzle,

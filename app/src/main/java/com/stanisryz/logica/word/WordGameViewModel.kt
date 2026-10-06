@@ -8,6 +8,8 @@ import com.stanisryz.logica.catalog.GameAttempt
 import com.stanisryz.logica.catalog.GameAttemptFactory
 import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.economy.EconomyRepository
+import com.stanisryz.logica.economy.GameplayHints
+import com.stanisryz.logica.economy.HintOffer
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleStars
@@ -48,6 +50,8 @@ internal sealed interface WordGameUiState {
         val completionPersistence: CompletionPersistence = CompletionPersistence.NotRequired,
         /** Gems the saved result actually credited, for the result card. */
         val gemsEarned: Int = 0,
+        /** A hint was asked for with an empty stock; the screen offers to restock. */
+        val hintsExhausted: Boolean = false,
     ) : WordGameUiState {
         val hasMeaningfulProgress: Boolean
             get() = game.hasMeaningfulProgress
@@ -71,6 +75,7 @@ internal class WordGameViewModel(
     economyRepository: EconomyRepository,
     private val runtimeResolver: (GeneratorVersion) -> WordRuntime = WordRuntimeResolver::resolve,
     private val workDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val hints: GameplayHints = GameplayHints(economyRepository),
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow<WordGameUiState>(WordGameUiState.Loading)
     val uiState: StateFlow<WordGameUiState> = mutableUiState.asStateFlow()
@@ -82,6 +87,7 @@ internal class WordGameViewModel(
     private var gameEngine: WordGameEngine? = null
     private var attempt: GameAttempt? = null
     private var completionJob: Job? = null
+    private var hintJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -114,17 +120,53 @@ internal class WordGameViewModel(
         position: Int,
         letter: Char,
     ) {
-        if (!economy.value.isGameplayAllowed) return
+        if (!economy.value.isGameplayAllowed || hints.isCharging) return
         updateGame { engine, game -> engine.setLetter(game, position, letter) }
     }
 
     fun clearLetter(position: Int) {
-        if (!economy.value.isGameplayAllowed) return
+        if (!economy.value.isGameplayAllowed || hints.isCharging) return
         updateGame { engine, game -> engine.clearLetter(game, position) }
     }
 
-    fun submit() {
+    /**
+     * Opens one answer letter for one hint from the shared stock. The letter is computed first, then
+     * charged and shown in one step, and only on the board it was computed for; an empty stock opens
+     * nothing and offers to restock. A hint spends no guess.
+     */
+    fun requestHint() {
         if (!economy.value.isGameplayAllowed) return
+        if (hintJob?.isActive == true) return
+        val engine = gameEngine ?: return
+        val ready = mutableUiState.value as? WordGameUiState.Ready ?: return
+        val hinted = engine.revealHint(ready.game)
+        if (hinted == ready.game) return
+        hintJob =
+            viewModelScope.launch {
+                hints.chargeAndShow(
+                    stillCurrent = { (mutableUiState.value as? WordGameUiState.Ready)?.game == ready.game },
+                ) { paid ->
+                    val current = mutableUiState.value as? WordGameUiState.Ready ?: return@chargeAndShow
+                    mutableUiState.value =
+                        if (paid) current.copy(game = hinted, rejection = null) else current.copy(hintsExhausted = true)
+                }
+            }
+    }
+
+    fun dismissHintsExhausted() {
+        val ready = mutableUiState.value as? WordGameUiState.Ready ?: return
+        mutableUiState.value = ready.copy(hintsExhausted = false)
+    }
+
+    /** Restocks from the exhausted-hints prompt without leaving the attempt. */
+    fun buyHints(offer: HintOffer) {
+        viewModelScope.launch {
+            if (hints.buy(offer)) dismissHintsExhausted()
+        }
+    }
+
+    fun submit() {
+        if (!economy.value.isGameplayAllowed || hints.isCharging) return
         val engine = gameEngine ?: return
         val current = mutableUiState.value as? WordGameUiState.Ready ?: return
         when (val result = engine.submit(current.game)) {
@@ -191,6 +233,7 @@ internal class WordGameViewModel(
         val completion =
             current.completion(
                 outcome = if (game.status == WordGameStatus.SOLVED) GameOutcome.SOLVED else GameOutcome.FAILED,
+                hintsUsed = game.hintsUsed,
                 attemptsUsed = game.attempts.size,
                 stars = if (game.status == WordGameStatus.SOLVED) PuzzleStars.forWordAttempts(game.attempts.size) else null,
             )

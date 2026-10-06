@@ -44,6 +44,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.rules_title
 import com.stanisryz.logica.shared.ui.generated.resources.rules_word_1
 import com.stanisryz.logica.shared.ui.generated.resources.rules_word_2
 import com.stanisryz.logica.shared.ui.generated.resources.rules_word_3
+import com.stanisryz.logica.shared.ui.generated.resources.rules_word_hint
 import com.stanisryz.logica.shared.ui.generated.resources.rules_word_language
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.StringResource
@@ -108,7 +109,13 @@ private fun PuzzleType.ruleResources(): List<StringResource> =
         PuzzleType.SUDOKU ->
             listOf(Res.string.rules_sudoku_1, Res.string.rules_sudoku_2, Res.string.rules_sudoku_3, Res.string.rules_mistakes)
         PuzzleType.WORD ->
-            listOf(Res.string.rules_word_language, Res.string.rules_word_1, Res.string.rules_word_2, Res.string.rules_word_3)
+            listOf(
+                Res.string.rules_word_language,
+                Res.string.rules_word_1,
+                Res.string.rules_word_2,
+                Res.string.rules_word_3,
+                Res.string.rules_word_hint,
+            )
         PuzzleType.GAME_2048 -> listOf(Res.string.rules_2048_1, Res.string.rules_2048_2, Res.string.rules_2048_3)
         PuzzleType.NONOGRAM ->
             listOf(Res.string.rules_nonogram_1, Res.string.rules_nonogram_2, Res.string.rules_nonogram_3, Res.string.rules_mistakes)
