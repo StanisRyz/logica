@@ -54,10 +54,12 @@ internal class CatalogLevelUnavailableException(
 /**
  * The Catalog level system as gameplay sees it: which level a game/difficulty currently stands on,
  * and which frozen puzzle a level resolves to. Progression is persisted; content never is.
+ *
+ * Each game plays from its active pack ([CatalogLevelPacks.activePackVersion]); the Nonogram moved to
+ * Level Pack V2, whose row continues the V1 numbering: its current level is the higher of the two rows,
+ * and the levels below the V1 row stay V1 levels for the gallery and replays.
  */
 internal interface CatalogLevelRepository {
-    val packVersion: CatalogLevelPackVersion
-
     fun observeCurrentLevel(
         puzzleType: PuzzleType,
         difficulty: Difficulty,
@@ -70,6 +72,13 @@ internal interface CatalogLevelRepository {
         puzzleType: PuzzleType,
         difficulty: Difficulty,
     ): CatalogLevelId
+
+    /** A cleared or current [levelNumber] in the pack of its range (a Nonogram level below the V1 row is a V1 level). */
+    suspend fun levelId(
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+        levelNumber: CatalogLevelNumber,
+    ): CatalogLevelId = CatalogLevelId(puzzleType, difficulty, levelNumber)
 
     /** Resolves the frozen definition, or throws [CatalogLevelUnavailableException]. */
     suspend fun resolve(levelId: CatalogLevelId): CatalogLevelDefinition
@@ -85,15 +94,19 @@ internal interface CatalogLevelRepository {
 internal class RoomCatalogLevelRepository(
     private val dao: CatalogLevelProgressDao,
     private val pack: CatalogLevelPack,
-    override val packVersion: CatalogLevelPackVersion = CatalogLevelPackVersion.V1,
 ) : CatalogLevelRepository {
     override fun observeCurrentLevel(
         puzzleType: PuzzleType,
         difficulty: Difficulty,
-    ): Flow<CatalogLevelNumber> =
-        dao
-            .observeCurrentLevel(puzzleType.name, difficulty.name, packVersion.value)
-            .map { rows -> rows.firstOrNull().toLevelNumber() }
+    ): Flow<CatalogLevelNumber> {
+        val rows =
+            CatalogLevelPacks.packVersionsFor(puzzleType).map { version ->
+                dao
+                    .observeCurrentLevel(puzzleType.name, difficulty.name, version.value)
+                    .map { found -> found.firstOrNull().toLevelNumber() }
+            }
+        return if (rows.size == 1) rows.single() else combine(rows) { levels -> levels.maxBy { it.value } }
+    }
 
     override fun observeCurrentLevels(puzzleType: PuzzleType): Flow<Map<Difficulty, CatalogLevelNumber>> {
         val difficulties = Difficulty.entries
@@ -109,9 +122,29 @@ internal class RoomCatalogLevelRepository(
         CatalogLevelId(
             puzzleType = puzzleType,
             difficulty = difficulty,
-            levelNumber = dao.findCurrentLevel(puzzleType.name, difficulty.name, packVersion.value).toLevelNumber(),
-            packVersion = packVersion,
+            levelNumber =
+                CatalogLevelPacks
+                    .packVersionsFor(
+                        puzzleType,
+                    ).maxOf { currentLevel(puzzleType, difficulty, it) }
+                    .let(::CatalogLevelNumber),
+            packVersion = CatalogLevelPacks.activePackVersion(puzzleType),
         )
+
+    override suspend fun levelId(
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+        levelNumber: CatalogLevelNumber,
+    ): CatalogLevelId {
+        val v1Level = CatalogLevelNumber(currentLevel(puzzleType, difficulty, CatalogLevelPackVersion.V1))
+        return CatalogLevelId(puzzleType, difficulty, levelNumber, CatalogLevelPacks.packVersionForLevel(puzzleType, levelNumber, v1Level))
+    }
+
+    private suspend fun currentLevel(
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+        packVersion: CatalogLevelPackVersion,
+    ): Int = dao.findCurrentLevel(puzzleType.name, difficulty.name, packVersion.value).toLevelNumber().value
 
     override suspend fun resolve(levelId: CatalogLevelId): CatalogLevelDefinition = resolve(levelId, null)
 

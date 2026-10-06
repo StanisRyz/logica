@@ -7,6 +7,7 @@ import com.stanisryz.logica.platform.AppLog
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPacks
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleGemReward
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
@@ -137,12 +138,21 @@ internal class WebCatalogProgressCoordinator(
         difficulty: Difficulty,
         level: Int,
     ): WebCatalogLevelResolution =
-        when (val current = resolveCurrentLevel(puzzleType, difficulty)) {
+        when (val current = resolveCurrentLevel(puzzleType, difficulty, CatalogLevelPacks.activePackVersion(puzzleType))) {
             is WebCatalogLevelResolution.Resolved ->
                 if (level in 1 until current.attempt.levelId.levelNumber.value) {
+                    // The level's own pack: a Nonogram level below the V1 bucket's level is a V1 level.
+                    val repository = (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository
+                    val packVersion =
+                        repository
+                            ?.snapshot
+                            ?.value
+                            ?.bucketForLevel(puzzleType, difficulty, level)
+                            ?.packVersion
+                            ?: current.attempt.levelId.packVersion
                     WebCatalogLevelResolution.Resolved(
                         current.attempt.copy(
-                            levelId = current.attempt.levelId.copy(levelNumber = CatalogLevelNumber(level)),
+                            levelId = current.attempt.levelId.copy(levelNumber = CatalogLevelNumber(level), packVersion = packVersion),
                             replay = true,
                         ),
                     )

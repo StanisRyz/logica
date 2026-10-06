@@ -95,3 +95,19 @@ object NonogramPictureLibraryV3 {
             .also { check(it.isNotEmpty()) { "Nonogram V3 ${difficulty.name} library is empty." } }
     }
 }
+
+/** Every shipped Nonogram generator by its version: Catalog V1, the Daily's V2, and Level Pack V2's V3 and V4. */
+object NonogramGenerators {
+    fun generate(
+        seed: PuzzleSeed,
+        difficulty: Difficulty,
+        version: GeneratorVersion,
+    ): NonogramPuzzle =
+        when (version.value) {
+            1 -> NonogramGeneratorV1().generate(seed, difficulty)
+            2 -> NonogramGeneratorV2().generate(seed, difficulty)
+            3 -> NonogramGeneratorV3().generate(seed, difficulty)
+            4 -> NonogramGeneratorV4().generate(seed, difficulty)
+            else -> error("No Nonogram generator ${version.value}.")
+        }
+}

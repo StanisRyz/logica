@@ -16,6 +16,8 @@ import com.stanisryz.logica.economy.failedPenalty
 import com.stanisryz.logica.economy.solvedReward
 import com.stanisryz.logica.economy.toEntity
 import com.stanisryz.logica.economy.toPlayerEconomy
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPacks
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 
@@ -162,10 +164,23 @@ internal interface GameCompletionDao {
             val levelNumber = requireNotNull(result.catalogLevelNumber) { "A Catalog result must name its level." }
             val packVersion =
                 requireNotNull(result.catalogLevelPackVersion) { "A Catalog result must name its level pack." }
-            val authoritativeLevel =
+            val bucketLevel =
                 findCatalogCurrentLevel(result.puzzleType, result.difficulty, packVersion)
                     ?.takeIf { it >= FIRST_CATALOG_LEVEL }
                     ?: FIRST_CATALOG_LEVEL
+            // Nonogram Level Pack V2 continues the V1 numbering: its bucket stands at least at the V1 row.
+            val continuesFromV1 =
+                CatalogLevelPacks.continuesFromV1(PuzzleType.valueOf(result.puzzleType), CatalogLevelPackVersion(packVersion))
+            val authoritativeLevel =
+                if (continuesFromV1) {
+                    maxOf(
+                        bucketLevel,
+                        findCatalogCurrentLevel(result.puzzleType, result.difficulty, CatalogLevelPackVersion.V1.value)
+                            ?: FIRST_CATALOG_LEVEL,
+                    )
+                } else {
+                    bucketLevel
+                }
             // The current level, or a replay of one already cleared from the level map.
             require(levelNumber <= authoritativeLevel) {
                 "Catalog completion level $levelNumber is beyond the current level $authoritativeLevel."

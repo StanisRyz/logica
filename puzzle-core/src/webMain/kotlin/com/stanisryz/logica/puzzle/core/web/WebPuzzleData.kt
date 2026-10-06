@@ -8,6 +8,7 @@ import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackSource
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.puzzle.core.nonogram.NonogramPictureLibraryV3
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetSource
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetVersion
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDifficulty
@@ -25,14 +26,15 @@ object WebPuzzleData : CatalogLevelPackSource, SudokuDatasetSource {
     private val catalogLevelPacks = mutableMapOf<String, ByteArray>()
     private val sudokuDatasets = mutableMapOf<SudokuDatasetKey, ByteArray>()
 
+    /** A bundled text file: a Word lexicon, or the Nonogram V3 picture library of one difficulty. */
     fun installWordLexiconResource(
         resourcePath: String,
         text: String,
     ) {
-        require(resourcePath.isSupportedWordResource()) {
-            "Unsupported bundled Word resource: $resourcePath"
+        require(resourcePath.isSupportedWordResource() || resourcePath in NonogramPictureLibraryV3.RESOURCE_PATHS) {
+            "Unsupported bundled text resource: $resourcePath"
         }
-        require(text.isNotEmpty()) { "Bundled Word resource $resourcePath is empty." }
+        require(text.isNotEmpty()) { "Bundled text resource $resourcePath is empty." }
         wordResources[resourcePath] = text
     }
 
@@ -88,7 +90,7 @@ object WebPuzzleData : CatalogLevelPackSource, SudokuDatasetSource {
 
     internal fun readWordResource(resourcePath: String): String =
         checkNotNull(wordResources[resourcePath]) {
-            "Web Word lexicon resource $resourcePath was not preloaded."
+            "Web bundled text resource $resourcePath was not preloaded."
         }
 
     private fun String.isSupportedWordResource(): Boolean =

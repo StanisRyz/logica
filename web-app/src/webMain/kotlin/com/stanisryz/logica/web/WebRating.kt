@@ -2,17 +2,17 @@ package com.stanisryz.logica.web
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
-import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleRating
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.ui.rating.GameRating
 
-/** Levels are cleared in order, so every level below the current one is solved. */
+/**
+ * Levels are cleared in order, so every level below the current one is solved. The Nonogram counts
+ * its current level once — the higher of its V1 and V2 buckets — never the two added up.
+ */
 internal fun WebCatalogProgressSnapshot.clearedLevels(puzzleType: PuzzleType): Map<Difficulty, Int> =
-    Difficulty.entries.associateWith { difficulty ->
-        currentLevel(WebCatalogProgressBucket(puzzleType, difficulty, CatalogLevelPackVersion.V1)).value - 1
-    }
+    Difficulty.entries.associateWith { difficulty -> gameLevel(puzzleType, difficulty).value - 1 }
 
 /** One game's rating from the bound Player's durable progress and best 2048 score. */
 internal fun gameRating(

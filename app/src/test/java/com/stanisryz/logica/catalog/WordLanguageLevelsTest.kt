@@ -122,7 +122,6 @@ class WordLanguageLevelsTest {
         val source: CatalogLevelPackSource,
     ) : CatalogLevelRepository {
         private val pack = BinaryCatalogLevelPack(source)
-        override val packVersion = CatalogLevelPackVersion.V1
 
         override fun observeCurrentLevel(
             puzzleType: PuzzleType,

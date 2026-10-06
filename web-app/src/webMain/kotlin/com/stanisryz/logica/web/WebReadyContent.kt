@@ -19,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.platform.PlatformLifecycleState
-import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.shared.ui.generated.resources.Res
@@ -367,11 +366,7 @@ internal fun ReadyContent(
                                             ?.snapshot
                                             ?.collectAsState()
                                             ?.value
-                                    val level =
-                                        snapshot
-                                            ?.currentLevel(
-                                                WebCatalogProgressBucket(puzzleType, difficulty, CatalogLevelPackVersion.V1),
-                                            )?.value
+                                    val level = snapshot?.gameLevel(puzzleType, difficulty)?.value
                                     ContinueGameCard(
                                         puzzleType = puzzleType,
                                         difficultyLabel = stringResource(difficulty.hubLabelResource()),

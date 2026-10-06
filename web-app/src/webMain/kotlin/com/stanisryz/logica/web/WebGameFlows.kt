@@ -8,7 +8,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.stanisryz.logica.puzzle.core.balance.hasMeaningfulProgress
 import com.stanisryz.logica.puzzle.core.blocksudoku.BlockSudokuStatus
-import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
 import com.stanisryz.logica.puzzle.core.crowns.hasMeaningfulProgress
 import com.stanisryz.logica.puzzle.core.game2048.hasMeaningfulProgress
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
@@ -43,11 +42,19 @@ internal fun NonogramFlow(
                 gallery = { onDismiss ->
                     val stars = LocalWebCatalogStars.current
                     val lives = LocalWebLives.current
+                    val progress = LocalWebRating.current.progress
                     NonogramGallerySheet(
-                        clearedLevels = LocalWebRating.current.progress.clearedLevels(PuzzleType.NONOGRAM),
-                        loadPicture = controller::galleryPicture,
+                        clearedLevels = progress.clearedLevels(PuzzleType.NONOGRAM),
+                        // Levels below the V1 bucket's level are Level Pack V1 levels, the rest V2.
+                        loadPicture = { difficulty, level ->
+                            controller.galleryPicture(
+                                difficulty,
+                                level,
+                                progress.bucketForLevel(PuzzleType.NONOGRAM, difficulty, level).packVersion,
+                            )
+                        },
                         starsOf = { difficulty, level ->
-                            stars.starsOf(WebCatalogProgressBucket(PuzzleType.NONOGRAM, difficulty, CatalogLevelPackVersion.V1), level)
+                            stars.starsOf(progress.bucketForLevel(PuzzleType.NONOGRAM, difficulty, level), level)
                         },
                         onDismiss = onDismiss,
                         onReplay = { difficulty, level ->

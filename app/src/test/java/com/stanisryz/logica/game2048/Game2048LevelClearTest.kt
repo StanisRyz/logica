@@ -301,8 +301,6 @@ class Game2048LevelClearTest {
     private class FrozenLevel(
         private val seed: PuzzleSeed,
     ) : CatalogLevelRepository {
-        override val packVersion = CatalogLevelPackVersion.V1
-
         override fun observeCurrentLevel(
             puzzleType: PuzzleType,
             difficulty: Difficulty,

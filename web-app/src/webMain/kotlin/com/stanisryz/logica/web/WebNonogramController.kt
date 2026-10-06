@@ -10,14 +10,17 @@ import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPack
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackResult
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPacks
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleStars
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramGameEngine
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramGameState
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramGameStatus
-import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV1
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV2
+import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV3
+import com.stanisryz.logica.puzzle.core.nonogram.NonogramGenerators
+import com.stanisryz.logica.puzzle.core.nonogram.NonogramPictureLibraryV3
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramPosition
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramPuzzle
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramTool
@@ -61,15 +64,17 @@ internal sealed interface WebNonogramState {
 }
 
 /**
- * Web orchestration of the Nonogram: Catalog levels over the frozen pack and Generator V1, and the
- * Daily entry (Policy V6) as a Generator V2 real picture — the same progression, Daily, statistics,
- * economy, and hint-inventory seams as the other games.
+ * Web orchestration of the Nonogram: Catalog levels from Level Pack V2 (real V3 pictures on odd levels,
+ * symmetric V4 boards on even ones) continuing the V1 numbering, the cleared V1 levels below it for the
+ * gallery and replays, and the Daily entry (Policy V6) as a Generator V2 real picture — the same
+ * progression, Daily, statistics, economy, and hint-inventory seams as the other games. Only the
+ * bucket and, for a picture level, the picture library of the played difficulty are fetched.
  */
 internal class WebNonogramController(
-    private val loadPack: suspend (Difficulty) -> Unit,
+    private val loadPack: suspend (Difficulty, CatalogLevelPackVersion) -> Unit,
     private val progression: WebCatalogProgressAccess,
+    private val loadPictures: suspend (Difficulty) -> Unit = {},
     private val levelPack: CatalogLevelPack = BinaryCatalogLevelPack(WebPuzzleData),
-    private val generator: NonogramGeneratorV1 = NonogramGeneratorV1(),
     private val statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
     private val economy: WebGameplayEconomy = DisabledWebGameplayEconomy,
     private val store: WebGameplayStore = DisabledWebGameplayStore,
@@ -126,7 +131,11 @@ internal class WebNonogramController(
                             val resolved =
                                 (
                                     replayLevel?.let { progression.resolveReplayLevel(PuzzleType.NONOGRAM, difficulty, it) }
-                                        ?: progression.resolveCurrentLevel(PuzzleType.NONOGRAM, difficulty, CatalogLevelPackVersion.V1)
+                                        ?: progression.resolveCurrentLevel(
+                                            PuzzleType.NONOGRAM,
+                                            difficulty,
+                                            CatalogLevelPacks.activePackVersion(PuzzleType.NONOGRAM),
+                                        )
                                 )
                         ) {
                             is WebCatalogLevelResolution.Resolved -> resolved.attempt
@@ -144,13 +153,11 @@ internal class WebNonogramController(
                         }
                     levelNumber = attempt.levelId.levelNumber
                     state = WebNonogramState.Loading(difficulty, levelNumber, launch)
-                    loadPack(difficulty)
+                    loadPack(difficulty, attempt.levelId.packVersion)
                     if (!progression.isCurrent(attempt)) return@launch
                     val definition = resolveLevel(attempt.levelId)
-                    require(definition.generatorVersion == generator.version) {
-                        "Nonogram level ${attempt.levelId.levelNumber.value} requires generator ${definition.generatorVersion.value}."
-                    }
-                    val puzzle = generator.generate(definition.seed, difficulty)
+                    val puzzle = build(definition)
+                    if (!progression.isCurrent(attempt)) return@launch
                     val nextEngine = NonogramGameEngine(puzzle)
                     engine = nextEngine
                     completion.startAttempt(attempt)
@@ -333,13 +340,19 @@ internal class WebNonogramController(
     suspend fun galleryPicture(
         difficulty: Difficulty,
         level: Int,
+        packVersion: CatalogLevelPackVersion = CatalogLevelPackVersion.V1,
     ): NonogramPuzzle? =
         runCatching {
             // The first visible tiles all ask at once; one of them fetches the bucket.
-            galleryPackLock.withLock { loadPack(difficulty) }
-            val definition = resolveLevel(CatalogLevelId(PuzzleType.NONOGRAM, difficulty, CatalogLevelNumber(level)))
-            generator.generate(definition.seed, difficulty)
+            galleryPackLock.withLock { loadPack(difficulty, packVersion) }
+            build(resolveLevel(CatalogLevelId(PuzzleType.NONOGRAM, difficulty, CatalogLevelNumber(level), packVersion)))
         }.getOrNull()
+
+    /** The level's board from its own generator; a V3 picture level first fetches its library. */
+    private suspend fun build(definition: CatalogLevelDefinition): NonogramPuzzle {
+        if (definition.generatorVersion == NonogramGeneratorV3().version) loadPictures(definition.difficulty)
+        return NonogramGenerators.generate(definition.seed, definition.difficulty, definition.generatorVersion)
+    }
 
     fun dispose() {
         scope.cancel()
@@ -387,14 +400,15 @@ internal class WebNonogramController(
             daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
         ): WebNonogramController =
             WebNonogramController(
-                loadPack = { difficulty ->
+                loadPack = { difficulty, packVersion ->
                     loader.loadCatalogLevelPack(
-                        packVersion = CatalogLevelPackVersion.V1,
+                        packVersion = packVersion,
                         puzzleType = PuzzleType.NONOGRAM,
                         difficulty = difficulty,
                     )
                 },
                 progression = progression,
+                loadPictures = { difficulty -> loader.loadWordResource(NonogramPictureLibraryV3.resourcePath(difficulty)) },
                 statistics = statistics,
                 economy = economy,
                 store = store,

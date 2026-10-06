@@ -16,7 +16,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.shared.ui.generated.resources.Res
@@ -59,7 +58,7 @@ internal fun DifficultyContent(
         LevelMapSheet(
             currentLevels = ratingUi.progress.clearedLevels(puzzleType).mapValues { it.value + 1 },
             starsOf = { difficulty, level ->
-                stars.starsOf(WebCatalogProgressBucket(puzzleType, difficulty, CatalogLevelPackVersion.V1), level)
+                stars.starsOf(ratingUi.progress.bucketForLevel(puzzleType, difficulty, level), level)
             },
             onPlayCurrent = { difficulty ->
                 levelsOpen = false

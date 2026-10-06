@@ -36,6 +36,38 @@ internal data class WebCatalogProgressSnapshot(
 
     fun currentLevel(bucket: WebCatalogProgressBucket): CatalogLevelNumber = levels[bucket] ?: CatalogLevelPacks.FIRST_LEVEL
 
+    /**
+     * The bucket's level as gameplay sees it. The Nonogram's Level Pack V2 bucket continues the V1
+     * numbering, so it stands at least at the V1 bucket — a V2 bucket that was never written starts
+     * where V1 stopped, and an older game version advancing V1 on another device is never rewound.
+     */
+    fun playableLevel(bucket: WebCatalogProgressBucket): CatalogLevelNumber {
+        val own = currentLevel(bucket)
+        if (!CatalogLevelPacks.continuesFromV1(bucket.puzzleType, bucket.packVersion)) return own
+        val v1 = currentLevel(bucket.copy(packVersion = CatalogLevelPackVersion.V1))
+        return if (v1.value > own.value) v1 else own
+    }
+
+    /** A game's current level: its active pack's bucket ([playableLevel]). */
+    fun gameLevel(
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+    ): CatalogLevelNumber = playableLevel(WebCatalogProgressBucket(puzzleType, difficulty, CatalogLevelPacks.activePackVersion(puzzleType)))
+
+    /** The bucket a cleared or current [level] belongs to: below the V1 bucket's level it is a V1 level. */
+    fun bucketForLevel(
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+        level: Int,
+    ): WebCatalogProgressBucket {
+        val v1 = currentLevel(WebCatalogProgressBucket(puzzleType, difficulty, CatalogLevelPackVersion.V1))
+        return WebCatalogProgressBucket(
+            puzzleType,
+            difficulty,
+            CatalogLevelPacks.packVersionForLevel(puzzleType, CatalogLevelNumber(level), v1),
+        )
+    }
+
     companion object {
         const val CURRENT_SCHEMA_VERSION = 1
         val EMPTY = WebCatalogProgressSnapshot()
@@ -418,7 +450,7 @@ internal class WebCatalogProgressRepository(
         return true
     }
 
-    fun currentLevel(bucket: WebCatalogProgressBucket): CatalogLevelNumber = mutableSnapshot.value.currentLevel(bucket)
+    fun currentLevel(bucket: WebCatalogProgressBucket): CatalogLevelNumber = mutableSnapshot.value.playableLevel(bucket)
 
     fun advanceSolved(levelId: CatalogLevelId): WebCatalogAdvanceResult {
         val bucket = levelId.toProgressBucket()

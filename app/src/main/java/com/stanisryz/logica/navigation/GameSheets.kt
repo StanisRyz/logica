@@ -8,13 +8,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.stanisryz.logica.AppLanguage
 import com.stanisryz.logica.catalog.CatalogLevelRepository
 import com.stanisryz.logica.game2048.Game2048BestScore
-import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
-import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV1
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV2
+import com.stanisryz.logica.puzzle.core.nonogram.NonogramGenerators
 import com.stanisryz.logica.runCatchingCancellable
 import com.stanisryz.logica.statistics.StatisticsRepository
 import com.stanisryz.logica.ui.components.LevelMapSheet
@@ -66,7 +65,10 @@ internal fun bestScoreRating(bestScore: Game2048BestScore): GameRating {
 /** Levels are cleared in order, so everything below the current level is solved. */
 private fun Map<Difficulty, CatalogLevelNumber>.clearedLevels(): Map<Difficulty, Int> = mapValues { (_, level) -> level.value - 1 }
 
-/** The Nonogram gallery: every cleared level's picture, rebuilt from its frozen level on demand. */
+/**
+ * The Nonogram gallery: every cleared level's picture, rebuilt from its frozen level on demand — the
+ * levels below the V1 row from Level Pack V1, the later ones from V2 (pictures and symmetric boards).
+ */
 @Composable
 internal fun NonogramGallery(
     catalogLevelRepository: CatalogLevelRepository,
@@ -87,7 +89,6 @@ internal fun NonogramGallery(
                 ?.associate { (it.difficulty to it.level) to it.stars }
                 .orEmpty()
         }
-    val generator = remember { NonogramGeneratorV1() }
     val dailyFlow = remember(statisticsRepository) { statisticsRepository.observeSolvedDailyPictures() }
     val dailySolved by dailyFlow.collectAsStateWithLifecycle(initialValue = emptyList())
     val dailyPictures =
@@ -105,9 +106,9 @@ internal fun NonogramGallery(
         loadPicture = { difficulty, level ->
             withContext(Dispatchers.Default) {
                 runCatchingCancellable {
-                    val definition =
-                        catalogLevelRepository.resolve(CatalogLevelId(PuzzleType.NONOGRAM, difficulty, CatalogLevelNumber(level)))
-                    generator.generate(definition.seed, difficulty)
+                    val levelId = catalogLevelRepository.levelId(PuzzleType.NONOGRAM, difficulty, CatalogLevelNumber(level))
+                    val definition = catalogLevelRepository.resolve(levelId)
+                    NonogramGenerators.generate(definition.seed, difficulty, definition.generatorVersion)
                 }.getOrNull()
             }
         },

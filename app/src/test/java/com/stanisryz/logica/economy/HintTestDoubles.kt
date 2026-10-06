@@ -59,8 +59,6 @@ internal class FrozenLevelRepository(
 ) : CatalogLevelRepository {
     val level = CatalogLevelId(puzzleType, Difficulty.MEDIUM, CatalogLevelNumber(1), CatalogLevelPackVersion.V1)
 
-    override val packVersion = CatalogLevelPackVersion.V1
-
     override fun observeCurrentLevel(
         puzzleType: PuzzleType,
         difficulty: Difficulty,

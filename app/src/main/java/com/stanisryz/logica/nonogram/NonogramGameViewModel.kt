@@ -16,8 +16,7 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramGameEngine
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramGameState
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramGameStatus
-import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV1
-import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV2
+import com.stanisryz.logica.puzzle.core.nonogram.NonogramGenerators
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramPosition
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramPuzzle
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramTool
@@ -70,7 +69,6 @@ internal class NonogramGameViewModel(
     private val attemptFactory: GameAttemptFactory,
     private val completionRepository: GameCompletionRepository,
     economyRepository: EconomyRepository,
-    private val generator: NonogramGeneratorV1 = NonogramGeneratorV1(),
     private val workDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val hints: GameplayHints = GameplayHints(economyRepository),
 ) : ViewModel() {
@@ -95,13 +93,9 @@ internal class NonogramGameViewModel(
                 val resolved = attemptFactory.create(launch, PuzzleType.NONOGRAM)
                 val (puzzle, engine) =
                     withContext(workDispatcher) {
-                        // Catalog levels are Generator V1 pictures; the Daily's real pictures are V2.
-                        val puzzle =
-                            if (resolved.generatorVersion == NonogramGeneratorV2().version) {
-                                NonogramGeneratorV2().generate(resolved.seed, resolved.difficulty)
-                            } else {
-                                generator.generate(resolved.seed, resolved.difficulty)
-                            }
+                        // Level Pack V1 levels are Generator V1, Level Pack V2 alternates V3 pictures and
+                        // V4 symmetric boards, and the Daily's real pictures are V2.
+                        val puzzle = NonogramGenerators.generate(resolved.seed, resolved.difficulty, resolved.generatorVersion)
                         require(puzzle.id.generatorVersion == resolved.generatorVersion)
                         puzzle to NonogramGameEngine(puzzle)
                     }

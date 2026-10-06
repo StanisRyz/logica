@@ -83,6 +83,27 @@ object CatalogLevelPacks {
     fun activePackVersion(puzzleType: PuzzleType): CatalogLevelPackVersion = packVersionsFor(puzzleType).last()
 
     /**
+     * Whether [packVersion] continues the V1 numbering of [puzzleType]: its bucket stands at least
+     * where the V1 bucket does, so a game's current level is the higher of the two. An older game
+     * version on another device may still advance V1, and this keeps that from rewinding anything.
+     */
+    fun continuesFromV1(
+        puzzleType: PuzzleType,
+        packVersion: CatalogLevelPackVersion,
+    ): Boolean = packVersion != CatalogLevelPackVersion.V1 && packVersion in packVersionsFor(puzzleType)
+
+    /**
+     * The pack a level of [puzzleType] resolves from. The V1 bucket's current level is the boundary:
+     * the levels below it were cleared in V1 and stay there (the gallery and replays rebuild them
+     * from V1), the rest are the active pack's. Nothing new is stored for it.
+     */
+    fun packVersionForLevel(
+        puzzleType: PuzzleType,
+        levelNumber: CatalogLevelNumber,
+        v1CurrentLevel: CatalogLevelNumber,
+    ): CatalogLevelPackVersion = if (levelNumber.value < v1CurrentLevel.value) CatalogLevelPackVersion.V1 else activePackVersion(puzzleType)
+
+    /**
      * Nonogram Level Pack V2 alternates by slot, and so by level number (a bucket's 10 000 slots are
      * even): an odd slot is a real picture of Generator V3, an even one a symmetric level of V4. Its
      * bucket header records [NONOGRAM_V2_PICTURES].

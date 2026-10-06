@@ -295,8 +295,13 @@ internal fun LogicaNavigation(
     /** A cleared level again, from the level map or the gallery; it needs a life like any start. */
     val replayLevel: (PuzzleType, Difficulty, Int) -> Unit = { puzzleType, difficulty, level ->
         if (economy.isGameplayAllowed) {
-            val levelId = CatalogLevelId(puzzleType, difficulty, CatalogLevelNumber(level))
-            backStack.add(puzzleType.gameDestination(GameAttemptLaunch.Level(levelId, replay = true)))
+            // The level's own pack: a Nonogram level below the V1 row is a Level Pack V1 level.
+            navigationScope.launch {
+                val levelId =
+                    runCatchingCancellable { catalogLevelRepository.levelId(puzzleType, difficulty, CatalogLevelNumber(level)) }
+                        .getOrElse { CatalogLevelId(puzzleType, difficulty, CatalogLevelNumber(level)) }
+                backStack.add(puzzleType.gameDestination(GameAttemptLaunch.Level(levelId, replay = true)))
+            }
         } else {
             onRestoreLife()
         }

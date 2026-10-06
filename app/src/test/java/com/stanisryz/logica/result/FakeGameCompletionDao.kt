@@ -209,9 +209,10 @@ internal class FakeGameCompletionDao(
         levelNumber: Int = 1,
         attemptId: String = "attempt",
         stars: Int? = null,
+        packVersion: CatalogLevelPackVersion = CatalogLevelPackVersion.V1,
     ): GameCompletion =
         GameCompletion(
-            resultId = "catalog:1:$puzzleType:$difficulty:$levelNumber:$attemptId",
+            resultId = "catalog:${packVersion.value}:$puzzleType:$difficulty:$levelNumber:$attemptId",
             puzzleType = puzzleType,
             difficulty = difficulty,
             puzzleSeed = PuzzleSeed(4242),
@@ -221,7 +222,7 @@ internal class FakeGameCompletionDao(
             outcome = outcome,
             attemptsUsed = if (puzzleType == PuzzleType.WORD) WORD_ATTEMPTS else null,
             catalogLevel =
-                CatalogLevelId(puzzleType, difficulty, CatalogLevelNumber(levelNumber), CatalogLevelPackVersion.V1),
+                CatalogLevelId(puzzleType, difficulty, CatalogLevelNumber(levelNumber), packVersion),
             stars = stars,
         )
 

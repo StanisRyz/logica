@@ -96,6 +96,9 @@ tasks.register<Zip>("packageYandexDistribution") {
             "word/v4/answers.txt",
             "levels/v1/word_en/easy.lvp",
             "levels/v1/word_tr/easy.lvp",
+            "levels/v2/checksums.sha256",
+            "levels/v2/nonogram/easy.lvp",
+            "nonogram/v3/easy.txt",
         ).forEach { path ->
             check(distributionRoot.resolve(path).isFile) {
                 "The Yandex distribution is missing canonical asset $path."
