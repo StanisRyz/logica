@@ -3,6 +3,7 @@ package com.stanisryz.logica.ui.components
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Diamond
@@ -201,7 +203,8 @@ fun StoreItemRow(
                     Text(text = it, style = MaterialTheme.typography.bodySmall, color = subtitleColor)
                 }
             }
-            action()
+            // A long button label wraps inside the button instead of squeezing the title word by word.
+            Box(Modifier.widthIn(max = ACTION_MAX_WIDTH)) { action() }
         }
     }
 }
@@ -221,6 +224,7 @@ fun GemPriceButton(
 }
 
 private val ROW_PADDING = 14.dp
+private val ACTION_MAX_WIDTH = 136.dp
 private val ARTWORK = 48.dp
 private val STARTER_ARTWORK = 64.dp
 

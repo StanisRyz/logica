@@ -340,7 +340,10 @@ internal fun RewardedAdRow(
             onClick = controller::requestReward,
             enabled = controller.isRequestAllowed && enabled,
         ) {
-            Text(stringResource(if (state == WebRewardedAdState.Showing) WebRes.string.web_ad_in_progress else WebRes.string.web_ad_watch))
+            Text(
+                stringResource(if (state == WebRewardedAdState.Showing) WebRes.string.web_ad_in_progress else WebRes.string.web_ad_watch),
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }

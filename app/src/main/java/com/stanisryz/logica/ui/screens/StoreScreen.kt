@@ -31,6 +31,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -244,7 +245,7 @@ private fun RewardedStoreRow(
             TextButton(onClick = offers.onRetry) { Text(stringResource(R.string.economy_rewarded_ad_retry)) }
         } else {
             Button(onClick = { offers.onWatch(kind) }, enabled = state == RewardedAdState.READY) {
-                Text(stringResource(R.string.store_rewarded_watch))
+                Text(stringResource(R.string.store_rewarded_watch), textAlign = TextAlign.Center)
             }
         }
     }
