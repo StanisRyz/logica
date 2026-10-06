@@ -39,6 +39,9 @@ internal sealed interface AppDestination {
 
     data object Settings : AppDestination
 
+    /** The third-party notices, opened from Settings. */
+    data object Licenses : AppDestination
+
     /** Every achievement on its own row, opened from the Profile. */
     data object Achievements : AppDestination
 
@@ -107,8 +110,8 @@ internal sealed interface AppDestination {
 /** The bottom navigation belongs to the primary tabs and to nothing else. */
 internal fun AppDestination.showsBottomBar(): Boolean = this == AppDestination.Home
 
-/** The Settings gear is available everywhere except Settings itself, which is already open. */
-internal fun AppDestination.showsSettingsAction(): Boolean = this != AppDestination.Settings
+/** The Settings gear is available everywhere except Settings itself and the Licences opened from it. */
+internal fun AppDestination.showsSettingsAction(): Boolean = this != AppDestination.Settings && this != AppDestination.Licenses
 
 /**
  * Where the wallet belongs: the shared shell of the primary tabs, and every screen a game can be

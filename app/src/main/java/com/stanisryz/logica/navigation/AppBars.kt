@@ -230,6 +230,7 @@ internal fun destinationTitle(
         when (destination) {
             AppDestination.Home -> tab.titleResource
             AppDestination.Settings -> R.string.settings
+            AppDestination.Licenses -> R.string.licenses
             AppDestination.Achievements -> R.string.achievements
             is AppDestination.ProfileSection ->
                 when (destination.page) {

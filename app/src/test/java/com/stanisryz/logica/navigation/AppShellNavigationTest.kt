@@ -15,6 +15,7 @@ class AppShellNavigationTest {
     private val secondaryDestinations =
         listOf(
             AppDestination.Settings,
+            AppDestination.Licenses,
             AppDestination.BalanceStart,
             AppDestination.BalanceTutorial,
             AppDestination.CrownsStart,
@@ -44,12 +45,13 @@ class AppShellNavigationTest {
 
         // The three tabs share one primary destination, so the bottom bar and the wallet are on all
         // of them and the bottom bar is on none of the secondary destinations. The Settings gear is
-        // everywhere except Settings itself, which is already open.
+        // everywhere except Settings itself, which is already open, and the Licences opened from it.
         assertTrue(AppDestination.Home.showsSettingsAction())
         assertTrue(AppDestination.Home.showsBottomBar())
         assertTrue(AppDestination.Home.showsWallet())
         secondaryDestinations.forEach { destination ->
-            assertEquals("$destination", destination != AppDestination.Settings, destination.showsSettingsAction())
+            val settingsAction = destination != AppDestination.Settings && destination != AppDestination.Licenses
+            assertEquals("$destination", settingsAction, destination.showsSettingsAction())
             assertFalse("$destination", destination.showsBottomBar())
         }
     }

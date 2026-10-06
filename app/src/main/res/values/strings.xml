@@ -100,6 +100,8 @@
     <string name="settings_theme_dark">Тёмная</string>
     <string name="settings_sound">Звук</string>
     <string name="settings_haptics">Вибрация</string>
+    <string name="settings_about">О приложении</string>
+    <string name="licenses">Лицензии</string>
     <string name="crowns">Короны</string>
     <string name="crowns_catalog_description">Расставьте короны: по одной в каждой строке, столбце и цветной области. Короны не должны соприкасаться по диагонали.</string>
     <string name="crowns_rules_intro">Поставьте короны во все подходящие клетки. Для решения действуют четыре правила:</string>

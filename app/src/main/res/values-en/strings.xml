@@ -97,6 +97,8 @@
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_sound">Sound</string>
     <string name="settings_haptics">Vibration</string>
+    <string name="settings_about">About</string>
+    <string name="licenses">Licenses</string>
     <string name="crowns">Crowns</string>
     <string name="crowns_catalog_description">Place crowns: one in each row, column, and coloured region. Crowns must not touch diagonally.</string>
     <string name="crowns_rules_intro">Place crowns in all the right cells. Four rules apply:</string>

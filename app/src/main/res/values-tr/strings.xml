@@ -97,6 +97,8 @@
     <string name="settings_theme_dark">Koyu</string>
     <string name="settings_sound">Ses</string>
     <string name="settings_haptics">Titreşim</string>
+    <string name="settings_about">Hakkında</string>
+    <string name="licenses">Lisanslar</string>
     <string name="crowns">Taçlar</string>
     <string name="crowns_catalog_description">Taçları yerleştir: her satırda, sütunda ve renkli bölgede bir tane. Taçlar çapraz değmemeli.</string>
     <string name="crowns_rules_intro">Tüm doğru hücrelere taç koy. Dört kural geçerlidir:</string>

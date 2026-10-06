@@ -1,5 +1,6 @@
 package com.stanisryz.logica.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,6 +9,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
@@ -32,6 +36,7 @@ internal fun SettingsScreen(
     onThemeModeChanged: (ThemeMode) -> Unit,
     onSoundEnabledChanged: (Boolean) -> Unit,
     onHapticsEnabledChanged: (Boolean) -> Unit,
+    onOpenLicenses: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     ScreenColumn(modifier) {
@@ -62,6 +67,22 @@ internal fun SettingsScreen(
                     checked = settings.hapticsEnabled,
                     onCheckedChange = onHapticsEnabledChanged,
                 )
+            }
+        }
+
+        ScreenSection(title = stringResource(R.string.settings_about)) {
+            LogicaCard(verticalSpacing = LogicaSpacing.text) {
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable(role = Role.Button, onClick = onOpenLicenses)
+                            .padding(vertical = LogicaSpacing.text),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(stringResource(R.string.licenses), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null)
+                }
             }
         }
     }

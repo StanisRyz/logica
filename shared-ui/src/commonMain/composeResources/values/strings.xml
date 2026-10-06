@@ -412,6 +412,10 @@
     <string name="gallery_empty">Решите уровень — и здесь появится его рисунок.</string>
     <string name="gallery_close">Закрыть</string>
     <string name="nonogram_result_picture">Собранная картинка</string>
+    <string name="licenses_title">Лицензии</string>
+    <string name="licenses_intro">Игра использует эти шрифты, данные и библиотеки. Названия и тексты лицензий приведены в оригинале.</string>
+    <string name="licenses_show_text">Показать текст лицензии</string>
+    <string name="licenses_hide_text">Скрыть текст лицензии</string>
     <string name="achievements_section_unlocked">Получены</string>
     <string name="achievements_section_locked">Впереди</string>
     <string name="achievement_done">Получено</string>

@@ -74,12 +74,14 @@ import com.stanisryz.logica.store.GemPackProductMapping
 import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
 import com.stanisryz.logica.ui.components.GameRulesSheet
 import com.stanisryz.logica.ui.components.GameplayExitGuard
+import com.stanisryz.logica.ui.components.LicensesContent
 import com.stanisryz.logica.ui.components.LivesDialog
 import com.stanisryz.logica.ui.components.LocalResultLives
 import com.stanisryz.logica.ui.components.LocalSecondChanceAd
 import com.stanisryz.logica.ui.components.PuzzleStartScreen
 import com.stanisryz.logica.ui.components.ResultLives
 import com.stanisryz.logica.ui.components.SecondChanceAd
+import com.stanisryz.logica.ui.components.licenseNoticesFor
 import com.stanisryz.logica.ui.screens.AchievementsRoute
 import com.stanisryz.logica.ui.screens.BalanceGameRoute
 import com.stanisryz.logica.ui.screens.BalanceTutorialRoute
@@ -510,7 +512,16 @@ internal fun LogicaNavigation(
                                 ProfilePageRoute(destination.page, statisticsRepository)
                             }
                             entry<AppDestination.Settings> {
-                                SettingsScreen(settings, onThemeModeChanged, onSoundEnabledChanged, onHapticsEnabledChanged)
+                                SettingsScreen(
+                                    settings,
+                                    onThemeModeChanged,
+                                    onSoundEnabledChanged,
+                                    onHapticsEnabledChanged,
+                                    onOpenLicenses = { backStack.add(AppDestination.Licenses) },
+                                )
+                            }
+                            entry<AppDestination.Licenses> {
+                                LicensesContent(licenseNoticesFor(android = true), Modifier.fillMaxSize())
                             }
                             entry<AppDestination.BalanceStart> {
                                 PuzzleStartScreen(

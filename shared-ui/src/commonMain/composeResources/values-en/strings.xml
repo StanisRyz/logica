@@ -395,6 +395,10 @@
     <string name="gallery_empty">Solve a level and its picture appears here.</string>
     <string name="gallery_close">Close</string>
     <string name="nonogram_result_picture">Completed picture</string>
+    <string name="licenses_title">Licenses</string>
+    <string name="licenses_intro">The game uses these fonts, data, and libraries. Names and license texts are given in their original form.</string>
+    <string name="licenses_show_text">Show license text</string>
+    <string name="licenses_hide_text">Hide license text</string>
     <string name="achievements_section_unlocked">Unlocked</string>
     <string name="achievements_section_locked">Up next</string>
     <string name="achievement_done">Unlocked</string>

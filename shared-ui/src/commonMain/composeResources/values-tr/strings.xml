@@ -395,6 +395,10 @@
     <string name="gallery_empty">Bir seviyeyi çöz, resmi burada görünecek.</string>
     <string name="gallery_close">Kapat</string>
     <string name="nonogram_result_picture">Tamamlanan resim</string>
+    <string name="licenses_title">Lisanslar</string>
+    <string name="licenses_intro">Oyun bu yazı tiplerini, verileri ve kütüphaneleri kullanır. Adlar ve lisans metinleri özgün hâlleriyle verilmiştir.</string>
+    <string name="licenses_show_text">Lisans metnini göster</string>
+    <string name="licenses_hide_text">Lisans metnini gizle</string>
     <string name="achievements_section_unlocked">Kazanılanlar</string>
     <string name="achievements_section_locked">Sıradakiler</string>
     <string name="achievement_done">Kazanıldı</string>

@@ -19,7 +19,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Diamond
@@ -53,12 +55,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -225,13 +230,18 @@ fun GameResultCard(
         tonalElevation = 0.dp,
         border = darkDialogEdge(),
     ) {
-        Box {
+        BoxWithConstraints {
             // A solved attempt bursts a little confetti from the stars, behind the card's content.
             if (positive) ResultConfetti(Modifier.matchParentSize())
-            Column(
-                modifier = Modifier.padding(CARD_PADDING),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
+            // Taller than its window (a small browser window, split screen, a large font), the card
+            // scrolls so its actions stay reachable; when it fits, it looks the same as ever.
+            val availableHeight = if (constraints.hasBoundedHeight) constraints.maxHeight else Constraints.Infinity
+            ResultCardColumn(
+                availableHeight = availableHeight,
+                modifier =
+                    Modifier
+                        .then(if (constraints.hasBoundedHeight) Modifier.verticalScroll(rememberScrollState()) else Modifier)
+                        .padding(CARD_PADDING),
             ) {
                 if (positive && stars != null) {
                     ResultStars(stars)
@@ -275,12 +285,8 @@ fun GameResultCard(
                 }
                 ResultCardAchievements()
                 if (artwork != null && gameResultShowsArtwork(solved)) {
-                    // Measured after the rest of the card: it takes what height is left, up to its own
-                    // size, and gives way entirely where too little is left (a low landscape window).
-                    BoxWithConstraints(Modifier.weight(1f, fill = false), contentAlignment = Alignment.Center) {
-                        val side = minOf(maxHeight, ARTWORK_MAX_SIZE)
-                        if (side >= ARTWORK_MIN_SIZE) Box(Modifier.size(side)) { artwork() }
-                    }
+                    // Sized by ResultCardColumn from the height the rest of the card leaves.
+                    Box(Modifier.layoutId(ARTWORK_LAYOUT_ID)) { artwork() }
                 }
                 ResultTiles(
                     economy = economy.takeIf { saveState == GameResultSaveState.SAVED },
@@ -316,6 +322,43 @@ fun GameResultCard(
                 } else {
                     TextButton(onClick = onExit, modifier = Modifier.fillMaxWidth()) { Text(exitLabel) }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * The card's rows, centred and spaced like a column. The artwork row (layout id [ARTWORK_LAYOUT_ID])
+ * is measured last: it takes the height the other rows leave inside [availableHeight] (the window,
+ * less the card's padding), up to [ARTWORK_MAX_SIZE], and is left out below [ARTWORK_MIN_SIZE] — so a
+ * low window loses the picture before anything else has to scroll.
+ */
+@Composable
+private fun ResultCardColumn(
+    availableHeight: Int,
+    modifier: Modifier,
+    content: @Composable () -> Unit,
+) {
+    Layout(content = content, modifier = modifier) { measurables, constraints ->
+        val spacing = LogicaSpacing.item.roundToPx()
+        val loose = constraints.copy(minWidth = 0, minHeight = 0, maxHeight = Constraints.Infinity)
+        val artwork = measurables.firstOrNull { it.layoutId == ARTWORK_LAYOUT_ID }
+        val rows = measurables.map { measurable -> if (measurable === artwork) null else measurable.measure(loose) }
+        val placed = rows.filterNotNull()
+        val restHeight = placed.sumOf { it.height } + spacing * (placed.size - 1).coerceAtLeast(0)
+        val padding = 2 * CARD_PADDING.roundToPx()
+        val left =
+            if (availableHeight == Constraints.Infinity) Constraints.Infinity else availableHeight - padding - restHeight - spacing
+        val side = minOf(left, ARTWORK_MAX_SIZE.roundToPx())
+        val artworkPlaceable = artwork?.takeIf { side >= ARTWORK_MIN_SIZE.roundToPx() }?.measure(Constraints.fixed(side, side))
+        val ordered = measurables.mapIndexedNotNull { index, measurable -> if (measurable === artwork) artworkPlaceable else rows[index] }
+        val width = if (constraints.hasBoundedWidth) constraints.maxWidth else ordered.maxOfOrNull { it.width } ?: 0
+        val height = ordered.sumOf { it.height } + spacing * (ordered.size - 1).coerceAtLeast(0)
+        layout(width, height) {
+            var y = 0
+            ordered.forEach { placeable ->
+                placeable.placeRelative((width - placeable.width) / 2, y)
+                y += placeable.height + spacing
             }
         }
     }
@@ -659,6 +702,7 @@ private val CARD_MAX_WIDTH = 400.dp
 private val CARD_PADDING = 24.dp
 private val MARK_SIZE = 56.dp
 private val MARK_ICON_SIZE = 32.dp
+private const val ARTWORK_LAYOUT_ID = "artwork"
 private val ARTWORK_MAX_SIZE = 120.dp
 
 // Below this the picture is too small to read, so a cramped card leaves it out.

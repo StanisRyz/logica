@@ -13,6 +13,8 @@ import androidx.compose.runtime.LaunchedEffect
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Before the first frame, so a phone never draws a landscape frame and then turns.
+        requestedOrientation = requestedOrientationFor(resources.configuration.smallestScreenWidthDp)
         super.onCreate(savedInstanceState)
         AppLanguage.update(this)
         enableEdgeToEdge()
