@@ -103,8 +103,8 @@ const starts = (events) => events.filter((e) => e.ev === 'start');
 
 // Coordinates are for a 390x844 portrait window (Russian UI).
 const SETTINGS_GEAR = [358, 26];
-const SOUND_SWITCH = [305, 464];
-const SETTINGS_DONE = [295, 534];
+const SOUND_SWITCH = [305, 440];
+const SETTINGS_DONE = [295, 557];
 const GAME_2048_CARD = [120, 385]; // «Играть» on the 2048 card with the hub scrolled to its end
 const EASY_CARD = [195, 210];
 const OFFER_PLAY = [168, 514]; // «Играть» in the first-play tutorial offer (later a harmless board tap)
