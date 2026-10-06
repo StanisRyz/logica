@@ -394,6 +394,7 @@
     <string name="gallery_count">Pictures: %1$s</string>
     <string name="gallery_empty">Solve a level and its picture appears here.</string>
     <string name="gallery_close">Close</string>
+    <string name="nonogram_result_picture">Completed picture</string>
     <string name="achievements_section_unlocked">Unlocked</string>
     <string name="achievements_section_locked">Up next</string>
     <string name="achievement_done">Unlocked</string>

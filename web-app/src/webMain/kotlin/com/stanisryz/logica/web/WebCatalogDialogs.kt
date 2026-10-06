@@ -145,6 +145,7 @@ internal fun WebOrdinaryCatalogTerminalDialog(
     onRetry: () -> Unit,
     onRetrySave: () -> Unit,
     onBack: () -> Unit,
+    artwork: (@Composable () -> Unit)? = null,
 ) {
     if (!visible) return
     PauseGameKeysWhileShown()
@@ -181,6 +182,7 @@ internal fun WebOrdinaryCatalogTerminalDialog(
         exitToDifficulty = true,
         stars = if (solved) stars ?: mistakesUsed?.let(::starsForMistakes) else null,
         lifeOffer = webResultLifeOffer(),
+        artwork = artwork,
     )
 }
 
@@ -198,6 +200,7 @@ internal fun WebDailyOrdinaryTerminalDialog(
     onRetry: () -> Unit,
     onRetrySave: () -> Unit,
     onExit: () -> Unit,
+    artwork: (@Composable () -> Unit)? = null,
 ) {
     if (!visible) return
     PauseGameKeysWhileShown()
@@ -235,6 +238,7 @@ internal fun WebDailyOrdinaryTerminalDialog(
         hintsUsed = hintsUsed,
         stars = if (solved) stars ?: mistakesUsed?.let(::starsForMistakes) else null,
         lifeOffer = webResultLifeOffer(),
+        artwork = artwork,
     )
 }
 

@@ -21,6 +21,7 @@ import com.stanisryz.logica.ui.blocksudoku.BlockSudokuContent
 import com.stanisryz.logica.ui.components.GameKey
 import com.stanisryz.logica.ui.nonogram.NonogramGallerySheet
 import com.stanisryz.logica.ui.nonogram.NonogramGameContent
+import com.stanisryz.logica.ui.nonogram.nonogramResultArtwork
 import kotlinx.coroutines.flow.Flow
 import org.jetbrains.compose.resources.stringResource
 
@@ -122,6 +123,7 @@ internal fun NonogramFlow(
                     onRetry = { livesGuard { transitionAd(controller::retry) } },
                     onRetrySave = controller::retryDailySave,
                     onExit = { transitionAd(onExitNonogram) },
+                    artwork = nonogramResultArtwork(state.puzzle),
                 )
             } else {
                 WebCatalogSaveErrorBanner(
@@ -140,6 +142,7 @@ internal fun NonogramFlow(
                     onRetry = { livesGuard { transitionAd(controller::retry) } },
                     onRetrySave = controller::retrySave,
                     onBack = { transitionAd(controller::showDifficultySelector) },
+                    artwork = nonogramResultArtwork(state.puzzle),
                 )
             }
         }

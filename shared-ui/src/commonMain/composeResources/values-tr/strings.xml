@@ -394,6 +394,7 @@
     <string name="gallery_count">Resim: %1$s</string>
     <string name="gallery_empty">Bir seviyeyi çöz, resmi burada görünecek.</string>
     <string name="gallery_close">Kapat</string>
+    <string name="nonogram_result_picture">Tamamlanan resim</string>
     <string name="achievements_section_unlocked">Kazanılanlar</string>
     <string name="achievements_section_locked">Sıradakiler</string>
     <string name="achievement_done">Kazanıldı</string>

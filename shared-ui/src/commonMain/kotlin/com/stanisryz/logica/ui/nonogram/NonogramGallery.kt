@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -41,6 +42,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -59,6 +62,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.gallery_daily
 import com.stanisryz.logica.shared.ui.generated.resources.gallery_empty
 import com.stanisryz.logica.shared.ui.generated.resources.gallery_replay
 import com.stanisryz.logica.shared.ui.generated.resources.gallery_title
+import com.stanisryz.logica.shared.ui.generated.resources.nonogram_result_picture
 import com.stanisryz.logica.ui.components.StateArtwork
 import com.stanisryz.logica.ui.components.StateArtworkImage
 import com.stanisryz.logica.ui.theme.LocalLogicaPalette
@@ -299,16 +303,32 @@ data class DailyGalleryPicture(
     val puzzle: NonogramPuzzle,
 )
 
+/**
+ * The finished picture on a solved attempt's result card (`GameResultCard`'s artwork slot), drawn
+ * like the gallery's and read out as the completed picture; the card sizes it and shows it only for
+ * a solved attempt.
+ */
+fun nonogramResultArtwork(puzzle: NonogramPuzzle): @Composable () -> Unit =
+    {
+        NonogramPicture(
+            puzzle = puzzle,
+            modifier = Modifier.fillMaxSize(),
+            contentDescription = stringResource(Res.string.nonogram_result_picture),
+        )
+    }
+
 /** The finished picture alone: filled cells on a light ground, without clues or grid. */
 @Composable
 fun NonogramPicture(
     puzzle: NonogramPuzzle?,
     modifier: Modifier = Modifier,
+    contentDescription: String? = null,
 ) {
     val ink = MaterialTheme.colorScheme.primary
     val ground = MaterialTheme.colorScheme.surfaceContainerLowest
     Canvas(
         modifier
+            .then(if (contentDescription != null) Modifier.semantics { this.contentDescription = contentDescription } else Modifier)
             .aspectRatio(1f)
             .clip(MaterialTheme.shapes.small)
             .background(ground),

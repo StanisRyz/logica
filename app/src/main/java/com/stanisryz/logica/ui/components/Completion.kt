@@ -17,7 +17,8 @@ import com.stanisryz.logica.result.CompletionPersistence
  * solved Daily returns to the Game hub. The board stays visible behind it.
  *
  * The wallet effect is reported only once the result is durably stored, and a retry is offered only
- * while a life is available.
+ * while a life is available. The Nonogram adds its finished picture as [artwork], which the card
+ * shows for a solved attempt only.
  */
 @Composable
 internal fun PuzzleTerminalDialog(
@@ -35,6 +36,7 @@ internal fun PuzzleTerminalDialog(
     onNextLevel: () -> Unit,
     onGameHub: () -> Unit,
     gemsEarned: Int,
+    artwork: (@Composable () -> Unit)? = null,
 ) {
     if (LocalSecondChancePending.current) return
     GameResultDialog(
@@ -55,6 +57,7 @@ internal fun PuzzleTerminalDialog(
         retryAllowed = isRetryAllowed,
         stars = if (isSolved) starsForMistakes(mistakesUsed) else null,
         lifeOffer = resultLifeOffer(),
+        artwork = artwork,
     )
 }
 

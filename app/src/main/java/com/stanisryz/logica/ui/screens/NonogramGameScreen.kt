@@ -35,6 +35,7 @@ import com.stanisryz.logica.ui.components.RetryableErrorState
 import com.stanisryz.logica.ui.components.SecondChanceDialog
 import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.nonogram.NonogramGameContent
+import com.stanisryz.logica.ui.nonogram.nonogramResultArtwork
 
 /** The Android host of the shared Nonogram presentation: ViewModel, haptics, economy, and terminal policy. */
 @Composable
@@ -135,6 +136,7 @@ internal fun NonogramGameRoute(
                         onRetryLevel = { onTerminalAction(gameViewModel::retry) },
                         onNextLevel = { onTerminalAction(onNextLevel) },
                         onGameHub = { onTerminalAction(onGameHub) },
+                        artwork = nonogramResultArtwork(state.puzzle),
                     )
                 }
                 if (state.hintsExhausted) {

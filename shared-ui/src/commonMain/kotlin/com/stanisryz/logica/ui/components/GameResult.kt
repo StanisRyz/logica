@@ -10,6 +10,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -155,6 +156,13 @@ fun gameResultPrimaryAction(
     }
 
 /**
+ * Whether the card shows its host artwork (the Nonogram's finished picture): for a solved attempt
+ * only, while it is saving and after a save error too, and never for a failure, which must not
+ * reveal the answer.
+ */
+fun gameResultShowsArtwork(solved: Boolean): Boolean = solved
+
+/**
  * The one result card for every game on both platforms: an outcome mark, the level (or Daily)
  * title and difficulty, a host detail line (score, answer, attempts), a row of tiles for the
  * reward, lost life, mistakes, and hints, then one full-width primary action and the way out.
@@ -186,6 +194,7 @@ fun GameResultCard(
     title: String? = null,
     stars: Int? = null,
     lifeOffer: GameResultLifeOffer? = null,
+    artwork: (@Composable () -> Unit)? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val palette = LocalLogicaPalette.current
@@ -265,6 +274,14 @@ fun GameResultCard(
                     )
                 }
                 ResultCardAchievements()
+                if (artwork != null && gameResultShowsArtwork(solved)) {
+                    // Measured after the rest of the card: it takes what height is left, up to its own
+                    // size, and gives way entirely where too little is left (a low landscape window).
+                    BoxWithConstraints(Modifier.weight(1f, fill = false), contentAlignment = Alignment.Center) {
+                        val side = minOf(maxHeight, ARTWORK_MAX_SIZE)
+                        if (side >= ARTWORK_MIN_SIZE) Box(Modifier.size(side)) { artwork() }
+                    }
+                }
                 ResultTiles(
                     economy = economy.takeIf { saveState == GameResultSaveState.SAVED },
                     mistakesUsed = mistakesUsed,
@@ -504,6 +521,7 @@ fun GameResultDialog(
     title: String? = null,
     stars: Int? = null,
     lifeOffer: GameResultLifeOffer? = null,
+    artwork: (@Composable () -> Unit)? = null,
 ) {
     // Back (Esc on Web) is the card's own exit, with all of its rules, once the result is saved;
     // before that it does nothing, and a tap outside never decides anything.
@@ -532,6 +550,7 @@ fun GameResultDialog(
             title = title,
             stars = stars,
             lifeOffer = lifeOffer,
+            artwork = artwork,
         )
     }
 }
@@ -640,5 +659,9 @@ private val CARD_MAX_WIDTH = 400.dp
 private val CARD_PADDING = 24.dp
 private val MARK_SIZE = 56.dp
 private val MARK_ICON_SIZE = 32.dp
+private val ARTWORK_MAX_SIZE = 120.dp
+
+// Below this the picture is too small to read, so a cramped card leaves it out.
+private val ARTWORK_MIN_SIZE = 64.dp
 private val TILE_ICON_SIZE = 18.dp
 private val TILE_VERTICAL_PADDING = 10.dp

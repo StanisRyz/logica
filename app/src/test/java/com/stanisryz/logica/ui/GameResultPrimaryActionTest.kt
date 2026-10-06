@@ -3,7 +3,10 @@ package com.stanisryz.logica.ui
 import com.stanisryz.logica.ui.components.GameResultPrimaryAction
 import com.stanisryz.logica.ui.components.GameResultSaveState
 import com.stanisryz.logica.ui.components.gameResultPrimaryAction
+import com.stanisryz.logica.ui.components.gameResultShowsArtwork
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** The result card offers a life instead of Retry or Next level at zero lives, and only then. */
@@ -27,6 +30,14 @@ class GameResultPrimaryActionTest {
     fun savingAndSaveErrorsComeFirst() {
         assertEquals(GameResultPrimaryAction.SAVING, action(solved = false, livesOut = true, save = GameResultSaveState.SAVING))
         assertEquals(GameResultPrimaryAction.RETRY_SAVE, action(solved = true, livesOut = true, save = GameResultSaveState.ERROR))
+    }
+
+    @Test
+    fun onlyASolvedAttemptShowsItsPicture() {
+        // The outcome alone decides, so a solved attempt shows it while saving and after a save error;
+        // a failure never does, so the answer stays hidden.
+        assertTrue(gameResultShowsArtwork(solved = true))
+        assertFalse(gameResultShowsArtwork(solved = false))
     }
 
     private fun action(
