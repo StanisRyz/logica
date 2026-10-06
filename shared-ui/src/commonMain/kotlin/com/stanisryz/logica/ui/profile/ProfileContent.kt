@@ -67,6 +67,7 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordRules
 import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.achievement_expert_25
 import com.stanisryz.logica.shared.ui.generated.resources.daily_archive_open_day
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_easy
 import com.stanisryz.logica.shared.ui.generated.resources.difficulty_expert
@@ -96,6 +97,8 @@ import com.stanisryz.logica.shared.ui.generated.resources.profile_page_games_sum
 import com.stanisryz.logica.shared.ui.generated.resources.profile_page_games_title
 import com.stanisryz.logica.shared.ui.generated.resources.profile_page_rating_summary
 import com.stanisryz.logica.shared.ui.generated.resources.profile_page_rating_title
+import com.stanisryz.logica.shared.ui.generated.resources.profile_page_tournament_summary
+import com.stanisryz.logica.shared.ui.generated.resources.profile_page_tournament_title
 import com.stanisryz.logica.shared.ui.generated.resources.profile_rating
 import com.stanisryz.logica.shared.ui.generated.resources.profile_recent_days
 import com.stanisryz.logica.shared.ui.generated.resources.profile_solved_count
@@ -136,6 +139,9 @@ enum class ProfilePage {
 
     /** A host's leaderboard; the shared Profile only offers the row when the host has one. */
     RATING,
+
+    /** A host's weekly tournament (Web on Yandex Games); offered only when the host has one. */
+    TOURNAMENT,
 }
 
 /**
@@ -153,6 +159,7 @@ fun ProfileContent(
     hasRatingPage: Boolean = false,
     onOpenAchievements: () -> Unit = {},
     achievementRewards: AchievementRewards? = null,
+    hasTournamentPage: Boolean = false,
 ) {
     AnimatedContent(
         targetState = uiState,
@@ -177,6 +184,7 @@ fun ProfileContent(
                         hasRatingPage = hasRatingPage,
                         onOpenAchievements = onOpenAchievements,
                         achievementRewards = achievementRewards,
+                        hasTournamentPage = hasTournamentPage,
                     )
             }
         }
@@ -199,6 +207,7 @@ private fun ReadyProfileContent(
     hasRatingPage: Boolean,
     onOpenAchievements: () -> Unit,
     achievementRewards: AchievementRewards?,
+    hasTournamentPage: Boolean,
 ) {
     Column(
         modifier =
@@ -239,6 +248,14 @@ private fun ReadyProfileContent(
                 title = stringResource(Res.string.profile_page_rating_title),
                 summary = stringResource(Res.string.profile_page_rating_summary),
                 onClick = { onOpenPage(ProfilePage.RATING) },
+            )
+        }
+        if (hasTournamentPage) {
+            ProfilePageRow(
+                artwork = Res.drawable.achievement_expert_25,
+                title = stringResource(Res.string.profile_page_tournament_title),
+                summary = stringResource(Res.string.profile_page_tournament_summary),
+                onClick = { onOpenPage(ProfilePage.TOURNAMENT) },
             )
         }
     }
@@ -335,7 +352,7 @@ fun ProfilePageContent(
                         }
                     }
                 }
-            ProfilePage.RATING -> Unit
+            ProfilePage.RATING, ProfilePage.TOURNAMENT -> Unit
         }
     }
 }

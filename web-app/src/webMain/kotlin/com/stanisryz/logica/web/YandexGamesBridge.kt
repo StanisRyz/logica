@@ -371,10 +371,28 @@ internal class YandexGamesBridge :
         }
 
     /** The top entries plus the Player's own rank, or null when unsupported or failed. */
-    override suspend fun leaderboardEntries(name: String): WebLeaderboardSnapshot? =
+    override suspend fun leaderboardEntries(name: String): WebLeaderboardSnapshot? = leaderboardTop(name, LEADERBOARD_TOP)
+
+    /** The Player's own place and score; null when they have none yet (or on any failure). */
+    override suspend fun leaderboardPlayerEntry(name: String): WebLeaderboardEntry? =
         try {
             val leaderboards = sdk?.let(::sdkLeaderboardsOrNull) ?: return null
-            val result = leaderboardsGetEntries(leaderboards, name, LEADERBOARD_TOP, LEADERBOARD_AROUND).await() ?: return null
+            val entry = leaderboardsGetPlayerEntry(leaderboards, name).await() ?: return null
+            val rank = numberPropertyOrMinusOne(entry, RANK_KEY)
+            if (rank <= 0) return null
+            WebLeaderboardEntry(rank = rank, score = numberPropertyOrMinusOne(entry, SCORE_KEY).coerceAtLeast(0), name = null)
+        } catch (_: Throwable) {
+            // Yandex rejects with LEADERBOARD_PLAYER_NOT_PRESENT while the Player has no entry.
+            null
+        }
+
+    override suspend fun leaderboardTop(
+        name: String,
+        top: Int,
+    ): WebLeaderboardSnapshot? =
+        try {
+            val leaderboards = sdk?.let(::sdkLeaderboardsOrNull) ?: return null
+            val result = leaderboardsGetEntries(leaderboards, name, top, LEADERBOARD_AROUND).await() ?: return null
             val rawEntries = anyPropertyOrNull(result, ENTRIES_KEY) ?: return null
             if (!isJsArray(rawEntries)) return null
             val entries =
@@ -761,6 +779,11 @@ private fun leaderboardsGetEntries(
     top: Int,
     around: Int,
 ): Promise<JsAny?> = js("leaderboards.getEntries(name, { quantityTop: top, includeUser: true, quantityAround: around })")
+
+private fun leaderboardsGetPlayerEntry(
+    leaderboards: JsAny,
+    name: String,
+): Promise<JsAny?> = js("typeof leaderboards.getPlayerEntry === 'function' ? leaderboards.getPlayerEntry(name) : Promise.resolve(null)")
 
 private fun numberPropertyOrMinusOne(
     data: JsAny,

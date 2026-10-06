@@ -67,6 +67,15 @@ object EconomyPolicy {
 
     /** Gems that open one archive day for good; one rewarded ad opens it too. */
     const val DAILY_ARCHIVE_UNLOCK_GEMS = 5
+
+    /**
+     * Gems of the Web weekly star tournament by final place, 1 to 20 (the 20 places a Yandex table
+     * shows): 100, 50, 25, then 10 for places 4–10 and 5 for 11–20. A week with no stars wins nothing.
+     */
+    val WEEKLY_PRIZES: List<Int> = listOf(100, 50, 25) + List(7) { 10 } + List(10) { 5 }
+
+    /** The weekly tournament prize of [place], or 0 outside the prize places. */
+    fun weeklyPrize(place: Int): Int = WEEKLY_PRIZES.getOrNull(place - 1) ?: 0
 }
 
 enum class EconomyRewardType {

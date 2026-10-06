@@ -79,6 +79,12 @@ internal interface WebCatalogProgressAccess {
     /** The attempt's level best from earlier solves (`0` without stars on record), `null` if never cleared. */
     fun previousBestStars(attempt: WebCatalogAttempt): Int? = null
 
+    /** Adds [stars] to this Player's weekly tournament counter; false when nothing was written. */
+    fun recordWeeklyStars(
+        attempt: WebCatalogAttempt,
+        stars: Int,
+    ): Boolean = false
+
     fun retryContextBinding()
 
     /** Keeps a 2048 score as the bound Player's best when it beats it; local only until published. */
@@ -172,6 +178,15 @@ internal class WebCatalogProgressCoordinator(
         return binding.repository.previousBestStars(attempt.levelId)
     }
 
+    override fun recordWeeklyStars(
+        attempt: WebCatalogAttempt,
+        stars: Int,
+    ): Boolean {
+        val binding = playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready ?: return false
+        if (binding.token != attempt.playerContextToken) return false
+        return binding.repository.addWeeklyStars(WebWeeklyTournament.week(webClock.now()), stars)
+    }
+
     override fun advanceSolved(
         attempt: WebCatalogAttempt,
         stars: Int?,
@@ -226,6 +241,8 @@ internal sealed interface WebCatalogCompletionState {
         val nextLevel: CatalogLevelId,
         /** Gems the solve earned under [PuzzleGemReward], shown on the result card. */
         val gemsEarned: Int = 0,
+        /** Stars the solve added to the weekly tournament, shown on the result card. */
+        val weeklyStars: Int = 0,
     ) : WebCatalogCompletionState
 
     data class SaveError(
@@ -249,10 +266,16 @@ internal class WebCatalogCompletionController(
     var gemsEarned: Int = 0
         private set
 
+    /** Stars this attempt adds to the weekly tournament, decided with [gemsEarned] and added once. */
+    private var weeklyStars: Int = 0
+    private var weeklyStarsRecorded = false
+
     fun startAttempt(attempt: WebCatalogAttempt) {
         this.attempt = attempt
         state = WebCatalogCompletionState.Idle
         gemsEarned = 0
+        weeklyStars = 0
+        weeklyStarsRecorded = false
     }
 
     fun saveSolved(
@@ -264,11 +287,18 @@ internal class WebCatalogCompletionController(
         if (state == WebCatalogCompletionState.Idle) {
             val level = attempt.levelId
             gemsEarned = PuzzleGemReward.forSolved(level.puzzleType, level.difficulty, stars, progression.previousBestStars(attempt))
+            weeklyStars = WebWeeklyTournament.starsForSolve(level.puzzleType, level.difficulty, attempt.replay, stars)
         }
         state = WebCatalogCompletionState.Saving
         state =
             when (val result = progression.advanceSolved(attempt, stars)) {
-                is WebCatalogCompletionResult.Saved -> WebCatalogCompletionState.Saved(result.nextLevel, gemsEarned)
+                is WebCatalogCompletionResult.Saved -> {
+                    // Once per attempt, and only for a solve whose progress landed: a save retry adds nothing more.
+                    if (weeklyStars > 0 && !weeklyStarsRecorded) {
+                        weeklyStarsRecorded = progression.recordWeeklyStars(attempt, weeklyStars)
+                    }
+                    WebCatalogCompletionState.Saved(result.nextLevel, gemsEarned, if (weeklyStarsRecorded) weeklyStars else 0)
+                }
                 is WebCatalogCompletionResult.PersistenceFailed ->
                     WebCatalogCompletionState.SaveError(result.detail)
                 WebCatalogCompletionResult.Rejected ->
@@ -283,6 +313,8 @@ internal class WebCatalogCompletionController(
         attempt = null
         state = WebCatalogCompletionState.Idle
         gemsEarned = 0
+        weeklyStars = 0
+        weeklyStarsRecorded = false
     }
 }
 

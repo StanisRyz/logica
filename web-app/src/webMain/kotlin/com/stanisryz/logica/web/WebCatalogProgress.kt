@@ -449,6 +449,32 @@ internal class WebCatalogProgressRepository(
         return saveRewards(current.copy(unlockedArchiveDays = current.unlockedArchiveDays + epochDay))
     }
 
+    /**
+     * Adds [stars] to the tournament counter of [week]: a later week starts the counter over, an
+     * earlier one (a clock moved back) adds nothing. False when nothing was durably written.
+     */
+    fun addWeeklyStars(
+        week: Int,
+        stars: Int,
+    ): Boolean {
+        if (stars <= 0) return false
+        val current = mutableRewards.value
+        if (week < current.weeklyWeek) return false
+        val base = if (week == current.weeklyWeek) current.weeklyStars else 0
+        return saveRewards(current.copy(weeklyWeek = week, weeklyStars = base + stars))
+    }
+
+    /**
+     * Marks the tournament prize of [week] paid; true only for the first, durable mark, so the
+     * caller pays once, a repeat or a second device after the merge pays nothing, and a lost
+     * browser write pays nothing either.
+     */
+    fun claimWeeklyPrize(week: Int): Boolean {
+        val current = mutableRewards.value
+        if (week in current.claimedWeeklyPrizes) return false
+        return saveRewards(current.copy(claimedWeeklyPrizes = current.claimedWeeklyPrizes + week))
+    }
+
     /** Day-aware merge with the cloud copy. */
     fun mergeCloudRewards(cloud: WebDailyRewardsSnapshot): WebCloudValueMergeResult {
         val local = mutableRewards.value

@@ -306,7 +306,7 @@
     <string name="achievement_word">Kelime uzmanı</string>
     <string name="achievement_word_body">50 kelime bil</string>
     <string name="achievement_game2048">2048 yapıcısı</string>
-    <string name="achievement_game2048_body">2048\'de hedefe 25 kez ulaş</string>
+    <string name="achievement_game2048_body">2048'de hedefe 25 kez ulaş</string>
     <string name="achievement_word_first_try">İlk denemede</string>
     <string name="achievement_word_first_try_body">Bir kelimeyi ilk denemede bil</string>
     <string name="achievement_expert_1">Uzman</string>
@@ -339,7 +339,7 @@
     <string name="rules_crowns_1">Her satırda, sütunda ve renkli bölgede tam olarak bir taç vardır.</string>
     <string name="rules_crowns_2">Taçlar birbirine değmez, çapraz bile.</string>
     <string name="rules_crowns_3">× işareti, burada kesinlikle taç olmadığına dair notundur. Kontrol edilmez ve hata saymaz.</string>
-    <string name="rules_sudoku_1">Tahtayı 1\'den 9\'a kadar rakamlarla doldur.</string>
+    <string name="rules_sudoku_1">Tahtayı 1'den 9'a kadar rakamlarla doldur.</string>
     <string name="rules_sudoku_2">Her rakam her satırda, sütunda ve 3×3 blokta bir kez bulunur.</string>
     <string name="rules_sudoku_3">Ya da tersine: aşağıdan bir rakam seç ve hücrelere dokun, her birine o rakam yazılır. Seçimi bırakmak için rakama yeniden dokun.</string>
     <string name="rules_word_language">Tüm kelimeler Türkçe, klavye de Türkçe harfleri gösterir.</string>
@@ -376,7 +376,7 @@
     <string name="nonogram_tutorial_clues_title">Sayılar parçalardır</string>
     <string name="nonogram_tutorial_clues_body">Satırın yanındaki ve sütunun üstündeki sayılar, sırasıyla boyalı parçaların uzunluklarıdır; parçalar arasında en az bir boş hücre vardır. Beş hücrelik satırda 5, satırın tamamının boyalı olduğu anlamına gelir.</string>
     <string name="nonogram_tutorial_play_title">Kendin dene</string>
-    <string name="nonogram_tutorial_play_body">Boya\'yı seç ve hücrelere dokun ya da satır boyunca sürükle. Boş hücrelere çarpı koyabilirsin. Kalbi çiz.</string>
+    <string name="nonogram_tutorial_play_body">Boya'yı seç ve hücrelere dokun ya da satır boyunca sürükle. Boş hücrelere çarpı koyabilirsin. Kalbi çiz.</string>
     <string name="nonogram_tutorial_rules_title">Hatalar ve ipuçları</string>
     <string name="nonogram_tutorial_rules_body">Yanlış hücre bir hataya mal olur ve doğru cevabı hemen gösterir. Üç hata seviyeyi kaybettirir. İpucu, sayılardan çıkarılabilen bir hücreyi açar.</string>
     <string name="nonogram_tutorial_solved">Tamam — resim hazır!</string>
@@ -519,4 +519,6 @@
     <string name="result_archive_solved">%1$s günün bulmacası çözüldü</string>
     <string name="result_archive_failed">%1$s günün bulmacası çözülemedi</string>
     <string name="result_to_archive">Arşive dön</string>
+    <string name="profile_page_tournament_title">Haftalık turnuva</string>
+    <string name="profile_page_tournament_summary">Uzman seviyelerindeki yıldızlar elmas kazandırır</string>
 </resources>

@@ -552,4 +552,6 @@
     <string name="result_archive_solved">Задача дня за %1$s решена</string>
     <string name="result_archive_failed">Задача дня за %1$s не пройдена</string>
     <string name="result_to_archive">К архиву</string>
+    <string name="profile_page_tournament_title">Турнир недели</string>
+    <string name="profile_page_tournament_summary">Звёзды за уровни «Эксперт» — призы в кристаллах</string>
 </resources>

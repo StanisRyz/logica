@@ -268,6 +268,7 @@ internal fun WebProfileRoute(
     onOpenAchievements: () -> Unit,
     onOpenPage: (ProfilePage) -> Unit,
     achievementRewards: AchievementRewards?,
+    hasTournamentPage: Boolean = false,
 ) {
     when (binding) {
         WebStatisticsBinding.Loading ->
@@ -290,6 +291,7 @@ internal fun WebProfileRoute(
                     hasRatingPage = leaderboard.isSupported,
                     onOpenAchievements = onOpenAchievements,
                     achievementRewards = achievementRewards,
+                    hasTournamentPage = hasTournamentPage,
                 )
             }
     }

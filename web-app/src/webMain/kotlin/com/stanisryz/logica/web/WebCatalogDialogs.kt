@@ -46,6 +46,8 @@ import com.stanisryz.logica.web.generated.resources.web_score_failed
 import com.stanisryz.logica.web.generated.resources.web_score_final
 import com.stanisryz.logica.web.generated.resources.web_to_difficulty
 import com.stanisryz.logica.web.generated.resources.web_to_games
+import com.stanisryz.logica.web.generated.resources.web_weekly_result
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import com.stanisryz.logica.web.generated.resources.Res as WebRes
 
@@ -168,7 +170,17 @@ internal fun WebOrdinaryCatalogTerminalDialog(
         onRetry = onRetry,
         onRetrySave = onRetrySave,
         onExit = onBack,
-        detail = if (solved) solvedDetail else failedDetail,
+        detail =
+            if (solved) {
+                // The stars the saved solve added to the weekly tournament, under the game's own detail.
+                val weeklyStars = (completion as? WebCatalogCompletionState.Saved)?.weeklyStars ?: 0
+                listOfNotNull(
+                    solvedDetail,
+                    weeklyStars.takeIf { it > 0 }?.let { pluralStringResource(WebRes.plurals.web_weekly_result, it, it) },
+                ).joinToString("\n").takeIf { it.isNotEmpty() }
+            } else {
+                failedDetail
+            },
         saveErrorDetail = saveError?.let { stringResource(WebRes.string.web_save_error_catalog) },
         economy =
             if (solved) {

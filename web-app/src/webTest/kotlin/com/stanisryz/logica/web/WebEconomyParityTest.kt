@@ -59,4 +59,10 @@ class WebEconomyParityTest {
         // The Web archive has no numbers of its own: its window and its price are these, as on Android.
         assertEquals(listOf(30, 5), listOf(EconomyPolicy.DAILY_ARCHIVE_DAYS, EconomyPolicy.DAILY_ARCHIVE_UNLOCK_GEMS))
     }
+
+    @Test
+    fun theWeeklyTournamentPrizesComeFromThePolicy() {
+        assertEquals(listOf(100, 50, 25) + List(7) { 10 } + List(10) { 5 }, EconomyPolicy.WEEKLY_PRIZES)
+        assertEquals(listOf(100, 10, 5, 0), listOf(1, 10, 20, 21).map(EconomyPolicy::weeklyPrize))
+    }
 }

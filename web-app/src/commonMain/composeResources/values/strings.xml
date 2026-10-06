@@ -140,4 +140,42 @@
         <item quantity="many">+%1$d кристаллов</item>
         <item quantity="other">+%1$d кристалла</item>
     </plurals>
+    <string name="web_weekly_title">Турнир недели</string>
+    <plurals name="web_weekly_stars">
+        <item quantity="one">%1$d звезда</item>
+        <item quantity="few">%1$d звезды</item>
+        <item quantity="many">%1$d звёзд</item>
+        <item quantity="other">%1$d звезды</item>
+    </plurals>
+    <string name="web_weekly_place">Место %1$d</string>
+    <string name="web_weekly_no_place">Пока без места</string>
+    <plurals name="web_weekly_days_left">
+        <item quantity="one">%1$d день</item>
+        <item quantity="few">%1$d дня</item>
+        <item quantity="many">%1$d дней</item>
+        <item quantity="other">%1$d дня</item>
+    </plurals>
+    <string name="web_weekly_hours_left">%1$d ч</string>
+    <string name="web_weekly_time_left">Осталось %1$s</string>
+    <string name="web_weekly_table">Таблица недели</string>
+    <string name="web_weekly_prizes">Призы недели</string>
+    <string name="web_weekly_prize_place">%1$s место</string>
+    <string name="web_weekly_rules">Звёзды дают первые решения уровней «Эксперт» в Балансе, Коронах, Судоку, Нонограмме и Словах. Повторы, задачи дня, 2048 и блок-судоку не считаются. Неделя начинается в понедельник в 00:00 по Москве.</string>
+    <string name="web_weekly_burn">Приз за прошлую неделю можно забрать до конца этой недели, потом он сгорает.</string>
+    <string name="web_weekly_guest">Чтобы участвовать, войдите в аккаунт Яндекса.</string>
+    <plurals name="web_weekly_result">
+        <item quantity="one">+%1$d звезда в турнир недели</item>
+        <item quantity="few">+%1$d звезды в турнир недели</item>
+        <item quantity="many">+%1$d звёзд в турнир недели</item>
+        <item quantity="other">+%1$d звезды в турнир недели</item>
+    </plurals>
+    <string name="web_weekly_prize_title">Итоги недели</string>
+    <plurals name="web_weekly_prize_body">
+        <item quantity="one">Место %2$d — +%1$d кристалл.</item>
+        <item quantity="few">Место %2$d — +%1$d кристалла.</item>
+        <item quantity="many">Место %2$d — +%1$d кристаллов.</item>
+        <item quantity="other">Место %2$d — +%1$d кристалла.</item>
+    </plurals>
+    <string name="web_weekly_prize_claim">Забрать</string>
+    <string name="web_weekly_prize_later">Позже</string>
 </resources>

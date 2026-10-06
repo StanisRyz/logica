@@ -113,7 +113,7 @@
     <string name="hint">Hint</string>
     <string name="hints_left">Hints left: %1$d</string>
     <string name="searching_hint">Looking for a hint…</string>
-    <string name="hint_legend">The frame shows the hint\'s target; light cells are its basis.</string>
+    <string name="hint_legend">The frame shows the hint's target; light cells are its basis.</string>
     <string name="hint_incorrect_value">Check cell %1$d:%2$d: it needs %3$s.</string>
     <string name="hint_logical_deduction">Cell %1$d:%2$d — %3$s. %4$s</string>
     <string name="rule_prevent_three">Three equal values in a row are not allowed.</string>
@@ -150,7 +150,7 @@
     <string name="crowns_technique_single_region">Only one possible cell is left in this region.</string>
     <string name="crowns_technique_region_row">All possible cells of the region lie in one row, so the rest of that row is ruled out.</string>
     <string name="crowns_technique_region_column">All possible cells of the region lie in one column, so the rest of that column is ruled out.</string>
-    <string name="crowns_hint_legend">The highlight shows the hint\'s target; the other colour marks the cells it is based on.</string>
+    <string name="crowns_hint_legend">The highlight shows the hint's target; the other colour marks the cells it is based on.</string>
     <string name="game_2048_target">Target</string>
     <string name="game_2048_score">Score</string>
     <string name="game_2048_board_description">2048 board. Moves in four directions are available.</string>
@@ -320,7 +320,7 @@
     <string name="achievement_perfect_25">Flawless</string>
     <string name="achievement_perfect_25_body">Clear 25 levels with three stars</string>
     <string name="achievement_daily_1">Daily puzzle</string>
-    <string name="achievement_daily_1_body">Solve all of one day\'s puzzles</string>
+    <string name="achievement_daily_1_body">Solve all of one day's puzzles</string>
     <string name="achievement_daily_30">Consistency</string>
     <string name="achievement_daily_30_body">Complete the full daily puzzle 30 times</string>
     <string name="achievement_streak_7">A week in a row</string>
@@ -380,7 +380,7 @@
     <string name="nonogram_tutorial_rules_title">Mistakes and hints</string>
     <string name="nonogram_tutorial_rules_body">A wrong cell costs one mistake and shows the right answer at once. Three mistakes fail the level. A hint opens a cell the numbers prove.</string>
     <string name="nonogram_tutorial_solved">Done — the picture is complete!</string>
-    <string name="nonogram_tutorial_failed">Three mistakes — let\'s start the picture again.</string>
+    <string name="nonogram_tutorial_failed">Three mistakes — let's start the picture again.</string>
     <string name="achievement_nonogram">Artist</string>
     <string name="achievement_nonogram_body">Solve 25 nonograms</string>
     <string name="rating_action">Rating</string>
@@ -486,7 +486,7 @@
     <string name="achievement_block_sudoku">Block master</string>
     <string name="achievement_block_sudoku_body">Clear 25 Block Sudoku levels</string>
     <string name="profile_page_daily_title">Calendar</string>
-    <string name="profile_page_daily_summary">This month\'s Daily puzzles</string>
+    <string name="profile_page_daily_summary">This month's Daily puzzles</string>
     <string name="profile_page_games_title">Game statistics</string>
     <string name="profile_page_games_summary">Played: %1$d · Solved: %2$d</string>
     <string name="profile_page_rating_title">Leaderboard</string>
@@ -519,4 +519,6 @@
     <string name="result_archive_solved">Daily puzzle of %1$s solved</string>
     <string name="result_archive_failed">Daily puzzle of %1$s not solved</string>
     <string name="result_to_archive">To the archive</string>
+    <string name="profile_page_tournament_title">Tournament</string>
+    <string name="profile_page_tournament_summary">Stars for Expert levels win gems</string>
 </resources>

@@ -165,7 +165,7 @@ class WebDailyArchiveTest {
         assertEquals(setOf(day), progress.rewards.value.unlockedArchiveDays)
 
         val encoded = WebDailyRewardsCodec.encode(progress.rewards.value)
-        assertTrue(encoded.decodeToString().startsWith("LGDR4|"))
+        assertTrue(encoded.decodeToString().startsWith("LGDR5|"))
         assertEquals(progress.rewards.value, WebDailyRewardsCodec.decode(encoded))
         val v3 = assertNotNull(WebDailyRewardsCodec.decode("LGDR3|20000|1|0|0|19999|2||first|20001".encodeToByteArray()))
         assertEquals(setOf(20_001L), v3.restoredStreakDays)

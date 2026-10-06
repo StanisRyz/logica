@@ -5,7 +5,7 @@
     <string name="web_tab_elsewhere_body">You can play in one tab at a time. Your progress carries over here.</string>
     <string name="web_tab_play_here">Play here</string>
     <string name="web_fatal_title">The web version could not start</string>
-    <string name="web_fatal_message">Couldn\'t connect to Yandex Games. Reload the page.</string>
+    <string name="web_fatal_message">Couldn't connect to Yandex Games. Reload the page.</string>
     <string name="web_init_timeout_title">The game did not start</string>
     <string name="web_init_timeout_body">The platform did not answer in time. Check your connection and try again.</string>
     <string name="web_settings">Settings</string>
@@ -23,7 +23,7 @@
     <string name="web_rules">Rules</string>
     <string name="web_how_to_play_title">How to play: %1$s</string>
     <string name="web_leave_title">Leave the level?</string>
-    <string name="web_leave_body">An unfinished level is not saved: this attempt\'s progress will be lost, and leaving costs one life.</string>
+    <string name="web_leave_body">An unfinished level is not saved: this attempt's progress will be lost, and leaving costs one life.</string>
     <string name="web_leave_confirm">Leave</string>
     <string name="web_leave_stay">Stay</string>
     <string name="web_wallet_lives">Lives: %1$d of %2$d</string>
@@ -33,9 +33,9 @@
     <string name="web_error_daily">The daily puzzle could not be opened</string>
     <string name="web_error_level">Level %1$d could not be opened</string>
     <string name="web_error_progress">Progress could not be loaded</string>
-    <string name="web_failure_data_load">Couldn\'t load the game data. Check your internet connection and try again.</string>
+    <string name="web_failure_data_load">Couldn't load the game data. Check your internet connection and try again.</string>
     <string name="web_failure_data_corrupt">The game data is damaged. Reload the page.</string>
-    <string name="web_failure_progress">Your progress isn\'t available right now. Try again.</string>
+    <string name="web_failure_progress">Your progress isn't available right now. Try again.</string>
     <string name="web_failure_unknown">Something went wrong. Try again.</string>
     <string name="web_retry">Retry</string>
     <string name="web_save_error_catalog">The level is solved, but progress was not saved.</string>
@@ -124,4 +124,34 @@
         <item quantity="one">+%1$d gem</item>
         <item quantity="other">+%1$d gems</item>
     </plurals>
+    <string name="web_weekly_title">Weekly tournament</string>
+    <plurals name="web_weekly_stars">
+        <item quantity="one">%1$d star</item>
+        <item quantity="other">%1$d stars</item>
+    </plurals>
+    <string name="web_weekly_place">Place %1$d</string>
+    <string name="web_weekly_no_place">No place yet</string>
+    <plurals name="web_weekly_days_left">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <string name="web_weekly_hours_left">%1$d h</string>
+    <string name="web_weekly_time_left">%1$s left</string>
+    <string name="web_weekly_table">This week's leaderboard</string>
+    <string name="web_weekly_prizes">Weekly prizes</string>
+    <string name="web_weekly_prize_place">Place %1$s</string>
+    <string name="web_weekly_rules">Stars come from first solves of Expert levels in Balance, Crowns, Sudoku, Nonogram, and Words. Replays, daily puzzles, 2048, and Block Sudoku do not count. The week starts on Monday at 00:00 Moscow time.</string>
+    <string name="web_weekly_burn">Last week's prize can be claimed until the end of this week; after that it is gone.</string>
+    <string name="web_weekly_guest">Sign in to your Yandex account to take part.</string>
+    <plurals name="web_weekly_result">
+        <item quantity="one">+%1$d star for the weekly tournament</item>
+        <item quantity="other">+%1$d stars for the weekly tournament</item>
+    </plurals>
+    <string name="web_weekly_prize_title">Week results</string>
+    <plurals name="web_weekly_prize_body">
+        <item quantity="one">Place %2$d: +%1$d gem.</item>
+        <item quantity="other">Place %2$d: +%1$d gems.</item>
+    </plurals>
+    <string name="web_weekly_prize_claim">Claim</string>
+    <string name="web_weekly_prize_later">Later</string>
 </resources>

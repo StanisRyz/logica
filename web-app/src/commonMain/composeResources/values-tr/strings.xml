@@ -5,7 +5,7 @@
     <string name="web_tab_elsewhere_body">Aynı anda yalnızca bir sekmede oynayabilirsin. İlerlemen burada devam eder.</string>
     <string name="web_tab_play_here">Burada oyna</string>
     <string name="web_fatal_title">Web sürümü başlatılamadı</string>
-    <string name="web_fatal_message">Yandex Oyunlar\'a bağlanılamadı. Sayfayı yenile.</string>
+    <string name="web_fatal_message">Yandex Oyunlar'a bağlanılamadı. Sayfayı yenile.</string>
     <string name="web_init_timeout_title">Oyun başlatılamadı</string>
     <string name="web_init_timeout_body">Platform zamanında yanıt vermedi. Bağlantını kontrol et ve tekrar dene.</string>
     <string name="web_settings">Ayarlar</string>
@@ -124,4 +124,34 @@
         <item quantity="one">+%1$d elmas</item>
         <item quantity="other">+%1$d elmas</item>
     </plurals>
+    <string name="web_weekly_title">Haftalık turnuva</string>
+    <plurals name="web_weekly_stars">
+        <item quantity="one">%1$d yıldız</item>
+        <item quantity="other">%1$d yıldız</item>
+    </plurals>
+    <string name="web_weekly_place">%1$d. sıra</string>
+    <string name="web_weekly_no_place">Henüz sıran yok</string>
+    <plurals name="web_weekly_days_left">
+        <item quantity="one">%1$d gün</item>
+        <item quantity="other">%1$d gün</item>
+    </plurals>
+    <string name="web_weekly_hours_left">%1$d sa</string>
+    <string name="web_weekly_time_left">%1$s kaldı</string>
+    <string name="web_weekly_table">Haftanın sıralaması</string>
+    <string name="web_weekly_prizes">Haftalık ödüller</string>
+    <string name="web_weekly_prize_place">%1$s. sıra</string>
+    <string name="web_weekly_rules">Yıldızlar Denge, Taçlar, Sudoku, Nonogram ve Kelime oyunlarında Uzman seviyelerini ilk çözüşünden gelir. Tekrarlar, günün bulmacaları, 2048 ve Blok Sudoku sayılmaz. Hafta pazartesi Moskova saatiyle 00:00'da başlar.</string>
+    <string name="web_weekly_burn">Geçen haftanın ödülünü bu haftanın sonuna kadar alabilirsin, sonra yanar.</string>
+    <string name="web_weekly_guest">Katılmak için Yandex hesabına giriş yap.</string>
+    <plurals name="web_weekly_result">
+        <item quantity="one">Haftalık turnuvaya +%1$d yıldız</item>
+        <item quantity="other">Haftalık turnuvaya +%1$d yıldız</item>
+    </plurals>
+    <string name="web_weekly_prize_title">Haftanın sonuçları</string>
+    <plurals name="web_weekly_prize_body">
+        <item quantity="one">%2$d. sıra: +%1$d elmas.</item>
+        <item quantity="other">%2$d. sıra: +%1$d elmas.</item>
+    </plurals>
+    <string name="web_weekly_prize_claim">Al</string>
+    <string name="web_weekly_prize_later">Sonra</string>
 </resources>

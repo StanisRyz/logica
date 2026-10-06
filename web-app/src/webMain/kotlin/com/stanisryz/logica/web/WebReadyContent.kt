@@ -1,5 +1,6 @@
 package com.stanisryz.logica.web
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.platform.PlatformLifecycleState
+import com.stanisryz.logica.platform.PlayerAuthorizationState
 import com.stanisryz.logica.puzzle.core.daily.DailyDate
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
@@ -31,6 +33,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.profile_achievements
 import com.stanisryz.logica.shared.ui.generated.resources.profile_page_daily_title
 import com.stanisryz.logica.shared.ui.generated.resources.profile_page_games_title
 import com.stanisryz.logica.shared.ui.generated.resources.profile_page_rating_title
+import com.stanisryz.logica.shared.ui.generated.resources.profile_page_tournament_title
 import com.stanisryz.logica.ui.components.ContinueGameCard
 import com.stanisryz.logica.ui.components.GAME_CATALOG_PUZZLE_TYPES
 import com.stanisryz.logica.ui.components.GameHubContent
@@ -78,9 +81,12 @@ internal fun ReadyContent(
     var achievementsOpen by remember { mutableStateOf(false) }
     // A Profile page (the Daily calendar, the games, the leaderboard) opened in place of the Profile.
     var profilePage by remember { mutableStateOf<ProfilePage?>(null) }
+    // A Profile page asked for from another tab (the hub's tournament line) opens once the route lands.
+    var pendingProfilePage by remember { mutableStateOf<ProfilePage?>(null) }
     LaunchedEffect(route) {
         achievementsOpen = false
-        profilePage = null
+        profilePage = if (route == WebRoute.Profile) pendingProfilePage else null
+        pendingProfilePage = null
     }
 
     // Desktop keyboard input goes to the puzzle only while it is actively played and uncovered.
@@ -223,6 +229,34 @@ internal fun ReadyContent(
             }
         }
     }
+    // The weekly tournament: this week's stars go to this week's table whenever they grow, and last
+    // week's final place is read once per Player for its prize.
+    val weeklyRewards =
+        ratingBinding?.let { binding ->
+            key(binding.token) {
+                binding.repository.rewards
+                    .collectAsState()
+                    .value
+            }
+        }
+    val weeklyWeek = WebWeeklyTournament.week(webClock.now())
+    val weeklyStars = weeklyRewards?.weeklyStarsIn(weeklyWeek) ?: 0
+    if (ratingBinding != null && leaderboard.isSupported) {
+        LaunchedEffect(ratingBinding.token, weeklyWeek, weeklyStars) {
+            if (weeklyStars > 0) {
+                leaderboard.submit(
+                    WebWeeklyTournament.board(weeklyWeek),
+                    ratingBinding.token,
+                    WebWeeklyTournament.score(weeklyWeek, weeklyStars).toLong(),
+                )
+            }
+        }
+        LaunchedEffect(ratingBinding.token) {
+            leaderboard.weekly.checkPrize(ratingBinding.token, weeklyRewards?.claimedWeeklyPrizes.orEmpty())
+            leaderboard.weekly.refreshOwnPlace(ratingBinding.token)
+        }
+    }
+    val weeklyGuest = ratingBinding?.identity?.authorizationState == PlayerAuthorizationState.ANONYMOUS
     val ratingUi =
         WebRatingUi(
             progress = ratingProgress,
@@ -471,17 +505,32 @@ internal fun ReadyContent(
                                 }
                             },
                         headerContent = {
-                            WebDailyHubRoute(
-                                playerSession = playerSession,
-                                coordinator = dailyCoordinator,
-                                currentDate = dailyDate,
-                                streakRestoreAd = rewardedAds.streakRestore,
-                                onStartDaily = { puzzleType -> startDaily(puzzleType, null) },
-                                onOpenArchive = {
-                                    archiveDay = null
-                                    route = WebRoute.DailyArchive
-                                },
-                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
+                                WebDailyHubRoute(
+                                    playerSession = playerSession,
+                                    coordinator = dailyCoordinator,
+                                    currentDate = dailyDate,
+                                    streakRestoreAd = rewardedAds.streakRestore,
+                                    onStartDaily = { puzzleType -> startDaily(puzzleType, null) },
+                                    onOpenArchive = {
+                                        archiveDay = null
+                                        route = WebRoute.DailyArchive
+                                    },
+                                )
+                                if (ratingBinding != null && leaderboard.isSupported) {
+                                    WebWeeklyHubRow(
+                                        stars = weeklyStars,
+                                        place =
+                                            leaderboard.weekly.ownPlace
+                                                .collectAsState()
+                                                .value,
+                                        onOpen = {
+                                            pendingProfilePage = ProfilePage.TOURNAMENT
+                                            route = WebRoute.Profile
+                                        },
+                                    )
+                                }
+                            }
                         },
                     )
                 }
@@ -517,12 +566,22 @@ internal fun ReadyContent(
                                         ProfilePage.DAILY -> Res.string.profile_page_daily_title
                                         ProfilePage.GAMES -> Res.string.profile_page_games_title
                                         ProfilePage.RATING -> Res.string.profile_page_rating_title
+                                        ProfilePage.TOURNAMENT -> Res.string.profile_page_tournament_title
                                     },
                                 ),
                         )
                         WideReadableColumn(WIDE_PROFILE_MAX_WIDTH) {
                             if (page == ProfilePage.RATING) {
                                 Box(Modifier.fillMaxSize().padding(LogicaSpacing.screenHorizontal)) { WebLeaderboardCard(leaderboard) }
+                            } else if (page == ProfilePage.TOURNAMENT) {
+                                WebWeeklyTournamentPage(
+                                    leaderboard = leaderboard,
+                                    tournament = leaderboard.weekly,
+                                    token = ratingBinding?.token,
+                                    stars = weeklyStars,
+                                    claimedWeeks = weeklyRewards?.claimedWeeklyPrizes.orEmpty(),
+                                    guest = weeklyGuest,
+                                )
                             } else {
                                 val binding = playerSession.statisticsBinding.collectAsState().value
                                 val uiState =
@@ -559,6 +618,7 @@ internal fun ReadyContent(
                                 onOpenAchievements = { achievementsOpen = true },
                                 onOpenPage = { profilePage = it },
                                 achievementRewards = webAchievementRewards(progressRepository, economyRepository),
+                                hasTournamentPage = leaderboard.isSupported,
                             )
                         }
                     }
@@ -695,6 +755,28 @@ internal fun ReadyContent(
                 }
             }
         }
+    }
+    // Last week's prize, offered on the primary tabs only so it never covers a game.
+    val weeklyPrize =
+        leaderboard.weekly.prize
+            .collectAsState()
+            .value
+    if (weeklyPrize != null && route in PRIMARY_ROUTES && tutorialFor == null && !storeSheetOpen) {
+        WebWeeklyPrizeDialog(
+            prize = weeklyPrize,
+            onClaim = {
+                val token = (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.token
+                val progress = (playerSession.progressBinding.value as? WebCatalogProgressBinding.Ready)?.repository
+                val economy =
+                    (playerSession.economyBinding.value as? WebEconomyBinding.Ready)?.takeIf { it.token == token }?.repository
+                leaderboard.weekly.claim(
+                    currentToken = token,
+                    claimDurably = { week -> economy != null && progress?.claimWeeklyPrize(week) == true },
+                    grantGems = { gems -> economy?.grantGems(gems) },
+                )
+            },
+            onLater = leaderboard.weekly::dismiss,
+        )
     }
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         AchievementAnnouncementHost(achievementAnnouncer)

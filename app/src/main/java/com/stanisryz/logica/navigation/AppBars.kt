@@ -236,7 +236,7 @@ internal fun destinationTitle(
             is AppDestination.ProfileSection ->
                 when (destination.page) {
                     ProfilePage.DAILY -> R.string.profile_daily_calendar
-                    ProfilePage.GAMES, ProfilePage.RATING -> R.string.profile_game_statistics
+                    ProfilePage.GAMES, ProfilePage.RATING, ProfilePage.TOURNAMENT -> R.string.profile_game_statistics
                 }
             AppDestination.BalanceStart, is AppDestination.BalanceGame -> R.string.balance
             AppDestination.BalanceTutorial -> R.string.balance_tutorial_title

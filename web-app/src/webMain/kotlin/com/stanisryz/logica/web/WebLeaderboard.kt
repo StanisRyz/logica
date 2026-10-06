@@ -56,6 +56,15 @@ internal interface WebLeaderboardBridge {
     ): Boolean
 
     suspend fun leaderboardEntries(name: String): WebLeaderboardSnapshot?
+
+    /** The best [top] entries plus the Player's own rank, or null when unsupported or failed. */
+    suspend fun leaderboardTop(
+        name: String,
+        top: Int,
+    ): WebLeaderboardSnapshot? = leaderboardEntries(name)
+
+    /** The Player's own entry (place and score), or null when absent, unsupported, or failed. */
+    suspend fun leaderboardPlayerEntry(name: String): WebLeaderboardEntry? = null
 }
 
 internal data class WebLeaderboardEntry(
@@ -95,6 +104,9 @@ internal class WebLeaderboardController(
     private val states = mutableMapOf<String, MutableStateFlow<WebLeaderboardState>>()
 
     val isSupported: Boolean get() = bridge.isLeaderboardsSupported()
+
+    /** The weekly tournament's own reads (last week's place for the prize, this week's place). */
+    val weekly: WebWeeklyTournamentController by lazy { WebWeeklyTournamentController(bridge, scope) }
 
     private var playerKey: Any? = null
     private val submitted = mutableMapOf<String, Long>()
@@ -139,13 +151,17 @@ internal class WebLeaderboardController(
         }
     }
 
-    /** Reads [board] once per explicit request (a screen opening it, or refresh). */
-    fun load(board: String) {
+    /** Reads [board] once per explicit request (a screen opening it, or refresh); [top] rows when given. */
+    fun load(
+        board: String,
+        top: Int? = null,
+    ) {
         val state = mutableState(board)
         if (!isSupported || state.value == WebLeaderboardState.Loading) return
         state.value = WebLeaderboardState.Loading
         scope.launch {
-            state.value = bridge.leaderboardEntries(board)?.let(WebLeaderboardState::Ready) ?: WebLeaderboardState.Unavailable
+            val snapshot = if (top == null) bridge.leaderboardEntries(board) else bridge.leaderboardTop(board, top)
+            state.value = snapshot?.let(WebLeaderboardState::Ready) ?: WebLeaderboardState.Unavailable
         }
     }
 
@@ -210,7 +226,7 @@ internal fun WebRatingLeaderboard(
 }
 
 @Composable
-private fun LeaderboardTable(
+internal fun LeaderboardTable(
     state: WebLeaderboardState,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
 ) {

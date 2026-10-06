@@ -29,7 +29,15 @@ internal data class WebDailyRewardsSnapshot(
     val restoredStreakDays: Set<Long> = emptySet(),
     /** Daily archive days opened for gems or an ad, as epoch days; never cleared by a new day. */
     val unlockedArchiveDays: Set<Long> = emptySet(),
+    /** The weekly tournament week [weeklyStars] belong to, or [NO_WEEK]. */
+    val weeklyWeek: Int = NO_WEEK,
+    val weeklyStars: Int = 0,
+    /** Tournament weeks whose prize was already paid; never cleared by a new week. */
+    val claimedWeeklyPrizes: Set<Int> = emptySet(),
 ) {
+    /** This Player's tournament stars in [week]; 0 for any week the counter does not hold. */
+    fun weeklyStarsIn(week: Int): Int = if (weeklyWeek == week) weeklyStars else 0
+
     fun activity(
         today: Long,
         dailySolved: Int,
@@ -111,23 +119,34 @@ internal data class WebDailyRewardsSnapshot(
             claimedAchievements = claimedAchievements + other.claimedAchievements,
             restoredStreakDays = restoredStreakDays + other.restoredStreakDays,
             unlockedArchiveDays = unlockedArchiveDays + other.unlockedArchiveDays,
+            // The later week wins; the same week keeps the larger count (two devices do not add up).
+            weeklyWeek = maxOf(weeklyWeek, other.weeklyWeek),
+            weeklyStars =
+                when {
+                    weeklyWeek > other.weeklyWeek -> weeklyStars
+                    weeklyWeek < other.weeklyWeek -> other.weeklyStars
+                    else -> maxOf(weeklyStars, other.weeklyStars)
+                },
+            claimedWeeklyPrizes = claimedWeeklyPrizes + other.claimedWeeklyPrizes,
         )
     }
 
     companion object {
         const val NO_DAY = Long.MIN_VALUE
+        const val NO_WEEK = Int.MIN_VALUE
         val EMPTY = WebDailyRewardsSnapshot()
     }
 }
 
 /**
  * A small text record:
- * `LGDR4|day|played|hard|claimed|giftDay|giftStreak|TYPE=n,…|achievement,…|savedDay,…|archiveDay,…`.
- * `LGDR3` (no archive days), `LGDR2` (no saved streak days either), and `LGDR1` (no achievements
- * either) records still decode.
+ * `LGDR5|day|played|hard|claimed|giftDay|giftStreak|TYPE=n,…|achievement,…|savedDay,…|archiveDay,…|week|stars|prizeWeek,…`.
+ * `LGDR4` (no tournament), `LGDR3` (no archive days either), `LGDR2` (no saved streak days either),
+ * and `LGDR1` (no achievements either) records still decode.
  */
 internal object WebDailyRewardsCodec {
-    private const val HEADER = "LGDR4"
+    private const val HEADER = "LGDR5"
+    private const val V4_HEADER = "LGDR4"
     private const val V3_HEADER = "LGDR3"
     private const val V2_HEADER = "LGDR2"
     private const val LEGACY_HEADER = "LGDR1"
@@ -145,13 +164,17 @@ internal object WebDailyRewardsCodec {
             snapshot.claimedAchievements.sorted().joinToString(","),
             snapshot.restoredStreakDays.sorted().joinToString(","),
             snapshot.unlockedArchiveDays.sorted().joinToString(","),
+            snapshot.weeklyWeek.toString(),
+            snapshot.weeklyStars.toString(),
+            snapshot.claimedWeeklyPrizes.sorted().joinToString(","),
         ).joinToString("|").encodeToByteArray()
 
     fun decode(payload: ByteArray): WebDailyRewardsSnapshot? =
         runCatching {
             val parts = payload.decodeToString().split("|")
             require(
-                (parts.size == 11 && parts[0] == HEADER) ||
+                (parts.size == 14 && parts[0] == HEADER) ||
+                    (parts.size == 11 && parts[0] == V4_HEADER) ||
                     (parts.size == 10 && parts[0] == V3_HEADER) ||
                     (parts.size == 9 && parts[0] == V2_HEADER) ||
                     (parts.size == 8 && parts[0] == LEGACY_HEADER),
@@ -177,6 +200,9 @@ internal object WebDailyRewardsCodec {
                         ?.toSet() ?: emptySet(),
                 restoredStreakDays = parts.daysAt(9),
                 unlockedArchiveDays = parts.daysAt(10),
+                weeklyWeek = parts.getOrNull(11)?.toInt() ?: WebDailyRewardsSnapshot.NO_WEEK,
+                weeklyStars = parts.getOrNull(12)?.toInt()?.also { require(it >= 0) } ?: 0,
+                claimedWeeklyPrizes = parts.daysAt(13).mapTo(mutableSetOf()) { it.toInt() },
             )
         }.getOrNull()
 }
