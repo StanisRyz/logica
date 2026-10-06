@@ -36,3 +36,7 @@
 6. `tasks/stage-08-1-web-performance.md`
 7. `tasks/stage-08-2-refactor.md`
 8. `tasks/stage-08-1a-font-subset-coverage.md` (доработка 8.1: шрифт потерял казахские и узбекские буквы)
+9. `tasks/stage-10-1-word-en-tr-lexicons.md` (этап 10: словари Word EN/TR, без интерфейса и без заморозки)
+10. `tasks/stage-10-2-nonogram-pictures-library.md` (этап 10: библиотека картинок Nonogram, превью и проект перехода, без изменений в игре)
+
+После п. 10 допиши в `reports/queue-summary-report.md` раздел «Этап 10» и остановись: дальше нужно решение владельца по образцам.
