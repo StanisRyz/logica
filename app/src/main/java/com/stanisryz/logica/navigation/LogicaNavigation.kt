@@ -82,6 +82,7 @@ import com.stanisryz.logica.ui.components.PuzzleStartScreen
 import com.stanisryz.logica.ui.components.ResultLives
 import com.stanisryz.logica.ui.components.SecondChanceAd
 import com.stanisryz.logica.ui.components.licenseNoticesFor
+import com.stanisryz.logica.ui.daily.StreakRestoreAdState
 import com.stanisryz.logica.ui.screens.AchievementsRoute
 import com.stanisryz.logica.ui.screens.BalanceGameRoute
 import com.stanisryz.logica.ui.screens.BalanceTutorialRoute
@@ -128,6 +129,7 @@ internal fun LogicaNavigation(
     onPreloadRewardedAd: () -> Unit,
     onReleaseRewardedAd: () -> Unit,
     onWatchRewardedAd: (Activity, RewardedAdKind) -> Unit,
+    onWatchStreakRestoreAd: (Activity, Long) -> Unit = { _, _ -> },
     onWatchContinueAd: (Activity, () -> Unit) -> Unit,
     onRetryRewardedAd: () -> Unit,
     onGameplayStarted: () -> Unit,
@@ -214,8 +216,11 @@ internal fun LogicaNavigation(
     val storeVisible = showStoreSheet || (currentDestination == AppDestination.Home && selectedTab == PrimaryTab.STORE)
     // A game waiting on its one ad-paid second chance after the third mistake.
     var secondChanceVisible by remember { mutableStateOf(false) }
+    // The Game Hub offering to save a streak broken yesterday, one option of which is a rewarded ad.
+    var streakRestoreVisible by remember { mutableStateOf(false) }
     val rewardedOfferVisible =
         secondChanceVisible ||
+            (streakRestoreVisible && currentDestination == AppDestination.Home && selectedTab == PrimaryTab.GAME) ||
             storeVisible ||
             (!economy.isFull && showLivesDialog) ||
             (!economy.isGameplayAllowed && currentDestination.allowsRewardedOffer(selectedTab))
@@ -463,6 +468,19 @@ internal fun LogicaNavigation(
                                                                             settings.lastPlayedDifficulty?.let { puzzle to it }
                                                                         },
                                                                     catalogLevelRepository = catalogLevelRepository,
+                                                                    streakRestoreAdState = rewardedState.toStreakRestoreAdState(),
+                                                                    onStreakRestoreVisible = { streakRestoreVisible = it },
+                                                                    onRestoreStreakWithGems = { day ->
+                                                                        navigationScope.launch {
+                                                                            economyRepository.restoreStreak(
+                                                                                day,
+                                                                                withGems = true,
+                                                                            )
+                                                                        }
+                                                                    },
+                                                                    onWatchStreakRestoreAd = { day ->
+                                                                        activity?.let { onWatchStreakRestoreAd(it, day) }
+                                                                    },
                                                                     onContinue = { puzzle, difficulty ->
                                                                         if (economy.isGameplayAllowed) {
                                                                             openLevel(puzzle, difficulty)
@@ -878,3 +896,10 @@ private val STORE_MAX_WIDTH = 640.dp
 
 /** Used for the first measure only; [AppBottomBar] immediately supplies its actual inset. */
 private val PRIMARY_NAVIGATION_BAR_FALLBACK_HEIGHT = 80.dp
+
+private fun RewardedAdState.toStreakRestoreAdState(): StreakRestoreAdState =
+    when (this) {
+        RewardedAdState.READY -> StreakRestoreAdState.READY
+        RewardedAdState.IDLE, RewardedAdState.LOADING, RewardedAdState.SHOWING -> StreakRestoreAdState.LOADING
+        RewardedAdState.UNAVAILABLE -> StreakRestoreAdState.UNAVAILABLE
+    }

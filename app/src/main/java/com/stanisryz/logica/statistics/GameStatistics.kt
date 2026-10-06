@@ -1,7 +1,9 @@
 package com.stanisryz.logica.statistics
 
 import com.stanisryz.logica.daily.DailyStreakQualification
+import com.stanisryz.logica.economy.EconomyRules
 import com.stanisryz.logica.puzzle.core.daily.DailyStreakCalculator
+import com.stanisryz.logica.puzzle.core.daily.DailyStreakRestore
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordRules
@@ -35,6 +37,14 @@ internal data class DailyMonthHistory(
     val currentDate: LocalDate,
     val completedDays: Set<Int>,
     val partialDays: Set<Int>,
+    /** Missed days saved for the streak only. */
+    val savedDays: Set<Int> = emptySet(),
+)
+
+/** A streak broken yesterday that can be saved today: the day to save and the streak it keeps. */
+internal data class StreakRestoreOffer(
+    val epochDay: Long,
+    val streakLength: Int,
 )
 
 internal data class PuzzleStatistics(
@@ -93,6 +103,8 @@ internal data class Game2048Statistics(
 internal data class StatisticsSnapshot(
     val statistics: GameStatistics,
     val dailyHintsUsedByDate: Map<LocalDate, Int>,
+    /** The streak save offered today, or null. */
+    val streakRestore: StreakRestoreOffer? = null,
 )
 
 internal object StatisticsAggregator {
@@ -100,12 +112,28 @@ internal object StatisticsAggregator {
         currentDate: LocalDate,
         results: List<GameResult>,
         completedDailyDates: Iterable<LocalDate>,
+        restoredStreakDays: Set<Long> = emptySet(),
     ): StatisticsSnapshot {
         // Two different concepts: how many Dailies were finished in full, and which dates keep the
         // streak alive. From Policy V5 on one solved entry qualifies a date without completing it.
         val fullyCompletedDailyDates = completedDailyDates.filterNot { it.isAfter(currentDate) }.toSet()
         val streakDates = DailyStreakQualification.qualifiedDates(fullyCompletedDailyDates, results)
-        val streak = DailyStreakCalculator.calculate(currentDate, streakDates)
+        // A saved day keeps the streak alive, and nothing else: it is no played or completed Daily.
+        val streak = DailyStreakCalculator.calculate(currentDate, streakDates, restoredStreakDays)
+        val streakRestore =
+            DailyStreakRestore
+                .restorableEpochDay(
+                    today = currentDate,
+                    qualifiedDates = streakDates,
+                    restoredEpochDays = restoredStreakDays,
+                    minimumStreak = EconomyRules.STREAK_RESTORE_MIN_STREAK,
+                    cooldownDays = EconomyRules.STREAK_RESTORE_COOLDOWN_DAYS,
+                )?.let { day ->
+                    StreakRestoreOffer(
+                        day,
+                        DailyStreakCalculator.calculate(LocalDate.ofEpochDay(day - 1), streakDates, restoredStreakDays).current,
+                    )
+                }
         // Every "solved" metric counts solved attempts only; a failed attempt stays durable but
         // never inflates them. Word keeps its own played/solved/failed breakdown below.
         val solvedResults = results.filter { it.outcome == GameOutcome.SOLVED }
@@ -143,6 +171,12 @@ internal object StatisticsAggregator {
                         .filter { it.inCurrentMonth() }
                         .mapTo(mutableSetOf()) { it.dayOfMonth }
                         .minus(completedDays),
+                savedDays =
+                    restoredStreakDays
+                        .map(
+                            LocalDate::ofEpochDay,
+                        ).filter { it.inCurrentMonth() }
+                        .mapTo(mutableSetOf()) { it.dayOfMonth },
             )
         return StatisticsSnapshot(
             statistics =
@@ -162,6 +196,7 @@ internal object StatisticsAggregator {
                     levelStars = bestLevelStars(solvedResults),
                 ),
             dailyHintsUsedByDate = dailyHints,
+            streakRestore = streakRestore,
         )
     }
 

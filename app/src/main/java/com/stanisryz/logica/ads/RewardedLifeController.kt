@@ -53,6 +53,24 @@ internal class RewardedLifeController(
         )
     }
 
+    /** Saves the Daily streak day [epochDay] once the official reward callback arrives, never before. */
+    fun showStreakRestore(
+        host: AdDisplayHost,
+        epochDay: Long,
+    ) {
+        if (state.value != RewardedAdState.READY) return
+        ads.show(
+            host = host,
+            onWillShow = { reward.beginShow(RewardedAdKind.STREAK_RESTORE, epochDay) },
+            onEvent = { event ->
+                when (event) {
+                    RewardedAdEvent.Rewarded -> viewModelScope.launch { reward.onRewarded() }
+                    RewardedAdEvent.Dismissed, RewardedAdEvent.Failed -> retryUnpersistedReward()
+                }
+            },
+        )
+    }
+
     /**
      * The second chance after a third mistake. It pays nothing into the economy: the official
      * reward callback only lets the waiting board go on, at most once for this show.

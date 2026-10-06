@@ -516,4 +516,19 @@
     <string name="profile_page_games_summary">Сыграно: %1$d · Решено: %2$d</string>
     <string name="profile_page_rating_title">Рейтинг</string>
     <string name="profile_page_rating_summary">Лучшие по решённым</string>
+    <plurals name="streak_restore_title">
+        <item quantity="one">Серия %1$d день прервалась. Спасти?</item>
+        <item quantity="few">Серия %1$d дня прервалась. Спасти?</item>
+        <item quantity="many">Серия %1$d дней прервалась. Спасти?</item>
+        <item quantity="other">Серия %1$d дня прервалась. Спасти?</item>
+    </plurals>
+    <string name="streak_restore_body">Вчерашний день засчитается только для серии.</string>
+    <string name="streak_restore_watch_ad">Спасти за рекламу</string>
+    <plurals name="streak_restore_missing_gems">
+        <item quantity="one">Не хватает %1$d кристалла</item>
+        <item quantity="few">Не хватает %1$d кристаллов</item>
+        <item quantity="many">Не хватает %1$d кристаллов</item>
+        <item quantity="other">Не хватает %1$d кристалла</item>
+    </plurals>
+    <string name="profile_calendar_saved">серия сохранена</string>
 </resources>

@@ -116,6 +116,9 @@ enum class DailyCalendarDayState {
     NONE,
     PARTIAL,
     COMPLETED,
+
+    /** A missed day saved for the streak only: it is no played or completed Daily. */
+    STREAK_SAVED,
 }
 
 /**

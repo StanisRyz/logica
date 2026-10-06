@@ -491,4 +491,15 @@
     <string name="profile_page_games_summary">Played: %1$d · Solved: %2$d</string>
     <string name="profile_page_rating_title">Leaderboard</string>
     <string name="profile_page_rating_summary">Top solvers</string>
+    <plurals name="streak_restore_title">
+        <item quantity="one">Your %1$d-day streak broke. Save it?</item>
+        <item quantity="other">Your %1$d-day streak broke. Save it?</item>
+    </plurals>
+    <string name="streak_restore_body">Yesterday will count for your streak only.</string>
+    <string name="streak_restore_watch_ad">Save for an ad</string>
+    <plurals name="streak_restore_missing_gems">
+        <item quantity="one">%1$d more gem needed</item>
+        <item quantity="other">%1$d more gems needed</item>
+    </plurals>
+    <string name="profile_calendar_saved">streak saved</string>
 </resources>

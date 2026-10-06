@@ -54,6 +54,27 @@ internal interface EconomyRepository {
 
     /** Records the permanent «no ads» purchase for [transactionId]; false when it was already recorded. */
     suspend fun grantNoAds(transactionId: String): Boolean = false
+
+    /** The Daily streak days saved so far, as epoch days, read from their ledger rows. */
+    fun observeRestoredStreakDays(): Flow<Set<Long>> = flowOf(emptySet())
+
+    /** Saves the streak day [epochDay] for gems or after a watched rewarded ad; a repeat does nothing. */
+    suspend fun restoreStreak(
+        epochDay: Long,
+        withGems: Boolean,
+    ): StreakRestoreOutcome = StreakRestoreOutcome.AlreadyRestored
+}
+
+/** What one streak save did. */
+internal sealed interface StreakRestoreOutcome {
+    data object Restored : StreakRestoreOutcome
+
+    /** That day was already saved; nothing was charged again. */
+    data object AlreadyRestored : StreakRestoreOutcome
+
+    data class NotEnoughGems(
+        val missing: Int,
+    ) : StreakRestoreOutcome
 }
 
 /** Purchases that change what the Store offers or whether ads show, derived from the ledger. */
@@ -81,6 +102,16 @@ internal class RoomEconomyRepository(
         ) { starter, noAds -> OwnedPurchases(starterPack = starter, noAds = noAds) }
 
     override suspend fun grantNoAds(transactionId: String): Boolean = dao.grantNoAds(transactionId, clock.nowEpochMillis())
+
+    override fun observeRestoredStreakDays(): Flow<Set<Long>> =
+        dao.observeEventIds(EconomyEvent.STREAK_RESTORE_PREFIX).map { ids ->
+            ids.mapNotNullTo(mutableSetOf()) { it.removePrefix(EconomyEvent.STREAK_RESTORE_PREFIX).toLongOrNull() }
+        }
+
+    override suspend fun restoreStreak(
+        epochDay: Long,
+        withGems: Boolean,
+    ): StreakRestoreOutcome = dao.restoreStreak(epochDay, withGems, clock.nowEpochMillis())
 
     override suspend fun refillLifeWithGems(actionId: String): EconomyRefill = dao.refillLifeWithGems(actionId, clock.nowEpochMillis())
 

@@ -34,6 +34,11 @@ internal object EconomyRules {
 
     const val LIFE_REFILL_GEM_COST = EconomyPolicy.LIFE_REFILL_GEM_COST
 
+    /** Saving a Daily streak broken yesterday: the price in gems, the shortest streak, and the gap between saves. */
+    const val STREAK_RESTORE_GEMS = EconomyPolicy.STREAK_RESTORE_GEMS
+    const val STREAK_RESTORE_MIN_STREAK = EconomyPolicy.STREAK_RESTORE_MIN_STREAK
+    const val STREAK_RESTORE_COOLDOWN_DAYS = EconomyPolicy.STREAK_RESTORE_COOLDOWN_DAYS
+
     /** What one watched Store rewarded ad is worth. */
     const val REWARDED_AD_GEMS = EconomyPolicy.REWARDED_AD_GEMS
 

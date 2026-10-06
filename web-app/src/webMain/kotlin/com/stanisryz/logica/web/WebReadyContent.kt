@@ -419,6 +419,7 @@ internal fun ReadyContent(
                                 playerSession = playerSession,
                                 coordinator = dailyCoordinator,
                                 currentDate = dailyDate,
+                                streakRestoreAd = rewardedAds.streakRestore,
                                 onStartDaily = { puzzleType ->
                                     // A Daily attempt costs a life when lost, so it needs one to start, like the Catalog.
                                     livesUi.guard {

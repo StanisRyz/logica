@@ -429,6 +429,16 @@ internal class WebCatalogProgressRepository(
         return saveRewards(current.copy(claimedAchievements = current.claimedAchievements + achievementId))
     }
 
+    /**
+     * Saves the Daily streak day [epochDay]; true only for the first, durable save. The caller pays
+     * only after this, so a lost browser write charges nothing, and a repeat charges nothing again.
+     */
+    fun claimStreakRestore(epochDay: Long): Boolean {
+        val current = mutableRewards.value
+        if (epochDay in current.restoredStreakDays) return false
+        return saveRewards(current.copy(restoredStreakDays = current.restoredStreakDays + epochDay))
+    }
+
     /** Day-aware merge with the cloud copy. */
     fun mergeCloudRewards(cloud: WebDailyRewardsSnapshot): WebCloudValueMergeResult {
         val local = mutableRewards.value

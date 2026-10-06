@@ -6,6 +6,8 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -32,6 +34,7 @@ import com.stanisryz.logica.daily.toDailyHubUiState
 import com.stanisryz.logica.economy.DailyRewardsRepository
 import com.stanisryz.logica.economy.DailyRewardsViewModel
 import com.stanisryz.logica.economy.DailyRewardsViewModelFactory
+import com.stanisryz.logica.economy.EconomyRules
 import com.stanisryz.logica.economy.PlayerEconomy
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
@@ -43,9 +46,13 @@ import com.stanisryz.logica.ui.components.GameHubContent
 import com.stanisryz.logica.ui.components.ZeroLivesCard
 import com.stanisryz.logica.ui.components.russianLabel
 import com.stanisryz.logica.ui.daily.DailyHubSection
+import com.stanisryz.logica.ui.daily.StreakRestoreAdState
+import com.stanisryz.logica.ui.daily.StreakRestoreCard
 import com.stanisryz.logica.ui.theme.LogicaMotion
+import com.stanisryz.logica.ui.theme.LogicaSpacing
 import kotlinx.coroutines.delay
 import java.time.Duration
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 /**
@@ -70,6 +77,10 @@ internal fun GameHubRoute(
     catalogLevelRepository: CatalogLevelRepository,
     onContinue: (PuzzleType, Difficulty) -> Unit,
     modifier: Modifier = Modifier,
+    streakRestoreAdState: StreakRestoreAdState = StreakRestoreAdState.UNAVAILABLE,
+    onStreakRestoreVisible: (Boolean) -> Unit = {},
+    onRestoreStreakWithGems: (Long) -> Unit = {},
+    onWatchStreakRestoreAd: (Long) -> Unit = {},
 ) {
     var resumes by remember { mutableIntStateOf(0) }
     var continueLevel by remember(continueGame) { mutableStateOf<Int?>(null) }
@@ -90,6 +101,11 @@ internal fun GameHubRoute(
         }
     val todayViewModel: TodayViewModel = viewModel(factory = factory)
     val uiState by todayViewModel.uiState.collectAsStateWithLifecycle()
+    // The streak save offered today, from the same statistics the Profile reads (saved days included).
+    val today = remember(resumes) { LocalDate.now() }
+    val statisticsFlow = remember(statisticsRepository, today) { statisticsRepository.observe(today) }
+    val streakRestore = statisticsFlow.collectAsStateWithLifecycle(initialValue = null).value?.streakRestore
+    LaunchedEffect(streakRestore != null) { onStreakRestoreVisible(streakRestore != null) }
     val rewardsViewModel: DailyRewardsViewModel =
         viewModel(factory = remember(dailyRewardsRepository) { DailyRewardsViewModelFactory(dailyRewardsRepository) })
     val rewardsState by rewardsViewModel.uiState.collectAsStateWithLifecycle()
@@ -137,6 +153,19 @@ internal fun GameHubRoute(
         onRestoreLife = onRestoreLife,
         onGameSelected = onGameSelected,
         modifier = modifier,
+        streakRestoreContent =
+            streakRestore?.let { offer ->
+                {
+                    StreakRestoreCard(
+                        streakLength = offer.streakLength,
+                        gems = economy.gems,
+                        price = EconomyRules.STREAK_RESTORE_GEMS,
+                        adState = streakRestoreAdState,
+                        onRestoreWithGems = { onRestoreStreakWithGems(offer.epochDay) },
+                        onWatchAd = { onWatchStreakRestoreAd(offer.epochDay) },
+                    )
+                }
+            },
         rewardsContent =
             rewardsState?.let { state ->
                 {
@@ -180,6 +209,7 @@ private fun GameHubScreen(
     modifier: Modifier = Modifier,
     continueContent: (@Composable () -> Unit)? = null,
     rewardsContent: (@Composable () -> Unit)? = null,
+    streakRestoreContent: (@Composable () -> Unit)? = null,
 ) {
     GameHubContent(
         puzzleTypes = catalog,
@@ -189,12 +219,15 @@ private fun GameHubScreen(
         continueContent = continueContent,
         rewardsContent = rewardsContent,
         headerContent = {
-            DailyHubSection(
-                uiState = dailyState.toDailyHubUiState(),
-                gameplayAllowed = economy.isGameplayAllowed,
-                onStart = onStartDaily,
-                onRetryLoad = onRetryDaily,
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
+                DailyHubSection(
+                    uiState = dailyState.toDailyHubUiState(),
+                    gameplayAllowed = economy.isGameplayAllowed,
+                    onStart = onStartDaily,
+                    onRetryLoad = onRetryDaily,
+                )
+                streakRestoreContent?.invoke()
+            }
         },
         // The zero-life gate itself is unchanged; the hub only shows it once, above both halves.
         statusContent = {

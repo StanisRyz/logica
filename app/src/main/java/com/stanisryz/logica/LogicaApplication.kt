@@ -124,7 +124,7 @@ internal class AppContainer(
     }
 
     val statisticsRepository: StatisticsRepository by lazy {
-        RoomStatisticsRepository(database.gameResultDao(), database.dailyRunDao())
+        RoomStatisticsRepository(database.gameResultDao(), database.dailyRunDao(), economyRepository.observeRestoredStreakDays())
     }
 
     val dailyResultRepository: DailyResultRepository by lazy {

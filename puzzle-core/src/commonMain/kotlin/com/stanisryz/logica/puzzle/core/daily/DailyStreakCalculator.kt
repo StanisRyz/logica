@@ -7,15 +7,15 @@ data class DailyStreak(
 
 /** Pure calendar-day streak calculation shared by Android and Web. */
 object DailyStreakCalculator {
+    /** [restoredEpochDays] are saved days ([DailyStreakRestore]): they keep a streak alive like qualified ones. */
     fun calculate(
         currentDate: DailyDate,
         qualifiedDates: Iterable<DailyDate>,
+        restoredEpochDays: Set<Long> = emptySet(),
     ): DailyStreak {
         val currentDay = currentDate.toDailyEpochDay()
         val days =
-            qualifiedDates
-                .asSequence()
-                .map(DailyDate::toDailyEpochDay)
+            (qualifiedDates.asSequence().map(DailyDate::toDailyEpochDay) + restoredEpochDays.asSequence())
                 .filter { it <= currentDay }
                 .toSet()
         if (days.isEmpty()) return DailyStreak(current = 0, best = 0)

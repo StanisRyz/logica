@@ -52,6 +52,15 @@ object EconomyPolicy {
     /** The one-time starter pack: these gems and hints, plus every missing life. */
     const val STARTER_PACK_GEMS = 100
     const val STARTER_PACK_HINTS = 5
+
+    /** Saving a Daily streak broken yesterday costs these gems, or one rewarded ad instead. */
+    const val STREAK_RESTORE_GEMS = 15
+
+    /** Only a streak at least this long, ending the day before yesterday, can be saved. */
+    const val STREAK_RESTORE_MIN_STREAK = 3
+
+    /** Two saved days are at least this many days apart. */
+    const val STREAK_RESTORE_COOLDOWN_DAYS = 7
 }
 
 enum class EconomyRewardType {

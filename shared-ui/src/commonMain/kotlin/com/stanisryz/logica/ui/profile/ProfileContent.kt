@@ -76,6 +76,7 @@ import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_compl
 import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_day
 import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_none
 import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_partial
+import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_saved
 import com.stanisryz.logica.shared.ui.generated.resources.profile_calendar_weekdays
 import com.stanisryz.logica.shared.ui.generated.resources.profile_daily
 import com.stanisryz.logica.shared.ui.generated.resources.profile_daily_short
@@ -471,6 +472,8 @@ private fun DailyCalendarCard(month: DailyCalendarMonth) {
     val completedLabel = stringResource(Res.string.profile_calendar_completed)
     val partialLabel = stringResource(Res.string.profile_calendar_partial)
     val noneLabel = stringResource(Res.string.profile_calendar_none)
+    val savedLabel = stringResource(Res.string.profile_calendar_saved)
+    val hasSavedDays = DailyCalendarDayState.STREAK_SAVED in month.days.values
     ProfileCard(verticalSpacing = LogicaSpacing.text) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(month.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
@@ -479,6 +482,18 @@ private fun DailyCalendarCard(month: DailyCalendarMonth) {
             Spacer(Modifier.width(LogicaSpacing.item))
             CalendarLegendDot(filled = false)
             Text(partialLabel, style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)
+        }
+        // A saved day has its own mark, so it is told apart from a played one without colour.
+        if (hasSavedDays) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Rounded.Bolt,
+                    contentDescription = null,
+                    tint = colors.tertiary,
+                    modifier = Modifier.padding(end = 2.dp).size(12.dp),
+                )
+                Text(savedLabel, style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)
+            }
         }
         Row(Modifier.fillMaxWidth().clearAndSetSemantics {}) {
             repeat(DAYS_IN_WEEK) { index ->
@@ -510,6 +525,7 @@ private fun DailyCalendarCard(month: DailyCalendarMonth) {
                                         DailyCalendarDayState.COMPLETED -> completedLabel
                                         DailyCalendarDayState.PARTIAL -> partialLabel
                                         DailyCalendarDayState.NONE -> noneLabel
+                                        DailyCalendarDayState.STREAK_SAVED -> savedLabel
                                     },
                                 )
                             Box(
@@ -520,8 +536,20 @@ private fun DailyCalendarCard(month: DailyCalendarMonth) {
                                         .background(
                                             if (state == DailyCalendarDayState.COMPLETED) palette.successContainer else Color.Transparent,
                                         ).border(
-                                            width = if (state == DailyCalendarDayState.PARTIAL) 2.dp else 0.dp,
-                                            color = if (state == DailyCalendarDayState.PARTIAL) palette.success else Color.Transparent,
+                                            width =
+                                                if (state == DailyCalendarDayState.PARTIAL ||
+                                                    state == DailyCalendarDayState.STREAK_SAVED
+                                                ) {
+                                                    2.dp
+                                                } else {
+                                                    0.dp
+                                                },
+                                            color =
+                                                when (state) {
+                                                    DailyCalendarDayState.PARTIAL -> palette.success
+                                                    DailyCalendarDayState.STREAK_SAVED -> colors.tertiary
+                                                    else -> Color.Transparent
+                                                },
                                             shape = CircleShape,
                                         ).clearAndSetSemantics { contentDescription = description },
                                 contentAlignment = Alignment.Center,
@@ -539,6 +567,15 @@ private fun DailyCalendarCard(month: DailyCalendarMonth) {
                                             else -> colors.onSurface
                                         },
                                 )
+                                if (state == DailyCalendarDayState.STREAK_SAVED) {
+                                    Icon(
+                                        Icons.Rounded.Bolt,
+                                        contentDescription = null,
+                                        tint = colors.tertiary,
+                                        // Under the number, where the round clip leaves it whole; a saved day is never today.
+                                        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 2.dp).size(9.dp),
+                                    )
+                                }
                                 // Today is marked by a small dot under its number, apart from the result rings.
                                 if (isToday) {
                                     Box(

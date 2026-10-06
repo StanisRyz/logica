@@ -43,4 +43,14 @@ class WebEconomyParityTest {
             StarterPackContents.GEMS to StarterPackContents.HINTS,
         )
     }
+
+    @Test
+    fun theStreakSaveReadsThePolicy() {
+        // The Web streak save has no numbers of its own: the gem price, the shortest streak, and the
+        // cooldown are these, exactly as on Android.
+        assertEquals(
+            listOf(15, 3, 7),
+            listOf(EconomyPolicy.STREAK_RESTORE_GEMS, EconomyPolicy.STREAK_RESTORE_MIN_STREAK, EconomyPolicy.STREAK_RESTORE_COOLDOWN_DAYS),
+        )
+    }
 }

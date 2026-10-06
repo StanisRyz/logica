@@ -68,7 +68,8 @@ private fun DailyMonthHistory.toCalendarMonth(): DailyCalendarMonth {
         month = currentDate.monthValue,
         today = currentDate.dayOfMonth,
         days =
-            completedDays.associateWith { DailyCalendarDayState.COMPLETED } +
+            savedDays.associateWith { DailyCalendarDayState.STREAK_SAVED } +
+                completedDays.associateWith { DailyCalendarDayState.COMPLETED } +
                 partialDays.associateWith { DailyCalendarDayState.PARTIAL },
     )
 }

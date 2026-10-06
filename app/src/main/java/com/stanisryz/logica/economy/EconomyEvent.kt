@@ -41,6 +41,9 @@ internal enum class EconomyEventType {
 
     /** The permanent «no ads» purchase; no deltas, its row is the ownership. */
     NO_ADS_PURCHASE,
+
+    /** One saved Daily streak day, paid with gems or a rewarded ad; its row is also the saved day. */
+    STREAK_RESTORE,
 }
 
 /**
@@ -100,6 +103,15 @@ internal data class EconomyEvent(
 
         /** One achievement pays once, ever. */
         fun achievementEventId(achievementId: String): String = "achievement:$achievementId"
+
+        /** One saved Daily streak day, keyed by that day, so it is saved and paid for once. */
+        fun streakRestoreEventId(epochDay: Long): String = "$STREAK_RESTORE_PREFIX$epochDay"
+
+        const val STREAK_RESTORE_PREFIX = "streak_restore:"
+
+        /** The ledger's source for a day saved with a rewarded ad rather than with gems. */
+        const val STREAK_RESTORE_REWARDED_SOURCE = "rewarded"
+        const val STREAK_RESTORE_GEMS_SOURCE = "gems"
     }
 }
 

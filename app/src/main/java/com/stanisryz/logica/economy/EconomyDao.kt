@@ -188,6 +188,34 @@ internal interface EconomyDao {
         return true
     }
 
+    /**
+     * Saves the Daily streak day [epochDay] once: with gems the balance is re-read here and the price
+     * leaves it in the same transaction; with a watched rewarded ad nothing is paid. The ledger row
+     * keyed by the day is the duplicate boundary, so a repeat saves and charges nothing more.
+     */
+    @Transaction
+    suspend fun restoreStreak(
+        epochDay: Long,
+        withGems: Boolean,
+        nowEpochMillis: Long,
+    ): StreakRestoreOutcome {
+        val current = find().toPlayerEconomy(nowEpochMillis).regenerated(nowEpochMillis)
+        if (hasEvent(EconomyEvent.streakRestoreEventId(epochDay))) return StreakRestoreOutcome.AlreadyRestored
+        val price = if (withGems) EconomyRules.STREAK_RESTORE_GEMS else 0
+        if (current.gems < price) return StreakRestoreOutcome.NotEnoughGems(price - current.gems)
+        val event =
+            EconomyEvent(
+                eventId = EconomyEvent.streakRestoreEventId(epochDay),
+                type = EconomyEventType.STREAK_RESTORE,
+                sourceId = if (withGems) EconomyEvent.STREAK_RESTORE_GEMS_SOURCE else EconomyEvent.STREAK_RESTORE_REWARDED_SOURCE,
+                gemDelta = -price,
+                lifeDelta = 0,
+            )
+        if (insertEvent(event.toEntity(nowEpochMillis)) == -1L) return StreakRestoreOutcome.AlreadyRestored
+        if (price > 0) upsert(current.copy(gems = current.gems - price).toEntity(nowEpochMillis))
+        return StreakRestoreOutcome.Restored
+    }
+
     /** Persists whatever regeneration is already due; the wallet is seeded on first use. */
     @Transaction
     suspend fun refresh(nowEpochMillis: Long): PlayerEconomy {

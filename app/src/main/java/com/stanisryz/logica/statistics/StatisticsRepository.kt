@@ -24,13 +24,16 @@ internal interface StatisticsRepository {
 internal class RoomStatisticsRepository(
     private val gameResultDao: GameResultDao,
     private val dailyRunDao: DailyRunDao,
+    /** Saved streak days from the economy ledger (`streak_restore:<day>`). */
+    private val restoredStreakDays: Flow<Set<Long>> = flowOf(emptySet()),
 ) : StatisticsRepository {
     override fun observe(currentDate: LocalDate): Flow<StatisticsSnapshot> =
         combine(
             gameResultDao.observeAll().map { entities -> entities.mapNotNull(GameResultEntity::toGameResultOrNull) },
             dailyRunDao.observeCompletedDates().map { dates -> dates.mapNotNull(::parseDateOrNull) },
-        ) { results, completedDailyDates ->
-            StatisticsAggregator.aggregate(currentDate, results, completedDailyDates)
+            restoredStreakDays,
+        ) { results, completedDailyDates, restored ->
+            StatisticsAggregator.aggregate(currentDate, results, completedDailyDates, restored)
         }
 
     override fun observeSolvedDailyPictures(): Flow<List<Pair<LocalDate, Long>>> =

@@ -13,7 +13,7 @@ class EconomyParityTest {
     @Test
     fun thePolicyKeepsTodaysNumbers() {
         assertEquals(
-            listOf(10, 5, 5, 1, 3, 10, 4, 3, 10, 1, 1, 50, 150, 500, 100, 5),
+            listOf(10, 5, 5, 1, 3, 10, 4, 3, 10, 1, 1, 50, 150, 500, 100, 5, 15, 3, 7),
             listOf(
                 EconomyPolicy.STARTING_GEMS,
                 EconomyPolicy.STARTING_LIVES,
@@ -31,6 +31,9 @@ class EconomyParityTest {
                 EconomyPolicy.GEM_PACK_LARGE,
                 EconomyPolicy.STARTER_PACK_GEMS,
                 EconomyPolicy.STARTER_PACK_HINTS,
+                EconomyPolicy.STREAK_RESTORE_GEMS,
+                EconomyPolicy.STREAK_RESTORE_MIN_STREAK,
+                EconomyPolicy.STREAK_RESTORE_COOLDOWN_DAYS,
             ),
         )
         assertEquals(30L * 60L * 1000L, EconomyPolicy.LIFE_RESTORE_INTERVAL_MS)
@@ -45,6 +48,10 @@ class EconomyParityTest {
         assertEquals(EconomyPolicy.LIFE_RESTORE_INTERVAL_MS, EconomyRules.LIFE_REGENERATION_INTERVAL_MILLIS)
         assertEquals(EconomyPolicy.LIFE_REFILL_GEM_COST, EconomyRules.LIFE_REFILL_GEM_COST)
         assertEquals(EconomyPolicy.REWARDED_AD_GEMS, EconomyRules.REWARDED_AD_GEMS)
+        assertEquals(
+            listOf(EconomyPolicy.STREAK_RESTORE_GEMS, EconomyPolicy.STREAK_RESTORE_MIN_STREAK, EconomyPolicy.STREAK_RESTORE_COOLDOWN_DAYS),
+            listOf(EconomyRules.STREAK_RESTORE_GEMS, EconomyRules.STREAK_RESTORE_MIN_STREAK, EconomyRules.STREAK_RESTORE_COOLDOWN_DAYS),
+        )
         assertEquals(
             listOf(1 to EconomyPolicy.HINT_SINGLE_GEM_COST, EconomyPolicy.HINT_PACK_SIZE to EconomyPolicy.HINT_PACK_GEM_COST),
             HintOffer.entries.map { it.hints to it.gemCost },

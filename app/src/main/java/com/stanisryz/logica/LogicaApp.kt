@@ -142,6 +142,7 @@ fun LogicaApp() {
                     onPreloadRewardedAd = rewardedController::preload,
                     onReleaseRewardedAd = rewardedController::release,
                     onWatchRewardedAd = { activity, kind -> rewardedController.show(AndroidAdDisplayHost(activity), kind) },
+                    onWatchStreakRestoreAd = { activity, day -> rewardedController.showStreakRestore(AndroidAdDisplayHost(activity), day) },
                     onWatchContinueAd = { activity, onGranted ->
                         rewardedController.showContinue(AndroidAdDisplayHost(activity), onGranted)
                     },

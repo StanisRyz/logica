@@ -3,11 +3,14 @@ package com.stanisryz.logica.web
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengeDefinition
 import com.stanisryz.logica.puzzle.core.daily.DailyChallengePolicyResolver
 import com.stanisryz.logica.puzzle.core.daily.DailyDate
 import com.stanisryz.logica.puzzle.core.daily.DailyPuzzleEntry
 import com.stanisryz.logica.puzzle.core.daily.DailyStreakCalculator
+import com.stanisryz.logica.puzzle.core.daily.DailyStreakRestore
+import com.stanisryz.logica.puzzle.core.daily.toDailyEpochDay
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.ui.daily.DailyHubCompletion
 import com.stanisryz.logica.ui.daily.DailyHubEntry
@@ -215,16 +218,19 @@ private val TURKISH_MONTHS =
  * Real Web Daily Profile metrics derived only from durable history — completed count stays
  * full-completion based while current/best streak follow policy qualification rules.
  */
-internal fun WebDailySnapshotV1.dailyProfileMetrics(currentDate: DailyDate): DailyProfileMetrics {
+internal fun WebDailySnapshotV1.dailyProfileMetrics(
+    currentDate: DailyDate,
+    restoredStreakDays: Set<Long> = emptySet(),
+): DailyProfileMetrics {
     val relevant = days.values.filterNot { it.date.isAfter(currentDate) }
     val qualifiedDates = relevant.filter(WebDailyDayRecord::qualifiedForStreak).mapTo(linkedSetOf()) { it.date }
-    val streak = DailyStreakCalculator.calculate(currentDate, qualifiedDates)
+    val streak = DailyStreakCalculator.calculate(currentDate, qualifiedDates, restoredStreakDays)
     return DailyProfileMetrics(
         completedCount = relevant.count(WebDailyDayRecord::fullyCompleted).toLong(),
         currentStreak = streak.current.toLong(),
         bestStreak = streak.best.toLong(),
         recentDays = recentDailyDays(relevant),
-        calendar = dailyCalendarMonth(currentDate, relevant),
+        calendar = dailyCalendarMonth(currentDate, relevant, restoredStreakDays),
     )
 }
 
@@ -232,10 +238,18 @@ internal fun WebDailySnapshotV1.dailyProfileMetrics(currentDate: DailyDate): Dai
 private fun dailyCalendarMonth(
     currentDate: DailyDate,
     relevant: List<WebDailyDayRecord>,
+    restoredStreakDays: Set<Long>,
 ): DailyCalendarMonth {
     val year = currentDate.getYear()
     val month = currentDate.getMonthValue()
-    val days =
+    val firstDay = DailyDate(year, month, 1).toDailyEpochDay()
+    // A saved day marks only a date that holds no solved entry of its own.
+    val savedDays =
+        restoredStreakDays
+            .map { (it - firstDay + 1).toInt() }
+            .filter { it in 1..currentDate.getDayOfMonth() }
+            .associateWith { DailyCalendarDayState.STREAK_SAVED }
+    val playedDays =
         relevant
             .filter { it.date.getYear() == year && it.date.getMonthValue() == month }
             .associate { record ->
@@ -246,6 +260,7 @@ private fun dailyCalendarMonth(
                         else -> DailyCalendarDayState.NONE
                     }
             }
+    val days = playedDays + savedDays.filterKeys { (playedDays[it] ?: DailyCalendarDayState.NONE) == DailyCalendarDayState.NONE }
     return DailyCalendarMonth(
         title = formatWebMonthTitle(month, year),
         year = year,
@@ -305,6 +320,7 @@ internal fun webDailySharePayloadOrNull(
 internal fun buildWebDailyHubUiState(
     snapshot: WebDailySnapshotV1,
     currentDate: DailyDate,
+    restoredStreakDays: Set<Long> = emptySet(),
 ): DailyHubUiState {
     val record = snapshot.days[currentDate]
     val policyVersion = record?.policyVersion ?: DailyChallengePolicyResolver.NEW_RUN_VERSION
@@ -322,7 +338,7 @@ internal fun buildWebDailyHubUiState(
         }
     val relevant = snapshot.days.values.filterNot { it.date.isAfter(currentDate) }
     val qualifiedDates = relevant.filter(WebDailyDayRecord::qualifiedForStreak).mapTo(linkedSetOf()) { it.date }
-    val streak = DailyStreakCalculator.calculate(currentDate, qualifiedDates)
+    val streak = DailyStreakCalculator.calculate(currentDate, qualifiedDates, restoredStreakDays)
     return DailyHubUiState.Content(
         dateLabel = formatWebDailyDateLabel(currentDate),
         entries = entries,
@@ -336,4 +352,34 @@ internal fun buildWebDailyHubUiState(
         // Full completion only; V5 first-solve streak qualification is shown by the streak chip.
         completion = record?.fullyCompleted?.takeIf { it }?.let { DailyHubCompletion(streak.current, streak.best) },
     )
+}
+
+/** A broken streak the player can save today: the day to save and how long the streak was. */
+internal data class WebStreakRestoreOffer(
+    val epochDay: Long,
+    val streakLength: Int,
+)
+
+/** The streak save offered today, by the shared [DailyStreakRestore] rule and the economy's numbers. */
+internal fun webStreakRestoreOfferOrNull(
+    snapshot: WebDailySnapshotV1,
+    currentDate: DailyDate,
+    restoredStreakDays: Set<Long>,
+): WebStreakRestoreOffer? {
+    val qualifiedDates =
+        snapshot.days.values
+            .filter { !it.date.isAfter(currentDate) && it.qualifiedForStreak }
+            .map { it.date }
+    val day =
+        DailyStreakRestore.restorableEpochDay(
+            today = currentDate,
+            qualifiedDates = qualifiedDates,
+            restoredEpochDays = restoredStreakDays,
+            minimumStreak = EconomyPolicy.STREAK_RESTORE_MIN_STREAK,
+            cooldownDays = EconomyPolicy.STREAK_RESTORE_COOLDOWN_DAYS,
+        ) ?: return null
+    val counted = qualifiedDates.mapTo(mutableSetOf(), DailyDate::toDailyEpochDay) + restoredStreakDays
+    var length = 0
+    while (day - 1L - length in counted) length++
+    return WebStreakRestoreOffer(epochDay = day, streakLength = length)
 }

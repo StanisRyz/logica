@@ -1,5 +1,7 @@
 package com.stanisryz.logica.web
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -20,6 +22,8 @@ import com.stanisryz.logica.ui.daily.DailyHubSection
 import com.stanisryz.logica.ui.daily.DailyHubUiState
 import com.stanisryz.logica.ui.daily.DailyShareFormatter
 import com.stanisryz.logica.ui.daily.DailyShareLanguage
+import com.stanisryz.logica.ui.daily.StreakRestoreAdState
+import com.stanisryz.logica.ui.daily.StreakRestoreCard
 import com.stanisryz.logica.ui.profile.AchievementRewards
 import com.stanisryz.logica.ui.profile.DailyProfileMetrics
 import com.stanisryz.logica.ui.profile.ProfileContent
@@ -28,6 +32,7 @@ import com.stanisryz.logica.ui.profile.ProfilePage
 import com.stanisryz.logica.ui.profile.ProfileStarSummary
 import com.stanisryz.logica.ui.profile.ProfileStatistics
 import com.stanisryz.logica.ui.profile.ProfileUiState
+import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -85,6 +90,7 @@ internal fun WebDailyHubRoute(
     coordinator: WebDailyGameplayCoordinator,
     currentDate: DailyDate,
     onStartDaily: (PuzzleType) -> Unit,
+    streakRestoreAd: WebRewardedPlacementController? = null,
 ) {
     val binding by playerSession.dailyBinding.collectAsState()
     when (val current = binding) {
@@ -104,11 +110,13 @@ internal fun WebDailyHubRoute(
         is WebDailyBinding.Ready ->
             key(current.token) {
                 val snapshot by current.repository.snapshot.collectAsState()
+                val progressRepository = webProgressRepositoryFor(playerSession, current.token)
+                val restoredStreakDays = webRestoredStreakDays(progressRepository)
                 val hubState =
                     if (coordinator.lastStartWasRejected) {
                         DailyHubUiState.Error(stringResource(Res.string.daily_start_error))
                     } else {
-                        buildWebDailyHubUiState(snapshot, currentDate)
+                        buildWebDailyHubUiState(snapshot, currentDate, restoredStreakDays)
                     }
                 // The Web share action exists only for a fully completed, still-current Daily day;
                 // it is user-initiated from the shared completion card's optional callback.
@@ -153,15 +161,99 @@ internal fun WebDailyHubRoute(
                     } else {
                         hubState
                     }
-                DailyHubSection(
-                    uiState = uiStateWithShare,
-                    gameplayAllowed = true,
-                    onStart = onStartDaily,
-                    onRetryLoad = coordinator::clearStartRejection,
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.section)) {
+                    DailyHubSection(
+                        uiState = uiStateWithShare,
+                        gameplayAllowed = true,
+                        onStart = onStartDaily,
+                        onRetryLoad = coordinator::clearStartRejection,
+                    )
+                    val offer = webStreakRestoreOfferOrNull(snapshot, currentDate, restoredStreakDays)
+                    if (offer != null && progressRepository != null) {
+                        WebStreakRestoreOffer(
+                            offer = offer,
+                            progressRepository = progressRepository,
+                            economyRepository = webEconomyRepositoryFor(playerSession, current.token),
+                            ad = streakRestoreAd,
+                        )
+                    }
+                }
             }
     }
 }
+
+/**
+ * The offer to save yesterday's broken streak for the bound Player. Gems: the day is saved durably
+ * first and only then charged, so a lost write charges nothing and a repeat charges nothing again.
+ * The ad pays nothing into the wallet: its reward is the saved day, granted only while the Player
+ * that started the ad is still the bound one.
+ */
+@Composable
+private fun WebStreakRestoreOffer(
+    offer: WebStreakRestoreOffer,
+    progressRepository: WebCatalogProgressRepository,
+    economyRepository: WebPlayerEconomyRepository?,
+    ad: WebRewardedPlacementController?,
+) {
+    val gems =
+        economyRepository?.let {
+            key(it) {
+                it.state
+                    .collectAsState()
+                    .value.gems
+            }
+        } ?: 0
+    val adState = ad?.let { key(it) { it.state.collectAsState().value } }
+    StreakRestoreCard(
+        streakLength = offer.streakLength,
+        gems = gems,
+        price = EconomyPolicy.STREAK_RESTORE_GEMS,
+        adState =
+            when (adState) {
+                null, WebRewardedAdState.Unavailable -> StreakRestoreAdState.UNAVAILABLE
+                WebRewardedAdState.Showing -> StreakRestoreAdState.LOADING
+                else -> StreakRestoreAdState.READY
+            },
+        onRestoreWithGems = {
+            val economy = economyRepository
+            if (economy != null && economy.state.value.gems >= EconomyPolicy.STREAK_RESTORE_GEMS) {
+                if (progressRepository.claimStreakRestore(offer.epochDay)) economy.spendGems(EconomyPolicy.STREAK_RESTORE_GEMS)
+            }
+        },
+        onWatchAd = { ad?.requestReward { progressRepository.claimStreakRestore(offer.epochDay) } },
+    )
+}
+
+/** The Catalog progress repository bound to exactly this Player context, else null. */
+@Composable
+private fun webProgressRepositoryFor(
+    playerSession: WebPlayerSessionController,
+    token: WebPlayerContextToken,
+): WebCatalogProgressRepository? =
+    (playerSession.progressBinding.collectAsState().value as? WebCatalogProgressBinding.Ready)
+        ?.takeIf { it.token == token }
+        ?.repository
+
+/** The wallet bound to exactly this Player context, else null. */
+@Composable
+private fun webEconomyRepositoryFor(
+    playerSession: WebPlayerSessionController,
+    token: WebPlayerContextToken,
+): WebPlayerEconomyRepository? =
+    (playerSession.economyBinding.collectAsState().value as? WebEconomyBinding.Ready)
+        ?.takeIf { it.token == token }
+        ?.repository
+
+/** The Daily streak days the Player saved, kept in the rewards record beside Catalog progress. */
+@Composable
+private fun webRestoredStreakDays(repository: WebCatalogProgressRepository?): Set<Long> =
+    repository?.let {
+        key(it) {
+            it.rewards
+                .collectAsState()
+                .value.restoredStreakDays
+        }
+    } ?: emptySet()
 
 @Composable
 internal fun WebProfileRoute(
@@ -235,6 +327,7 @@ internal fun webProfileStatistics(
             dailyBinding = playerSession.dailyBinding.collectAsState().value,
             statisticsToken = binding.token,
             currentDate = currentDate,
+            restoredStreakDays = webRestoredStreakDays(webProgressRepositoryFor(playerSession, binding.token)),
         )
     val economyMetrics =
         webEconomyMetricsOrNull(
@@ -257,11 +350,12 @@ private fun webDailyProfileMetricsOrNull(
     dailyBinding: WebDailyBinding,
     statisticsToken: WebPlayerContextToken,
     currentDate: DailyDate,
+    restoredStreakDays: Set<Long>,
 ): DailyProfileMetrics? =
     when {
         dailyBinding is WebDailyBinding.Ready && dailyBinding.token == statisticsToken -> {
             val snapshot by dailyBinding.repository.snapshot.collectAsState()
-            snapshot.dailyProfileMetrics(currentDate)
+            snapshot.dailyProfileMetrics(currentDate, restoredStreakDays)
         }
         else -> null
     }

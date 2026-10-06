@@ -134,6 +134,7 @@ fun main() {
             gems = rewardedController(WebRewardedPlacementController.GEM_REWARD),
             life = rewardedController(WebRewardedPlacementController.LIFE_REWARD),
             secondChance = rewardedController(reward = null),
+            streakRestore = rewardedController(reward = null),
         )
     // Real-money consumable pipeline (client-side Yandex Payments flow).
     val paymentsCoordinator =
