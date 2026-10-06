@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+"""Audits the Yandex Games upload archive built by :web-app:packageYandexDistribution.
+
+Prints what the upload is (name, size, SHA-256, uncompressed size, file count) and checks what
+Yandex requires of it: one index.html at the root, ASCII file names without spaces, no source
+maps, the SDK script at /sdk.js, and the size limit. Addresses and other-platform names found in
+the text files are listed for the report, not failed: library code carries some of them.
+Exits 1 when a hard requirement fails.
+
+    python3 tools/web/audit_distribution.py web-app/build/distributions/logica-yandex.zip
+"""
+
+import hashlib
+import re
+import sys
+import zipfile
+
+MAX_UNCOMPRESSED = 100 * 1024 * 1024
+TEXT_SUFFIXES = (".html", ".js", ".mjs", ".txt", ".json", ".css")
+URL = re.compile(rb"https?://[A-Za-z0-9.\-]+")
+OTHER_PLATFORMS = re.compile(rb"RuStore|rustore|Google Play|play\.google|apps\.apple|App Store", re.IGNORECASE)
+
+
+def main(path: str) -> int:
+    data = open(path, "rb").read()
+    archive = zipfile.ZipFile(path)
+    files = [info for info in archive.infolist() if not info.is_dir()]
+    names = [info.filename for info in files]
+    uncompressed = sum(info.file_size for info in files)
+    print(f"archive: {path.rsplit('/', 1)[-1]}")
+    print(f"compressed bytes: {len(data)}")
+    print(f"uncompressed bytes: {uncompressed}")
+    print(f"sha256: {hashlib.sha256(data).hexdigest()}")
+    print(f"files: {len(files)}")
+
+    failures = []
+    if names.count("index.html") != 1 or sum(name.endswith("/index.html") for name in names):
+        failures.append("exactly one index.html, at the root")
+    bad_names = [name for name in names if " " in name or not name.isascii()]
+    if bad_names:
+        failures.append(f"names with spaces or non-ASCII characters: {bad_names[:10]}")
+    maps = [name for name in names if name.endswith(".map")]
+    if maps:
+        failures.append(f"source maps: {maps[:10]}")
+    if uncompressed >= MAX_UNCOMPRESSED:
+        failures.append(f"{uncompressed} bytes uncompressed, the limit is {MAX_UNCOMPRESSED}")
+    index = archive.read("index.html") if "index.html" in names else b""
+    if b'<script src="/sdk.js"></script>' not in index:
+        failures.append('index.html has no <script src="/sdk.js"></script>')
+    if re.search(rb'(src|href)="https?://', index):
+        failures.append("index.html loads something by an absolute address")
+
+    hosts = {}
+    platforms = {}
+    for name in names:
+        if not name.endswith(TEXT_SUFFIXES):
+            continue
+        text = archive.read(name)
+        for match in URL.findall(text):
+            hosts.setdefault(match.decode(), set()).add(name)
+        for match in OTHER_PLATFORMS.findall(text):
+            platforms.setdefault(match.decode(), set()).add(name)
+    print("addresses in text files:")
+    for host, where in sorted(hosts.items()):
+        print(f"  {host}: {', '.join(sorted(where)[:4])}{' …' if len(where) > 4 else ''}")
+    print("other platform names in text files:", "none" if not platforms else "")
+    for word, where in sorted(platforms.items()):
+        print(f"  {word}: {', '.join(sorted(where)[:4])}")
+    largest = sorted(files, key=lambda info: info.file_size, reverse=True)[:8]
+    print("largest files:")
+    for info in largest:
+        print(f"  {info.file_size:>10}  {info.filename}")
+
+    for failure in failures:
+        print(f"FAIL: {failure}")
+    print("audit:", "failed" if failures else "passed")
+    return 1 if failures else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1]))

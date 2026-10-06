@@ -91,3 +91,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       # The Yandex upload itself: the JS/Wasm production bundles plus the distribution checks.
       - run: bash ./gradlew :web-app:packageYandexDistribution
+      # What the upload is and whether it meets the portal's file rules (fails on a hard violation).
+      - run: python3 tools/web/audit_distribution.py web-app/build/distributions/logica-yandex.zip
+      # The exact archive to upload to the Yandex Games console.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: logica-yandex
+          path: web-app/build/distributions/logica-yandex.zip
+          retention-days: 30

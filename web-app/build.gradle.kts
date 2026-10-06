@@ -68,6 +68,8 @@ tasks.register<Zip>("packageYandexDistribution") {
     dependsOn("composeCompatibilityBrowserDistribution")
 
     from(compatibilityDistribution)
+    // Source maps help nobody on the portal and only add to the upload.
+    exclude("**/*.map")
     destinationDirectory.set(layout.buildDirectory.dir("distributions"))
     archiveFileName.set("logica-yandex.zip")
     isPreserveFileTimestamps = false
