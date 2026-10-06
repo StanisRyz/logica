@@ -35,6 +35,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.platform.EconomyPolicy
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.shared.ui.generated.resources.Res
+import com.stanisryz.logica.shared.ui.generated.resources.result_to_archive
 import com.stanisryz.logica.ui.components.GameIcon
 import com.stanisryz.logica.ui.components.GameIconImage
 import com.stanisryz.logica.ui.components.GameRulesSheet
@@ -73,12 +75,18 @@ internal fun WebGameplayHeader(
     isDaily: Boolean,
     hasMeaningfulProgress: Boolean,
     onExit: () -> Unit,
+    isArchive: Boolean = false,
 ) {
     var confirmingExit by remember { mutableStateOf(false) }
     val transitionAd = LocalWebTransitionAd.current
     val abandonAttempt = LocalWebAbandonAttempt.current
     WebTopBar(
-        backLabel = stringResource(if (isDaily) WebRes.string.web_to_games else WebRes.string.web_to_difficulty),
+        backLabel =
+            when {
+                isArchive -> stringResource(Res.string.result_to_archive)
+                isDaily -> stringResource(WebRes.string.web_to_games)
+                else -> stringResource(WebRes.string.web_to_difficulty)
+            },
         onBack = { if (hasMeaningfulProgress) confirmingExit = true else transitionAd(onExit) },
         title = stringResource(puzzleType.catalogTitleResource()),
         helpFor = puzzleType,

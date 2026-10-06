@@ -163,6 +163,7 @@ internal fun AppBottomBar(
 @Composable
 internal fun GameTopBar(
     title: String,
+    backLabel: String,
     onHelp: () -> Unit,
     economy: PlayerEconomy,
     onBack: () -> Unit,
@@ -182,7 +183,7 @@ internal fun GameTopBar(
         horizontalArrangement = Arrangement.spacedBy(GAME_TOP_BAR_CONTENT_GAP),
     ) {
         IconButton(onClick = onBack, modifier = Modifier.size(GAME_TOP_BAR_HEIGHT)) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = backLabel)
         }
         Text(
             text = title,

@@ -55,6 +55,10 @@ internal sealed interface WebGameplaySource {
 
     val isDaily: Boolean
 
+    /** A past day opened from the Daily archive, whose way back leads to the archive. */
+    val isArchive: Boolean
+        get() = false
+
     /** Catalog identity; null for Daily attempts, which never resolve or fabricate a level number. */
     val catalogLevelNumberOrNull: Int?
         get() = null
@@ -80,5 +84,6 @@ internal sealed interface WebGameplaySource {
         override val seed get() = entry.seed
         override val generatorVersion get() = entry.generatorVersion
         override val isDaily get() = true
+        override val isArchive get() = attempt.archive
     }
 }

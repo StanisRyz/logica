@@ -12,6 +12,7 @@
     <string name="settings">Настройки</string>
     <string name="achievements">Достижения</string>
     <string name="back">Назад</string>
+    <string name="to_archive">К архиву</string>
     <string name="balance">Баланс</string>
     <string name="balance_rules_summary">В каждой строке и столбце должно быть поровну белых и чёрных фишек. Нельзя ставить три одинаковые фишки подряд, а завершённые линии не повторяются.</string>
     <string name="balance_tutorial_title">Обучение «Баланс»</string>

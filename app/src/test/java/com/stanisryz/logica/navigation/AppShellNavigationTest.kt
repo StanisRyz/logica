@@ -3,12 +3,16 @@ package com.stanisryz.logica.navigation
 import com.stanisryz.logica.catalog.GameAttemptLaunch
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
+import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
+import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
+import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDate
 
 /** The primary navigation contract: three tabs, Game first, Settings reachable from each of them. */
 class AppShellNavigationTest {
@@ -77,5 +81,23 @@ class AppShellNavigationTest {
         assertTrue(AppDestination.Game2048Game(levelLaunch(PuzzleType.GAME_2048)).allowsRewardedOffer(PrimaryTab.GAME))
         assertFalse(AppDestination.Settings.allowsRewardedOffer(PrimaryTab.GAME))
         assertFalse(AppDestination.CrownsTutorial.allowsRewardedOffer(PrimaryTab.GAME))
+    }
+
+    @Test
+    fun `only a game opened from the Daily archive leads back to the archive`() {
+        fun dailyLaunch(archive: Boolean) =
+            GameAttemptLaunch.Daily(
+                puzzleType = PuzzleType.CROWNS,
+                challengeDate = LocalDate.of(2026, 10, 3),
+                policyVersion = DailyPolicyVersion(8),
+                difficulty = Difficulty.MEDIUM,
+                seed = PuzzleSeed(1L),
+                generatorVersion = GeneratorVersion(1),
+                archive = archive,
+            )
+        assertTrue(AppDestination.CrownsGame(dailyLaunch(archive = true)).isArchiveGame())
+        assertFalse(AppDestination.CrownsGame(dailyLaunch(archive = false)).isArchiveGame())
+        assertFalse(AppDestination.CrownsGame(levelLaunch(PuzzleType.CROWNS)).isArchiveGame())
+        assertFalse(AppDestination.DailyArchive.isArchiveGame())
     }
 }

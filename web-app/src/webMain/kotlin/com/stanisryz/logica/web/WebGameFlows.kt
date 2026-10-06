@@ -87,6 +87,7 @@ internal fun NonogramFlow(
                 WebGameplayHeader(
                     puzzleType = PuzzleType.NONOGRAM,
                     isDaily = state.source.isDaily,
+                    isArchive = state.source.isArchive,
                     hasMeaningfulProgress = state.hasMeaningfulProgress || controller.secondChanceOffered,
                     onExit = if (state.source.isDaily) onExitNonogram else controller::showDifficultySelector,
                 )
@@ -192,6 +193,7 @@ internal fun BlockSudokuFlow(
                 WebGameplayHeader(
                     puzzleType = PuzzleType.BLOCK_SUDOKU,
                     isDaily = state.source.isDaily,
+                    isArchive = state.source.isArchive,
                     hasMeaningfulProgress = state.hasMeaningfulProgress,
                     onExit = if (state.source.isDaily) onExit else controller::showDifficultySelector,
                 )

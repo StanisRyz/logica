@@ -53,6 +53,7 @@ internal fun PlayingBalanceContent(
         WebGameplayHeader(
             puzzleType = PuzzleType.BALANCE,
             isDaily = state.source.isDaily,
+            isArchive = state.source.isArchive,
             hasMeaningfulProgress = state.game.hasMeaningfulProgress || controller.secondChanceOffered,
             onExit = if (state.source.isDaily) onExitBalance else controller::showDifficultySelector,
         )
@@ -142,6 +143,7 @@ internal fun PlayingCrownsContent(
         WebGameplayHeader(
             puzzleType = PuzzleType.CROWNS,
             isDaily = state.source.isDaily,
+            isArchive = state.source.isArchive,
             hasMeaningfulProgress = state.game.hasMeaningfulProgress || controller.secondChanceOffered,
             onExit = if (state.source.isDaily) onExitCrowns else controller::showDifficultySelector,
         )
@@ -232,6 +234,7 @@ internal fun PlayingWordContent(
         WebGameplayHeader(
             puzzleType = PuzzleType.WORD,
             isDaily = state.source.isDaily,
+            isArchive = state.source.isArchive,
             hasMeaningfulProgress = state.game.hasMeaningfulProgress,
             onExit = if (state.source.isDaily) onExitWord else controller::showDifficultySelector,
         )
@@ -316,6 +319,7 @@ internal fun PlayingSudokuContent(
         WebGameplayHeader(
             puzzleType = PuzzleType.SUDOKU,
             isDaily = state.source.isDaily,
+            isArchive = state.source.isArchive,
             hasMeaningfulProgress = state.game.hasMeaningfulProgress || controller.secondChanceOffered,
             onExit = if (state.source.isDaily) onExitSudoku else controller::showDifficultySelector,
         )
@@ -404,6 +408,7 @@ internal fun PlayingGame2048Content(
         WebGameplayHeader(
             puzzleType = PuzzleType.GAME_2048,
             isDaily = state.source.isDaily,
+            isArchive = state.source.isArchive,
             hasMeaningfulProgress =
                 controller.undoOffered ||
                     !state.finishedByPlayer &&

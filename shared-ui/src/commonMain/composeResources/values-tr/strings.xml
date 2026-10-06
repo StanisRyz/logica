@@ -516,8 +516,8 @@
         <item quantity="other">%1$d elmas eksik</item>
     </plurals>
     <string name="daily_archive_open_day">Arşivde aç</string>
-    <string name="result_archive_solved">%1$s günün bulmacası çözüldü</string>
-    <string name="result_archive_failed">%1$s günün bulmacası çözülemedi</string>
+    <string name="result_archive_solved">%1$s bulmacası çözüldü</string>
+    <string name="result_archive_failed">%1$s bulmacası çözülemedi</string>
     <string name="result_to_archive">Arşive dön</string>
     <string name="profile_page_tournament_title">Haftalık turnuva</string>
     <string name="profile_page_tournament_summary">Uzman seviyelerindeki yıldızlar elmas kazandırır</string>

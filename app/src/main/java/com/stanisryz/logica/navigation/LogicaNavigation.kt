@@ -373,6 +373,7 @@ internal fun LogicaNavigation(
             if (currentDestination.isGameplay()) {
                 GameTopBar(
                     title = destinationTitle(currentDestination, selectedTab),
+                    backLabel = stringResource(if (currentDestination.isArchiveGame()) R.string.to_archive else R.string.back),
                     onHelp = { rulesFor = currentDestination.gameplayPuzzleType() },
                     economy = economy,
                     onBack = goBack,

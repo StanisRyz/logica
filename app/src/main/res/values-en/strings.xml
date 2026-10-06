@@ -11,6 +11,7 @@
     <string name="settings">Settings</string>
     <string name="achievements">Achievements</string>
     <string name="back">Back</string>
+    <string name="to_archive">To the archive</string>
     <string name="balance">Balance</string>
     <string name="balance_rules_summary">Every row and column must have as many white pieces as black. Three equal pieces in a row are not allowed, and finished lines never repeat.</string>
     <string name="balance_tutorial_title">Balance tutorial</string>

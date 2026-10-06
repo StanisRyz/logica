@@ -186,6 +186,22 @@ internal fun AppDestination.gameplayPuzzleType(): PuzzleType? =
         else -> null
     }
 
+/** A past Daily day opened from the archive, whose way back leads to the archive day. */
+internal fun AppDestination.isArchiveGame(): Boolean {
+    val attempt =
+        when (this) {
+            is AppDestination.BalanceGame -> launch
+            is AppDestination.CrownsGame -> launch
+            is AppDestination.WordGame -> launch
+            is AppDestination.SudokuGame -> launch
+            is AppDestination.Game2048Game -> launch
+            is AppDestination.NonogramGame -> launch
+            is AppDestination.BlockSudokuGame -> launch
+            else -> null
+        }
+    return (attempt as? GameAttemptLaunch.Daily)?.archive == true
+}
+
 /**
  * Unfinished attempts are never saved, so opening the Store from a running game must not leave it:
  * there the Store opens as a sheet over the board, and everywhere else it is the Store tab.

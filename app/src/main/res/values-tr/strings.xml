@@ -11,6 +11,7 @@
     <string name="settings">Ayarlar</string>
     <string name="achievements">Başarılar</string>
     <string name="back">Geri</string>
+    <string name="to_archive">Arşive dön</string>
     <string name="balance">Denge</string>
     <string name="balance_rules_summary">Her satır ve sütunda beyaz ve siyah taş sayısı eşit olmalı. Yan yana üç aynı taş olamaz ve tamamlanan hatlar tekrarlanmaz.</string>
     <string name="balance_tutorial_title">Denge eğitimi</string>
