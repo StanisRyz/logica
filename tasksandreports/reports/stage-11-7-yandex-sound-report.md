@@ -112,7 +112,7 @@ node tools/web/check_sounds.mjs <site>                  — старый 9/12, �
 YANDEX=1 node tools/web/check_sounds.mjs <site>         — старый 15/17, новый 17/17
 ```
 
-`<site>` — production-сборка Wasm с ресурсами (как в 11.6), старая и новая версии рядом. CI прошлого пуша (`3c84b30`) зелёный: [37473313241](https://github.com/StanisRyz/logica/actions/runs/37473313241). Аудит архива со звуками будет в прогоне этого пуша.
+`<site>` — production-сборка Wasm с ресурсами (как в 11.6), старая и новая версии рядом. CI прошлого пуша (`3c84b30`) зелёный: [37473313241](https://github.com/StanisRyz/logica/actions/runs/37473313241). Прогон этого пуша зелёный: [37477439541](https://github.com/StanisRyz/logica/actions/runs/37477439541). Аудит архива в нём: `sounds: 8`, `audit: passed` (156 файлов, 42,5 МБ).
 
 ## 5. Как владельцу проверить звук в черновике
 
