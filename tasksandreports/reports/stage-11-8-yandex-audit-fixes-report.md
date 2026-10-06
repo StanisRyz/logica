@@ -66,7 +66,7 @@ node tools/web/check_sounds.mjs <site>                  — 14/14
 YANDEX=1 node tools/web/check_sounds.mjs <site>         — 19/19
 ```
 
-Скриншоты 1920×1080 — в `img/stage-11-8/`: хаб и Судоку, светлая и тёмная тема. CI прошлого пуша (`88bb8b6`) зелёный: [37477439541](https://github.com/StanisRyz/logica/actions/runs/37477439541).
+Скриншоты 1920×1080 — в `img/stage-11-8/`: хаб и Судоку, светлая и тёмная тема. CI прошлого пуша (`88bb8b6`) зелёный: [37477439541](https://github.com/StanisRyz/logica/actions/runs/37477439541). CI этого пуша (`47c4acc`) зелёный, аудит архива тоже: [37483640624](https://github.com/StanisRyz/logica/actions/runs/37483640624).
 
 ## 5. Отклонения и вопросы
 
