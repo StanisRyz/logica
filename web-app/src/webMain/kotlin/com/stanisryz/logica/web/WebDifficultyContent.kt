@@ -23,7 +23,6 @@ import com.stanisryz.logica.shared.ui.generated.resources.Res
 import com.stanisryz.logica.shared.ui.generated.resources.how_to_play
 import com.stanisryz.logica.ui.components.DifficultySelector
 import com.stanisryz.logica.ui.components.LevelMapSheet
-import com.stanisryz.logica.ui.components.WordLanguageNotice
 import com.stanisryz.logica.ui.components.catalogTitleResource
 import com.stanisryz.logica.ui.rating.DifficultyScreenActions
 import com.stanisryz.logica.ui.rating.GameRatingSheet
@@ -122,16 +121,13 @@ internal fun DifficultyContent(
             // The wallet chip in the header already shows the lives; the line only adds the countdown.
             val livesState = lives.state?.takeIf { it.nextLifeRestoreAtEpochMs != null }
             val livesHeight = if (livesState != null) LIVES_STATUS_HEIGHT + LogicaSpacing.section else 0.dp
-            // The Word game says up front that its words are Russian in every language.
-            val showsWordNotice = puzzleType == PuzzleType.WORD
-            val noticeHeight = if (showsWordNotice) WORD_NOTICE_HEIGHT + LogicaSpacing.section else 0.dp
             // The wide host shows the four difficulties as a 2x2 grid of taller cards.
             val columns = if (LocalWebWideLayout.current) 2 else 1
             val rows = 4 / columns
             val cardHeight =
                 (
                     (
-                        maxHeight - TUTORIAL_ACTION_HEIGHT - livesHeight - noticeHeight -
+                        maxHeight - TUTORIAL_ACTION_HEIGHT - livesHeight -
                             LogicaSpacing.section - LogicaSpacing.item * (rows - 1)
                     ) / rows
                 ).coerceIn(MIN_DIFFICULTY_CARD_HEIGHT, if (columns > 1) MAX_WIDE_DIFFICULTY_CARD_HEIGHT else MAX_DIFFICULTY_CARD_HEIGHT)
@@ -150,7 +146,6 @@ internal fun DifficultyContent(
                         onLevels = onReplay?.takeIf { gallery == null }?.let { { levelsOpen = true } },
                     )
                 }
-                if (showsWordNotice) WordLanguageNotice(Modifier.height(WORD_NOTICE_HEIGHT))
                 if (livesState != null) {
                     WebLivesStatus(livesState, Modifier.height(LIVES_STATUS_HEIGHT))
                 }
@@ -178,8 +173,6 @@ internal fun DifficultyContent(
 private val LIVES_STATUS_HEIGHT = 24.dp
 
 private val TUTORIAL_ACTION_HEIGHT = 40.dp
-
-private val WORD_NOTICE_HEIGHT = 40.dp
 
 private val MIN_DIFFICULTY_CARD_HEIGHT = 96.dp
 

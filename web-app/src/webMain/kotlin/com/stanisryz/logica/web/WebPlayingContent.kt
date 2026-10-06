@@ -279,7 +279,7 @@ internal fun PlayingWordContent(
             completion = controller.completionState,
             solvedDetail = pluralStringResource(WebRes.plurals.web_word_level_solved, state.game.attempts.size, state.game.attempts.size),
             stars = starsForWordAttempts(state.game.attempts.size),
-            failedDetail = stringResource(WebRes.string.web_word_answer, state.puzzle.answer.uppercase()),
+            failedDetail = stringResource(WebRes.string.web_word_answer, state.puzzle.language.displayUppercase(state.puzzle.answer)),
             onNextLevel = { livesGuard { onSolvedNextLevel { controller.nextLevel() } } },
             onRetry = { livesGuard { transitionAd(controller::retry) } },
             onRetrySave = controller::retrySave,

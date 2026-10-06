@@ -1,5 +1,7 @@
 package com.stanisryz.logica.catalog
 
+import com.stanisryz.logica.AppLanguage
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelDefinition
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
 import com.stanisryz.logica.puzzle.core.daily.DailyPolicyVersion
@@ -7,6 +9,8 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.puzzle.core.word.WordCatalogContent
+import com.stanisryz.logica.puzzle.core.word.WordLanguage
 import com.stanisryz.logica.result.GameCompletion
 import com.stanisryz.logica.result.GameOutcome
 import com.stanisryz.logica.result.GameResultScope
@@ -139,6 +143,8 @@ internal data class GameAttempt(
  */
 internal class GameAttemptFactory(
     private val levelRepository: CatalogLevelRepository,
+    /** Word plays in the interface language; its levels come from that language's bucket. */
+    private val wordLanguage: () -> WordLanguage = { WordLanguage.forInterfaceTag(AppLanguage.tag) },
     private val attemptIdFactory: () -> String = { UUID.randomUUID().toString() },
 ) {
     suspend fun create(
@@ -148,7 +154,8 @@ internal class GameAttemptFactory(
         require(launch.puzzleType == puzzleType) { "${launch.puzzleType} launch cannot open $puzzleType." }
         return when (launch) {
             is GameAttemptLaunch.Level -> {
-                val definition = levelRepository.resolve(launch.levelId)
+                val definition =
+                    if (puzzleType == PuzzleType.WORD) resolveWord(launch.levelId) else levelRepository.resolve(launch.levelId)
                 GameAttempt(
                     attemptId = attemptIdFactory(),
                     puzzleType = puzzleType,
@@ -171,4 +178,18 @@ internal class GameAttemptFactory(
     }
 
     fun nextAttemptId(): String = attemptIdFactory()
+
+    /**
+     * Level N of Word is one level in every language — one progression, one completion identity — and
+     * only its content follows the language. A bucket built by another language's generator fails
+     * cleanly instead of playing the wrong words.
+     */
+    private suspend fun resolveWord(levelId: CatalogLevelId): CatalogLevelDefinition {
+        val language = wordLanguage()
+        val definition = levelRepository.resolve(levelId, WordCatalogContent.variant(language))
+        if (definition.generatorVersion != WordCatalogContent.generatorVersion(language)) {
+            throw CatalogLevelUnavailableException("Word ${language.name} level holds generator ${definition.generatorVersion.value}.")
+        }
+        return definition
+    }
 }

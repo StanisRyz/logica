@@ -29,7 +29,7 @@
     <string name="share_daily_result_description">Share the daily puzzle result</string>
     <string name="game_title_balance">Balance</string>
     <string name="game_title_crowns">Crowns</string>
-    <string name="game_title_word">Russian Word</string>
+    <string name="game_title_word">Words</string>
     <string name="game_title_sudoku">Sudoku</string>
     <string name="game_title_2048">2048</string>
     <string name="difficulty_easy">Easy</string>
@@ -75,7 +75,7 @@
     <string name="word_rejection_incomplete">Enter the whole word.</string>
     <string name="word_rejection_unknown_word">That word is not in the dictionary. No try was used.</string>
     <string name="word_rejection_already_guessed">You already tried that word. No try was used.</string>
-    <string name="word_rejection_invalid_letters">Only Russian letters are allowed.</string>
+    <string name="word_rejection_invalid_letters">Only English letters are allowed.</string>
     <string name="word_rejection_finished">The game is already over.</string>
     <string name="word_feedback_correct">in the right place</string>
     <string name="word_feedback_present">in the word</string>
@@ -217,7 +217,7 @@
     <string name="crowns_tutorial_feedback_mini_puzzle">There is a conflict here. Check the row, column, region, and neighbouring diagonals.</string>
     <string name="crowns_tutorial_complete_title">Tutorial complete</string>
     <string name="crowns_tutorial_complete_body">Great! Now pick a difficulty and start a regular game.</string>
-    <string name="word_rules_intro">A Russian word is hidden. The rules are simple:</string>
+    <string name="word_rules_intro">An English word is hidden. The rules are simple:</string>
     <string name="word_rule_length">• The word length depends on difficulty: four to seven letters.</string>
     <string name="word_rule_attempts">• You have six tries to guess it.</string>
     <string name="word_rule_correct">• A letter in the right place is filled in.</string>
@@ -225,7 +225,7 @@
     <string name="word_rule_absent">• A letter not in the word fades out.</string>
     <string name="word_rule_repeats">• Repeated letters count separately: an extra repeat shows as absent.</string>
     <string name="word_tutorial_example_title">Reading a try</string>
-    <string name="word_tutorial_example_body">The hidden word is «ПОЛКА», the try is «ЛАМПА». «Л» and «П» are in the word but out of place, so they get a frame. «М» is not in the word. The last «А» is in place, so it is filled, and the first «А» fades: the hidden word has only one «А».</string>
+    <string name="word_tutorial_example_body">The hidden word is «SCOPE», the try is «PEACE». «P» and «C» are in the word but out of place, so they get a frame. «A» is not in the word. The last «E» is in place, so it is filled, and the first «E» fades: the hidden word has only one «E».</string>
     <string name="sudoku_tutorial_rules_title">Numbers without repeats</string>
     <string name="sudoku_tutorial_rules_body">Use the numbers 1–9. A number can appear only once in every row, every column, and every 3×3 block.</string>
     <string name="sudoku_tutorial_input_title">Cell first, then number</string>
@@ -342,8 +342,7 @@
     <string name="rules_sudoku_1">Fill the board with the digits 1 to 9.</string>
     <string name="rules_sudoku_2">Each digit appears once in every row, column, and 3×3 block.</string>
     <string name="rules_sudoku_3">Or the other way round: pick a digit below and tap cells to place it in each. Tap the digit again to drop it.</string>
-    <string name="word_russian_only">Words are in Russian only.</string>
-    <string name="rules_word_language">All words are Russian only; the keyboard shows Russian letters.</string>
+    <string name="rules_word_language">All words are English, and the keyboard shows English letters.</string>
     <string name="rules_word_1">Guess the word in six tries.</string>
     <string name="rules_word_2">A filled letter is in the right place; a framed letter is in the word but elsewhere.</string>
     <string name="rules_word_3">A faded letter is not in the word.</string>
@@ -449,7 +448,7 @@
     <string name="gallery_daily">Daily</string>
     <string name="quest_solve_balance">Solve a Balance puzzle</string>
     <string name="quest_solve_crowns">Solve a Crowns puzzle</string>
-    <string name="quest_solve_word">Guess a word in Russian Word</string>
+    <string name="quest_solve_word">Guess a word in Words</string>
     <string name="quest_solve_sudoku">Solve a Sudoku</string>
     <string name="quest_solve_2048">Clear a 2048 level</string>
     <string name="quest_solve_nonogram">Solve a Nonogram</string>

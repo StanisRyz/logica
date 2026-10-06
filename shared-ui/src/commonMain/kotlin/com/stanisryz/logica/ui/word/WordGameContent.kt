@@ -47,7 +47,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.puzzle.core.model.Difficulty
-import com.stanisryz.logica.puzzle.core.word.RussianWordNormalizer
 import com.stanisryz.logica.puzzle.core.word.WordDraft
 import com.stanisryz.logica.puzzle.core.word.WordGameState
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
@@ -170,8 +169,10 @@ fun WordGameContent(
             if (!currentGameplayEnabled || currentGame.status != WordGameStatus.IN_PROGRESS) return@collect
             when (key) {
                 is GameKey.Letter -> {
-                    val letter = key.char.lowercaseChar()
-                    if (!RussianWordNormalizer.isSupportedLetter(letter)) return@collect
+                    // The game language's own table: Turkish `I` is `ı` and `İ` is `i`, never the locale's.
+                    val normalizer = puzzle.language.normalizer
+                    if (!normalizer.isSupportedLetter(key.char)) return@collect
+                    val letter = normalizer.normalizeLetter(key.char)
                     currentOnInputInteraction()
                     currentOnDismissRejection()
                     val editedPosition = selectedCellIndex
@@ -262,6 +263,7 @@ fun WordGameContent(
                     }
                 }
                 WordKeyboard(
+                    language = puzzle.language,
                     knowledge = game.letterKnowledge,
                     enabled = gameplayEnabled,
                     onLetter = { letter ->
@@ -347,6 +349,7 @@ fun WordGameContent(
 
                 if (isPlaying) {
                     WordKeyboard(
+                        language = puzzle.language,
                         knowledge = game.letterKnowledge,
                         enabled = gameplayEnabled,
                         onLetter = { letter ->

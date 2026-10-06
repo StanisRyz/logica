@@ -330,7 +330,7 @@ internal class WebSudokuController(
             GameKey.Down -> moveSelection(playing, rowStep = 1, columnStep = 0)
             GameKey.Left -> moveSelection(playing, rowStep = 0, columnStep = -1)
             GameKey.Right -> moveSelection(playing, rowStep = 0, columnStep = 1)
-            is GameKey.Letter -> if (key.char == PENCIL_KEY_LETTER) togglePencilMode()
+            is GameKey.Letter -> if (key.char in PENCIL_KEY_LETTERS) togglePencilMode()
             GameKey.Enter -> Unit
         }
     }
@@ -583,5 +583,5 @@ internal class WebSudokuController(
 private const val MAX_UNDO_HISTORY = 100
 private const val SUDOKU_LAST_INDEX = 8
 
-/** The letter on the physical P key in the Russian layout (see `webGameKeyOf`). */
-private const val PENCIL_KEY_LETTER = 'з'
+/** The P key: `p` in English and Turkish layouts, `з` (the same key in ЙЦУКЕН) in Russian. */
+private val PENCIL_KEY_LETTERS = setOf('p', 'з')

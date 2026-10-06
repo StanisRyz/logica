@@ -37,6 +37,34 @@ enum class WordLanguage(
     RUSSIAN(RussianWordNormalizer),
     ENGLISH(EnglishWordNormalizer),
     TURKISH(TurkishWordNormalizer),
+    ;
+
+    /**
+     * The capital a normalized letter is shown as. Turkish keeps its own pairs — `i` → `İ`, `ı` → `I` —
+     * from this table, never from the platform locale.
+     */
+    fun displayUppercase(letter: Char): Char =
+        when {
+            this == TURKISH && letter == 'i' -> 'İ'
+            this == TURKISH && letter == 'ı' -> 'I'
+            else -> letter.uppercaseChar()
+        }
+
+    fun displayUppercase(word: String): String = word.map(::displayUppercase).joinToString("")
+
+    companion object {
+        /**
+         * Word plays in the interface language. [tag] is the language a host already resolved its
+         * interface to (Android `AppLanguage`, Web `WebAppLanguage`): `tr` is Turkish, `en` English,
+         * and Russian otherwise — the hosts map ru, be, kk, uk, uz, and a missing value to `ru`.
+         */
+        fun forInterfaceTag(tag: String): WordLanguage =
+            when (tag) {
+                "tr" -> TURKISH
+                "en" -> ENGLISH
+                else -> RUSSIAN
+            }
+    }
 }
 
 /** A normalizer defined by an explicit letter table, independent of the platform locale. */

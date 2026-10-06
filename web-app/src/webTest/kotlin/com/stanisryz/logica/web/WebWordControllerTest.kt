@@ -1,5 +1,6 @@
 package com.stanisryz.logica.web
 
+import com.stanisryz.logica.puzzle.core.catalog.CatalogContentVariant
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelDefinition
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPack
@@ -13,6 +14,7 @@ import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordAllowedGuesses
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
+import com.stanisryz.logica.puzzle.core.word.WordLanguage
 import com.stanisryz.logica.puzzle.core.word.WordPuzzle
 import com.stanisryz.logica.puzzle.core.word.WordRuntime
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -124,6 +126,67 @@ class WebWordControllerTest {
                     override fun all(): List<String> = listOf(TEST_ANSWER)
                 },
             requiredResourcePaths = listOf("/word/v2/test_answers.txt", "/word/v2/test_guesses.txt"),
+        )
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun anEnglishPlayerGetsTheEnglishBucketOfTheSameLevel() =
+        runTest {
+            val requestedVariants = mutableListOf<String?>()
+            val englishLevels =
+                object : CatalogLevelPack {
+                    override fun resolve(levelId: CatalogLevelId): CatalogLevelPackResult<CatalogLevelDefinition> = error("Russian bucket")
+
+                    override fun resolve(
+                        levelId: CatalogLevelId,
+                        variant: CatalogContentVariant?,
+                    ): CatalogLevelPackResult<CatalogLevelDefinition> {
+                        requestedVariants += variant?.key
+                        return CatalogLevelPackResult.Success(CatalogLevelDefinition(levelId, PuzzleSeed(5), GeneratorVersion(3)))
+                    }
+                }
+            val controller =
+                WebWordController(
+                    loadPack = {},
+                    loadRuntimeResources = {},
+                    progression = FakeWebCatalogProgressAccess(initialLevel = 7),
+                    levelPack = englishLevels,
+                    runtimeResolver = { englishRuntime },
+                    scope = this,
+                    language = { WordLanguage.ENGLISH },
+                )
+            controller.selectDifficulty(Difficulty.EASY)
+            advanceUntilIdle()
+
+            val playing = assertIs<WebWordState.Playing>(controller.state)
+            assertEquals(listOf<String?>("en"), requestedVariants)
+            assertEquals(WordLanguage.ENGLISH, playing.puzzle.language)
+            // The level identity, and so the progress it moves, is the shared Word level 7.
+            assertEquals(7, playing.source.catalogLevelNumberOrNull)
+        }
+
+    private val englishRuntime =
+        WordRuntime(
+            generator =
+                object : PuzzleGenerator<WordPuzzle> {
+                    override val type = PuzzleType.WORD
+                    override val version = GeneratorVersion(3)
+
+                    override fun generate(
+                        seed: PuzzleSeed,
+                        difficulty: Difficulty,
+                    ): WordPuzzle = WordPuzzle(PuzzleId(type, difficulty, seed, version), "card")
+                },
+            allowedGuesses =
+                object : WordAllowedGuesses {
+                    override val size = 1
+
+                    override fun contains(normalizedWord: String): Boolean = normalizedWord == "card"
+
+                    override fun all(): List<String> = listOf("card")
+                },
+            requiredResourcePaths = emptyList(),
+            language = WordLanguage.ENGLISH,
         )
 
     private val fixedEasyLevels =

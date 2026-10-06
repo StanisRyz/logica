@@ -92,6 +92,10 @@ tasks.register<Zip>("packageYandexDistribution") {
             "sudoku/v1/easy.sdk",
             "word/v1/allowed_guesses.txt",
             "word/v2/answers.txt",
+            "word/v3/answers.txt",
+            "word/v4/answers.txt",
+            "levels/v1/word_en/easy.lvp",
+            "levels/v1/word_tr/easy.lvp",
         ).forEach { path ->
             check(distributionRoot.resolve(path).isFile) {
                 "The Yandex distribution is missing canonical asset $path."

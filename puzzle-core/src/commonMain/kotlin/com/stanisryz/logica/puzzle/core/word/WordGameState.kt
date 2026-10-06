@@ -93,8 +93,10 @@ class WordGameState internal constructor(
     val status: WordGameStatus,
 ) {
     val attempts: List<WordAttempt> = attempts.toList()
-    val letterKnowledge: WordLetterKnowledge =
-        WordLetterKnowledge.from(this.attempts, WordRuntimeResolver.language(puzzleId.generatorVersion))
+
+    /** The language this game plays in, from its generator version. */
+    val language: WordLanguage get() = WordRuntimeResolver.language(puzzleId.generatorVersion)
+    val letterKnowledge: WordLetterKnowledge = WordLetterKnowledge.from(this.attempts, language)
 
     init {
         require(WordRules.isSupportedLength(wordLength)) { "Unsupported Word length $wordLength." }

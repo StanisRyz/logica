@@ -33,6 +33,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.stanisryz.logica.puzzle.core.word.WordLanguage
 import com.stanisryz.logica.puzzle.core.word.WordLetterFeedback
 import com.stanisryz.logica.puzzle.core.word.WordLetterKnowledge
 import com.stanisryz.logica.shared.ui.generated.resources.Res
@@ -43,11 +44,12 @@ import org.jetbrains.compose.resources.stringResource
 import kotlin.math.floor
 
 /**
- * Shared adaptive Russian keyboard over the normalized alphabet, without a separate `ё` key. Every
- * letter key has the same width — the widest row's width over its key count — and the rows are
- * centred. Enter and Backspace sit on the two edges of the last letter row, as in Russian Wordle-like
- * games, each half a key wider than a letter so that row is exactly as wide as the widest one. The
- * landscape panel keeps rows of five letters with Enter and Backspace in a row of their own.
+ * Shared adaptive keyboard over the game language's normalized alphabet ([wordKeyboardRows]: Russian
+ * ЙЦУКЕН without a separate `ё` key, English QWERTY, Turkish Q without q, w, x). Every letter key has
+ * the same width — the widest row's width over its key count — and the rows are centred. Enter and
+ * Backspace sit on the two edges of the last letter row, as in Wordle-like games, sharing the letters
+ * and gaps that row lacks so it is exactly as wide as the widest one. The landscape panel keeps rows
+ * of five letters with Enter and Backspace in a row of their own.
  */
 @Composable
 fun WordKeyboard(
@@ -60,9 +62,15 @@ fun WordKeyboard(
     keyHeight: Dp = DEFAULT_KEY_HEIGHT,
     landscapeCompact: Boolean = false,
     keySpacing: Dp = WORD_KEY_SPACING,
+    language: WordLanguage = WordLanguage.RUSSIAN,
 ) {
-    val rows = if (landscapeCompact) LETTER_ROWS.flatten().chunked(LANDSCAPE_LETTER_COLUMNS) else LETTER_ROWS
+    val letterRows = wordKeyboardRows(language)
+    val rows = if (landscapeCompact) letterRows.flatten().chunked(LANDSCAPE_LETTER_COLUMNS) else letterRows
     val widestRow = rows.maxOf { it.size }
+    // The last row's two action keys share the letters and gaps it lacks next to the widest row.
+    val missingLetters = widestRow - rows.last().size
+    val actionLetters = missingLetters / 2f
+    val actionGaps = (missingLetters - 2) / 2f
     val enterKey: @Composable (Modifier) -> Unit = { keyModifier ->
         ActionKey(
             label = { Icon(Icons.AutoMirrored.Rounded.KeyboardReturn, contentDescription = null) },
@@ -91,7 +99,7 @@ fun WordKeyboard(
                 floor((maxWidth.toPx() - keySpacing.toPx() * (widestRow - 1)) / widestRow).coerceAtLeast(0f).toDp()
             }
         val actionWidth =
-            with(density) { floor((letterWidth * ACTION_KEY_LETTERS + keySpacing * ACTION_KEY_GAPS).toPx()).toDp() }
+            with(density) { floor((letterWidth * actionLetters + keySpacing * actionGaps).toPx()).toDp() }
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(keySpacing),
@@ -104,6 +112,7 @@ fun WordKeyboard(
                     rowLetters.forEach { letter ->
                         LetterKey(
                             letter = letter,
+                            shown = language.displayUppercase(letter),
                             feedback = knowledge[letter],
                             enabled = enabled,
                             keyHeight = keyHeight,
@@ -130,6 +139,7 @@ fun WordKeyboard(
 @Composable
 private fun LetterKey(
     letter: Char,
+    shown: Char,
     feedback: WordLetterFeedback?,
     enabled: Boolean,
     keyHeight: Dp,
@@ -166,7 +176,7 @@ private fun LetterKey(
     val description =
         stringResource(
             Res.string.word_key_description,
-            letter.uppercaseChar().toString(),
+            shown.toString(),
             stringResource(feedback.descriptionResource()),
         )
 
@@ -191,7 +201,7 @@ private fun LetterKey(
                 (keyHeight * KEY_FONT_RATIO).coerceIn(MIN_KEY_FONT, MAX_KEY_FONT).toSp()
             }
         Text(
-            text = letter.uppercaseChar().toString(),
+            text = shown.toString(),
             color = content,
             fontSize = letterSize,
             lineHeight = letterSize,
@@ -225,12 +235,17 @@ private fun ActionKey(
     }
 }
 
-private val LETTER_ROWS =
-    listOf(
-        "йцукенгшщзхъ".toList(),
-        "фывапролджэ".toList(),
-        "ячсмитьбю".toList(),
-    )
+/**
+ * The on-screen letter rows of one Word language, each letter of its alphabet exactly once: Russian
+ * ЙЦУКЕН (12/11/9, `ё` typed as `е`), English QWERTY (10/9/7), and Turkish Q without q, w, x
+ * (10/11/8).
+ */
+fun wordKeyboardRows(language: WordLanguage): List<List<Char>> =
+    when (language) {
+        WordLanguage.RUSSIAN -> listOf("йцукенгшщзхъ", "фывапролджэ", "ячсмитьбю")
+        WordLanguage.ENGLISH -> listOf("qwertyuiop", "asdfghjkl", "zxcvbnm")
+        WordLanguage.TURKISH -> listOf("ertyuıopğü", "asdfghjklşi", "zcvbnmöç")
+    }.map(String::toList)
 
 internal val WORD_KEY_SPACING = 4.dp
 internal const val WORD_KEYBOARD_ROWS = 3
@@ -242,10 +257,6 @@ private val KEY_CORNER = 6.dp
 private val PRESENT_BORDER_WIDTH = 2.dp
 private val ACTION_PADDING = 4.dp
 
-// The last row holds 9 letters and two action keys in the width of 12 letters: the three spare
-// letters and one spare gap are shared between Enter and Backspace.
-private const val ACTION_KEY_LETTERS = 1.5f
-private const val ACTION_KEY_GAPS = 0.5f
 private const val KEY_FONT_RATIO = 0.32f
 private val MIN_KEY_FONT = 12.dp
 private val MAX_KEY_FONT = 16.dp

@@ -262,7 +262,7 @@ private fun WordTerminalCard(
             if (isSolved) {
                 stringResource(R.string.word_attempts_used, game.attempts.size)
             } else {
-                stringResource(R.string.word_answer_was, puzzle.answer.uppercase())
+                stringResource(R.string.word_answer_was, puzzle.language.displayUppercase(puzzle.answer))
             },
         saveErrorDetail = stringResource(R.string.completion_save_error_body),
         economy = resultEconomy(isSolved, gemsEarned),

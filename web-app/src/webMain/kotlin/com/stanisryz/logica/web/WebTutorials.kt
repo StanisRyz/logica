@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
+import com.stanisryz.logica.puzzle.core.word.WordLanguage
 import com.stanisryz.logica.ui.components.catalogTitleResource
 import com.stanisryz.logica.ui.tutorial.BalanceTutorial
 import com.stanisryz.logica.ui.tutorial.BlockSudokuTutorial
@@ -95,7 +96,8 @@ internal fun WebTutorialScreen(
         when (puzzleType) {
             PuzzleType.BALANCE -> BalanceTutorial(onDone = onClose, modifier = modifier)
             PuzzleType.CROWNS -> CrownsTutorial(onDone = onClose, modifier = modifier)
-            PuzzleType.WORD -> WordTutorial(onDone = onClose, modifier = modifier)
+            PuzzleType.WORD ->
+                WordTutorial(onDone = onClose, modifier = modifier, language = WordLanguage.forInterfaceTag(currentWebAppLanguage.tag))
             PuzzleType.SUDOKU -> SudokuTutorial(onDone = onClose, modifier = modifier)
             PuzzleType.GAME_2048 ->
                 Game2048Tutorial(onDone = onClose, modifier = modifier, hardwareKeys = LocalWebKeyboard.current?.keys)

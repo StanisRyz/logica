@@ -107,8 +107,8 @@
     <string name="crowns_rule_region">• Every coloured region has exactly one crown.</string>
     <string name="crowns_rule_diagonal">• Crowns cannot touch each other diagonally.</string>
     <string name="crowns_tutorial_title">Crowns tutorial</string>
-    <string name="word">Russian Word</string>
-    <string name="word_catalog_description">Guess a Russian word of 4–7 letters in six tries. After each try you see which letters are in place.</string>
+    <string name="word">Words</string>
+    <string name="word_catalog_description">Guess an English word of 4–7 letters in six tries. After each try you see which letters are in place.</string>
     <string name="word_difficulty_note">Every level has six tries. Difficulty sets the word length.</string>
     <string name="word_difficulty_easy">Easy — 4 letters</string>
     <string name="word_difficulty_medium">Medium — 5 letters</string>
@@ -119,7 +119,7 @@
     <string name="word_solved">Word guessed</string>
     <string name="word_failed">Out of tries</string>
     <string name="word_answer_was">The word was: %1$s</string>
-    <string name="word_tutorial_title">Russian Word tutorial</string>
+    <string name="word_tutorial_title">Words tutorial</string>
     <string name="close">Close</string>
     <string name="economy_lives_short">%1$d/%2$d</string>
     <string name="economy_lives_title">Lives</string>

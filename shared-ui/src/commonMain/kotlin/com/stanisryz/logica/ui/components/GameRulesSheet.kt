@@ -9,19 +9,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.shared.ui.generated.resources.Res
@@ -50,7 +45,6 @@ import com.stanisryz.logica.shared.ui.generated.resources.rules_word_1
 import com.stanisryz.logica.shared.ui.generated.resources.rules_word_2
 import com.stanisryz.logica.shared.ui.generated.resources.rules_word_3
 import com.stanisryz.logica.shared.ui.generated.resources.rules_word_language
-import com.stanisryz.logica.shared.ui.generated.resources.word_russian_only
 import com.stanisryz.logica.ui.theme.LogicaSpacing
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -121,29 +115,3 @@ private fun PuzzleType.ruleResources(): List<StringResource> =
         PuzzleType.BLOCK_SUDOKU -> listOf(Res.string.rules_block_sudoku_1, Res.string.rules_block_sudoku_2, Res.string.rules_block_sudoku_3)
         else -> emptyList()
     }
-
-/**
- * The Word game's standing notice: its words are Russian in every interface language. Shown on
- * the Word difficulty screen of both hosts, next to the Word rules.
- */
-@Composable
-fun WordLanguageNotice(modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            Icons.Rounded.Translate,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(end = 6.dp).size(18.dp),
-        )
-        Text(
-            stringResource(Res.string.word_russian_only),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-    }
-}

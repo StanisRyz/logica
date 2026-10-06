@@ -110,7 +110,7 @@
     <string name="crowns_rule_region">• В каждой цветной области должна быть ровно одна корона.</string>
     <string name="crowns_rule_diagonal">• Короны не могут касаться друг друга по диагонали.</string>
     <string name="crowns_tutorial_title">Обучение «Короны»</string>
-    <string name="word">Слово</string>
+    <string name="word">Слова</string>
     <string name="word_catalog_description">Угадайте слово из 4–7 букв за шесть попыток. После каждой попытки видно, какие буквы стоят на своих местах.</string>
     <string name="word_difficulty_note">Во всех уровнях шесть попыток. Сложность определяется длиной слова.</string>
     <string name="word_difficulty_easy">Легко — 4 буквы</string>
@@ -122,7 +122,7 @@
     <string name="word_solved">Слово отгадано</string>
     <string name="word_failed">Попытки закончились</string>
     <string name="word_answer_was">Загаданное слово: %1$s</string>
-    <string name="word_tutorial_title">Обучение «Слово»</string>
+    <string name="word_tutorial_title">Обучение «Слова»</string>
     <string name="close">Закрыть</string>
     <string name="economy_lives_short">%1$d/%2$d</string>
     <string name="economy_lives_title">Жизни</string>

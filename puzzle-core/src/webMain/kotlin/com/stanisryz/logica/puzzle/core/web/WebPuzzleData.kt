@@ -1,6 +1,7 @@
 package com.stanisryz.logica.puzzle.core.web
 
 import com.stanisryz.logica.puzzle.core.catalog.ByteArrayCatalogLevelPackInput
+import com.stanisryz.logica.puzzle.core.catalog.CatalogContentVariant
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackFormat
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackInput
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackSource
@@ -40,11 +41,11 @@ object WebPuzzleData : CatalogLevelPackSource, SudokuDatasetSource {
         puzzleType: PuzzleType,
         difficulty: Difficulty,
         bytes: ByteArray,
+        variant: CatalogContentVariant? = null,
     ) {
-        require(bytes.isNotEmpty()) {
-            "Catalog Level Pack ${CatalogLevelPackFormat.assetPath(packVersion, puzzleType, difficulty)} is empty."
-        }
-        catalogLevelPacks[CatalogLevelPackFormat.assetPath(packVersion, puzzleType, difficulty)] = bytes.copyOf()
+        val path = CatalogLevelPackFormat.assetPath(packVersion, puzzleType, difficulty, variant)
+        require(bytes.isNotEmpty()) { "Catalog Level Pack $path is empty." }
+        catalogLevelPacks[path] = bytes.copyOf()
     }
 
     fun installSudokuDataset(
@@ -60,8 +61,16 @@ object WebPuzzleData : CatalogLevelPackSource, SudokuDatasetSource {
         packVersion: CatalogLevelPackVersion,
         puzzleType: PuzzleType,
         difficulty: Difficulty,
-    ): CatalogLevelPackInput {
-        val path = CatalogLevelPackFormat.assetPath(packVersion, puzzleType, difficulty)
+    ): CatalogLevelPackInput = openPath(CatalogLevelPackFormat.assetPath(packVersion, puzzleType, difficulty))
+
+    override fun openVariant(
+        packVersion: CatalogLevelPackVersion,
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+        variant: CatalogContentVariant,
+    ): CatalogLevelPackInput = openPath(CatalogLevelPackFormat.assetPath(packVersion, puzzleType, difficulty, variant))
+
+    private fun openPath(path: String): CatalogLevelPackInput {
         val bytes =
             checkNotNull(catalogLevelPacks[path]) {
                 "Web Catalog Level Pack $path was not preloaded."

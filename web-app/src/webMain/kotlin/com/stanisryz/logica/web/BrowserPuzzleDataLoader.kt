@@ -2,6 +2,7 @@
 
 package com.stanisryz.logica.web
 
+import com.stanisryz.logica.puzzle.core.catalog.CatalogContentVariant
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackFormat
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
 import com.stanisryz.logica.puzzle.core.model.Difficulty
@@ -39,11 +40,12 @@ class BrowserPuzzleDataLoader {
         packVersion: CatalogLevelPackVersion,
         puzzleType: PuzzleType,
         difficulty: Difficulty,
+        variant: CatalogContentVariant? = null,
     ) {
-        val resourcePath = CatalogLevelPackFormat.assetPath(packVersion, puzzleType, difficulty)
+        val resourcePath = CatalogLevelPackFormat.assetPath(packVersion, puzzleType, difficulty, variant)
         loads.load(resourcePath) {
             val bytes = fetchResponse(resourcePath).arrayBuffer().await().toByteArray()
-            WebPuzzleData.installCatalogLevelPack(packVersion, puzzleType, difficulty, bytes)
+            WebPuzzleData.installCatalogLevelPack(packVersion, puzzleType, difficulty, bytes, variant)
         }
     }
 

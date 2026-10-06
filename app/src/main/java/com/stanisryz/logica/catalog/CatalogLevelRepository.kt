@@ -2,6 +2,7 @@ package com.stanisryz.logica.catalog
 
 import android.content.res.AssetManager
 import com.stanisryz.logica.puzzle.core.catalog.BinaryCatalogLevelPack
+import com.stanisryz.logica.puzzle.core.catalog.CatalogContentVariant
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelDefinition
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
@@ -27,12 +28,19 @@ internal class AndroidCatalogLevelPackSource(
         packVersion: CatalogLevelPackVersion,
         puzzleType: PuzzleType,
         difficulty: Difficulty,
-    ): InputStream? =
+    ): InputStream? = openAsset(CatalogLevelPackFormat.assetPath(packVersion, puzzleType, difficulty))
+
+    /** Word's language buckets (`levels/v1/word_en/`, `word_tr/`), bundled beside the Russian ones. */
+    override fun openVariant(
+        packVersion: CatalogLevelPackVersion,
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+        variant: CatalogContentVariant,
+    ): InputStream? = openAsset(CatalogLevelPackFormat.assetPath(packVersion, puzzleType, difficulty, variant))
+
+    private fun openAsset(path: String): InputStream? =
         try {
-            assets.open(
-                CatalogLevelPackFormat.assetPath(packVersion, puzzleType, difficulty),
-                AssetManager.ACCESS_STREAMING,
-            )
+            assets.open(path, AssetManager.ACCESS_STREAMING)
         } catch (_: IOException) {
             null
         }
@@ -65,6 +73,13 @@ internal interface CatalogLevelRepository {
 
     /** Resolves the frozen definition, or throws [CatalogLevelUnavailableException]. */
     suspend fun resolve(levelId: CatalogLevelId): CatalogLevelDefinition
+
+    /** The same level from a content variant's bucket (Word's English and Turkish levels). */
+    suspend fun resolve(
+        levelId: CatalogLevelId,
+        variant: CatalogContentVariant?,
+    ): CatalogLevelDefinition =
+        if (variant == null) resolve(levelId) else throw CatalogLevelUnavailableException("No ${variant.key} content for $levelId.")
 }
 
 internal class RoomCatalogLevelRepository(
@@ -98,8 +113,13 @@ internal class RoomCatalogLevelRepository(
             packVersion = packVersion,
         )
 
-    override suspend fun resolve(levelId: CatalogLevelId): CatalogLevelDefinition =
-        when (val resolved = pack.resolve(levelId)) {
+    override suspend fun resolve(levelId: CatalogLevelId): CatalogLevelDefinition = resolve(levelId, null)
+
+    override suspend fun resolve(
+        levelId: CatalogLevelId,
+        variant: CatalogContentVariant?,
+    ): CatalogLevelDefinition =
+        when (val resolved = pack.resolve(levelId, variant)) {
             is CatalogLevelPackResult.Success -> resolved.value
             is CatalogLevelPackResult.Failure ->
                 throw CatalogLevelUnavailableException("${resolved.error}: ${resolved.detail}")

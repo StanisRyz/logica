@@ -14,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -31,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +51,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.puzzle.core.word.WordGameState
+import com.stanisryz.logica.puzzle.core.word.WordLanguage
 import com.stanisryz.logica.puzzle.core.word.WordLetterFeedback
 import com.stanisryz.logica.puzzle.core.word.WordRules
 import com.stanisryz.logica.shared.ui.generated.resources.Res
@@ -97,6 +101,27 @@ fun WordBoard(
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+        CompositionLocalProvider(LocalWordLanguage provides game.language) {
+            BoardRows(game, rows, cellSpacing, selectedCellIndex, editableEnabled, onCellSelected, revealedCells, acceptedAttemptRevision)
+        }
+    }
+}
+
+/** The game's language, so every tile shows its capital by that language's table (Turkish `i` → `İ`). */
+private val LocalWordLanguage = staticCompositionLocalOf { WordLanguage.RUSSIAN }
+
+@Composable
+private fun BoxWithConstraintsScope.BoardRows(
+    game: WordGameState,
+    rows: List<List<WordCell>>,
+    cellSpacing: Dp,
+    selectedCellIndex: Int?,
+    editableEnabled: Boolean,
+    onCellSelected: (Int) -> Unit,
+    revealedCells: Int,
+    acceptedAttemptRevision: Int,
+) {
+    run {
         val columns = game.wordLength
         val widthBudget = minOf(maxWidth, BOARD_MAX_WIDTH)
         val cellFromWidth = (widthBudget - cellSpacing * (columns - 1)) / columns
@@ -154,6 +179,7 @@ private fun WordBoardRow(
     val correctLabel = stringResource(Res.string.word_feedback_correct)
     val presentLabel = stringResource(Res.string.word_feedback_present)
     val absentLabel = stringResource(Res.string.word_feedback_absent)
+    val language = LocalWordLanguage.current
     val letters =
         row.joinToString(separator = ", ") { cell ->
             val label =
@@ -162,7 +188,7 @@ private fun WordBoardRow(
                     WordLetterFeedback.PRESENT -> presentLabel
                     else -> absentLabel
                 }
-            "${cell.letter?.uppercaseChar()} $label"
+            "${cell.letter?.let(language::displayUppercase)} $label"
         }
     val rowDescription =
         if (isSubmitted) {
@@ -261,7 +287,7 @@ private fun WordBoardCell(
                 Res.string.word_editable_cell_letter,
                 position + 1,
                 wordLength,
-                cell.letter.uppercaseChar().toString(),
+                LocalWordLanguage.current.displayUppercase(cell.letter).toString(),
             )
         }
     val scale = remember { Animatable(1f) }
@@ -319,7 +345,7 @@ private fun WordBoardCell(
                     (cellSize * LETTER_TEXT_RATIO).coerceIn(MIN_LETTER_TEXT, MAX_LETTER_TEXT).toSp()
                 }
             Text(
-                text = letter?.uppercaseChar()?.toString().orEmpty(),
+                text = letter?.let(LocalWordLanguage.current::displayUppercase)?.toString().orEmpty(),
                 color = content,
                 fontSize = letterSize,
                 lineHeight = letterSize,

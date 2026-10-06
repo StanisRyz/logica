@@ -97,7 +97,6 @@ internal fun PuzzleStartScreen(
                 enabled = true,
                 modifier = Modifier.fillMaxSize(),
                 stars = stars,
-                showsWordNotice = puzzleType == PuzzleType.WORD,
             )
         }
     } else {
@@ -114,7 +113,6 @@ internal fun PuzzleStartScreen(
                 enabled = false,
                 modifier = Modifier,
                 stars = stars,
-                showsWordNotice = puzzleType == PuzzleType.WORD,
             )
         }
     }
@@ -131,7 +129,6 @@ private fun StartDifficultyContent(
     enabled: Boolean,
     modifier: Modifier,
     stars: Map<Difficulty, Long> = emptyMap(),
-    showsWordNotice: Boolean = false,
 ) {
     Column(
         modifier = modifier,
@@ -144,8 +141,6 @@ private fun StartDifficultyContent(
             onGallery = onGallery,
             onLevels = onLevels,
         )
-        // The Word game says up front that its words are Russian in every language.
-        if (showsWordNotice) WordLanguageNotice()
         DifficultySelector(
             onStart = onStart,
             enabled = enabled,

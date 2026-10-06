@@ -15,10 +15,12 @@ import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleStars
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.web.WebPuzzleData
+import com.stanisryz.logica.puzzle.core.word.WordCatalogContent
 import com.stanisryz.logica.puzzle.core.word.WordGameEngine
 import com.stanisryz.logica.puzzle.core.word.WordGameState
 import com.stanisryz.logica.puzzle.core.word.WordGameStatus
 import com.stanisryz.logica.puzzle.core.word.WordGuessRejection
+import com.stanisryz.logica.puzzle.core.word.WordLanguage
 import com.stanisryz.logica.puzzle.core.word.WordPuzzle
 import com.stanisryz.logica.puzzle.core.word.WordRuntime
 import com.stanisryz.logica.puzzle.core.word.WordRuntimeResolver
@@ -75,6 +77,8 @@ internal class WebWordController(
     private val daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
     private val economy: WebGameplayEconomy = DisabledWebGameplayEconomy,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    /** Word plays in the interface language; a Catalog level's content comes from that language's bucket. */
+    private val language: () -> WordLanguage = { WordLanguage.RUSSIAN },
 ) {
     private var operation: Job? = null
     private var engine: WordGameEngine? = null
@@ -356,7 +360,7 @@ internal class WebWordController(
     }
 
     private fun resolveLevel(levelId: CatalogLevelId): CatalogLevelDefinition =
-        when (val resolved = levelPack.resolve(levelId)) {
+        when (val resolved = WordCatalogContent.resolve(levelPack, levelId, language())) {
             is CatalogLevelPackResult.Success -> resolved.value
             is CatalogLevelPackResult.Failure -> error(resolved.detail)
         }
@@ -368,13 +372,15 @@ internal class WebWordController(
             statistics: WebGameplayStatistics = DisabledWebGameplayStatistics,
             daily: WebDailyGameplayAccess = DisabledWebDailyGameplay,
             economy: WebGameplayEconomy = DisabledWebGameplayEconomy,
-        ): WebWordController =
-            WebWordController(
+        ): WebWordController {
+            val language = { WordLanguage.forInterfaceTag(currentWebAppLanguage.tag) }
+            return WebWordController(
                 loadPack = { difficulty ->
                     loader.loadCatalogLevelPack(
                         packVersion = CatalogLevelPackVersion.V1,
                         puzzleType = PuzzleType.WORD,
                         difficulty = difficulty,
+                        variant = WordCatalogContent.variant(language()),
                     )
                 },
                 loadRuntimeResources = loader::loadWordResources,
@@ -382,6 +388,8 @@ internal class WebWordController(
                 statistics = statistics,
                 daily = daily,
                 economy = economy,
+                language = language,
             )
+        }
     }
 }

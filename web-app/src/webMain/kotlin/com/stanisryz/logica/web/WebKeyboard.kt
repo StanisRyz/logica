@@ -5,6 +5,7 @@ package com.stanisryz.logica.web
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.staticCompositionLocalOf
+import com.stanisryz.logica.puzzle.core.word.WordLanguage
 import com.stanisryz.logica.ui.components.GameKey
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -37,7 +38,8 @@ internal class WebKeyboard {
     fun install() {
         addGameKeyListener { key, code ->
             if (!enabled || openDialogs > 0) return@addGameKeyListener false
-            val gameKey = webGameKeyOf(key, code) ?: return@addGameKeyListener false
+            val language = WordLanguage.forInterfaceTag(currentWebAppLanguage.tag)
+            val gameKey = webGameKeyOf(key, code, language) ?: return@addGameKeyListener false
             mutableKeys.tryEmit(gameKey)
         }
     }
@@ -61,13 +63,15 @@ internal fun PauseGameKeysWhileShown() {
 }
 
 /**
- * Maps a browser key event to a [GameKey]. Letters are Russian: a Cyrillic `key` is used as is, and
- * with any other layout the physical key position (`code`) maps through ЙЦУКЕН, so players do not
- * have to switch their keyboard layout to play Word.
+ * Maps a browser key event to a [GameKey]. Letters follow the Word language (the interface language):
+ * a typed letter of that alphabet is used as is — Turkish through its own table, so `I` is `ı` and `İ`
+ * is `i` — and with any other layout the physical key position (`code`) maps through that language's
+ * layout (ЙЦУКЕН, QWERTY, Turkish Q), so players never have to switch their keyboard layout.
  */
 internal fun webGameKeyOf(
     key: String,
     code: String,
+    language: WordLanguage = WordLanguage.RUSSIAN,
 ): GameKey? {
     when (key) {
         "ArrowUp" -> return GameKey.Up
@@ -81,10 +85,31 @@ internal fun webGameKeyOf(
     if (key.length != 1) return null
     val character = key.single()
     if (character in '0'..'9') return GameKey.Digit(character - '0')
-    val lower = character.lowercaseChar()
-    if (lower in 'а'..'я' || lower == 'ё') return GameKey.Letter(lower)
-    return RUSSIAN_LETTER_BY_CODE[code]?.let(GameKey::Letter)
+    if (language == WordLanguage.RUSSIAN) {
+        val lower = character.lowercaseChar()
+        if (lower in 'а'..'я' || lower == 'ё') return GameKey.Letter(lower)
+        return RUSSIAN_LETTER_BY_CODE[code]?.let(GameKey::Letter)
+    }
+    val normalizer = language.normalizer
+    if (normalizer.isSupportedLetter(character)) return GameKey.Letter(normalizer.normalizeLetter(character))
+    val layout = if (language == WordLanguage.TURKISH) TURKISH_LETTER_BY_CODE else ENGLISH_LETTER_BY_CODE
+    return layout[code]?.let(GameKey::Letter)
 }
+
+/** QWERTY key positions; Turkish Q is QWERTY with ı, ğ, ü, ş, i, ö, ç on the keys right of the letters. */
+private val ENGLISH_LETTER_BY_CODE: Map<String, Char> = ('a'..'z').associateBy { "Key${it.uppercaseChar()}" }
+
+private val TURKISH_LETTER_BY_CODE: Map<String, Char> =
+    ENGLISH_LETTER_BY_CODE +
+        mapOf(
+            "KeyI" to 'ı',
+            "BracketLeft" to 'ğ',
+            "BracketRight" to 'ü',
+            "Semicolon" to 'ş',
+            "Quote" to 'i',
+            "Comma" to 'ö',
+            "Period" to 'ç',
+        )
 
 private val RUSSIAN_LETTER_BY_CODE: Map<String, Char> =
     mapOf(
