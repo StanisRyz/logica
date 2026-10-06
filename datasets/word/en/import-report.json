@@ -30,22 +30,22 @@
     "4": {
       "guesses": 3903,
       "answers": 500,
-      "answer_candidates": 809
+      "answer_candidates": 800
     },
     "5": {
       "guesses": 8636,
       "answers": 500,
-      "answer_candidates": 975
+      "answer_candidates": 970
     },
     "6": {
       "guesses": 15232,
       "answers": 500,
-      "answer_candidates": 1093
+      "answer_candidates": 1080
     },
     "7": {
       "guesses": 23109,
       "answers": 500,
-      "answer_candidates": 1146
+      "answer_candidates": 1140
     }
   },
   "manual": {
@@ -53,7 +53,7 @@
     "answer_blocklist": 240,
     "answer_allowlist": 0,
     "topic_roots": 97,
-    "topic_words": 14,
+    "topic_words": 47,
     "topic_synsets": 4850,
     "british_spellings": 79
   },
@@ -66,17 +66,17 @@
     "PROPER_ONLY": 521,
     "RARE": 6913,
     "TOPIC:alcohol": 74,
-    "TOPIC:crime": 142,
-    "TOPIC:death": 29,
-    "TOPIC:disease": 212,
-    "TOPIC:drugs": 16,
-    "TOPIC:gambling": 11,
-    "TOPIC:politics": 23,
-    "TOPIC:profanity": 4,
-    "TOPIC:religion": 106,
-    "TOPIC:sexual": 13,
+    "TOPIC:crime": 148,
+    "TOPIC:death": 30,
+    "TOPIC:disease": 213,
+    "TOPIC:drugs": 18,
+    "TOPIC:gambling": 14,
+    "TOPIC:politics": 27,
+    "TOPIC:profanity": 7,
+    "TOPIC:religion": 115,
+    "TOPIC:sexual": 15,
     "TOPIC:tobacco": 15,
-    "TOPIC:violence": 19,
+    "TOPIC:violence": 21,
     "TOPIC:weapons": 61,
     "VERB_FORM": 295
   },
@@ -84,44 +84,44 @@
     "4": {
       "answers": [
         "ally",
-        "bath",
-        "bird",
-        "bowl",
-        "bulk",
-        "cane",
-        "cork",
-        "cost",
+        "beam",
+        "boat",
+        "bulb",
+        "cafe",
+        "care",
         "cove",
-        "date",
-        "door",
-        "duty",
+        "crew",
+        "crib",
+        "dean",
+        "dose",
         "ease",
-        "euro",
-        "fist",
+        "echo",
+        "exit",
         "flaw",
-        "foam",
-        "game",
-        "gate",
-        "glen",
-        "gold",
-        "grid",
-        "herd",
-        "hind",
-        "iron",
-        "joke",
-        "load",
-        "mesh",
+        "flux",
+        "fold",
+        "gaze",
+        "gear",
+        "glow",
+        "golf",
+        "grin",
+        "hero",
+        "hint",
+        "jack",
+        "kiss",
+        "loft",
+        "mess",
         "nest",
-        "pace",
-        "pine",
-        "plus",
-        "role",
-        "sage",
-        "self",
-        "skin",
-        "slip",
-        "soil",
-        "suit",
+        "oven",
+        "pill",
+        "plum",
+        "rock",
+        "saga",
+        "seat",
+        "size",
+        "slab",
+        "soda",
+        "stop",
         "wing"
       ],
       "dropped": [
@@ -253,6 +253,11 @@
           "zipf": 5.03
         },
         {
+          "word": "holy",
+          "reason": "TOPIC:religion",
+          "zipf": 4.88
+        },
+        {
           "word": "wine",
           "reason": "TOPIC:alcohol",
           "zipf": 4.74
@@ -276,6 +281,11 @@
           "word": "gang",
           "reason": "TOPIC:crime",
           "zipf": 4.5
+        },
+        {
+          "word": "jury",
+          "reason": "TOPIC:crime",
+          "zipf": 4.49
         },
         {
           "word": "harm",
@@ -316,16 +326,6 @@
           "word": "cult",
           "reason": "TOPIC:religion",
           "zipf": 4.09
-        },
-        {
-          "word": "riot",
-          "reason": "TOPIC:violence",
-          "zipf": 4.09
-        },
-        {
-          "word": "marc",
-          "reason": "TOPIC:alcohol",
-          "zipf": 4.03
         }
       ]
     },
@@ -333,42 +333,42 @@
       "answers": [
         "adult",
         "alien",
-        "anger",
-        "array",
+        "anime",
         "arrow",
+        "asset",
         "baron",
-        "cable",
+        "cache",
         "chaos",
         "cloth",
-        "creep",
-        "dairy",
-        "depot",
-        "eagle",
-        "fruit",
-        "giant",
+        "crest",
+        "daisy",
+        "depth",
+        "earth",
+        "genre",
         "glass",
-        "grade",
-        "grief",
-        "liner",
-        "maple",
-        "merit",
-        "monte",
+        "globe",
+        "grain",
+        "grill",
+        "liver",
+        "match",
+        "metal",
         "motto",
-        "onion",
-        "price",
-        "prior",
-        "retro",
-        "rogue",
-        "scare",
-        "sense",
-        "shade",
-        "south",
-        "stock",
-        "thumb",
-        "toast",
-        "trend",
-        "trout",
-        "union",
+        "mouth",
+        "orbit",
+        "print",
+        "promo",
+        "ridge",
+        "rover",
+        "scent",
+        "setup",
+        "shaft",
+        "sonny",
+        "steel",
+        "thing",
+        "title",
+        "trash",
+        "troop",
+        "uncle",
         "water",
         "yeast"
       ],
@@ -580,14 +580,14 @@
     "6": {
       "answers": [
         "accent",
-        "addict",
+        "advice",
         "avatar",
-        "badass",
+        "bakery",
         "beauty",
         "binary",
         "bottle",
-        "butter",
-        "canyon",
+        "bureau",
+        "canvas",
         "closet",
         "danger",
         "decade",
@@ -595,23 +595,23 @@
         "energy",
         "finale",
         "galaxy",
-        "holder",
-        "income",
-        "knight",
-        "monkey",
-        "museum",
-        "needle",
-        "notion",
-        "object",
+        "horror",
+        "inning",
+        "laptop",
+        "mother",
+        "nation",
+        "nephew",
+        "number",
         "office",
-        "parody",
-        "people",
-        "prince",
-        "rabbit",
-        "safety",
-        "season",
-        "sleeve",
-        "sprint",
+        "offset",
+        "patrol",
+        "period",
+        "public",
+        "rapper",
+        "salary",
+        "second",
+        "slogan",
+        "spying",
         "subway",
         "tenant",
         "tenure",
@@ -794,6 +794,11 @@
           "zipf": 4.24
         },
         {
+          "word": "gospel",
+          "reason": "TOPIC:religion",
+          "zipf": 4.18
+        },
+        {
           "word": "runner",
           "reason": "TOPIC:crime",
           "zipf": 4.18
@@ -809,64 +814,59 @@
           "zipf": 4.14
         },
         {
-          "word": "chapel",
+          "word": "parish",
           "reason": "TOPIC:religion",
-          "zipf": 4.03
+          "zipf": 4.11
         },
         {
-          "word": "cannon",
-          "reason": "TOPIC:weapons",
-          "zipf": 4.02
-        },
-        {
-          "word": "liquor",
-          "reason": "TOPIC:alcohol",
-          "zipf": 4.01
+          "word": "ballot",
+          "reason": "TOPIC:politics",
+          "zipf": 4.06
         }
       ]
     },
     "7": {
       "answers": [
         "airport",
-        "athlete",
-        "barrier",
-        "blossom",
-        "boycott",
-        "capital",
-        "century",
-        "comment",
-        "complex",
-        "costume",
-        "cricket",
-        "custody",
-        "erosion",
+        "attempt",
+        "battery",
+        "booking",
+        "bracket",
+        "capsule",
+        "ceramic",
+        "company",
+        "concept",
+        "cottage",
+        "crystal",
+        "daytime",
+        "evening",
         "grandpa",
         "housing",
         "hygiene",
         "interim",
         "leather",
-        "monarch",
-        "nursery",
+        "monitor",
         "nursing",
-        "outline",
-        "package",
-        "palette",
-        "passage",
-        "patient",
-        "pattern",
+        "offense",
+        "outlook",
+        "packing",
+        "panther",
+        "passing",
+        "patriot",
+        "payment",
         "reality",
         "refugee",
         "renewal",
         "replica",
         "retreat",
+        "statute",
         "stomach",
-        "striker",
-        "surgeon",
-        "tracker",
-        "tractor",
-        "upgrade",
-        "warning",
-        "warrant"
+        "support",
+        "tourism",
+        "tourist",
+        "turning",
+        "warming",
+        "warning"
       ],
       "dropped": [
         {
@@ -1052,6 +1052,16 @@
           "zipf": 4.31
         },
         {
+          "word": "warrant",
+          "reason": "TOPIC:crime",
+          "zipf": 4.24
+        },
+        {
+          "word": "custody",
+          "reason": "TOPIC:crime",
+          "zipf": 4.22
+        },
+        {
           "word": "tobacco",
           "reason": "TOPIC:tobacco",
           "zipf": 4.19
@@ -1060,16 +1070,6 @@
           "word": "vintage",
           "reason": "TOPIC:alcohol",
           "zipf": 4.18
-        },
-        {
-          "word": "scratch",
-          "reason": "TOPIC:disease",
-          "zipf": 4.16
-        },
-        {
-          "word": "missile",
-          "reason": "TOPIC:weapons",
-          "zipf": 4.14
         }
       ]
     }

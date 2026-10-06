@@ -2,6 +2,7 @@
 # Given names, surnames, places, and brands that the lexicon also lists as common nouns.
 acem
 aksu
+çaykara
 arda
 ayça
 buse

@@ -9,7 +9,6 @@ account	EXPERT
 action	HARD
 actor	MEDIUM
 actress	EXPERT
-addict	HARD
 admiral	EXPERT
 adult	MEDIUM
 advice	HARD
@@ -32,7 +31,6 @@ alien	MEDIUM
 alley	MEDIUM
 ally	EASY
 alpha	MEDIUM
-altar	MEDIUM
 amateur	EXPERT
 amber	MEDIUM
 amino	MEDIUM
@@ -67,18 +65,18 @@ armor	MEDIUM
 array	MEDIUM
 arrival	EXPERT
 arrow	MEDIUM
-arse	EASY
+artery	HARD
 article	EXPERT
 artist	HARD
 artwork	EXPERT
 aspect	HARD
 asset	MEDIUM
 asylum	HARD
-atheist	EXPERT
 athlete	EXPERT
 atlas	MEDIUM
 atom	EASY
 attempt	EXPERT
+attic	MEDIUM
 auction	EXPERT
 audio	MEDIUM
 audit	MEDIUM
@@ -95,17 +93,17 @@ baba	EASY
 baby	EASY
 backing	EXPERT
 backup	HARD
-badass	HARD
 badge	MEDIUM
 baggage	EXPERT
 baker	MEDIUM
+bakery	HARD
 baking	HARD
 balance	EXPERT
 balcony	EXPERT
 ball	EASY
 ballet	HARD
 balloon	EXPERT
-ballot	HARD
+bamboo	HARD
 banana	HARD
 band	EASY
 bank	EASY
@@ -152,7 +150,6 @@ bike	EASY
 bill	EASY
 binary	HARD
 binding	EXPERT
-bingo	MEDIUM
 biology	EXPERT
 bird	EASY
 birth	MEDIUM
@@ -162,7 +159,6 @@ blanket	EXPERT
 blaze	MEDIUM
 blend	MEDIUM
 bliss	MEDIUM
-bloc	EASY
 blonde	HARD
 blood	MEDIUM
 bloom	MEDIUM
@@ -173,7 +169,6 @@ body	EASY
 boiler	HARD
 bond	EASY
 bone	EASY
-bong	EASY
 bonus	MEDIUM
 book	EASY
 booking	EXPERT
@@ -227,6 +222,7 @@ bulk	EASY
 bull	EASY
 bumper	HARD
 bunch	MEDIUM
+bunker	HARD
 bunny	MEDIUM
 burden	HARD
 bureau	HARD
@@ -240,6 +236,7 @@ bypass	HARD
 cabin	MEDIUM
 cabinet	EXPERT
 cable	MEDIUM
+cache	MEDIUM
 cafe	EASY
 cage	EASY
 cake	EASY
@@ -341,7 +338,6 @@ clause	HARD
 claw	EASY
 clay	EASY
 cleaner	EXPERT
-clergy	HARD
 clerk	MEDIUM
 client	HARD
 cliff	MEDIUM
@@ -362,6 +358,7 @@ coach	MEDIUM
 coast	MEDIUM
 coaster	EXPERT
 coat	EASY
+coco	EASY
 cocoa	MEDIUM
 coconut	EXPERT
 code	EASY
@@ -373,7 +370,6 @@ colonel	EXPERT
 colony	HARD
 color	MEDIUM
 column	HARD
-coma	EASY
 comb	EASY
 combo	MEDIUM
 comedy	HARD
@@ -427,10 +423,10 @@ cowboy	HARD
 crab	EASY
 craft	MEDIUM
 credit	HARD
-creed	MEDIUM
 creep	MEDIUM
 crest	MEDIUM
 crew	EASY
+crib	EASY
 cricket	EXPERT
 crisis	HARD
 critic	HARD
@@ -446,7 +442,6 @@ curb	EASY
 current	EXPERT
 curtain	EXPERT
 curve	MEDIUM
-custody	EXPERT
 custom	HARD
 cutter	HARD
 cutting	EXPERT
@@ -701,6 +696,7 @@ fossil	HARD
 fourth	HARD
 frame	MEDIUM
 freedom	EXPERT
+freeway	EXPERT
 freezer	EXPERT
 freight	EXPERT
 fridge	HARD
@@ -719,7 +715,6 @@ galaxy	HARD
 gale	EASY
 gallery	EXPERT
 gallon	HARD
-gamble	HARD
 game	EASY
 garage	HARD
 garbage	EXPERT
@@ -728,6 +723,7 @@ garlic	HARD
 gate	EASY
 gateway	EXPERT
 gaze	EASY
+gazette	EXPERT
 gear	EASY
 geek	EASY
 gender	HARD
@@ -745,6 +741,7 @@ gill	EASY
 ginger	HARD
 girl	EASY
 glass	MEDIUM
+glee	EASY
 glen	EASY
 glimpse	EXPERT
 globe	MEDIUM
@@ -758,7 +755,6 @@ golf	EASY
 goodbye	EXPERT
 goose	MEDIUM
 gorilla	EXPERT
-gospel	HARD
 gossip	HARD
 gown	EASY
 grace	MEDIUM
@@ -795,6 +791,7 @@ gulf	EASY
 habit	MEDIUM
 habitat	EXPERT
 hack	EASY
+hacker	HARD
 hair	EASY
 haircut	EXPERT
 hall	EASY
@@ -841,12 +838,10 @@ holder	HARD
 holding	EXPERT
 hole	EASY
 holiday	EXPERT
-holy	EASY
 home	EASY
 honesty	EXPERT
 honey	MEDIUM
 honor	MEDIUM
-hooker	HARD
 hope	EASY
 horizon	EXPERT
 hormone	EXPERT
@@ -875,7 +870,6 @@ idol	EASY
 image	MEDIUM
 imagery	EXPERT
 imaging	EXPERT
-imam	EASY
 impact	HARD
 import	HARD
 impulse	EXPERT
@@ -921,7 +915,6 @@ jumper	HARD
 jungle	HARD
 junior	HARD
 junk	EASY
-jury	EASY
 justice	EXPERT
 karma	MEDIUM
 keeper	HARD
@@ -935,6 +928,7 @@ knee	EASY
 knife	MEDIUM
 knight	HARD
 knit	EASY
+knob	EASY
 knot	EASY
 labor	MEDIUM
 ladder	HARD
@@ -994,6 +988,7 @@ litter	HARD
 liver	MEDIUM
 load	EASY
 loading	EXPERT
+loaf	EASY
 loan	EASY
 lobby	MEDIUM
 lobster	EXPERT
@@ -1003,6 +998,7 @@ loft	EASY
 logic	MEDIUM
 logo	EASY
 loop	EASY
+loot	EASY
 lore	EASY
 loss	EASY
 lounge	HARD
@@ -1081,7 +1077,6 @@ metric	HARD
 metro	MEDIUM
 mile	EASY
 mileage	EXPERT
-militia	EXPERT
 milk	EASY
 milo	EASY
 mind	EASY
@@ -1109,10 +1104,10 @@ money	MEDIUM
 monitor	EXPERT
 monkey	HARD
 monster	EXPERT
-monte	MEDIUM
 month	MEDIUM
 mood	EASY
 moon	EASY
+morale	HARD
 morning	EXPERT
 moss	EASY
 moth	EASY
@@ -1126,6 +1121,7 @@ movie	MEDIUM
 muscle	HARD
 museum	HARD
 music	MEDIUM
+musk	EASY
 mustard	EXPERT
 mystery	EXPERT
 myth	EASY
@@ -1169,6 +1165,7 @@ nursing	EXPERT
 object	HARD
 ocean	MEDIUM
 odds	EASY
+odor	EASY
 offense	EXPERT
 office	HARD
 officer	EXPERT
@@ -1219,13 +1216,12 @@ papa	EASY
 paper	MEDIUM
 parade	HARD
 paradox	EXPERT
+parcel	HARD
 pardon	HARD
 parent	HARD
-parish	HARD
 park	EASY
 parking	EXPERT
 parody	HARD
-parole	HARD
 part	EASY
 partner	EXPERT
 passage	EXPERT
@@ -1251,6 +1247,7 @@ peach	MEDIUM
 peak	EASY
 peanut	HARD
 pearl	MEDIUM
+peasant	EXPERT
 peek	EASY
 peer	EASY
 pencil	HARD
@@ -1311,6 +1308,7 @@ poem	EASY
 poet	EASY
 poetry	HARD
 point	MEDIUM
+pointer	EXPERT
 pole	EASY
 police	HARD
 policy	HARD
@@ -1357,7 +1355,6 @@ prom	EASY
 promo	MEDIUM
 proof	MEDIUM
 prop	EASY
-prophet	EXPERT
 prose	MEDIUM
 protein	EXPERT
 protest	EXPERT
@@ -1396,7 +1393,6 @@ rainbow	EXPERT
 rally	MEDIUM
 ranch	MEDIUM
 range	MEDIUM
-ransom	HARD
 rant	EASY
 rapper	HARD
 rate	EASY
@@ -1427,6 +1423,7 @@ relay	MEDIUM
 release	EXPERT
 relief	HARD
 remake	HARD
+remark	HARD
 remedy	HARD
 removal	EXPERT
 renewal	EXPERT
@@ -1506,6 +1503,8 @@ salon	MEDIUM
 salvage	EXPERT
 sample	HARD
 samurai	EXPERT
+sarcasm	EXPERT
+satire	HARD
 sausage	EXPERT
 saving	HARD
 scale	MEDIUM
@@ -1555,6 +1554,7 @@ serving	EXPERT
 session	EXPERT
 setting	EXPERT
 setup	MEDIUM
+sewer	MEDIUM
 sewing	HARD
 shade	MEDIUM
 shadow	HARD
@@ -1564,6 +1564,7 @@ shape	MEDIUM
 share	MEDIUM
 sharing	EXPERT
 shark	MEDIUM
+shaving	EXPERT
 sheep	MEDIUM
 sheet	MEDIUM
 shelf	MEDIUM
@@ -1596,6 +1597,7 @@ skill	MEDIUM
 skin	EASY
 skirt	MEDIUM
 skull	MEDIUM
+slab	EASY
 slam	EASY
 slate	MEDIUM
 sleep	MEDIUM
@@ -1606,6 +1608,7 @@ slip	EASY
 slogan	HARD
 slope	MEDIUM
 slot	EASY
+smack	MEDIUM
 smell	MEDIUM
 smoke	MEDIUM
 snack	MEDIUM
@@ -1624,6 +1627,7 @@ soil	EASY
 soldier	EXPERT
 sole	EASY
 song	EASY
+sonny	MEDIUM
 sorrow	HARD
 sort	EASY
 soul	EASY
@@ -1655,8 +1659,8 @@ spray	MEDIUM
 spring	HARD
 sprint	HARD
 spur	EASY
+spying	HARD
 squad	MEDIUM
-stab	EASY
 stack	MEDIUM
 stadium	EXPERT
 staff	MEDIUM
@@ -1896,13 +1900,11 @@ vent	EASY
 venture	EXPERT
 venue	MEDIUM
 verb	EASY
-verdict	EXPERT
 verge	MEDIUM
 verse	MEDIUM
 version	EXPERT
 vessel	HARD
 veteran	EXPERT
-veto	EASY
 vibe	EASY
 vice	EASY
 victor	HARD
@@ -1928,7 +1930,6 @@ voice	MEDIUM
 volcano	EXPERT
 voltage	EXPERT
 volume	HARD
-voter	MEDIUM
 voyage	HARD
 wage	EASY
 wagon	MEDIUM
@@ -1941,7 +1942,6 @@ warming	EXPERT
 warmth	HARD
 warning	EXPERT
 warp	EASY
-warrant	EXPERT
 warrior	EXPERT
 washing	EXPERT
 water	MEDIUM

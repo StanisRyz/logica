@@ -1,7 +1,6 @@
 # Generated Word V4 answers by tools/word-lexicon/extract_turkish.py; format: <word>\t<difficulty>; ordering is compatibility data.
 abartı	HARD
 acun	EASY
-adak	EASY
 adalet	HARD
 adam	EASY
 aday	EASY
@@ -29,6 +28,7 @@ aksiyon	EXPERT
 aktarım	EXPERT
 aktris	HARD
 aktör	MEDIUM
+akçe	EASY
 akıl	EASY
 akıntı	HARD
 akşam	MEDIUM
@@ -38,10 +38,8 @@ alarm	MEDIUM
 alay	EASY
 albay	MEDIUM
 albüm	MEDIUM
-alerji	HARD
 alet	EASY
 alev	EASY
-alevi	MEDIUM
 alfabe	HARD
 algı	EASY
 alkış	MEDIUM
@@ -99,13 +97,15 @@ aslan	MEDIUM
 aspirin	EXPERT
 asır	EASY
 atasözü	EXPERT
+ataç	EASY
 ateş	EASY
-ateşkes	EXPERT
 atkı	EASY
+atlas	MEDIUM
 atom	EASY
 atölye	HARD
 atıf	EASY
 atılım	HARD
+avam	EASY
 avantaj	EXPERT
 avaz	EASY
 avlu	EASY
@@ -119,7 +119,6 @@ ayrılık	EXPERT
 ayrım	MEDIUM
 ayrıntı	EXPERT
 ayva	EASY
-azap	EASY
 azim	EASY
 azot	EASY
 azınlık	EXPERT
@@ -129,7 +128,6 @@ açım	EASY
 ağaç	EASY
 ağustos	EXPERT
 ağırlık	EXPERT
-ağıt	EASY
 ağız	EASY
 aşiret	HARD
 aşçı	EASY
@@ -142,7 +140,6 @@ bahane	HARD
 baharat	EXPERT
 bahriye	EXPERT
 bahçe	MEDIUM
-bakara	HARD
 bakkal	HARD
 baklava	EXPERT
 bakteri	EXPERT
@@ -183,6 +180,7 @@ bayram	HARD
 bağış	MEDIUM
 başak	MEDIUM
 başarı	HARD
+başbuğ	HARD
 başkan	HARD
 başkent	EXPERT
 başlık	HARD
@@ -200,7 +198,6 @@ bellek	HARD
 benlik	HARD
 bent	EASY
 benzin	HARD
-beraat	HARD
 berat	MEDIUM
 berber	HARD
 bere	EASY
@@ -251,8 +248,10 @@ boyut	MEDIUM
 bozkır	HARD
 boğaz	MEDIUM
 boşluk	HARD
+brifing	EXPERT
 briç	EASY
 brokoli	EXPERT
+broşür	HARD
 buhar	MEDIUM
 bulgur	HARD
 bulut	MEDIUM
@@ -274,7 +273,6 @@ büyücü	HARD
 cadde	MEDIUM
 cadı	EASY
 canavar	EXPERT
-casino	HARD
 casus	MEDIUM
 cazibe	HARD
 cehalet	EXPERT
@@ -372,6 +370,7 @@ dolap	MEDIUM
 dolaşım	EXPERT
 dolunay	EXPERT
 domates	EXPERT
+domino	HARD
 domuz	MEDIUM
 dost	EASY
 dostluk	EXPERT
@@ -383,6 +382,7 @@ doğum	MEDIUM
 dragon	HARD
 dram	EASY
 drama	MEDIUM
+drenaj	HARD
 dublaj	HARD
 dudak	MEDIUM
 duman	MEDIUM
@@ -420,7 +420,6 @@ ekonomi	EXPERT
 ekvator	EXPERT
 elbise	HARD
 eldiven	EXPERT
-elebaşı	EXPERT
 elem	EASY
 eleman	HARD
 element	EXPERT
@@ -437,6 +436,7 @@ emlakçı	EXPERT
 emniyet	EXPERT
 empati	HARD
 encümen	EXPERT
+endeks	HARD
 endişe	HARD
 enerji	HARD
 engel	MEDIUM
@@ -446,7 +446,6 @@ erdem	MEDIUM
 erik	EASY
 erkek	MEDIUM
 erozyon	EXPERT
-esaret	HARD
 eser	EASY
 esnaf	MEDIUM
 espri	MEDIUM
@@ -464,6 +463,7 @@ evre	EASY
 evren	MEDIUM
 evrim	MEDIUM
 eyalet	HARD
+eyer	EASY
 eylem	MEDIUM
 eylül	MEDIUM
 ezel	EASY
@@ -498,6 +498,7 @@ fenomen	EXPERT
 feragat	EXPERT
 feribot	EXPERT
 ferman	HARD
+feryat	HARD
 fetih	MEDIUM
 feyz	EASY
 fidan	MEDIUM
@@ -568,6 +569,7 @@ gezegen	EXPERT
 gezinti	EXPERT
 geçim	MEDIUM
 geçit	MEDIUM
+gidişat	EXPERT
 gitar	MEDIUM
 giyim	MEDIUM
 giysi	MEDIUM
@@ -576,6 +578,7 @@ gişe	EASY
 golf	EASY
 grafik	HARD
 gram	EASY
+gramer	HARD
 granit	HARD
 grev	EASY
 grup	EASY
@@ -583,6 +586,7 @@ gurbet	HARD
 guru	EASY
 gurur	MEDIUM
 göbek	MEDIUM
+göktaşı	EXPERT
 gökyüzü	EXPERT
 gölge	MEDIUM
 gömlek	HARD
@@ -594,7 +598,6 @@ görünüm	EXPERT
 görüşme	EXPERT
 gösteri	EXPERT
 gövde	MEDIUM
-gözdağı	EXPERT
 gözetim	EXPERT
 gözlem	HARD
 gözlük	HARD
@@ -607,7 +610,9 @@ gündüz	HARD
 güney	MEDIUM
 güneş	MEDIUM
 gürültü	EXPERT
+güve	EASY
 güvence	EXPERT
+güvenç	HARD
 güverte	EXPERT
 güçlük	HARD
 gıda	EASY
@@ -650,7 +655,6 @@ havuz	MEDIUM
 hayal	MEDIUM
 hayalet	EXPERT
 hayat	MEDIUM
-haydut	HARD
 hayvan	HARD
 hazine	HARD
 haziran	EXPERT
@@ -674,6 +678,7 @@ hikmet	HARD
 hilal	MEDIUM
 hile	EASY
 hipnoz	HARD
+hipofiz	EXPERT
 hisse	MEDIUM
 hitap	MEDIUM
 hizmet	HARD
@@ -702,7 +707,6 @@ idrak	MEDIUM
 ifade	MEDIUM
 iflas	MEDIUM
 iftihar	EXPERT
-iftira	HARD
 ifşa	EASY
 ihale	MEDIUM
 ihbar	MEDIUM
@@ -710,6 +714,7 @@ ihmal	MEDIUM
 ihracat	EXPERT
 ihraç	MEDIUM
 ihtimal	EXPERT
+ihtiras	EXPERT
 ihtisas	EXPERT
 ihtiva	HARD
 ihtiyaç	EXPERT
@@ -730,7 +735,6 @@ ilham	MEDIUM
 ilik	EASY
 ilişki	HARD
 ilkokul	EXPERT
-iltica	HARD
 iltifat	EXPERT
 ilçe	EASY
 imaj	EASY
@@ -750,7 +754,6 @@ inkar	MEDIUM
 insan	MEDIUM
 insülin	EXPERT
 intikal	EXPERT
-intikam	EXPERT
 inşa	EASY
 inşaat	HARD
 ipotek	HARD
@@ -785,12 +788,12 @@ içecek	HARD
 iğne	EASY
 işadamı	EXPERT
 işaret	HARD
-işgal	MEDIUM
 işgücü	HARD
 işlem	MEDIUM
 işlemci	EXPERT
 işletim	EXPERT
 işletme	EXPERT
+işlev	MEDIUM
 iştirak	EXPERT
 işveren	EXPERT
 işyeri	HARD
@@ -814,6 +817,8 @@ kadro	MEDIUM
 kadın	MEDIUM
 kafa	EASY
 kafe	EASY
+kafein	HARD
+kafes	MEDIUM
 kahkaha	EXPERT
 kahve	MEDIUM
 kaide	MEDIUM
@@ -878,6 +883,7 @@ katsayı	EXPERT
 katılım	EXPERT
 kavanoz	EXPERT
 kavram	HARD
+kavşak	HARD
 kaya	EASY
 kayak	MEDIUM
 kaynak	HARD
@@ -887,7 +893,6 @@ kazanç	HARD
 kağıt	MEDIUM
 kaşık	MEDIUM
 kedi	EASY
-kefalet	EXPERT
 kehanet	EXPERT
 keklik	HARD
 kelebek	EXPERT
@@ -930,7 +935,6 @@ kolonya	EXPERT
 kolordu	EXPERT
 koltuk	HARD
 kolye	MEDIUM
-koma	EASY
 komando	EXPERT
 komedi	HARD
 komiser	EXPERT
@@ -1009,7 +1013,6 @@ kültür	HARD
 küme	EASY
 küpe	EASY
 kürek	MEDIUM
-kürtaj	HARD
 kılavuz	EXPERT
 kısım	MEDIUM
 kıta	EASY
@@ -1023,11 +1026,13 @@ lale	EASY
 lansman	EXPERT
 lapa	EASY
 laptop	HARD
+lavanta	EXPERT
 lazer	MEDIUM
 leblebi	EXPERT
 leke	EASY
 lenf	EASY
 lens	EASY
+leopar	HARD
 lezzet	HARD
 liga	EASY
 liman	MEDIUM
@@ -1055,6 +1060,7 @@ mahalle	EXPERT
 main	EASY
 makale	HARD
 makam	MEDIUM
+makara	HARD
 makarna	EXPERT
 makina	HARD
 makine	HARD
@@ -1109,7 +1115,6 @@ mektup	HARD
 melodi	HARD
 meltem	HARD
 membran	EXPERT
-meme	EASY
 menajer	EXPERT
 mendil	HARD
 menekşe	EXPERT
@@ -1122,7 +1127,6 @@ mera	EASY
 merak	MEDIUM
 mercek	HARD
 merhem	HARD
-merhum	HARD
 merkez	HARD
 mesafe	HARD
 mesai	MEDIUM
@@ -1154,7 +1158,6 @@ mira	EASY
 miras	MEDIUM
 misafir	EXPERT
 misyon	HARD
-miting	HARD
 mizah	MEDIUM
 mobilya	EXPERT
 mode	EASY
@@ -1209,7 +1212,6 @@ nezaket	EXPERT
 neşe	EASY
 nikah	MEDIUM
 nilüfer	EXPERT
-nirvana	EXPERT
 nisan	MEDIUM
 nitelik	EXPERT
 nitrat	HARD
@@ -1244,13 +1246,16 @@ opera	MEDIUM
 oran	EASY
 ordu	EASY
 organ	MEDIUM
+orkide	HARD
 orman	MEDIUM
 ortalık	EXPERT
 ortaçağ	EXPERT
 otel	EASY
+otoban	HARD
 otobüs	HARD
 otopark	EXPERT
 otorite	EXPERT
+otostop	EXPERT
 otoyol	HARD
 oturum	HARD
 oyun	EASY
@@ -1344,7 +1349,6 @@ proje	MEDIUM
 protein	EXPERT
 puan	EASY
 puma	EASY
-pusu	EASY
 pınar	MEDIUM
 radar	MEDIUM
 radyo	MEDIUM
@@ -1390,12 +1394,10 @@ röntgen	EXPERT
 rövanş	HARD
 rüya	EASY
 rüzgar	HARD
-rüşvet	HARD
 rıza	EASY
 saadet	HARD
 saat	EASY
 sabah	MEDIUM
-sabotaj	EXPERT
 sabun	MEDIUM
 sabır	MEDIUM
 sadakat	EXPERT
@@ -1566,7 +1568,6 @@ tahlil	HARD
 tahliye	EXPERT
 tahmin	HARD
 tahrik	HARD
-tahrip	HARD
 tahrir	HARD
 tahsil	HARD
 tahsis	HARD
@@ -1599,6 +1600,7 @@ taraf	MEDIUM
 tarhana	EXPERT
 tarif	MEDIUM
 tarih	MEDIUM
+tarihçe	EXPERT
 tarla	MEDIUM
 tarz	EASY
 tarçın	HARD
@@ -1620,7 +1622,6 @@ tavşan	HARD
 tayfun	HARD
 tayin	MEDIUM
 tayt	EASY
-taziye	HARD
 taşeron	EXPERT
 tebliğ	HARD
 tebrik	HARD
@@ -1684,8 +1685,6 @@ tiyatro	EXPERT
 tişört	HARD
 tohum	MEDIUM
 toka	EASY
-tokat	MEDIUM
-tombala	EXPERT
 toplam	HARD
 toplum	HARD
 toprak	HARD
@@ -1725,6 +1724,7 @@ tırnak	HARD
 ufuk	EASY
 ulaşım	HARD
 ulus	EASY
+umur	EASY
 umut	EASY
 unvan	MEDIUM
 uranyum	EXPERT
@@ -1815,7 +1815,6 @@ yenilik	EXPERT
 yeryüzü	EXPERT
 yetenek	EXPERT
 yetki	MEDIUM
-yeşilay	EXPERT
 yeşim	MEDIUM
 yiyecek	EXPERT
 yoga	EASY
@@ -1865,6 +1864,7 @@ ziyafet	EXPERT
 ziyaret	EXPERT
 zırh	EASY
 çaba	EASY
+çakı	EASY
 çalı	EASY
 çamaşır	EXPERT
 çamlık	HARD
@@ -1955,6 +1955,7 @@ zırh	EASY
 ıslah	MEDIUM
 ıspanak	EXPERT
 ısrar	MEDIUM
+ıstırap	EXPERT
 ızdırap	EXPERT
 ışık	EASY
 şafak	MEDIUM
@@ -1986,7 +1987,6 @@ zırh	EASY
 şifre	MEDIUM
 şiir	EASY
 şikayet	EXPERT
-şike	EASY
 şile	EASY
 şimşek	HARD
 şirket	HARD

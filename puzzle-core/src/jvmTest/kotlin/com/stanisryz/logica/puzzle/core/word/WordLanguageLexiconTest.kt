@@ -94,6 +94,6 @@ class WordLanguageLexiconTest {
 
     private companion object {
         const val GOLDEN_ANSWERS =
-            "joke cane liner bread legion bumper hunting breakup kent bant kiraz boğaz kuzgun boykot kesinti başvuru"
+            "kiss care liver brent lesson bumper hunting brigade kedi bant kimya boğaz kuvvet boşluk kesinti belirti"
     }
 }

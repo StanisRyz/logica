@@ -59,12 +59,12 @@ The tool writes `puzzle-core/src/commonMain/resources/word/v4/`, the review tabl
 
 | Length (difficulty) | Guesses (lemmas + inflected) | Answer candidates | Answers |
 |---|---|---|---|
-| 4 (Easy) | 2 653 (2 015 + 638) | 664 | 500 |
-| 5 (Medium) | 7 018 (5 043 + 1 975) | 1 233 | 500 |
-| 6 (Hard) | 9 017 (4 825 + 4 192) | 962 | 500 |
-| 7 (Expert) | 11 096 (4 524 + 6 572) | 709 | 500 |
+| 4 (Easy) | 2 653 (2 015 + 638) | 656 | 500 |
+| 5 (Medium) | 7 018 (5 043 + 1 975) | 1 230 | 500 |
+| 6 (Hard) | 9 017 (4 825 + 4 192) | 947 | 500 |
+| 7 (Expert) | 11 096 (4 524 + 6 572) | 698 | 500 |
 
-Generated resource SHA-256: `allowed_guesses.txt` `368d2209dbdf6fe4bc40f3feddfb0d64e5ee5836fe25a8596d3b8c9c784dcea7`, `answers.txt` `775add633b4306d68f2d3166503c1c02655c82575dcca57efcacbe90d9d0cfa1`.
+Generated resource SHA-256: `allowed_guesses.txt` `368d2209dbdf6fe4bc40f3feddfb0d64e5ee5836fe25a8596d3b8c9c784dcea7`, `answers.txt` `cfc0dd7b2b78c1deaf177309eefebfa07e1ba0453badef3fedef71e49a336b7e`.
 
 ## Licences
 

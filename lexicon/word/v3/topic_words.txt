@@ -6,10 +6,15 @@
 sake      alcohol    # rice wine (first sense: "for the sake of")
 hash      drugs      # hashish
 weed      drugs      # marijuana
+addict    drugs
+bong      drugs      # a water pipe
 
 # Gambling.
 lottery   gambling
 poker     gambling   # first sense: the fire iron
+bingo     gambling
+gamble    gambling
+monte     gambling   # three-card monte
 
 # Weapons.
 shot      weapons    # the firing of a gun
@@ -18,16 +23,48 @@ sniper    weapons
 
 # Violence.
 attack    violence   # first sense: a military offensive, outside the aggression tree
+militia   violence
+stab      violence
 
 # Death.
 hanging   death      # an execution
 zombie    death      # a reanimated corpse
+demise    death
 
 # Crime and courts.
 trial     crime      # a court trial (first sense: a test)
+custody   crime      # detention
+jury      crime
+parole    crime
+ransom    crime
+verdict   crime
+warrant   crime      # an arrest warrant
 
 # Disease.
 virus     disease    # first sense: the microorganism
+coma      disease
 
 # Politics.
 vote      politics   # an election (first sense: any choice made by counting)
+ballot    politics
+bloc      politics   # a political bloc
+veto      politics
+voter     politics
+
+# Religion.
+altar     religion
+atheist   religion
+clergy    religion
+creed     religion
+gospel    religion
+holy      religion
+imam      religion
+parish    religion
+prophet   religion
+
+# Profanity and sex.
+arse      profanity
+badass    profanity
+fucker    profanity
+hooker    sexual
+orgasm    sexual

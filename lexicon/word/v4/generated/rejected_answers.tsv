@@ -1165,6 +1165,7 @@ hakkını	7	4.73	NOT_A_LEMMA
 idam	4	4.73	TOPIC:death
 idam	4	4.73	MANUAL_BLOCK
 iktidar	7	4.73	TOPIC:politics
+işgal	5	4.73	TOPIC:violence
 işini	5	4.73	NOT_A_LEMMA
 kadına	6	4.73	NOT_A_LEMMA
 kupa	4	4.73	ALSO_OTHER_PART_OF_SPEECH
@@ -1437,6 +1438,7 @@ sadık	5	4.64	NOT_A_NOUN
 sevdiği	7	4.64	NOT_A_LEMMA
 tarafta	7	4.64	NOT_A_LEMMA
 tarihe	6	4.64	NOT_A_LEMMA
+tokat	5	4.64	TOPIC:violence
 verip	5	4.64	NOT_A_LEMMA
 anlattı	7	4.63	NOT_A_LEMMA
 atılan	6	4.63	NOT_A_LEMMA
@@ -1450,6 +1452,7 @@ geçecek	7	4.63	NOT_A_LEMMA
 gördük	6	4.63	NOT_A_LEMMA
 görsel	6	4.63	NOT_A_NOUN
 görünen	7	4.63	NOT_A_LEMMA
+intikam	7	4.63	TOPIC:violence
 istemez	7	4.63	NOT_A_LEMMA
 isteği	6	4.63	NOT_A_LEMMA
 kalbi	5	4.63	NOT_A_NOUN
@@ -1941,6 +1944,7 @@ zordur	6	4.49	NOT_A_LEMMA
 adeta	5	4.48	NOT_A_NOUN
 akan	4	4.48	NOT_A_LEMMA
 alanına	7	4.48	NOT_A_LEMMA
+alevi	5	4.48	TOPIC:religion
 amca	4	4.48	ALSO_OTHER_PART_OF_SPEECH
 artış	5	4.48	NOT_A_LEMMA
 aslı	4	4.48	NOT_A_LEMMA
@@ -2823,6 +2827,7 @@ koruyan	7	4.29	NOT_A_LEMMA
 kurma	5	4.29	NOT_A_LEMMA
 kıyamet	7	4.29	MANUAL_BLOCK
 marşı	5	4.29	NOT_A_LEMMA
+meme	4	4.29	TOPIC:sexual
 muhtaç	6	4.29	NOT_A_NOUN
 muyum	5	4.29	NOT_A_LEMMA
 mıyız	5	4.29	NOT_A_LEMMA
@@ -3095,6 +3100,7 @@ klavye	6	4.24	CIRCUMFLEX
 kristal	7	4.24	ALSO_OTHER_PART_OF_SPEECH
 meşru	5	4.24	NOT_A_NOUN
 okudu	5	4.24	NOT_A_LEMMA
+rüşvet	6	4.24	TOPIC:crime
 satılan	7	4.24	NOT_A_LEMMA
 saçları	7	4.24	NOT_A_LEMMA
 sergisi	7	4.24	NOT_A_LEMMA
@@ -3866,6 +3872,7 @@ saçını	6	4.11	NOT_A_LEMMA
 senede	6	4.11	NOT_A_LEMMA
 sözüm	5	4.11	NOT_A_LEMMA
 taban	5	4.11	ALSO_OTHER_PART_OF_SPEECH
+tahrip	6	4.11	TOPIC:violence
 tanrım	6	4.11	NOT_A_LEMMA
 teorisi	7	4.11	NOT_A_LEMMA
 tutsak	6	4.11	ALSO_OTHER_PART_OF_SPEECH
@@ -3975,6 +3982,7 @@ kına	4	4.09	VERB_FORM
 lana	4	4.09	NOT_A_LEMMA
 maaşı	5	4.09	NOT_A_LEMMA
 mensup	6	4.09	NOT_A_NOUN
+merhum	6	4.09	TOPIC:death
 nikah	5	4.09	CIRCUMFLEX
 ordan	5	4.09	NOT_A_LEMMA
 sahibim	7	4.09	NOT_A_LEMMA
@@ -4130,6 +4138,7 @@ atlı	4	4.06	NOT_A_LEMMA
 aydan	5	4.06	NOT_A_LEMMA
 baksana	7	4.06	NOT_A_LEMMA
 basında	7	4.06	NOT_A_LEMMA
+beraat	6	4.06	TOPIC:crime
 beyi	4	4.06	NOT_A_LEMMA
 bozan	5	4.06	NOT_A_LEMMA
 buranın	7	4.06	NOT_A_LEMMA
@@ -4199,6 +4208,7 @@ akıyor	6	4.05	NOT_A_LEMMA
 anladı	6	4.05	NOT_A_LEMMA
 arabada	7	4.05	NOT_A_LEMMA
 ararken	7	4.05	NOT_A_LEMMA
+ateşkes	7	4.05	TOPIC:violence
 ayrılıp	7	4.05	NOT_A_LEMMA
 benimde	7	4.05	NOT_A_LEMMA
 beter	5	4.05	NOT_A_NOUN
@@ -4509,6 +4519,7 @@ gündü	5	4.01	NOT_A_LEMMA
 hasret	6	4.01	VERB_FORM
 havuzu	6	4.01	NOT_A_LEMMA
 hayranı	7	4.01	NOT_A_LEMMA
+iftira	6	4.01	TOPIC:crime
 ikizler	7	4.01	NOT_A_LEMMA
 indirin	7	4.01	NOT_A_LEMMA
 itibarı	7	4.01	NOT_A_LEMMA
@@ -4698,6 +4709,7 @@ arabesk	7	3.98	ALSO_OTHER_PART_OF_SPEECH
 açığı	5	3.98	NOT_A_LEMMA
 aşaması	7	3.98	NOT_A_LEMMA
 aşkını	6	3.98	NOT_A_LEMMA
+bakara	6	3.98	TOPIC:gambling
 bense	5	3.98	NOT_A_LEMMA
 bezi	4	3.98	NOT_A_LEMMA
 bilimin	7	3.98	NOT_A_LEMMA
@@ -4747,6 +4759,7 @@ kurmayı	7	3.98	NOT_A_LEMMA
 kuruyor	7	3.98	NOT_A_LEMMA
 kırıp	5	3.98	NOT_A_LEMMA
 mezarı	6	3.98	NOT_A_LEMMA
+miting	6	3.98	TOPIC:politics
 modası	6	3.98	NOT_A_LEMMA
 müzikal	7	3.98	ALSO_OTHER_PART_OF_SPEECH
 olsanız	7	3.98	NOT_A_LEMMA
@@ -4975,6 +4988,7 @@ müziğe	6	3.95	NOT_A_LEMMA
 nelere	6	3.95	NOT_A_LEMMA
 olamadı	7	3.95	NOT_A_LEMMA
 paneli	6	3.95	NOT_A_LEMMA
+pusu	4	3.95	TOPIC:violence
 sayende	7	3.95	NOT_A_LEMMA
 senatör	7	3.95	TOPIC:politics
 sezgin	6	3.95	NOT_A_LEMMA
@@ -6007,6 +6021,7 @@ sürüş	5	3.83	NOT_A_LEMMA
 sıralı	6	3.83	NOT_A_LEMMA
 takmış	6	3.83	NOT_A_LEMMA
 tanış	5	3.83	NOT_A_NOUN
+taziye	6	3.83	TOPIC:death
 teyzem	6	3.83	NOT_A_LEMMA
 verince	7	3.83	NOT_A_LEMMA
 vurma	5	3.83	NOT_A_LEMMA
@@ -6081,6 +6096,7 @@ kenarda	7	3.82	NOT_A_LEMMA
 kollu	5	3.82	NOT_A_LEMMA
 koşup	5	3.82	NOT_A_LEMMA
 kökleri	7	3.82	NOT_A_LEMMA
+kürtaj	6	3.82	TOPIC:disease
 kılmak	6	3.82	NOT_A_NOUN
 liseden	7	3.82	NOT_A_LEMMA
 makyajı	7	3.82	NOT_A_LEMMA
@@ -6505,6 +6521,7 @@ arayüzü	7	3.77	NOT_A_LEMMA
 arazisi	7	3.77	NOT_A_LEMMA
 atları	6	3.77	NOT_A_LEMMA
 aydemir	7	3.77	MANUAL_BLOCK
+azap	4	3.77	TOPIC:religion
 açılıp	6	3.77	NOT_A_LEMMA
 aşamaya	7	3.77	NOT_A_LEMMA
 bacağı	6	3.77	NOT_A_LEMMA
@@ -6955,6 +6972,7 @@ zora	4	3.73	NOT_A_LEMMA
 ölürsün	7	3.73	NOT_A_LEMMA
 öğretir	7	3.73	NOT_A_LEMMA
 öğün	4	3.73	VERB_FORM
+şike	4	3.73	TOPIC:crime
 şimdide	7	3.73	NOT_A_LEMMA
 aktive	6	3.72	MANUAL_BLOCK
 almakla	7	3.72	NOT_A_LEMMA
@@ -7653,6 +7671,7 @@ içmiş	5	3.66	NOT_A_LEMMA
 işlemek	7	3.66	NOT_A_NOUN
 kadife	6	3.66	ALSO_OTHER_PART_OF_SPEECH
 kazaya	6	3.66	NOT_A_LEMMA
+kefalet	7	3.66	TOPIC:crime
 keşfi	5	3.66	NOT_A_LEMMA
 kimim	5	3.66	NOT_A_LEMMA
 kocan	5	3.66	NOT_A_LEMMA
@@ -7844,6 +7863,7 @@ elektro	7	3.64	MANUAL_BLOCK
 emici	5	3.64	NOT_A_LEMMA
 ensest	6	3.64	MANUAL_BLOCK
 erin	4	3.64	NOT_A_LEMMA
+esaret	6	3.64	TOPIC:crime
 eşleşme	7	3.64	NOT_A_LEMMA
 gelinin	7	3.64	NOT_A_LEMMA
 görsen	6	3.64	NOT_A_LEMMA
@@ -7958,6 +7978,7 @@ hissine	7	3.63	NOT_A_LEMMA
 hissini	7	3.63	NOT_A_LEMMA
 hukuken	7	3.63	NOT_A_NOUN
 iletken	7	3.63	NOT_A_NOUN
+iltica	6	3.63	TOPIC:politics
 insandı	7	3.63	NOT_A_LEMMA
 ithafen	7	3.63	NOT_A_NOUN
 içti	4	3.63	NOT_A_LEMMA
@@ -8171,6 +8192,7 @@ boyları	7	3.61	NOT_A_LEMMA
 boyum	5	3.61	NOT_A_LEMMA
 buram	5	3.61	NOT_A_LEMMA
 burnum	6	3.61	NOT_A_LEMMA
+casino	6	3.61	TOPIC:gambling
 cimri	5	3.61	NOT_A_NOUN
 cismin	6	3.61	NOT_A_LEMMA
 damgası	7	3.61	NOT_A_LEMMA
@@ -8280,6 +8302,7 @@ avlanma	7	3.60	NOT_A_LEMMA
 ayan	4	3.60	ALSO_OTHER_PART_OF_SPEECH
 ayağımı	7	3.60	NOT_A_LEMMA
 açısına	7	3.60	NOT_A_LEMMA
+ağıt	4	3.60	TOPIC:death
 basmış	6	3.60	NOT_A_LEMMA
 başarır	7	3.60	NOT_A_LEMMA
 boşalma	7	3.60	NOT_A_LEMMA
@@ -8670,6 +8693,7 @@ gülüp	5	3.57	NOT_A_LEMMA
 gürbüz	6	3.57	NOT_A_NOUN
 haktan	6	3.57	NOT_A_LEMMA
 hançer	6	3.57	TOPIC:weapons
+haydut	6	3.57	TOPIC:crime
 hesabım	7	3.57	NOT_A_LEMMA
 hesapta	7	3.57	NOT_A_LEMMA
 ifadeyi	7	3.57	NOT_A_LEMMA
@@ -8875,6 +8899,7 @@ yıkımı	6	3.56	NOT_A_LEMMA
 çöküyor	7	3.56	NOT_A_LEMMA
 çözücü	6	3.56	NOT_A_LEMMA
 öfkeyle	7	3.56	NOT_A_LEMMA
+alerji	6	3.55	TOPIC:disease
 anneyi	6	3.55	NOT_A_LEMMA
 artırma	7	3.55	NOT_A_LEMMA
 asık	4	3.55	NOT_A_NOUN
@@ -9446,6 +9471,7 @@ paşanın	7	3.51	NOT_A_LEMMA
 rahatım	7	3.51	NOT_A_LEMMA
 rencide	7	3.51	NOT_A_NOUN
 reçeli	6	3.51	NOT_A_LEMMA
+sabotaj	7	3.51	TOPIC:crime
 saki	4	3.51	MANUAL_BLOCK
 sapkın	6	3.51	NOT_A_NOUN
 sunacak	7	3.51	NOT_A_LEMMA
@@ -9636,6 +9662,7 @@ bunla	5	3.49	NOT_A_LEMMA
 burnuma	7	3.49	NOT_A_LEMMA
 cabası	6	3.49	NOT_A_LEMMA
 dara	4	3.49	INFLECTED_FORM
+davacı	6	3.49	TOPIC:crime
 demirin	7	3.49	NOT_A_LEMMA
 dertli	6	3.49	NOT_A_LEMMA
 değerdi	7	3.49	NOT_A_LEMMA
@@ -9780,6 +9807,7 @@ dikmek	6	3.48	NOT_A_NOUN
 dokunuş	7	3.48	NOT_A_LEMMA
 dondu	5	3.48	NOT_A_LEMMA
 doğumda	7	3.48	NOT_A_LEMMA
+elebaşı	7	3.48	TOPIC:crime
 emaneti	7	3.48	NOT_A_LEMMA
 erkekte	7	3.48	NOT_A_LEMMA
 esprili	7	3.48	NOT_A_LEMMA
@@ -10168,6 +10196,7 @@ girilen	7	3.45	NOT_A_LEMMA
 girişin	7	3.45	NOT_A_LEMMA
 gribi	5	3.45	NOT_A_LEMMA
 gurubu	6	3.45	NOT_A_LEMMA
+gözdağı	7	3.45	TOPIC:violence
 gözüktü	7	3.45	NOT_A_LEMMA
 güvene	6	3.45	NOT_A_LEMMA
 halimiz	7	3.45	NOT_A_LEMMA
@@ -10191,6 +10220,7 @@ kanının	7	3.45	NOT_A_LEMMA
 katacak	7	3.45	NOT_A_LEMMA
 kedim	5	3.45	NOT_A_LEMMA
 kemerli	7	3.45	NOT_A_LEMMA
+koma	4	3.45	TOPIC:disease
 kovdu	5	3.45	NOT_A_LEMMA
 krizler	7	3.45	NOT_A_LEMMA
 kumu	4	3.45	NOT_A_LEMMA
@@ -10683,6 +10713,7 @@ montajı	7	3.41	NOT_A_LEMMA
 müdüre	6	3.41	NOT_A_LEMMA
 mıydın	6	3.41	NOT_A_LEMMA
 nazikçe	7	3.41	NOT_A_LEMMA
+nirvana	7	3.41	TOPIC:religion
 norma	5	3.41	NOT_A_LEMMA
 oklar	5	3.41	NOT_A_LEMMA
 ordumuz	7	3.41	NOT_A_LEMMA
@@ -10734,6 +10765,7 @@ zoruyla	7	3.41	NOT_A_LEMMA
 ümitsiz	7	3.41	NOT_A_LEMMA
 şapkası	7	3.41	NOT_A_LEMMA
 şuana	5	3.41	NOT_A_LEMMA
+adak	4	3.40	TOPIC:religion
 adile	5	3.40	NOT_A_LEMMA
 ahir	4	3.40	NOT_A_NOUN
 akılla	6	3.40	NOT_A_LEMMA
@@ -10999,6 +11031,7 @@ yalayıp	7	3.39	NOT_A_LEMMA
 yamalak	7	3.39	NOT_A_NOUN
 yargısı	7	3.39	NOT_A_LEMMA
 yeniler	7	3.39	NOT_A_LEMMA
+yeşilay	7	3.39	TOPIC:drugs
 yumruğu	7	3.39	NOT_A_LEMMA
 yüzünüz	7	3.39	NOT_A_LEMMA
 yırtıp	6	3.39	NOT_A_LEMMA
@@ -11130,6 +11163,7 @@ tart	4	3.38	VERB_FORM
 taşan	5	3.38	NOT_A_LEMMA
 temasta	7	3.38	NOT_A_LEMMA
 tenha	5	3.38	NOT_A_NOUN
+tombala	7	3.38	TOPIC:gambling
 trol	4	3.38	MANUAL_BLOCK
 turlu	5	3.38	NOT_A_LEMMA
 tıkalı	6	3.38	NOT_A_NOUN
@@ -12307,6 +12341,7 @@ hanın	5	3.29	NOT_A_LEMMA
 harıl	5	3.29	NOT_A_NOUN
 iklimin	7	3.29	NOT_A_LEMMA
 iksiri	6	3.29	NOT_A_LEMMA
+iltihap	7	3.29	TOPIC:disease
 isek	4	3.29	NOT_A_LEMMA
 kapanıp	7	3.29	NOT_A_LEMMA
 kapılan	7	3.29	NOT_A_LEMMA
@@ -12371,10 +12406,12 @@ türküm	6	3.29	NOT_A_LEMMA
 uğradık	7	3.29	NOT_A_LEMMA
 yanmalı	7	3.29	NOT_A_LEMMA
 yapılış	7	3.29	NOT_A_LEMMA
+yatağan	7	3.29	TOPIC:weapons
 yokuşu	6	3.29	NOT_A_LEMMA
 yoldaşı	7	3.29	NOT_A_LEMMA
 çaldın	6	3.29	NOT_A_LEMMA
 çareyi	6	3.29	NOT_A_LEMMA
+çaykara	7	3.29	MANUAL_BLOCK
 çiçeğe	6	3.29	NOT_A_LEMMA
 çoğalan	7	3.29	NOT_A_LEMMA
 çölün	5	3.29	NOT_A_LEMMA
@@ -12632,6 +12669,7 @@ paşalar	7	3.27	NOT_A_LEMMA
 paşam	5	3.27	NOT_A_LEMMA
 perdede	7	3.27	NOT_A_LEMMA
 periler	7	3.27	NOT_A_LEMMA
+pipo	4	3.27	TOPIC:tobacco
 sattık	6	3.27	NOT_A_LEMMA
 saçıma	6	3.27	NOT_A_LEMMA
 semtine	7	3.27	NOT_A_LEMMA

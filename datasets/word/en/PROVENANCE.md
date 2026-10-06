@@ -51,12 +51,12 @@ reasons, and the samples shown to the owner).
 
 | Length (difficulty) | Guesses | Answer candidates | Answers |
 |---|---|---|---|
-| 4 (Easy) | 3 903 | 809 | 500 |
-| 5 (Medium) | 8 636 | 975 | 500 |
-| 6 (Hard) | 15 232 | 1 093 | 500 |
-| 7 (Expert) | 23 109 | 1 146 | 500 |
+| 4 (Easy) | 3 903 | 800 | 500 |
+| 5 (Medium) | 8 636 | 970 | 500 |
+| 6 (Hard) | 15 232 | 1 080 | 500 |
+| 7 (Expert) | 23 109 | 1 140 | 500 |
 
-Generated resource SHA-256: `allowed_guesses.txt` `d47823dacb709a68c4212b89fbbc0dce52033c5db775251e18a9ddef397f4094`, `answers.txt` `05e711954ca3067cfcaf5f9d64847b26fbfcee4b27b3acc9e8fe161a4c0bfa22`.
+Generated resource SHA-256: `allowed_guesses.txt` `d47823dacb709a68c4212b89fbbc0dce52033c5db775251e18a9ddef397f4094`, `answers.txt` `9c59f17fc277e6f387d3c1956ee0999e869ecdfb8070d18385ec7bac8189168c`.
 
 ## Licences
 

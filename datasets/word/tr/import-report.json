@@ -27,35 +27,35 @@
       "guess_lemmas": 2015,
       "guess_inflected_forms": 638,
       "answers": 500,
-      "answer_candidates": 664
+      "answer_candidates": 656
     },
     "5": {
       "guesses": 7018,
       "guess_lemmas": 5043,
       "guess_inflected_forms": 1975,
       "answers": 500,
-      "answer_candidates": 1233
+      "answer_candidates": 1230
     },
     "6": {
       "guesses": 9017,
       "guess_lemmas": 4825,
       "guess_inflected_forms": 4192,
       "answers": 500,
-      "answer_candidates": 962
+      "answer_candidates": 947
     },
     "7": {
       "guesses": 11096,
       "guess_lemmas": 4524,
       "guess_inflected_forms": 6572,
       "answers": 500,
-      "answer_candidates": 709
+      "answer_candidates": 698
     }
   },
   "manual": {
     "guess_blocklist": 0,
-    "answer_blocklist": 325,
+    "answer_blocklist": 326,
     "answer_allowlist": 126,
-    "topic_words": 168
+    "topic_words": 205
   },
   "rejection_reasons": {
     "ADJECTIVE_FORM": 2,
@@ -66,27 +66,27 @@
     "NOT_A_NOUN": 3353,
     "RARE": 7163,
     "TOPIC:alcohol": 10,
-    "TOPIC:crime": 22,
-    "TOPIC:death": 11,
-    "TOPIC:disease": 16,
-    "TOPIC:drugs": 4,
-    "TOPIC:gambling": 6,
-    "TOPIC:politics": 15,
+    "TOPIC:crime": 32,
+    "TOPIC:death": 14,
+    "TOPIC:disease": 20,
+    "TOPIC:drugs": 5,
+    "TOPIC:gambling": 9,
+    "TOPIC:politics": 17,
     "TOPIC:profanity": 2,
-    "TOPIC:religion": 31,
-    "TOPIC:sexual": 3,
-    "TOPIC:tobacco": 4,
-    "TOPIC:violence": 17,
-    "TOPIC:weapons": 12,
+    "TOPIC:religion": 35,
+    "TOPIC:sexual": 4,
+    "TOPIC:tobacco": 5,
+    "TOPIC:violence": 24,
+    "TOPIC:weapons": 13,
     "VERB_FORM": 325
   },
   "samples": {
     "4": {
       "answers": [
-        "adak",
+        "adam",
         "argo",
-        "ateş",
-        "azot",
+        "ataç",
+        "azim",
         "ağız",
         "bant",
         "dane",
@@ -94,35 +94,35 @@
         "data",
         "dizi",
         "etek",
-        "eşya",
-        "faks",
-        "feda",
-        "fren",
-        "gaga",
-        "gaye",
-        "hane",
-        "hara",
-        "hibe",
-        "hoca",
-        "icap",
-        "imza",
-        "iyon",
-        "kase",
-        "kent",
-        "küme",
-        "mayo",
+        "eşik",
+        "faiz",
+        "faul",
+        "foto",
+        "fuar",
+        "gale",
+        "halt",
+        "halı",
+        "heba",
+        "hile",
+        "hırs",
+        "imar",
+        "iris",
+        "kapı",
+        "kedi",
+        "köşk",
+        "maya",
         "odak",
         "otel",
         "port",
-        "reis",
-        "soda",
-        "stop",
-        "suşi",
-        "tane",
-        "tapu",
-        "tork",
+        "reji",
+        "solo",
+        "sual",
+        "sörf",
+        "tank",
+        "tarz",
+        "tost",
         "uğur",
-        "şaka"
+        "ışık"
       ],
       "dropped": [
         {
@@ -298,6 +298,11 @@
           "zipf": 4.33
         },
         {
+          "word": "meme",
+          "reason": "TOPIC:sexual",
+          "zipf": 4.29
+        },
+        {
           "word": "füze",
           "reason": "TOPIC:weapons",
           "zipf": 4.26
@@ -321,11 +326,6 @@
           "word": "peri",
           "reason": "TOPIC:religion",
           "zipf": 4.16
-        },
-        {
-          "word": "çete",
-          "reason": "TOPIC:crime",
-          "zipf": 4.15
         }
       ]
     },
@@ -333,8 +333,8 @@
       "answers": [
         "ahlak",
         "albüm",
-        "anlam",
-        "aslan",
+        "arazi",
+        "atlas",
         "ayrım",
         "banka",
         "ceket",
@@ -349,20 +349,20 @@
         "iddia",
         "ihmal",
         "imkan",
-        "kiraz",
-        "kukla",
-        "kurgu",
-        "köfte",
-        "köprü",
-        "medya",
-        "panik",
-        "pazar",
-        "sabır",
-        "salon",
-        "sefer",
-        "sinek",
-        "sorun",
-        "tavuk",
+        "kimya",
+        "kredi",
+        "kural",
+        "kuşak",
+        "köpek",
+        "mayıs",
+        "panel",
+        "pasta",
+        "sabun",
+        "sakız",
+        "sebze",
+        "simge",
+        "sonuç",
+        "taviz",
         "tıraş",
         "yeşim",
         "yüzde",
@@ -521,6 +521,11 @@
           "zipf": 4.82
         },
         {
+          "word": "işgal",
+          "reason": "TOPIC:violence",
+          "zipf": 4.73
+        },
+        {
           "word": "şükür",
           "reason": "TOPIC:religion",
           "zipf": 4.72
@@ -551,6 +556,11 @@
           "zipf": 4.65
         },
         {
+          "word": "tokat",
+          "reason": "TOPIC:violence",
+          "zipf": 4.64
+        },
+        {
           "word": "namaz",
           "reason": "TOPIC:religion",
           "zipf": 4.61
@@ -564,16 +574,6 @@
           "word": "şarap",
           "reason": "TOPIC:alcohol",
           "zipf": 4.57
-        },
-        {
-          "word": "bahis",
-          "reason": "TOPIC:gambling",
-          "zipf": 4.45
-        },
-        {
-          "word": "virüs",
-          "reason": "TOPIC:disease",
-          "zipf": 4.44
         }
       ]
     },
@@ -581,36 +581,36 @@
       "answers": [
         "abartı",
         "akasya",
-        "aşiret",
-        "bakkal",
-        "bayram",
-        "başlık",
-        "benlik",
-        "bulgur",
-        "cazibe",
-        "direnç",
+        "bahane",
+        "balina",
+        "başbuğ",
+        "başrol",
+        "benzin",
+        "burger",
+        "cevher",
+        "dizayn",
         "ferman",
-        "format",
-        "forvet",
-        "hafıza",
-        "hürmet",
+        "fincan",
+        "formül",
+        "güçlük",
+        "hormon",
         "itiraf",
-        "kavram",
-        "kibrit",
-        "kovboy",
-        "mendil",
-        "merkez",
-        "mesire",
+        "kasaba",
+        "kelime",
+        "konvoy",
+        "mektup",
+        "mercek",
+        "mesafe",
+        "metraj",
         "meydan",
-        "miktar",
-        "millet",
-        "omurga",
-        "pancar",
-        "rağbet",
-        "reçete",
-        "stüdyo",
-        "tahlil",
-        "tarçın",
+        "meşale",
+        "olanak",
+        "otoyol",
+        "poster",
+        "rektör",
+        "sporcu",
+        "tablet",
+        "tampon",
         "teftiş",
         "teşhis",
         "uçurum",
@@ -779,6 +779,11 @@
           "zipf": 4.38
         },
         {
+          "word": "rüşvet",
+          "reason": "TOPIC:crime",
+          "zipf": 4.24
+        },
+        {
           "word": "seçmen",
           "reason": "TOPIC:politics",
           "zipf": 4.2
@@ -794,6 +799,21 @@
           "zipf": 4.11
         },
         {
+          "word": "tahrip",
+          "reason": "TOPIC:violence",
+          "zipf": 4.11
+        },
+        {
+          "word": "merhum",
+          "reason": "TOPIC:death",
+          "zipf": 4.09
+        },
+        {
+          "word": "beraat",
+          "reason": "TOPIC:crime",
+          "zipf": 4.06
+        },
+        {
           "word": "eziyet",
           "reason": "TOPIC:violence",
           "zipf": 4.06
@@ -802,26 +822,6 @@
           "word": "yargıç",
           "reason": "TOPIC:crime",
           "zipf": 4.04
-        },
-        {
-          "word": "halife",
-          "reason": "TOPIC:religion",
-          "zipf": 4.03
-        },
-        {
-          "word": "derviş",
-          "reason": "TOPIC:religion",
-          "zipf": 4.02
-        },
-        {
-          "word": "mezhep",
-          "reason": "TOPIC:religion",
-          "zipf": 4.02
-        },
-        {
-          "word": "akıncı",
-          "reason": "TOPIC:violence",
-          "zipf": 3.99
         }
       ]
     },
@@ -829,44 +829,44 @@
       "answers": [
         "alabora",
         "armağan",
-        "azınlık",
-        "barikat",
-        "batarya",
-        "botanik",
+        "ağustos",
+        "bariyer",
+        "başkent",
+        "brifing",
         "dağıtım",
         "eklenti",
         "ekvator",
-        "erozyon",
-        "fazilet",
-        "fikstür",
+        "evlilik",
+        "felaket",
+        "filozof",
         "hemşire",
-        "karakol",
+        "karagöz",
         "kereste",
         "kiremit",
         "kontrat",
         "kurbağa",
-        "mineral",
+        "midilli",
+        "muayene",
         "muhabir",
-        "muhafız",
-        "mülteci",
-        "nasihat",
-        "nirvana",
+        "mülkiye",
+        "nakliye",
+        "nilüfer",
         "ortalık",
-        "oyuncak",
-        "palavra",
+        "otostop",
+        "padişah",
         "sağanak",
         "segment",
         "senaryo",
         "sendika",
         "sermaye",
-        "teminat",
-        "terakki",
-        "ticaret",
+        "temenni",
+        "tencere",
+        "testere",
         "veraset",
         "vesayet",
-        "yurttaş",
-        "öğrenim",
-        "öğretim"
+        "yönelim",
+        "öğretim",
+        "ıhlamur"
       ],
       "dropped": [
         {
@@ -1002,6 +1002,11 @@
           "zipf": 4.73
         },
         {
+          "word": "intikam",
+          "reason": "TOPIC:violence",
+          "zipf": 4.63
+        },
+        {
           "word": "işkence",
           "reason": "TOPIC:violence",
           "zipf": 4.62
@@ -1025,6 +1030,11 @@
           "word": "tabanca",
           "reason": "TOPIC:weapons",
           "zipf": 4.12
+        },
+        {
+          "word": "ateşkes",
+          "reason": "TOPIC:violence",
+          "zipf": 4.05
         },
         {
           "word": "duruşma",
@@ -1060,16 +1070,6 @@
           "word": "taarruz",
           "reason": "TOPIC:violence",
           "zipf": 3.75
-        },
-        {
-          "word": "kelepçe",
-          "reason": "TOPIC:crime",
-          "zipf": 3.7
-        },
-        {
-          "word": "kokteyl",
-          "reason": "TOPIC:alcohol",
-          "zipf": 3.7
         }
       ]
     }

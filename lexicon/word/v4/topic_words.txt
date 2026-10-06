@@ -20,19 +20,24 @@ votka     alcohol
 nargile   tobacco
 puro      tobacco    # cigar
 sigara    tobacco
+pipo      tobacco    # tobacco pipe
 tütün     tobacco
 afyon     drugs      # opium
 eroin     drugs
 esrar     drugs      # hashish
+yeşilay   drugs      # the anti-addiction society's name
 kokain    drugs
 
 # Gambling.
 bahis     gambling   # bet
+bakara    gambling   # baccarat
+casino    gambling
 kumar     gambling
 piyango   gambling   # lottery
 poker     gambling
 rulet     gambling
 toto      gambling   # football pools
+tombala   gambling   # lotto
 
 # Weapons.
 barut     weapons    # gunpowder
@@ -48,6 +53,7 @@ pala      weapons    # scimitar
 silah     weapons
 tabanca   weapons    # pistol
 tüfek     weapons    # rifle
+yatağan   weapons    # yataghan sword
 
 # Death.
 cenaze    death      # funeral
@@ -58,52 +64,72 @@ intihar   death      # suicide
 katil     death      # murderer
 kefen     death      # shroud
 kırım     death      # massacre
+merhum    death      # the deceased
 mezar     death      # grave
 ölüm      death
+taziye    death      # condolence
+ağıt      death      # lament
 tabut     death      # coffin
 vefat     death      # passing away
 zombi     death
 
 # Violence and war.
 abluka    violence   # blockade
+ateşkes   violence   # ceasefire
 akıncı    violence   # raider
 dayak     violence   # beating
 düello    violence   # duel
 eziyet    violence   # torment
+gözdağı   violence   # intimidation
 gazi      violence   # a war veteran
 harp      violence   # war
 isyan     violence   # revolt
+işgal     violence   # occupation
+intikam   violence   # revenge
 işkence   violence   # torture
 katliam   violence   # massacre
 kavga     violence   # fight
+pusu      violence   # ambush
 saldırı   violence   # attack
 savaş     violence   # war
 şiddet    violence
 taarruz   violence   # assault
+tahrip    violence   # destruction
+tokat     violence   # slap
 terör     violence
 zulüm     violence   # oppression
 
 # Crime, prison, and courts.
 adliye    crime      # courthouse
+beraat    crime      # acquittal
 ceza      crime      # punishment
 cezaevi   crime      # prison
 çete      crime      # gang
 dava      crime      # lawsuit
+davacı    crime      # plaintiff
+elebaşı   crime      # ringleader
+esaret    crime      # captivity
 duruşma   crime      # court hearing
 hapis     crime      # imprisonment
 hırsız    crime      # thief
+haydut    crime      # bandit
 kelepçe   crime      # handcuffs
 ihanet    crime      # betrayal, treason
+iftira    crime      # slander
 kabahat   crime      # misdemeanour
+kefalet   crime      # bail
 kadı      crime      # judge (Ottoman)
 mafya     crime
 mahkeme   crime      # court
 rehine    crime      # hostage
+rüşvet    crime      # bribe
+sabotaj   crime
 sanık     crime      # the accused
 savcı     crime      # prosecutor
 soygun    crime      # robbery
 suçlu     crime      # criminal
 şantaj    crime      # blackmail
+şike      crime      # match-fixing
 temyiz    crime      # appeal
 yargı     crime      # judiciary, judgment
 yargıç    crime      # judge
@@ -111,10 +137,14 @@ zindan    crime      # dungeon
 
 # Disease.
 ağrı      disease    # pain
+alerji    disease    # allergy
 bulantı   disease    # nausea
 felç      disease    # paralysis
 grip      disease    # flu
+iltihap   disease    # inflammation
 kanser    disease
+koma      disease
+kürtaj    disease    # abortion (medical, sensitive)
 ödem      disease    # oedema
 öksürük   disease    # cough
 salgın    disease    # epidemic
@@ -131,6 +161,9 @@ yara      disease    # wound
 
 # Religion.
 abdest    religion   # ablution
+adak      religion   # votive offering
+alevi     religion   # Alevi
+azap      religion   # torment in the afterlife
 cami      religion   # mosque
 cennet    religion   # paradise
 cihat     religion   # jihad
@@ -152,6 +185,7 @@ mezhep    religion   # sect
 minare    religion   # minaret
 mücahit   religion   # mujahid
 namaz     religion   # ritual prayer
+nirvana   religion
 oruç      religion   # fasting
 papa      religion   # pope
 peri      religion   # fairy; a spiritual being like the English "fairy"
@@ -174,8 +208,10 @@ devrim    politics   # revolution
 hükümet   politics   # government
 ihtilal   politics   # revolution
 iktidar   politics   # ruling power
+iltica    politics   # political asylum
 kongre    politics   # congress
 meclis    politics   # parliament
+miting    politics   # political rally
 parti     politics   # party
 rejim     politics   # regime
 seçim     politics   # election
@@ -190,5 +226,6 @@ beddua    profanity  # curse
 küfür     profanity  # swearing
 lanet     profanity  # curse
 fuhuş     sexual     # prostitution
+meme      sexual     # breast
 seks      sexual
 şehvet    sexual     # lust
