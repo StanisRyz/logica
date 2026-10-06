@@ -65,6 +65,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.word.WordRules
@@ -448,13 +449,18 @@ internal fun DailyEntryCard(
             if (asListRow) {
                 // The archive lists a day's games one under another: the artwork on the left.
                 Row(
-                    modifier = Modifier.padding(LogicaSpacing.cardContent).fillMaxWidth(),
+                    modifier =
+                        Modifier
+                            .padding(
+                                horizontal = LogicaSpacing.cardContent,
+                                vertical = DAILY_ROW_VERTICAL_PADDING,
+                            ).fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     artwork(Modifier.width(DAILY_ROW_ARTWORK_WIDTH).height(DAILY_ROW_ARTWORK_HEIGHT))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
-                        Text(text = title, style = MaterialTheme.typography.titleMedium)
+                        Text(text = title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         DailyEntryStateChip(entry.state, stateLabel)
                     }
                 }
@@ -648,8 +654,9 @@ private const val DAILY_RESOURCE_RETRY_MILLIS = 600L
 /** A minimum, never a fixed height: the card grows with a larger font scale instead of clipping. */
 private val DAILY_CARD_MIN_HEIGHT = 184.dp
 private val DAILY_ARTWORK_HEIGHT = 78.dp
-private val DAILY_ROW_ARTWORK_WIDTH = 112.dp
-private val DAILY_ROW_ARTWORK_HEIGHT = 56.dp
+private val DAILY_ROW_ARTWORK_WIDTH = 96.dp
+private val DAILY_ROW_ARTWORK_HEIGHT = 48.dp
+private val DAILY_ROW_VERTICAL_PADDING = 8.dp
 private val DAILY_CHIP_ICON_SIZE = 16.dp
 private val DAILY_CHIP_GAP = 4.dp
 private val DAILY_CHIP_VERTICAL_PADDING = 2.dp

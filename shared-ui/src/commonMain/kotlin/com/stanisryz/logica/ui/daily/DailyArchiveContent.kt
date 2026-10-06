@@ -2,6 +2,8 @@ package com.stanisryz.logica.ui.daily
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -165,29 +168,25 @@ fun DailyArchiveDayContent(
 ) {
     val colors = MaterialTheme.colorScheme
     val playable = unlocked || unlockPrice == 0
-    Column(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = LogicaSpacing.screenHorizontal, vertical = LogicaSpacing.screenVertical),
-        verticalArrangement = Arrangement.spacedBy(LogicaSpacing.section),
-    ) {
-        // A locked day offers its unlock first, above the list of its games.
-        if (!playable) {
-            DailyArchiveUnlockCard(unlockPrice, gems, adState, onUnlockWithGems, onWatchAd)
-        }
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.large,
-            colors = CardDefaults.cardColors(containerColor = colors.primaryContainer),
+    BoxWithConstraints(modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        // A wide window lays the rows out in two columns within a readable width.
+        val columns = if (maxWidth >= ARCHIVE_TWO_COLUMNS_MIN_WIDTH) 2 else 1
+        Column(
+            modifier =
+                Modifier
+                    .widthIn(max = ARCHIVE_DAY_MAX_WIDTH)
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = LogicaSpacing.screenHorizontal, vertical = LogicaSpacing.screenVertical),
+            verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
         ) {
-            Column(
-                modifier = Modifier.padding(LogicaSpacing.cardPadding).fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item),
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+                colors = CardDefaults.cardColors(containerColor = colors.primaryContainer),
             ) {
                 val completed = entries.count { it.state == DailyHubEntryState.COMPLETED }
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.padding(LogicaSpacing.cardPadding).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(LogicaSpacing.text)) {
                         Text(stringResource(Res.string.daily_challenge), style = MaterialTheme.typography.titleLarge)
                         Text(dateLabel, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
@@ -198,14 +197,31 @@ fun DailyArchiveDayContent(
                         color = colors.primary,
                     )
                 }
-                // One game under another, so the day fills the screen instead of one short row.
-                entries.forEach { entry ->
-                    key(entry.puzzleType) { DailyEntryCard(entry, gameplayAllowed && playable, onStart, asListRow = true) }
+            }
+            // A locked day offers its unlock right under the header, before a list that may run long.
+            if (!playable) {
+                DailyArchiveUnlockCard(unlockPrice, gems, adState, onUnlockWithGems, onWatchAd)
+            }
+            // The day's games one under another in policy order, so the day fills the screen.
+            Column(verticalArrangement = Arrangement.spacedBy(ARCHIVE_ROW_GAP)) {
+                entries.chunked(columns).forEach { rowEntries ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(ARCHIVE_ROW_GAP)) {
+                        rowEntries.forEach { entry ->
+                            Box(Modifier.weight(1f)) {
+                                key(entry.puzzleType) { DailyEntryCard(entry, gameplayAllowed && playable, onStart, asListRow = true) }
+                            }
+                        }
+                        repeat(columns - rowEntries.size) { Spacer(Modifier.weight(1f)) }
+                    }
                 }
             }
         }
     }
 }
+
+private val ARCHIVE_TWO_COLUMNS_MIN_WIDTH = 600.dp
+private val ARCHIVE_DAY_MAX_WIDTH = 720.dp
+private val ARCHIVE_ROW_GAP = 8.dp
 
 @Composable
 private fun DailyArchiveUnlockCard(
