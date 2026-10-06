@@ -55,5 +55,6 @@
 24. `tasks/stage-11-4b-archive-day-vertical.md` (просьба владельца: задачи дня архива — вертикальным списком)
 25. `tasks/stage-11-5a-tournament-back.md` (просьба владельца: «назад» из турнира и архива — туда, откуда открыли)
 26. `tasks/stage-11-7-yandex-sound.md` (ВАЖНО: на Яндексе нет звука; воспроизвести в iframe с подставным SDK и починить)
+27. `tasks/stage-11-8-yandex-audit-fixes.md` (личная проверка архитектора: blur глушит звук (1.3), лимит setData, фон по бокам)
 
-После п. 26 допиши в `reports/queue-summary-report.md` строки этапа 11 и остановись.
+После п. 27 допиши в `reports/queue-summary-report.md` строки этапа 11 и остановись.
