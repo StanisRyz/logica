@@ -20,10 +20,10 @@
 • Нонограмма — откройте по цифрам скрытую картинку.
 • Блок-судоку — заполняйте строки, столбцы и квадраты фигурами.
 
-В каждой игре четыре сложности и тысячи уровней. Каждый день — новые задачи дня: держите серию, а пропущенные дни можно пройти в архиве. Звёзды за чистое решение идут в турнир недели: лучшие игроки получают призовые кристаллы. Кристаллы, жизни и подсказки — только внутриигровые. Ежедневные задания, подарок за вход, достижения, тёмная тема. Прогресс сохраняется в облаке Яндекса.
+В каждой игре четыре сложности и тысячи уровней. Каждый день — новые задачи дня: держите серию, а пропущенные дни можно пройти в архиве. Звёзды за уровни «Эксперт» идут в турнир недели: лучшие игроки получают призовые кристаллы. Кристаллы, жизни и подсказки — только внутриигровые. Ежедневные задания, подарок за вход, достижения, тёмная тема. Прогресс сохраняется в облаке Яндекса.
 
 **Как играть:**
-Выберите игру и сложность — уровень откроется сразу. В каждой игре есть «Как играть?» с коротким обучением и «?» с правилами прямо во время партии. В Балансе, Коронах, Судоку и Нонограмме ошибки помечаются сразу, а три ошибки заканчивают попытку, а неудачная попытка стоит одну жизнь. Жизни восстанавливаются со временем. Подсказка открывает одну верную клетку или букву. На компьютере 2048, Судоку и Слова управляются и с клавиатуры.
+Выберите игру и сложность — уровень откроется сразу. В каждой игре есть «Как играть?» с коротким обучением и «?» с правилами прямо во время партии. В Балансе, Коронах, Судоку и Нонограмме ошибки помечаются сразу, три ошибки заканчивают попытку, а неудачная попытка стоит одну жизнь. Жизни восстанавливаются со временем. Подсказка открывает одну верную клетку или букву. На компьютере 2048, Судоку и Слова управляются и с клавиатуры.
 
 **Ключевые слова:** головоломки, логические игры, судоку, нонограмма, японский кроссворд, 2048, слова, блок-судоку, задача дня, мозг
 
@@ -45,10 +45,10 @@ Seven logic games in one place — for a short break or a long evening.
 • Nonogram — reveal the hidden picture from the number clues.
 • Block Sudoku — fill rows, columns and squares with shapes.
 
-Every game has four difficulties and thousands of levels. Each day brings new daily puzzles: keep your streak going, and play missed days in the archive. Stars for clean solves count towards the weekly tournament, where the best players win prize gems. Gems, lives and hints are in-game only. Daily quests, a login gift, achievements and a dark theme. Progress is saved in the Yandex cloud.
+Every game has four difficulties and thousands of levels. Each day brings new daily puzzles: keep your streak going, and play missed days in the archive. Stars from Expert levels count towards the weekly tournament, where the best players win prize gems. Gems, lives and hints are in-game only. Daily quests, a login gift, achievements and a dark theme. Progress is saved in the Yandex cloud.
 
 **How to play:**
-Pick a game and a difficulty — the level opens at once. Every game has "How to play?" with a short tutorial and a "?" with the rules during play. In Balance, Crowns, Sudoku and Nonogram mistakes show up right away and three mistakes end the attempt, and a failed attempt costs one life. Lives come back over time. A hint opens one correct cell or letter. On a computer, 2048, Sudoku and Words also work with the keyboard.
+Pick a game and a difficulty — the level opens at once. Every game has "How to play?" with a short tutorial and a "?" with the rules during play. In Balance, Crowns, Sudoku and Nonogram mistakes show up right away, three mistakes end the attempt, and a failed attempt costs one life. Lives come back over time. A hint opens one correct cell or letter. On a computer, 2048, Sudoku and Words also work with the keyboard.
 
 **Keywords:** puzzles, logic games, sudoku, nonogram, picross, 2048, word game, block sudoku, daily puzzle, brain games
 
@@ -70,7 +70,7 @@ Yedi mantık oyunu tek yerde — kısa molalar ve uzun akşamlar için.
 • Nonogram — sayılardan gizli resmi ortaya çıkar.
 • Blok Sudoku — satırları, sütunları ve kareleri şekillerle doldur.
 
-Her oyunda dört zorluk ve binlerce seviye var. Her gün yeni günün bulmacaları: serini koru, kaçırdığın günleri arşivde oyna. Hatasız çözümlerden gelen yıldızlar haftalık turnuvaya sayılır; en iyi oyuncular ödül elması kazanır. Elmaslar, canlar ve ipuçları yalnızca oyun içidir. Günlük görevler, giriş hediyesi, başarılar ve koyu tema. İlerleme Yandex bulutunda saklanır.
+Her oyunda dört zorluk ve binlerce seviye var. Her gün yeni günün bulmacaları: serini koru, kaçırdığın günleri arşivde oyna. Uzman seviyelerinden gelen yıldızlar haftalık turnuvaya sayılır; en iyi oyuncular ödül elması kazanır. Elmaslar, canlar ve ipuçları yalnızca oyun içidir. Günlük görevler, giriş hediyesi, başarılar ve koyu tema. İlerleme Yandex bulutunda saklanır.
 
 **Nasıl oynanır:**
 Bir oyun ve zorluk seç — seviye hemen açılır. Her oyunda kısa bir öğreticiyle «Nasıl oynanır?» ve oyun sırasında kuralları gösteren «?» var. Denge, Taçlar, Sudoku ve Nonogram'da hatalar hemen işaretlenir, üç hata denemeyi bitirir ve başarısız deneme bir cana mal olur. Canlar zamanla yenilenir. İpucu doğru bir hücreyi ya da harfi açar. Bilgisayarda 2048, Sudoku ve Kelime klavyeyle de oynanır.
