@@ -6,29 +6,41 @@ import com.stanisryz.logica.puzzle.core.model.Difficulty
 import java.io.File
 import java.security.MessageDigest
 
-/** Developer-only checksum gate for the released V1 buckets; runtime never hashes level packs. */
+/** Developer-only checksum gate for the released buckets of every pack; runtime never hashes level packs. */
 object CatalogLevelPackIntegrity {
     @JvmStatic
     fun main(args: Array<String>) {
         require(args.size == 1) { "Expected <puzzle-data-dir>." }
         verify(File(args.single()))
-        println("Catalog Level Pack V1 integrity verified (${expectedPaths().size} buckets).")
+        val counts = packVersions().joinToString { "V${it.value}: ${expectedPaths(it).size}" }
+        println("Catalog Level Pack integrity verified ($counts buckets).")
     }
 
     fun verify(puzzleDataDirectory: File) {
-        val manifest = File(puzzleDataDirectory, MANIFEST_PATH)
+        packVersions().forEach { verify(puzzleDataDirectory, it) }
+    }
+
+    fun manifestPath(packVersion: CatalogLevelPackVersion): String = "levels/v${packVersion.value}/checksums.sha256"
+
+    private fun packVersions(): List<CatalogLevelPackVersion> = CatalogLevelPackBuilder.ALL_TARGETS.map { it.packVersion }.distinct()
+
+    private fun verify(
+        puzzleDataDirectory: File,
+        packVersion: CatalogLevelPackVersion,
+    ) {
+        val manifest = File(puzzleDataDirectory, manifestPath(packVersion))
         require(manifest.isFile) { "Frozen Level Pack checksum manifest is missing: ${manifest.path}" }
         val checksums = parseManifest(manifest)
-        val expectedPaths = expectedPaths()
+        val expectedPaths = expectedPaths(packVersion)
         require(checksums.keys == expectedPaths) {
-            "Frozen Level Pack checksum manifest entries do not match the V1 buckets."
+            "Frozen Level Pack checksum manifest entries do not match the V${packVersion.value} buckets."
         }
         expectedPaths.forEach { relativePath ->
             val bucket = File(manifest.parentFile, relativePath)
             require(bucket.isFile) { "Frozen Level Pack bucket is missing: ${bucket.path}" }
             val actual = sha256(bucket.readBytes())
             require(actual == checksums.getValue(relativePath)) {
-                "Frozen Level Pack V1 bucket changed: $relativePath. Restore it or create a new pack version."
+                "Frozen Level Pack V${packVersion.value} bucket changed: $relativePath. Restore it or create a new pack version."
             }
         }
     }
@@ -50,16 +62,16 @@ object CatalogLevelPackIntegrity {
                 match.groupValues[2] to match.groupValues[1]
             }
 
-    private fun expectedPaths(): Set<String> =
-        CatalogLevelPackBuilder.V1_TARGETS
+    private fun expectedPaths(packVersion: CatalogLevelPackVersion): Set<String> =
+        CatalogLevelPackBuilder.ALL_TARGETS
+            .filter { it.packVersion == packVersion }
             .flatMap { target ->
                 Difficulty.entries.map { difficulty ->
                     CatalogLevelPackFormat
-                        .assetPath(CatalogLevelPackVersion.V1, target.puzzleType, difficulty, target.variant)
-                        .removePrefix("levels/v1/")
+                        .assetPath(packVersion, target.puzzleType, difficulty, target.variant)
+                        .removePrefix("levels/v${packVersion.value}/")
                 }
             }.toSet()
 
-    private const val MANIFEST_PATH = "levels/v1/checksums.sha256"
     private val CHECKSUM_LINE = Regex("([0-9a-f]{64})  ([a-z0-9_/.-]+)")
 }

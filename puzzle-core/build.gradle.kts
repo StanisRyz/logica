@@ -156,6 +156,22 @@ tasks.register<JavaExec>("verifyCatalogLevelPacks") {
     )
 }
 
+tasks.register<JavaExec>("nonogramLibraryV3Prepare") {
+    group = "build"
+    description = "Freezes the Nonogram V3 picture library from the candidate library (writes only missing files)."
+    dependsOn(qualityCompilation.compileAllTaskName)
+    classpath(qualityCompilation.output.allOutputs, qualityCompilation.runtimeDependencyFiles)
+    mainClass.set("com.stanisryz.logica.puzzle.core.nonogram.quality.NonogramLibraryV3Prepare")
+    args(
+        rootProject.layout.projectDirectory
+            .dir("datasets/nonogram/library-v1")
+            .asFile.path,
+        layout.projectDirectory
+            .dir("src/commonMain/resources")
+            .asFile.path,
+    )
+}
+
 tasks.register<JavaExec>("wordLexiconPrepare") {
     group = "build"
     description = "Regenerates the bundled Word V1 lexicon from the curated offline sources."

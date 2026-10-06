@@ -193,6 +193,11 @@ class BinaryCatalogLevelPack(
             if (recordCount != expectedRecordCount) return corrupt(levelId, "record count $recordCount")
             if (recordSize != CatalogLevelPackFormat.RECORD_SIZE) return corrupt(levelId, "record size $recordSize")
             if (generatorVersion <= 0) return corrupt(levelId, "generator version $generatorVersion")
+            if (CatalogLevelPacks.alternatesBySlot(levelId.puzzleType, levelId.packVersion) &&
+                generatorVersion != CatalogLevelPacks.NONOGRAM_V2_PICTURES.value
+            ) {
+                return corrupt(levelId, "generator version $generatorVersion")
+            }
 
             val offset = levelId.contentSlot.index.toLong() * CatalogLevelPackFormat.RECORD_SIZE
             if (!stream.skipFully(offset)) return corrupt(levelId, "asset ends before slot ${levelId.contentSlot.value}")
@@ -202,7 +207,11 @@ class BinaryCatalogLevelPack(
             var seed = 0L
             record.forEach { byte -> seed = (seed shl 8) or (byte.toLong() and 0xFF) }
             return CatalogLevelPackResult.Success(
-                CatalogLevelDefinition(levelId, PuzzleSeed(seed), GeneratorVersion(generatorVersion)),
+                CatalogLevelDefinition(
+                    levelId,
+                    PuzzleSeed(seed),
+                    CatalogLevelPacks.generatorVersionFor(levelId, GeneratorVersion(generatorVersion)),
+                ),
             )
         } catch (error: Exception) {
             return corrupt(levelId, error.message.orEmpty())

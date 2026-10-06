@@ -20,6 +20,9 @@ value class CatalogLevelPackVersion(
 
     companion object {
         val V1 = CatalogLevelPackVersion(1)
+
+        /** The Nonogram's second pack: real pictures and symmetric levels in turn (see [CatalogLevelPacks]). */
+        val V2 = CatalogLevelPackVersion(2)
     }
 }
 
@@ -62,6 +65,49 @@ object CatalogLevelPacks {
      */
     fun contentSlotFor(levelNumber: CatalogLevelNumber): CatalogContentSlot =
         CatalogContentSlot(((levelNumber.value - 1) % SLOTS_PER_BUCKET) + 1)
+
+    /**
+     * The packs a game's levels come from, oldest first. Only the Nonogram has a second one: its
+     * progression moved to V2, while the levels a player cleared in V1 keep resolving from V1.
+     */
+    fun packVersionsFor(puzzleType: PuzzleType): List<CatalogLevelPackVersion> =
+        if (puzzleType ==
+            PuzzleType.NONOGRAM
+        ) {
+            listOf(CatalogLevelPackVersion.V1, CatalogLevelPackVersion.V2)
+        } else {
+            listOf(CatalogLevelPackVersion.V1)
+        }
+
+    /** The pack new levels of [puzzleType] are played from. */
+    fun activePackVersion(puzzleType: PuzzleType): CatalogLevelPackVersion = packVersionsFor(puzzleType).last()
+
+    /**
+     * Nonogram Level Pack V2 alternates by slot, and so by level number (a bucket's 10 000 slots are
+     * even): an odd slot is a real picture of Generator V3, an even one a symmetric level of V4. Its
+     * bucket header records [NONOGRAM_V2_PICTURES].
+     */
+    fun alternatesBySlot(
+        puzzleType: PuzzleType,
+        packVersion: CatalogLevelPackVersion,
+    ): Boolean = puzzleType == PuzzleType.NONOGRAM && packVersion == CatalogLevelPackVersion.V2
+
+    /** The generator a level is built with: its bucket's, except where [alternatesBySlot] decides by slot. */
+    fun generatorVersionFor(
+        levelId: CatalogLevelId,
+        bucketGeneratorVersion: GeneratorVersion,
+    ): GeneratorVersion =
+        when {
+            !alternatesBySlot(levelId.puzzleType, levelId.packVersion) -> bucketGeneratorVersion
+            levelId.contentSlot.value % 2 == 1 -> NONOGRAM_V2_PICTURES
+            else -> NONOGRAM_V2_SYMMETRIC
+        }
+
+    /** Nonogram V2 odd slots: a picture index of Generator V3; also the generator its bucket header names. */
+    val NONOGRAM_V2_PICTURES = GeneratorVersion(3)
+
+    /** Nonogram V2 even slots: an accepted seed of Generator V4. */
+    val NONOGRAM_V2_SYMMETRIC = GeneratorVersion(4)
 
     /** The Catalog games that own a frozen level pack. */
     val PUZZLE_TYPES: List<PuzzleType> =

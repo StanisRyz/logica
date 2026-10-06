@@ -21,6 +21,9 @@ import com.stanisryz.logica.puzzle.core.model.GeneratorVersion
 import com.stanisryz.logica.puzzle.core.model.PuzzleSeed
 import com.stanisryz.logica.puzzle.core.model.PuzzleType
 import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV1
+import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV3
+import com.stanisryz.logica.puzzle.core.nonogram.NonogramGeneratorV4
+import com.stanisryz.logica.puzzle.core.nonogram.NonogramPictureLibraryV3
 import com.stanisryz.logica.puzzle.core.random.PuzzleRandomV1
 import com.stanisryz.logica.puzzle.core.sudoku.BinarySudokuDataset
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetResult
@@ -61,7 +64,7 @@ object CatalogLevelPackBuilder {
         createMissing = args.getOrNull(3).toBoolean()
         if (!createMissing) CatalogLevelPackIntegrity.verify(puzzleDataDirectory)
 
-        println("Building Catalog Level Pack V1: $slots slots per bucket, games=${requestedGames.joinToString { it.label }}")
+        println("Building Catalog Level Packs: $slots slots per bucket, games=${requestedGames.joinToString { it.label }}")
         val startedAt = System.nanoTime()
         var failures = 0
         requestedGames.forEach { target ->
@@ -89,12 +92,19 @@ object CatalogLevelPackBuilder {
     /** Set by `levelPackCreate`: a missing bucket of a new game may be written once. */
     private var createMissing = false
 
-    /** One frozen bucket family: a game, or one of its content variants (Word's `word_en`, `word_tr`). */
+    /**
+     * One frozen bucket family: a game in one pack version, or one of its content variants (Word's
+     * `word_en`, `word_tr`).
+     */
     internal data class BucketTarget(
         val puzzleType: PuzzleType,
         val variant: CatalogContentVariant? = null,
+        val packVersion: CatalogLevelPackVersion = CatalogLevelPackVersion.V1,
     ) {
-        val label: String get() = puzzleType.name + variant?.let { "_${it.key.uppercase()}" }.orEmpty()
+        val label: String
+            get() =
+                puzzleType.name + variant?.let { "_${it.key.uppercase()}" }.orEmpty() +
+                    (if (packVersion == CatalogLevelPackVersion.V1) "" else "_V${packVersion.value}")
     }
 
     /** Every bucket family of Level Pack V1: each game plus Word's language variants. */
@@ -105,16 +115,21 @@ object CatalogLevelPackBuilder {
                 BucketTarget(PuzzleType.WORD, WordCatalogContent.TURKISH_VARIANT),
             )
 
+    /** Level Pack V2 holds the Nonogram alone (label `nonogram_v2`). */
+    internal val V2_TARGETS: List<BucketTarget> = listOf(BucketTarget(PuzzleType.NONOGRAM, packVersion = CatalogLevelPackVersion.V2))
+
+    internal val ALL_TARGETS: List<BucketTarget> = V1_TARGETS + V2_TARGETS
+
     private fun parseTargets(raw: String): List<BucketTarget> =
         if (raw.equals("all", ignoreCase = true)) {
-            V1_TARGETS
+            ALL_TARGETS
         } else {
             raw
                 .split(',')
                 .map(String::trim)
                 .filter(String::isNotEmpty)
                 .map { name ->
-                    V1_TARGETS.firstOrNull { it.label.equals(name, ignoreCase = true) }
+                    ALL_TARGETS.firstOrNull { it.label.equals(name, ignoreCase = true) }
                         ?: error("Unknown Catalog bucket family '$name'.")
                 }
         }
@@ -133,7 +148,14 @@ object CatalogLevelPackBuilder {
                 PuzzleType.WORD -> wordBucket(difficulty, slots, wordLanguage(target.variant))
                 PuzzleType.SUDOKU -> sudokuBucket(puzzleDataDirectory, difficulty, slots)
                 PuzzleType.GAME_2048 -> game2048Bucket(difficulty, slots)
-                PuzzleType.NONOGRAM -> nonogramBucket(difficulty, slots)
+                PuzzleType.NONOGRAM ->
+                    if (target.packVersion ==
+                        CatalogLevelPackVersion.V2
+                    ) {
+                        nonogramV2Bucket(difficulty, slots)
+                    } else {
+                        nonogramBucket(difficulty, slots)
+                    }
                 PuzzleType.BLOCK_SUDOKU -> blockSudokuBucket(difficulty, slots)
                 else -> error("$puzzleType has no Catalog level pack.")
             }
@@ -159,16 +181,17 @@ object CatalogLevelPackBuilder {
     ): File {
         val puzzleType = bucketTarget.puzzleType
         val variant = bucketTarget.variant
+        val packVersion = bucketTarget.packVersion
         val target =
             File(
                 puzzleDataDirectory,
-                CatalogLevelPackFormat.assetPath(CatalogLevelPackVersion.V1, puzzleType, difficulty, variant),
+                CatalogLevelPackFormat.assetPath(packVersion, puzzleType, difficulty, variant),
             )
         val output = ByteArrayOutputStream(CatalogLevelPackFormat.HEADER_SIZE + bucket.seeds.size * CatalogLevelPackFormat.RECORD_SIZE)
         output.use {
             output.write(
                 CatalogLevelPackFormat.header(
-                    packVersion = CatalogLevelPackVersion.V1,
+                    packVersion = packVersion,
                     puzzleType = puzzleType,
                     difficulty = difficulty,
                     recordCount = bucket.seeds.size,
@@ -182,23 +205,23 @@ object CatalogLevelPackBuilder {
         if (createMissing && !target.exists()) {
             target.parentFile.mkdirs()
             target.writeBytes(candidate)
-            val manifest = File(puzzleDataDirectory, "levels/v1/checksums.sha256")
+            val manifest = File(puzzleDataDirectory, CatalogLevelPackIntegrity.manifestPath(packVersion))
             val relativePath =
                 CatalogLevelPackFormat
                     .assetPath(
-                        CatalogLevelPackVersion.V1,
+                        packVersion,
                         puzzleType,
                         difficulty,
                         variant,
-                    ).removePrefix("levels/v1/")
+                    ).removePrefix("levels/v${packVersion.value}/")
             manifest.appendText("${CatalogLevelPackIntegrity.sha256(candidate)}  $relativePath\n")
             return target
         }
         require(target.isFile) {
-            "Frozen Level Pack V1 bucket is missing: ${target.path}. Restore the released asset instead of recreating V1."
+            "Frozen Level Pack V${packVersion.value} bucket is missing: ${target.path}. Restore the released asset instead of recreating it."
         }
         require(target.readBytes().contentEquals(candidate)) {
-            "Generated content differs from frozen Level Pack V1 ${target.path}. Create a new pack version instead of mutating V1."
+            "Generated content differs from frozen Level Pack V${packVersion.value} ${target.path}. Create a new pack version instead of mutating it."
         }
         return target
     }
@@ -229,16 +252,16 @@ object CatalogLevelPackBuilder {
                     },
                 expectedRecordCount = bucket.seeds.size,
             )
-        val checkedSlots = listOf(1, (bucket.seeds.size + 1) / 2, bucket.seeds.size).distinct()
+        val checkedSlots = listOf(1, 2, (bucket.seeds.size + 1) / 2, bucket.seeds.size).filter { it <= bucket.seeds.size }.distinct()
         checkedSlots.forEach { slot ->
-            val levelId = CatalogLevelId(target.puzzleType, difficulty, CatalogLevelNumber(slot))
+            val levelId = CatalogLevelId(target.puzzleType, difficulty, CatalogLevelNumber(slot), target.packVersion)
             when (val resolved = pack.resolve(levelId, target.variant)) {
                 is CatalogLevelPackResult.Failure -> error("Written bucket is unreadable: ${resolved.detail}")
                 is CatalogLevelPackResult.Success -> {
                     check(resolved.value.seed.value == bucket.seeds[slot - 1]) {
                         "Slot $slot resolved to the wrong seed."
                     }
-                    check(resolved.value.generatorVersion == bucket.generatorVersion) {
+                    check(resolved.value.generatorVersion == CatalogLevelPacks.generatorVersionFor(levelId, bucket.generatorVersion)) {
                         "Slot $slot resolved to the wrong generator version."
                     }
                 }
@@ -428,6 +451,50 @@ object CatalogLevelPackBuilder {
         )
     }
 
+    /**
+     * Nonogram Level Pack V2 alternates two kinds of level by slot parity. An odd slot `s` holds a
+     * picture index of Generator V3: `order[((s + 1) / 2 - 1) mod N]`, where `order` is one shuffle of
+     * the difficulty's N library pictures by the project random stream, repeated unchanged, so any N
+     * consecutive picture levels show every picture once. An even slot `2k` holds the k-th seed
+     * Generator V4 accepts when seeds are tried upwards from 1. The bucket header names Generator V3.
+     */
+    private fun nonogramV2Bucket(
+        difficulty: Difficulty,
+        slots: Int,
+    ): Bucket {
+        val pictures = NonogramPictureLibraryV3.count(difficulty)
+        val order = IntArray(pictures) { it }
+        val random = PuzzleRandomV1(PuzzleSeed(NONOGRAM_V2_ORDER_SEED + CatalogLevelPackFormat.difficultyCode(difficulty) - 1L))
+        for (last in order.lastIndex downTo 1) {
+            val pick = random.nextInt(last + 1)
+            val kept = order[last]
+            order[last] = order[pick]
+            order[pick] = kept
+        }
+        val symmetric = NonogramGeneratorV4()
+        var nextSymmetricSeed = FIRST_SEED
+        var rejected = 0
+        val seeds =
+            (1..slots).map { slot ->
+                if (slot % 2 == 1) {
+                    order[((slot + 1) / 2 - 1) % pictures].toLong()
+                } else {
+                    while (runCatching { symmetric.generate(PuzzleSeed(nextSymmetricSeed), difficulty) }.isFailure) {
+                        rejected++
+                        nextSymmetricSeed++
+                    }
+                    nextSymmetricSeed++.also { check(it > 0) }
+                }
+            }
+        // Every picture index has to build under the shipped Generator V3.
+        order.forEach { index -> NonogramGeneratorV3().generate(PuzzleSeed(index.toLong()), difficulty) }
+        println(
+            "    pictures: $pictures (one cycle every ${pictures * 2} levels), symmetric seeds 1..${nextSymmetricSeed - 1}, " +
+                "rejected $rejected",
+        )
+        return Bucket(seeds, CatalogLevelPacks.NONOGRAM_V2_PICTURES)
+    }
+
     // ---- Shared deterministic seed search ------------------------------------------------------
 
     /**
@@ -519,4 +586,5 @@ object CatalogLevelPackBuilder {
     private const val DUPLICATE_TOLERANCE = 24
     private const val GAME_2048_STREAM_SEED = 0x32303438L
     private const val BLOCK_SUDOKU_STREAM_SEED = 0x424c4f434bL
+    private const val NONOGRAM_V2_ORDER_SEED = 0x4e4f4e4f56324cL
 }
