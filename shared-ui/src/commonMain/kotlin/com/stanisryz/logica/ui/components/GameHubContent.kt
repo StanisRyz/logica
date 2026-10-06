@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -102,6 +103,7 @@ fun GameHubContent(
     statusContent: (@Composable () -> Unit)? = null,
     continueContent: (@Composable () -> Unit)? = null,
     rewardsContent: (@Composable () -> Unit)? = null,
+    listState: LazyListState = rememberLazyListState(),
 ) {
     BoxWithConstraints(modifier.fillMaxSize()) {
         // Wide windows (a desktop, a tablet) lay the game cards out in a grid instead of one tall list.
@@ -113,7 +115,7 @@ fun GameHubContent(
             }
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            state = rememberLazyListState(),
+            state = listState,
             contentPadding =
                 PaddingValues(
                     horizontal = LogicaSpacing.screenHorizontal,

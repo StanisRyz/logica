@@ -22,6 +22,7 @@ import com.stanisryz.logica.ui.daily.DailyHubEntryState
 import com.stanisryz.logica.ui.daily.DailyRewardedAdState
 import com.stanisryz.logica.web.generated.resources.web_back
 import com.stanisryz.logica.web.generated.resources.web_to_games
+import com.stanisryz.logica.web.generated.resources.web_to_profile
 import org.jetbrains.compose.resources.stringResource
 import com.stanisryz.logica.web.generated.resources.Res as WebRes
 
@@ -81,14 +82,23 @@ internal fun WebDailyArchiveRoute(
     today: DailyDate,
     selectedDay: Long?,
     onSelectDay: (Long?) -> Unit,
-    onBack: () -> Unit,
+    origin: WebPageOrigin,
+    onLeave: (WebPageOrigin) -> Unit,
     ad: WebRewardedPlacementController?,
     onStart: (PuzzleType, DailyDate) -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
+        val back = webArchiveBack(origin, selectedDay)
         WebTopBar(
-            backLabel = stringResource(if (selectedDay != null) WebRes.string.web_back else WebRes.string.web_to_games),
-            onBack = { if (selectedDay != null) onSelectDay(null) else onBack() },
+            backLabel =
+                stringResource(
+                    when (back) {
+                        WebArchiveBack.DAY_LIST -> WebRes.string.web_back
+                        WebArchiveBack.GAME_HUB -> WebRes.string.web_to_games
+                        WebArchiveBack.PROFILE_CALENDAR -> WebRes.string.web_to_profile
+                    },
+                ),
+            onBack = { if (back == WebArchiveBack.DAY_LIST) onSelectDay(null) else onLeave(origin) },
             title = stringResource(Res.string.daily_archive),
         )
         WideReadableColumn(WIDE_ARCHIVE_MAX_WIDTH) {

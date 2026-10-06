@@ -73,6 +73,31 @@ internal sealed interface WebRoute {
     data object BlockSudoku : WebRoute
 }
 
+/**
+ * Where a page reachable from both the Game hub and the Profile was opened: the weekly tournament
+ * (the hub's line or the Profile row) and the Daily archive (the hub's button or a past day of the
+ * Profile calendar). Its way back returns there. Host state only, never saved or synced.
+ */
+internal enum class WebPageOrigin { GAME_HUB, PROFILE }
+
+/** Where the Daily archive's way back leads. */
+internal enum class WebArchiveBack { DAY_LIST, GAME_HUB, PROFILE_CALENDAR }
+
+/**
+ * The archive's way back: opened from the Profile calendar it returns to the calendar (that day was
+ * opened directly, so its list is skipped); opened from the hub a day returns to the list of days
+ * and the list to the hub.
+ */
+internal fun webArchiveBack(
+    origin: WebPageOrigin,
+    selectedDay: Long?,
+): WebArchiveBack =
+    when {
+        origin == WebPageOrigin.PROFILE -> WebArchiveBack.PROFILE_CALENDAR
+        selectedDay != null -> WebArchiveBack.DAY_LIST
+        else -> WebArchiveBack.GAME_HUB
+    }
+
 internal fun routeHasActivePuzzle(
     route: WebRoute,
     balanceState: WebBalanceState,

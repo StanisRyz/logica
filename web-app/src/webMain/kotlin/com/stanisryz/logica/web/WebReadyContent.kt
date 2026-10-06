@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +49,7 @@ import com.stanisryz.logica.ui.profile.ProfilePageContent
 import com.stanisryz.logica.ui.profile.ProfileUiState
 import com.stanisryz.logica.ui.profile.unlockedAchievementIds
 import com.stanisryz.logica.ui.theme.LogicaSpacing
+import com.stanisryz.logica.web.generated.resources.web_to_games
 import com.stanisryz.logica.web.generated.resources.web_to_profile
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.StringResource
@@ -83,10 +85,15 @@ internal fun ReadyContent(
     var profilePage by remember { mutableStateOf<ProfilePage?>(null) }
     // A Profile page asked for from another tab (the hub's tournament line) opens once the route lands.
     var pendingProfilePage by remember { mutableStateOf<ProfilePage?>(null) }
+    // The weekly tournament opened from the hub's line shows in place of the hub and returns there.
+    var hubTournamentOpen by remember { mutableStateOf(false) }
+    // The hub keeps its scroll position while a page opened from it is shown.
+    val hubListState = rememberLazyListState()
     LaunchedEffect(route) {
         achievementsOpen = false
         profilePage = if (route == WebRoute.Profile) pendingProfilePage else null
         pendingProfilePage = null
+        if (route != WebRoute.GameHub) hubTournamentOpen = false
     }
 
     // Desktop keyboard input goes to the puzzle only while it is actively played and uncovered.
@@ -159,6 +166,7 @@ internal fun ReadyContent(
             blockSudokuController.showDifficultySelector()
             storeSheetOpen = false
             tutorialFor = null
+            hubTournamentOpen = false
             route = WebRoute.GameHub
         }
     }
@@ -287,6 +295,7 @@ internal fun ReadyContent(
 
     // The Daily archive page and the day open on it; an archive game returns there when left.
     var archiveDay by remember { mutableStateOf<Long?>(null) }
+    var archiveOrigin by remember { mutableStateOf(WebPageOrigin.GAME_HUB) }
     var archiveLaunchDate by remember { mutableStateOf<DailyDate?>(null) }
     val exitGameRoute: () -> WebRoute = { if (archiveLaunchDate != null) WebRoute.DailyArchive else WebRoute.GameHub }
     // Every game reached from the Game hub (and every account switch, which returns there) is no archive game.
@@ -394,145 +403,170 @@ internal fun ReadyContent(
             }
             return@CompositionLocalProvider
         }
+        val tournamentPage: @Composable () -> Unit = {
+            WebWeeklyTournamentPage(
+                leaderboard = leaderboard,
+                tournament = leaderboard.weekly,
+                token = ratingBinding?.token,
+                stars = weeklyStars,
+                claimedWeeks = weeklyRewards?.claimedWeeklyPrizes.orEmpty(),
+                guest = weeklyGuest,
+            )
+        }
         when (route) {
+            // Opened from the hub's line, the tournament stays on the Games tab and returns to the hub.
             WebRoute.GameHub ->
-                PrimaryDestinationShell(
-                    selected = WebRoute.GameHub,
-                    onSelect = { route = it },
-                ) {
-                    GameHubContent(
-                        puzzleTypes = GAME_CATALOG_PUZZLE_TYPES,
-                        catalogEnabled = true,
-                        onGameSelected = { puzzleType ->
-                            route =
-                                when (puzzleType) {
-                                    PuzzleType.BALANCE -> {
-                                        balanceController.showDifficultySelector()
-                                        WebRoute.Balance
+                if (hubTournamentOpen) {
+                    Column(Modifier.fillMaxSize()) {
+                        WebTopBar(
+                            backLabel = stringResource(WebRes.string.web_to_games),
+                            onBack = { hubTournamentOpen = false },
+                            title = stringResource(Res.string.profile_page_tournament_title),
+                        )
+                        WideReadableColumn(WIDE_PROFILE_MAX_WIDTH) { tournamentPage() }
+                    }
+                } else {
+                    PrimaryDestinationShell(
+                        selected = WebRoute.GameHub,
+                        onSelect = { route = it },
+                    ) {
+                        GameHubContent(
+                            listState = hubListState,
+                            puzzleTypes = GAME_CATALOG_PUZZLE_TYPES,
+                            catalogEnabled = true,
+                            onGameSelected = { puzzleType ->
+                                route =
+                                    when (puzzleType) {
+                                        PuzzleType.BALANCE -> {
+                                            balanceController.showDifficultySelector()
+                                            WebRoute.Balance
+                                        }
+                                        PuzzleType.CROWNS -> {
+                                            crownsController.showDifficultySelector()
+                                            WebRoute.Crowns
+                                        }
+                                        PuzzleType.WORD -> {
+                                            wordController.showDifficultySelector()
+                                            WebRoute.Word
+                                        }
+                                        PuzzleType.SUDOKU -> {
+                                            sudokuController.showDifficultySelector()
+                                            WebRoute.Sudoku
+                                        }
+                                        PuzzleType.GAME_2048 -> {
+                                            game2048Controller.showDifficultySelector()
+                                            WebRoute.Game2048
+                                        }
+                                        PuzzleType.NONOGRAM -> {
+                                            nonogramController.showDifficultySelector()
+                                            WebRoute.Nonogram
+                                        }
+                                        PuzzleType.BLOCK_SUDOKU -> {
+                                            blockSudokuController.showDifficultySelector()
+                                            WebRoute.BlockSudoku
+                                        }
+                                        else -> error("$puzzleType has no Web game flow.")
                                     }
-                                    PuzzleType.CROWNS -> {
-                                        crownsController.showDifficultySelector()
-                                        WebRoute.Crowns
+                            },
+                            rewardsContent = {
+                                WebDailyRewardsRoute(
+                                    progressRepository = progressRepository,
+                                    economyRepository = economyRepository,
+                                    playerSession = playerSession,
+                                    currentDate = dailyDate,
+                                )
+                            },
+                            continueContent =
+                                WebLastPlayed.value?.let { (puzzleType, difficulty) ->
+                                    {
+                                        val progress by playerSession.progressBinding.collectAsState()
+                                        val ready = progress as? WebCatalogProgressBinding.Ready
+                                        val snapshot =
+                                            ready
+                                                ?.repository
+                                                ?.snapshot
+                                                ?.collectAsState()
+                                                ?.value
+                                        val level = snapshot?.gameLevel(puzzleType, difficulty)?.value
+                                        ContinueGameCard(
+                                            puzzleType = puzzleType,
+                                            difficultyLabel = stringResource(difficulty.hubLabelResource()),
+                                            levelNumber = level,
+                                            enabled = ready != null,
+                                            noLives = livesUi.state?.let { it.lives <= 0 } == true,
+                                            onContinue = {
+                                                livesUi.guard {
+                                                    route =
+                                                        when (puzzleType) {
+                                                            PuzzleType.BALANCE ->
+                                                                WebRoute.Balance.also {
+                                                                    balanceController.selectDifficulty(
+                                                                        difficulty,
+                                                                    )
+                                                                }
+                                                            PuzzleType.CROWNS ->
+                                                                WebRoute.Crowns.also {
+                                                                    crownsController.selectDifficulty(
+                                                                        difficulty,
+                                                                    )
+                                                                }
+                                                            PuzzleType.WORD ->
+                                                                WebRoute.Word.also {
+                                                                    wordController.selectDifficulty(
+                                                                        difficulty,
+                                                                    )
+                                                                }
+                                                            PuzzleType.SUDOKU ->
+                                                                WebRoute.Sudoku.also {
+                                                                    sudokuController.selectDifficulty(
+                                                                        difficulty,
+                                                                    )
+                                                                }
+                                                            PuzzleType.GAME_2048 ->
+                                                                WebRoute.Game2048.also { game2048Controller.selectDifficulty(difficulty) }
+                                                            PuzzleType.NONOGRAM ->
+                                                                WebRoute.Nonogram.also { nonogramController.selectDifficulty(difficulty) }
+                                                            PuzzleType.BLOCK_SUDOKU ->
+                                                                WebRoute.BlockSudoku.also {
+                                                                    blockSudokuController.selectDifficulty(
+                                                                        difficulty,
+                                                                    )
+                                                                }
+                                                            else -> error("$puzzleType has no Web game flow.")
+                                                        }
+                                                }
+                                            },
+                                        )
                                     }
-                                    PuzzleType.WORD -> {
-                                        wordController.showDifficultySelector()
-                                        WebRoute.Word
-                                    }
-                                    PuzzleType.SUDOKU -> {
-                                        sudokuController.showDifficultySelector()
-                                        WebRoute.Sudoku
-                                    }
-                                    PuzzleType.GAME_2048 -> {
-                                        game2048Controller.showDifficultySelector()
-                                        WebRoute.Game2048
-                                    }
-                                    PuzzleType.NONOGRAM -> {
-                                        nonogramController.showDifficultySelector()
-                                        WebRoute.Nonogram
-                                    }
-                                    PuzzleType.BLOCK_SUDOKU -> {
-                                        blockSudokuController.showDifficultySelector()
-                                        WebRoute.BlockSudoku
-                                    }
-                                    else -> error("$puzzleType has no Web game flow.")
-                                }
-                        },
-                        rewardsContent = {
-                            WebDailyRewardsRoute(
-                                progressRepository = progressRepository,
-                                economyRepository = economyRepository,
-                                playerSession = playerSession,
-                                currentDate = dailyDate,
-                            )
-                        },
-                        continueContent =
-                            WebLastPlayed.value?.let { (puzzleType, difficulty) ->
-                                {
-                                    val progress by playerSession.progressBinding.collectAsState()
-                                    val ready = progress as? WebCatalogProgressBinding.Ready
-                                    val snapshot =
-                                        ready
-                                            ?.repository
-                                            ?.snapshot
-                                            ?.collectAsState()
-                                            ?.value
-                                    val level = snapshot?.gameLevel(puzzleType, difficulty)?.value
-                                    ContinueGameCard(
-                                        puzzleType = puzzleType,
-                                        difficultyLabel = stringResource(difficulty.hubLabelResource()),
-                                        levelNumber = level,
-                                        enabled = ready != null,
-                                        noLives = livesUi.state?.let { it.lives <= 0 } == true,
-                                        onContinue = {
-                                            livesUi.guard {
-                                                route =
-                                                    when (puzzleType) {
-                                                        PuzzleType.BALANCE ->
-                                                            WebRoute.Balance.also {
-                                                                balanceController.selectDifficulty(
-                                                                    difficulty,
-                                                                )
-                                                            }
-                                                        PuzzleType.CROWNS ->
-                                                            WebRoute.Crowns.also {
-                                                                crownsController.selectDifficulty(
-                                                                    difficulty,
-                                                                )
-                                                            }
-                                                        PuzzleType.WORD ->
-                                                            WebRoute.Word.also {
-                                                                wordController.selectDifficulty(
-                                                                    difficulty,
-                                                                )
-                                                            }
-                                                        PuzzleType.SUDOKU ->
-                                                            WebRoute.Sudoku.also {
-                                                                sudokuController.selectDifficulty(
-                                                                    difficulty,
-                                                                )
-                                                            }
-                                                        PuzzleType.GAME_2048 ->
-                                                            WebRoute.Game2048.also { game2048Controller.selectDifficulty(difficulty) }
-                                                        PuzzleType.NONOGRAM ->
-                                                            WebRoute.Nonogram.also { nonogramController.selectDifficulty(difficulty) }
-                                                        PuzzleType.BLOCK_SUDOKU ->
-                                                            WebRoute.BlockSudoku.also { blockSudokuController.selectDifficulty(difficulty) }
-                                                        else -> error("$puzzleType has no Web game flow.")
-                                                    }
-                                            }
+                                },
+                            headerContent = {
+                                Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
+                                    WebDailyHubRoute(
+                                        playerSession = playerSession,
+                                        coordinator = dailyCoordinator,
+                                        currentDate = dailyDate,
+                                        streakRestoreAd = rewardedAds.streakRestore,
+                                        onStartDaily = { puzzleType -> startDaily(puzzleType, null) },
+                                        onOpenArchive = {
+                                            archiveDay = null
+                                            archiveOrigin = WebPageOrigin.GAME_HUB
+                                            route = WebRoute.DailyArchive
                                         },
                                     )
+                                    if (ratingBinding != null && leaderboard.isSupported) {
+                                        WebWeeklyHubRow(
+                                            stars = weeklyStars,
+                                            place =
+                                                leaderboard.weekly.ownPlace
+                                                    .collectAsState()
+                                                    .value,
+                                            onOpen = { hubTournamentOpen = true },
+                                        )
+                                    }
                                 }
                             },
-                        headerContent = {
-                            Column(verticalArrangement = Arrangement.spacedBy(LogicaSpacing.item)) {
-                                WebDailyHubRoute(
-                                    playerSession = playerSession,
-                                    coordinator = dailyCoordinator,
-                                    currentDate = dailyDate,
-                                    streakRestoreAd = rewardedAds.streakRestore,
-                                    onStartDaily = { puzzleType -> startDaily(puzzleType, null) },
-                                    onOpenArchive = {
-                                        archiveDay = null
-                                        route = WebRoute.DailyArchive
-                                    },
-                                )
-                                if (ratingBinding != null && leaderboard.isSupported) {
-                                    WebWeeklyHubRow(
-                                        stars = weeklyStars,
-                                        place =
-                                            leaderboard.weekly.ownPlace
-                                                .collectAsState()
-                                                .value,
-                                        onOpen = {
-                                            pendingProfilePage = ProfilePage.TOURNAMENT
-                                            route = WebRoute.Profile
-                                        },
-                                    )
-                                }
-                            }
-                        },
-                    )
+                        )
+                    }
                 }
             WebRoute.Profile ->
                 if (achievementsOpen) {
@@ -574,14 +608,7 @@ internal fun ReadyContent(
                             if (page == ProfilePage.RATING) {
                                 Box(Modifier.fillMaxSize().padding(LogicaSpacing.screenHorizontal)) { WebLeaderboardCard(leaderboard) }
                             } else if (page == ProfilePage.TOURNAMENT) {
-                                WebWeeklyTournamentPage(
-                                    leaderboard = leaderboard,
-                                    tournament = leaderboard.weekly,
-                                    token = ratingBinding?.token,
-                                    stars = weeklyStars,
-                                    claimedWeeks = weeklyRewards?.claimedWeeklyPrizes.orEmpty(),
-                                    guest = weeklyGuest,
-                                )
+                                tournamentPage()
                             } else {
                                 val binding = playerSession.statisticsBinding.collectAsState().value
                                 val uiState =
@@ -596,6 +623,7 @@ internal fun ReadyContent(
                                     uiState,
                                     onOpenDailyDay = { day ->
                                         archiveDay = webEpochDayInMonth(dailyDate, day)
+                                        archiveOrigin = WebPageOrigin.PROFILE
                                         route = WebRoute.DailyArchive
                                     },
                                 )
@@ -643,7 +671,12 @@ internal fun ReadyContent(
                     today = dailyDate,
                     selectedDay = archiveDay,
                     onSelectDay = { archiveDay = it },
-                    onBack = { route = WebRoute.GameHub },
+                    origin = archiveOrigin,
+                    onLeave = { origin ->
+                        // Back to the Profile's calendar, or to the hub.
+                        if (origin == WebPageOrigin.PROFILE) pendingProfilePage = ProfilePage.DAILY
+                        route = if (origin == WebPageOrigin.PROFILE) WebRoute.Profile else WebRoute.GameHub
+                    },
                     ad = rewardedAds.dailyArchive,
                     onStart = startDaily,
                 )
