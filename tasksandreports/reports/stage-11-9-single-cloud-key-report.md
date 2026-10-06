@@ -2,7 +2,7 @@
 
 ## 1. SHA коммитов
 
-- `d174100` — старые ключи только для чтения, фабрика `YandexCloudGateways`, тест, подставной SDK с заменой в `check_sounds.mjs`, `AGENTS.md`.
+- `24fae42` — старые ключи только для чтения, фабрика `YandexCloudGateways`, тест, подставной SDK с заменой в `check_sounds.mjs`, `AGENTS.md`.
 - Отчёт и уточнение комментария `WebCloudWritePacer` — следующим коммитом.
 
 ## 2. Что сделано
