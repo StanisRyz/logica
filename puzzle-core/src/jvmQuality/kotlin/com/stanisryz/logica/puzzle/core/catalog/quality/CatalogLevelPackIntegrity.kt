@@ -2,7 +2,6 @@ package com.stanisryz.logica.puzzle.core.catalog.quality
 
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackFormat
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
-import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPacks
 import com.stanisryz.logica.puzzle.core.model.Difficulty
 import java.io.File
 import java.security.MessageDigest
@@ -52,11 +51,11 @@ object CatalogLevelPackIntegrity {
             }
 
     private fun expectedPaths(): Set<String> =
-        CatalogLevelPacks.PUZZLE_TYPES
-            .flatMap { puzzleType ->
+        CatalogLevelPackBuilder.V1_TARGETS
+            .flatMap { target ->
                 Difficulty.entries.map { difficulty ->
                     CatalogLevelPackFormat
-                        .assetPath(CatalogLevelPackVersion.V1, puzzleType, difficulty)
+                        .assetPath(CatalogLevelPackVersion.V1, target.puzzleType, difficulty, target.variant)
                         .removePrefix("levels/v1/")
                 }
             }.toSet()

@@ -4,10 +4,12 @@ import com.stanisryz.logica.puzzle.core.balance.BalanceGeneratorV1
 import com.stanisryz.logica.puzzle.core.blocksudoku.BlockSudokuEngine
 import com.stanisryz.logica.puzzle.core.blocksudoku.BlockSudokuRules
 import com.stanisryz.logica.puzzle.core.catalog.BinaryCatalogLevelPack
+import com.stanisryz.logica.puzzle.core.catalog.CatalogContentVariant
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelId
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelNumber
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackFormat
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackResult
+import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackSource
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPackVersion
 import com.stanisryz.logica.puzzle.core.catalog.CatalogLevelPacks
 import com.stanisryz.logica.puzzle.core.crowns.CrownsGeneratorV1
@@ -25,7 +27,11 @@ import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetResult
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDatasetVersion
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuDifficulty
 import com.stanisryz.logica.puzzle.core.sudoku.SudokuSelectorV1
+import com.stanisryz.logica.puzzle.core.word.WordCatalogContent
+import com.stanisryz.logica.puzzle.core.word.WordLanguage
 import com.stanisryz.logica.puzzle.core.word.WordLexiconV2
+import com.stanisryz.logica.puzzle.core.word.WordLexiconV3
+import com.stanisryz.logica.puzzle.core.word.WordLexiconV4
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.stream.Collectors
@@ -49,29 +55,29 @@ object CatalogLevelPackBuilder {
         require(puzzleDataDirectory.isDirectory) {
             "Puzzle data directory ${puzzleDataDirectory.path} does not exist."
         }
-        val requestedGames = parseGames(args[1])
+        val requestedGames = parseTargets(args[1])
         val slots = args.getOrNull(2)?.toIntOrNull() ?: CatalogLevelPacks.SLOTS_PER_BUCKET
         require(slots in 1..CatalogLevelPacks.SLOTS_PER_BUCKET) { "Slot count must be within 1..10000." }
         createMissing = args.getOrNull(3).toBoolean()
         if (!createMissing) CatalogLevelPackIntegrity.verify(puzzleDataDirectory)
 
-        println("Building Catalog Level Pack V1: $slots slots per bucket, games=${requestedGames.joinToString()}")
+        println("Building Catalog Level Pack V1: $slots slots per bucket, games=${requestedGames.joinToString { it.label }}")
         val startedAt = System.nanoTime()
         var failures = 0
-        requestedGames.forEach { puzzleType ->
+        requestedGames.forEach { target ->
             Difficulty.entries.forEach { difficulty ->
                 val bucketStartedAt = System.nanoTime()
                 val outcome =
-                    runCatching { buildBucket(puzzleDataDirectory, puzzleType, difficulty, slots) }
+                    runCatching { buildBucket(puzzleDataDirectory, target, difficulty, slots) }
                 outcome
                     .onSuccess { file ->
                         println(
-                            "  ${puzzleType.name}/${difficulty.name}: ${file.name} " +
+                            "  ${target.label}/${difficulty.name}: ${file.name} " +
                                 "(${file.length()} bytes, ${elapsedSeconds(bucketStartedAt)}s)",
                         )
                     }.onFailure { error ->
                         failures++
-                        System.err.println("  ${puzzleType.name}/${difficulty.name} FAILED: ${error.message}")
+                        System.err.println("  ${target.label}/${difficulty.name} FAILED: ${error.message}")
                     }
             }
         }
@@ -83,31 +89,48 @@ object CatalogLevelPackBuilder {
     /** Set by `levelPackCreate`: a missing bucket of a new game may be written once. */
     private var createMissing = false
 
-    private fun parseGames(raw: String): List<PuzzleType> =
+    /** One frozen bucket family: a game, or one of its content variants (Word's `word_en`, `word_tr`). */
+    internal data class BucketTarget(
+        val puzzleType: PuzzleType,
+        val variant: CatalogContentVariant? = null,
+    ) {
+        val label: String get() = puzzleType.name + variant?.let { "_${it.key.uppercase()}" }.orEmpty()
+    }
+
+    /** Every bucket family of Level Pack V1: each game plus Word's language variants. */
+    internal val V1_TARGETS: List<BucketTarget> =
+        CatalogLevelPacks.PUZZLE_TYPES.map { BucketTarget(it) } +
+            listOf(
+                BucketTarget(PuzzleType.WORD, WordCatalogContent.ENGLISH_VARIANT),
+                BucketTarget(PuzzleType.WORD, WordCatalogContent.TURKISH_VARIANT),
+            )
+
+    private fun parseTargets(raw: String): List<BucketTarget> =
         if (raw.equals("all", ignoreCase = true)) {
-            CatalogLevelPacks.PUZZLE_TYPES
+            V1_TARGETS
         } else {
             raw
                 .split(',')
                 .map(String::trim)
                 .filter(String::isNotEmpty)
                 .map { name ->
-                    CatalogLevelPacks.PUZZLE_TYPES.firstOrNull { it.name.equals(name, ignoreCase = true) }
-                        ?: error("Unknown Catalog game '$name'.")
+                    V1_TARGETS.firstOrNull { it.label.equals(name, ignoreCase = true) }
+                        ?: error("Unknown Catalog bucket family '$name'.")
                 }
         }
 
     private fun buildBucket(
         puzzleDataDirectory: File,
-        puzzleType: PuzzleType,
+        target: BucketTarget,
         difficulty: Difficulty,
         slots: Int,
     ): File {
+        val puzzleType = target.puzzleType
         val bucket =
             when (puzzleType) {
                 PuzzleType.BALANCE -> balanceBucket(difficulty, slots)
                 PuzzleType.CROWNS -> crownsBucket(difficulty, slots)
-                PuzzleType.WORD -> wordBucket(difficulty, slots)
+                PuzzleType.WORD -> wordBucket(difficulty, slots, wordLanguage(target.variant))
                 PuzzleType.SUDOKU -> sudokuBucket(puzzleDataDirectory, difficulty, slots)
                 PuzzleType.GAME_2048 -> game2048Bucket(difficulty, slots)
                 PuzzleType.NONOGRAM -> nonogramBucket(difficulty, slots)
@@ -122,19 +145,24 @@ object CatalogLevelPackBuilder {
                     "first repeated slot=${summary.firstRepeatedSlot ?: "none"}",
             )
         }
-        return write(puzzleDataDirectory, puzzleType, difficulty, bucket)
+        return write(puzzleDataDirectory, target, difficulty, bucket)
     }
+
+    private fun wordLanguage(variant: CatalogContentVariant?): WordLanguage =
+        WordLanguage.entries.single { WordCatalogContent.variant(it) == variant }
 
     private fun write(
         puzzleDataDirectory: File,
-        puzzleType: PuzzleType,
+        bucketTarget: BucketTarget,
         difficulty: Difficulty,
         bucket: Bucket,
     ): File {
+        val puzzleType = bucketTarget.puzzleType
+        val variant = bucketTarget.variant
         val target =
             File(
                 puzzleDataDirectory,
-                CatalogLevelPackFormat.assetPath(CatalogLevelPackVersion.V1, puzzleType, difficulty),
+                CatalogLevelPackFormat.assetPath(CatalogLevelPackVersion.V1, puzzleType, difficulty, variant),
             )
         val output = ByteArrayOutputStream(CatalogLevelPackFormat.HEADER_SIZE + bucket.seeds.size * CatalogLevelPackFormat.RECORD_SIZE)
         output.use {
@@ -150,7 +178,7 @@ object CatalogLevelPackBuilder {
             bucket.seeds.forEach { seed -> output.write(CatalogLevelPackFormat.record(PuzzleSeed(seed))) }
         }
         val candidate = output.toByteArray()
-        verify(candidate, puzzleType, difficulty, bucket)
+        verify(candidate, bucketTarget, difficulty, bucket)
         if (createMissing && !target.exists()) {
             target.parentFile.mkdirs()
             target.writeBytes(candidate)
@@ -161,6 +189,7 @@ object CatalogLevelPackBuilder {
                         CatalogLevelPackVersion.V1,
                         puzzleType,
                         difficulty,
+                        variant,
                     ).removePrefix("levels/v1/")
             manifest.appendText("${CatalogLevelPackIntegrity.sha256(candidate)}  $relativePath\n")
             return target
@@ -177,19 +206,33 @@ object CatalogLevelPackBuilder {
     /** The builder validates what it produced; the runtime never repeats this work. */
     private fun verify(
         candidate: ByteArray,
-        puzzleType: PuzzleType,
+        target: BucketTarget,
         difficulty: Difficulty,
         bucket: Bucket,
     ) {
         val pack =
             BinaryCatalogLevelPack(
-                source = { _, _, _ -> candidate.inputStream() },
+                source =
+                    object : CatalogLevelPackSource {
+                        override fun open(
+                            packVersion: CatalogLevelPackVersion,
+                            puzzleType: PuzzleType,
+                            difficulty: Difficulty,
+                        ) = candidate.inputStream().takeIf { target.variant == null }
+
+                        override fun openVariant(
+                            packVersion: CatalogLevelPackVersion,
+                            puzzleType: PuzzleType,
+                            difficulty: Difficulty,
+                            variant: CatalogContentVariant,
+                        ) = candidate.inputStream().takeIf { variant == target.variant }
+                    },
                 expectedRecordCount = bucket.seeds.size,
             )
         val checkedSlots = listOf(1, (bucket.seeds.size + 1) / 2, bucket.seeds.size).distinct()
         checkedSlots.forEach { slot ->
-            val levelId = CatalogLevelId(puzzleType, difficulty, CatalogLevelNumber(slot))
-            when (val resolved = pack.resolve(levelId)) {
+            val levelId = CatalogLevelId(target.puzzleType, difficulty, CatalogLevelNumber(slot))
+            when (val resolved = pack.resolve(levelId, target.variant)) {
                 is CatalogLevelPackResult.Failure -> error("Written bucket is unreadable: ${resolved.detail}")
                 is CatalogLevelPackResult.Success -> {
                     check(resolved.value.seed.value == bucket.seeds[slot - 1]) {
@@ -249,16 +292,25 @@ object CatalogLevelPackBuilder {
     }
 
     /**
-     * Word V2 keeps its frozen answer pool: a seed is accepted only when it selects an answer this
+     * Word keeps each language's frozen answer pool (V2 Russian, V3 English, V4 Turkish, the same draw
+     * as its generator): a seed is accepted only when it selects an answer this
      * cycle has not used yet, so every available word appears before any repetition, and repeats
      * afterwards are a deterministic continuation of the same scan.
      */
     private fun wordBucket(
         difficulty: Difficulty,
         slots: Int,
+        language: WordLanguage,
     ): Bucket {
-        val poolSize = WordLexiconV2.possibleAnswers.answers(difficulty).size
-        check(poolSize > 0) { "The ${difficulty.name} Word V2 answer pool is empty." }
+        val generatorVersion = WordCatalogContent.generatorVersion(language)
+        val answers =
+            when (language) {
+                WordLanguage.RUSSIAN -> WordLexiconV2.possibleAnswers
+                WordLanguage.ENGLISH -> WordLexiconV3.possibleAnswers
+                WordLanguage.TURKISH -> WordLexiconV4.possibleAnswers
+            }
+        val poolSize = answers.answers(difficulty).size
+        check(poolSize > 0) { "The ${difficulty.name} Word V${generatorVersion.value} answer pool is empty." }
         val used = HashSet<Int>(poolSize * 2)
         val seeds = ArrayList<Long>(slots)
         var candidate = FIRST_SEED
@@ -270,7 +322,7 @@ object CatalogLevelPackBuilder {
             }
             candidate++
         }
-        return Bucket(seeds, GeneratorVersion(2))
+        return Bucket(seeds, generatorVersion)
     }
 
     /**

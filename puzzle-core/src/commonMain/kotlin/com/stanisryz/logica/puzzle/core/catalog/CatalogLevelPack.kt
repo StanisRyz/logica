@@ -20,7 +20,10 @@ object CatalogLevelPackFormat {
         packVersion: CatalogLevelPackVersion,
         puzzleType: PuzzleType,
         difficulty: Difficulty,
-    ): String = "levels/v${packVersion.value}/${puzzleType.name.lowercase()}/${difficulty.name.lowercase()}.lvp"
+        variant: CatalogContentVariant? = null,
+    ): String =
+        "levels/v${packVersion.value}/${puzzleType.name.lowercase()}${variant?.let { "_${it.key}" }.orEmpty()}/" +
+            "${difficulty.name.lowercase()}.lvp"
 
     fun puzzleTypeCode(puzzleType: PuzzleType): Int =
         when (puzzleType) {
@@ -86,6 +89,19 @@ sealed interface CatalogLevelPackResult<out T> {
     ) : CatalogLevelPackResult<Nothing>
 }
 
+/**
+ * A content variant of one game's frozen buckets, frozen beside its default buckets: Word's English
+ * and Turkish levels (`levels/v1/word_en/`, `levels/v1/word_tr/`). A level's identity and progress
+ * never carry it; the bucket's generator version tells which content a level was built from.
+ */
+data class CatalogContentVariant(
+    val key: String,
+) {
+    init {
+        require(key.isNotEmpty() && key.all { it in 'a'..'z' }) { "A content variant key is lower-case letters only." }
+    }
+}
+
 fun interface CatalogLevelPackSource {
     /** Opens one frozen bucket for reading, or returns null when the asset is unavailable. */
     fun open(
@@ -93,10 +109,29 @@ fun interface CatalogLevelPackSource {
         puzzleType: PuzzleType,
         difficulty: Difficulty,
     ): CatalogLevelPackInput?
+
+    /** Opens one variant bucket; a source that bundles no variants has none. */
+    fun openVariant(
+        packVersion: CatalogLevelPackVersion,
+        puzzleType: PuzzleType,
+        difficulty: Difficulty,
+        variant: CatalogContentVariant,
+    ): CatalogLevelPackInput? = null
 }
 
 interface CatalogLevelPack {
     fun resolve(levelId: CatalogLevelId): CatalogLevelPackResult<CatalogLevelDefinition>
+
+    /** The same level from a variant bucket; without one ([variant] null) it is the default bucket. */
+    fun resolve(
+        levelId: CatalogLevelId,
+        variant: CatalogContentVariant?,
+    ): CatalogLevelPackResult<CatalogLevelDefinition> =
+        if (variant == null) {
+            resolve(levelId)
+        } else {
+            CatalogLevelPackResult.Failure(CatalogLevelPackError.MISSING_ASSET, "No ${variant.key} content for ${levelId.puzzleType}.")
+        }
 }
 
 /**
@@ -108,10 +143,19 @@ class BinaryCatalogLevelPack(
     private val source: CatalogLevelPackSource,
     private val expectedRecordCount: Int = CatalogLevelPacks.SLOTS_PER_BUCKET,
 ) : CatalogLevelPack {
-    override fun resolve(levelId: CatalogLevelId): CatalogLevelPackResult<CatalogLevelDefinition> {
+    override fun resolve(levelId: CatalogLevelId): CatalogLevelPackResult<CatalogLevelDefinition> = resolve(levelId, null)
+
+    override fun resolve(
+        levelId: CatalogLevelId,
+        variant: CatalogContentVariant?,
+    ): CatalogLevelPackResult<CatalogLevelDefinition> {
         val stream =
             try {
-                source.open(levelId.packVersion, levelId.puzzleType, levelId.difficulty)
+                if (variant == null) {
+                    source.open(levelId.packVersion, levelId.puzzleType, levelId.difficulty)
+                } else {
+                    source.openVariant(levelId.packVersion, levelId.puzzleType, levelId.difficulty, variant)
+                }
             } catch (error: Exception) {
                 return missing(levelId, error.message.orEmpty())
             } ?: return missing(levelId, "asset is absent")
