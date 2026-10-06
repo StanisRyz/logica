@@ -51,8 +51,12 @@ const YANDEX = !!process.env.YANDEX;
 // screen for 1.5 s, and window.__ya.emit(event) for game_api_pause / game_api_resume.
 const FAKE_SDK = `(function () {
   var handlers = {};
+  // setData replaces all of the Player's data with the object it is given, as Yandex may do.
+  var cloud = {};
   var player = { isAuthorized: function () { return true; }, getUniqueID: function () { return 'soundCheck'; }, getName: function () { return 'Test'; },
-    getPhoto: function () { return ''; }, getData: function () { return Promise.resolve({}); }, setData: function () { return Promise.resolve(true); } };
+    getPhoto: function () { return ''; },
+    getData: function (keys) { var out = {}; (keys || Object.keys(cloud)).forEach(function (k) { if (k in cloud) out[k] = cloud[k]; }); return Promise.resolve(out); },
+    setData: function (data) { cloud = JSON.parse(JSON.stringify(data)); window.__ya.writtenKeys.push.apply(window.__ya.writtenKeys, Object.keys(data)); return Promise.resolve(true); } };
   var sdk = {
     features: { LoadingAPI: { ready: function () {} }, GameplayAPI: { start: function () {}, stop: function () {} } },
     environment: { i18n: { lang: 'ru' } }, EVENTS: {},
@@ -68,7 +72,7 @@ const FAKE_SDK = `(function () {
     leaderboards: { setScore: function () { return Promise.resolve(); }, getEntries: function () { return Promise.resolve({ entries: [], userRank: 0 }); },
       getPlayerEntry: function () { return Promise.reject({}); } },
   };
-  window.__ya = { emit: function (e) { (handlers[e] || []).forEach(function (f) { f(); }); } };
+  window.__ya = { emit: function (e) { (handlers[e] || []).forEach(function (f) { f(); }); }, writtenKeys: [], cloud: function () { return cloud; } };
   window.YaGames = { init: function () { return Promise.resolve(sdk); } };
 })();`;
 
@@ -329,6 +333,8 @@ if (YANDEX) {
   await moves();
   check('Sound back on: the next moves sound', audible(await since(mark)).length >= 1);
   check('no sound warnings', warnings.length === 0, warnings.join(' | '));
+  const cloudKeys = await app().evaluate(() => ({ written: [...new Set(window.__ya.writtenKeys)], held: Object.keys(window.__ya.cloud()) }));
+  check('the cloud only ever receives the unified save key', cloudKeys.written.every((k) => k === 'logica_unified_save_v1') && cloudKeys.held.every((k) => k === 'logica_unified_save_v1'), JSON.stringify(cloudKeys));
 } else {
 // 1. Sound on: the sounds load from the nested folder and every move starts one decoded buffer.
 await into2048();

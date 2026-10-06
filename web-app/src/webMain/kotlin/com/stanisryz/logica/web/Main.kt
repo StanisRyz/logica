@@ -51,27 +51,18 @@ fun main() {
                 dateProvider = BrowserLocalWebDailyDateProvider,
             )
         }
-    // One pacer for every cloud key: all setData calls together stay within Yandex's rate limit.
+    // The paced unified save is the only key ever written; the legacy keys are read for migration.
     val cloudWritePacer = WebCloudWritePacer()
+    val cloudGateways = YandexCloudGateways(bridge, cloudWritePacer)
     val playerSession =
         if (bridge.isAvailable) {
             WebPlayerSessionController(
                 playerIdentityGateway = YandexPlayerIdentityGateway(bridge),
-                cloudSaveGateway = YandexCloudSaveGateway(bridge, pacer = cloudWritePacer),
+                cloudSaveGateway = cloudGateways.catalog,
                 progressRepositoryFactory = progressRepositoryFactory,
-                statisticsCloudSaveGateway =
-                    YandexCloudSaveGateway(
-                        bridge,
-                        dataKey = YandexCloudSaveGateway.STATISTICS_STATE_KEY,
-                        pacer = cloudWritePacer,
-                    ),
+                statisticsCloudSaveGateway = cloudGateways.statistics,
                 statisticsRepositoryFactory = statisticsRepositoryFactory,
-                dailyCloudSaveGateway =
-                    YandexCloudSaveGateway(
-                        bridge,
-                        dataKey = YandexCloudSaveGateway.DAILY_STATE_KEY,
-                        pacer = cloudWritePacer,
-                    ),
+                dailyCloudSaveGateway = cloudGateways.daily,
                 dailyRepositoryFactory = dailyRepositoryFactory,
                 playerContextEvents = bridge,
             )
@@ -183,7 +174,7 @@ fun main() {
     val unifiedSaveRepository =
         if (bridge.isAvailable) {
             YandexCloudSaveRepository(
-                YandexCloudSaveGateway(bridge, dataKey = UNIFIED_SAVE_STATE_KEY, pacer = cloudWritePacer),
+                cloudGateways.unified,
             )
         } else {
             LocalSaveRepository(
@@ -325,8 +316,6 @@ private fun standaloneStorageSet(
 ) {
     js("globalThis.localStorage.setItem(key, value)")
 }
-
-private const val UNIFIED_SAVE_STATE_KEY = "logica_unified_save_v1"
 
 /** Isolated browser-local key; standalone data never migrates into a real Yandex account. */
 private const val STANDALONE_UNIFIED_SAVE_KEY = "logica_unified_save_standalone_v1"

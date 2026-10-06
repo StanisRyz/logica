@@ -64,6 +64,12 @@ internal class YandexCloudSaveGateway(
     private val writeTimeoutMs: Long = WRITE_TIMEOUT_MS,
     /** Shared by every key, so all `setData` calls together stay within Yandex's rate limit. */
     private val pacer: WebCloudWritePacer? = null,
+    /**
+     * False for the legacy keys: they are only read (the migration path). Every `setData` then
+     * carries the one unified key, which is safe whether Yandex merges keys or replaces all of a
+     * Player's data with the object it is given.
+     */
+    private val writable: Boolean = true,
 ) : CloudSaveGateway {
     init {
         require(dataKey.isNotBlank()) { "A Yandex Cloud Save data key is required." }
@@ -85,7 +91,11 @@ internal class YandexCloudSaveGateway(
         }
 
     override suspend fun write(payload: ByteArray): CloudSaveWriteResult =
-        pacer?.write(dataKey) { timedWrite(payload) } ?: timedWrite(payload)
+        when {
+            !writable -> CloudSaveWriteResult.Unsupported
+            pacer != null -> pacer.write(dataKey) { timedWrite(payload) }
+            else -> timedWrite(payload)
+        }
 
     // The timeout covers the SDK call only, never the wait for the pacer's turn.
     private suspend fun timedWrite(payload: ByteArray): CloudSaveWriteResult =
@@ -105,12 +115,28 @@ internal class YandexCloudSaveGateway(
         }
 
     companion object {
+        const val UNIFIED_STATE_KEY = "logica_unified_save_v1"
         const val CLOUD_STATE_KEY = "logica_state_v1"
         const val STATISTICS_STATE_KEY = "logica_statistics_v1"
         const val DAILY_STATE_KEY = "logica_daily_v1"
         const val READ_TIMEOUT_MS = 10_000L
         const val WRITE_TIMEOUT_MS = 15_000L
     }
+}
+
+/**
+ * The Yandex cloud keys of one game: the unified save, the only key ever written, and the legacy
+ * Catalog/Statistics/Daily keys, read-only and kept for migration. `setData` may replace all of a
+ * Player's data with the object it is given, so a write of any other key could erase the unified save.
+ */
+internal class YandexCloudGateways(
+    bridge: WebPlayerDataBridge,
+    pacer: WebCloudWritePacer? = null,
+) {
+    val unified = YandexCloudSaveGateway(bridge, dataKey = YandexCloudSaveGateway.UNIFIED_STATE_KEY, pacer = pacer)
+    val catalog = YandexCloudSaveGateway(bridge, dataKey = YandexCloudSaveGateway.CLOUD_STATE_KEY, writable = false)
+    val statistics = YandexCloudSaveGateway(bridge, dataKey = YandexCloudSaveGateway.STATISTICS_STATE_KEY, writable = false)
+    val daily = YandexCloudSaveGateway(bridge, dataKey = YandexCloudSaveGateway.DAILY_STATE_KEY, writable = false)
 }
 
 internal object UnsupportedWebPlayerIdentityGateway : PlayerIdentityGateway {
