@@ -23,7 +23,10 @@ class NonogramPictureLibraryTest {
                     .readLines()
                     .filter { it.isNotBlank() && !it.startsWith("#") }
                     .map { line -> line.split('\t').let { it[0] to it[1] } }
-            assertTrue(pictures.size >= 100, "$difficulty has only ${pictures.size} pictures")
+            // Owner decision (stage 10.2a): at least 150 pictures per difficulty, and no alcohol.
+            assertTrue(pictures.size >= 150, "$difficulty has only ${pictures.size} pictures")
+            val alcohol = listOf("beer", "wine", "brandy", "champagne", "cheers", "martini", "pint-glass", "liquor")
+            assertTrue(pictures.none { (key, _) -> alcohol.any { it in key } }, "$difficulty holds an alcohol picture")
             pictures.forEach { (key, rows) ->
                 val cells = rows.filter { it != '/' }.map { it == '#' }
                 assertEquals(size * size, cells.size, "$difficulty/$key has the wrong size")

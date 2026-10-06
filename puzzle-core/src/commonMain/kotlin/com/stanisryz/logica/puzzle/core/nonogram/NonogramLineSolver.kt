@@ -7,6 +7,12 @@ enum class NonogramKnowledge {
     EMPTY,
 }
 
+/** A board line logic completed, and how many row-and-column passes it took ([sweeps]). */
+data class NonogramSolution(
+    val board: List<NonogramKnowledge>,
+    val sweeps: Int,
+)
+
 /**
  * Deterministic logic for Nonograms. [solveLine] finds every cell of one line that all placements of
  * its runs agree on; [solve] repeats that over rows and columns until nothing changes. A board it
@@ -81,11 +87,24 @@ object NonogramLineSolver {
         rowClues: List<List<Int>>,
         columnClues: List<List<Int>>,
         known: List<NonogramKnowledge> = List(size * size) { NonogramKnowledge.UNKNOWN },
-    ): List<NonogramKnowledge>? {
+    ): List<NonogramKnowledge>? = solveWithEffort(size, rowClues, columnClues, known)?.board
+
+    /**
+     * Like [solve], with the effort it took: the number of passes over all rows and then all columns,
+     * the last one being the pass that found nothing more to change.
+     */
+    fun solveWithEffort(
+        size: Int,
+        rowClues: List<List<Int>>,
+        columnClues: List<List<Int>>,
+        known: List<NonogramKnowledge> = List(size * size) { NonogramKnowledge.UNKNOWN },
+    ): NonogramSolution? {
         val board = known.toMutableList()
         var changed = true
+        var sweeps = 0
         while (changed) {
             changed = false
+            sweeps++
             for (row in 0 until size) {
                 val line = List(size) { board[row * size + it] }
                 if (NonogramKnowledge.UNKNOWN !in line) continue
@@ -109,7 +128,7 @@ object NonogramLineSolver {
                 }
             }
         }
-        return board.takeIf { NonogramKnowledge.UNKNOWN !in it }
+        return if (NonogramKnowledge.UNKNOWN in board) null else NonogramSolution(board, sweeps)
     }
 
     private fun canPlace(
