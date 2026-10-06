@@ -1,0 +1,653 @@
+{
+  "language": "tr",
+  "generator_version": 4,
+  "sources": {
+    "zemberek_python": {
+      "version": "0.2.3",
+      "license": "Apache-2.0",
+      "data": "Zemberek-NLP root lexicon and morphology"
+    },
+    "wordfreq": {
+      "version": "3.1.1",
+      "code_license": "Apache-2.0",
+      "data_license": "CC BY-SA 4.0"
+    }
+  },
+  "rules": {
+    "target_answers_per_length": 500,
+    "minimum_answer_zipf": 3.0,
+    "normalization": "Turkish lower case (I -> ı, İ -> i), â/î/û folded to a/i/u, 29 letters without q, w, x",
+    "answer_filter": "a Zemberek lemma that is only a common noun, written without a circumflex, never analyzed as a verb form, a -sal/-sel adjective, a plural of another lemma, or another inflection of a lemma 0.5 Zipf more frequent"
+  },
+  "counts": {
+    "4": {
+      "guesses": 2653,
+      "guess_lemmas": 2015,
+      "guess_inflected_forms": 638,
+      "answers": 500,
+      "answer_candidates": 697
+    },
+    "5": {
+      "guesses": 7018,
+      "guess_lemmas": 5043,
+      "guess_inflected_forms": 1975,
+      "answers": 500,
+      "answer_candidates": 1279
+    },
+    "6": {
+      "guesses": 9017,
+      "guess_lemmas": 4825,
+      "guess_inflected_forms": 4192,
+      "answers": 500,
+      "answer_candidates": 1000
+    },
+    "7": {
+      "guesses": 11096,
+      "guess_lemmas": 4524,
+      "guess_inflected_forms": 6572,
+      "answers": 500,
+      "answer_candidates": 738
+    }
+  },
+  "manual": {
+    "guess_blocklist": 0,
+    "answer_blocklist": 325,
+    "answer_allowlist": 86
+  },
+  "rejection_reasons": {
+    "ADJECTIVE_FORM": 2,
+    "ALSO_OTHER_PART_OF_SPEECH": 1322,
+    "CIRCUMFLEX": 389,
+    "INFLECTED_FORM": 132,
+    "NOT_A_LEMMA": 13377,
+    "NOT_A_NOUN": 3353,
+    "RARE": 7163,
+    "VERB_FORM": 332
+  },
+  "samples": {
+    "4": {
+      "answers": [
+        "adak",
+        "arpa",
+        "atom",
+        "ağıt",
+        "baca",
+        "bent",
+        "defa",
+        "demo",
+        "depo",
+        "dram",
+        "ezgi",
+        "faul",
+        "felç",
+        "filo",
+        "gaye",
+        "gece",
+        "golf",
+        "harf",
+        "harp",
+        "hobi",
+        "iade",
+        "idil",
+        "iyot",
+        "içki",
+        "kedi",
+        "kişi",
+        "lale",
+        "mira",
+        "oluk",
+        "papa",
+        "puma",
+        "rica",
+        "soru",
+        "sure",
+        "sıra",
+        "tarz",
+        "tema",
+        "tren",
+        "vade",
+        "şaka"
+      ],
+      "dropped": [
+        {
+          "word": "daha",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 6.61
+        },
+        {
+          "word": "önce",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 6.11
+        },
+        {
+          "word": "olur",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 6.03
+        },
+        {
+          "word": "alan",
+          "reason": "VERB_FORM",
+          "zipf": 5.82
+        },
+        {
+          "word": "geri",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.82
+        },
+        {
+          "word": "gece",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.8
+        },
+        {
+          "word": "eski",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.79
+        },
+        {
+          "word": "hala",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.71
+        },
+        {
+          "word": "günü",
+          "reason": "MANUAL_BLOCK",
+          "zipf": 5.67
+        },
+        {
+          "word": "kısa",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.63
+        },
+        {
+          "word": "süre",
+          "reason": "VERB_FORM",
+          "zipf": 5.61
+        },
+        {
+          "word": "açık",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.57
+        },
+        {
+          "word": "eder",
+          "reason": "VERB_FORM",
+          "zipf": 5.54
+        },
+        {
+          "word": "genç",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.54
+        },
+        {
+          "word": "hava",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.54
+        },
+        {
+          "word": "oyun",
+          "reason": "VERB_FORM",
+          "zipf": 5.51
+        },
+        {
+          "word": "beri",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.47
+        },
+        {
+          "word": "spor",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.47
+        },
+        {
+          "word": "elde",
+          "reason": "MANUAL_BLOCK",
+          "zipf": 5.45
+        },
+        {
+          "word": "tabi",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.43
+        }
+      ]
+    },
+    "5": {
+      "answers": [
+        "ahlak",
+        "albüm",
+        "anket",
+        "asist",
+        "aslan",
+        "balon",
+        "cadde",
+        "delil",
+        "duvar",
+        "esnaf",
+        "eylem",
+        "fikir",
+        "göbek",
+        "hüzün",
+        "idrak",
+        "ifade",
+        "ikram",
+        "ipucu",
+        "korku",
+        "kusur",
+        "köfte",
+        "kırım",
+        "lazer",
+        "mesaj",
+        "perde",
+        "poker",
+        "sakal",
+        "saray",
+        "sergi",
+        "sonuç",
+        "stres",
+        "tekne",
+        "vatan",
+        "yürek",
+        "yıkım",
+        "çarşı",
+        "çevre",
+        "çorap",
+        "ısrar",
+        "şükür"
+      ],
+      "dropped": [
+        {
+          "word": "kadar",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 6.56
+        },
+        {
+          "word": "sonra",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 6.45
+        },
+        {
+          "word": "büyük",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 6.26
+        },
+        {
+          "word": "güzel",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 6.23
+        },
+        {
+          "word": "artık",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 6.1
+        },
+        {
+          "word": "doğru",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 6.06
+        },
+        {
+          "word": "devam",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.98
+        },
+        {
+          "word": "neden",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.97
+        },
+        {
+          "word": "şimdi",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.94
+        },
+        {
+          "word": "karşı",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.91
+        },
+        {
+          "word": "bütün",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.89
+        },
+        {
+          "word": "bugün",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.84
+        },
+        {
+          "word": "küçük",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.83
+        },
+        {
+          "word": "insan",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.81
+        },
+        {
+          "word": "kadın",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.81
+        },
+        {
+          "word": "çocuk",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.71
+        },
+        {
+          "word": "kimse",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.68
+        },
+        {
+          "word": "hayır",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.66
+        },
+        {
+          "word": "erkek",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.65
+        },
+        {
+          "word": "gerek",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.64
+        }
+      ]
+    },
+    "6": {
+      "answers": [
+        "abartı",
+        "afiyet",
+        "avukat",
+        "bahane",
+        "baykuş",
+        "başarı",
+        "beceri",
+        "bozkır",
+        "büyücü",
+        "devlet",
+        "eziyet",
+        "fatiha",
+        "ferman",
+        "gümrük",
+        "hikmet",
+        "inşaat",
+        "kardeş",
+        "kayısı",
+        "kongre",
+        "mektup",
+        "mercek",
+        "merkez",
+        "meteor",
+        "meydan",
+        "miktar",
+        "numara",
+        "otoyol",
+        "rağbet",
+        "reçete",
+        "stoper",
+        "tahlil",
+        "tasarı",
+        "tehdit",
+        "teşvik",
+        "vampir",
+        "vazife",
+        "vizyon",
+        "yelken",
+        "çevrim",
+        "şirket"
+      ],
+      "dropped": [
+        {
+          "word": "gerçek",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.77
+        },
+        {
+          "word": "yüksek",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.75
+        },
+        {
+          "word": "yerine",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.68
+        },
+        {
+          "word": "tekrar",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.62
+        },
+        {
+          "word": "dikkat",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.56
+        },
+        {
+          "word": "dakika",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.53
+        },
+        {
+          "word": "sosyal",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.53
+        },
+        {
+          "word": "yalnız",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.49
+        },
+        {
+          "word": "yanlış",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.49
+        },
+        {
+          "word": "teknik",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.47
+        },
+        {
+          "word": "yardım",
+          "reason": "VERB_FORM",
+          "zipf": 5.44
+        },
+        {
+          "word": "günlük",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.36
+        },
+        {
+          "word": "yıllık",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.34
+        },
+        {
+          "word": "normal",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.28
+        },
+        {
+          "word": "ulusal",
+          "reason": "ADJECTIVE_FORM",
+          "zipf": 5.17
+        },
+        {
+          "word": "yıldız",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.15
+        },
+        {
+          "word": "aralık",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.14
+        },
+        {
+          "word": "teslim",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.14
+        },
+        {
+          "word": "toprak",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.13
+        },
+        {
+          "word": "benzer",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.11
+        }
+      ]
+    },
+    "7": {
+      "answers": [
+        "altyapı",
+        "asansör",
+        "ağustos",
+        "basamak",
+        "belirti",
+        "bunalım",
+        "dağıtım",
+        "ekipman",
+        "ekonomi",
+        "eşofman",
+        "feragat",
+        "fiyasko",
+        "hükümet",
+        "karaoke",
+        "kiremit",
+        "kolordu",
+        "kraliçe",
+        "kuyumcu",
+        "mobilya",
+        "muhatap",
+        "mücahit",
+        "müşteri",
+        "nezaket",
+        "nitelik",
+        "ortaçağ",
+        "padişah",
+        "palmiye",
+        "sağanak",
+        "segment",
+        "senaryo",
+        "senatör",
+        "senfoni",
+        "telefon",
+        "telgraf",
+        "tersane",
+        "vardiya",
+        "vasiyet",
+        "yumurta",
+        "öğrenci",
+        "öğrenim"
+      ],
+      "dropped": [
+        {
+          "word": "gelecek",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.47
+        },
+        {
+          "word": "merhaba",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.25
+        },
+        {
+          "word": "kırmızı",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.24
+        },
+        {
+          "word": "serbest",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.22
+        },
+        {
+          "word": "sevgili",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.14
+        },
+        {
+          "word": "kişilik",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 5.06
+        },
+        {
+          "word": "savunma",
+          "reason": "VERB_FORM",
+          "zipf": 5.06
+        },
+        {
+          "word": "verecek",
+          "reason": "VERB_FORM",
+          "zipf": 5.02
+        },
+        {
+          "word": "değişik",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 4.91
+        },
+        {
+          "word": "intihar",
+          "reason": "MANUAL_BLOCK",
+          "zipf": 4.87
+        },
+        {
+          "word": "çıkacak",
+          "reason": "VERB_FORM",
+          "zipf": 4.87
+        },
+        {
+          "word": "elinden",
+          "reason": "INFLECTED_FORM",
+          "zipf": 4.85
+        },
+        {
+          "word": "anlaşma",
+          "reason": "VERB_FORM",
+          "zipf": 4.84
+        },
+        {
+          "word": "düşünce",
+          "reason": "VERB_FORM",
+          "zipf": 4.81
+        },
+        {
+          "word": "dijital",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 4.8
+        },
+        {
+          "word": "paralel",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 4.78
+        },
+        {
+          "word": "üstelik",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 4.74
+        },
+        {
+          "word": "anahtar",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 4.73
+        },
+        {
+          "word": "benzeri",
+          "reason": "ALSO_OTHER_PART_OF_SPEECH",
+          "zipf": 4.72
+        },
+        {
+          "word": "şikayet",
+          "reason": "CIRCUMFLEX",
+          "zipf": 4.7
+        }
+      ]
+    }
+  }
+}

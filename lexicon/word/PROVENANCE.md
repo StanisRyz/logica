@@ -42,3 +42,8 @@ filtering totals. `answer_candidates.tsv` is the practical answer review artifac
 EASY, 505 MEDIUM, 500 HARD, and 500 EXPERT answers: 505 retain their V1 review status, 74 are manual
 V2 additions, and 1,426 are morphology-filtered frequency selections. The 1,500 non-V1 candidates
 remain explicit in the review artifact until final linguistic review declares the V2 ordering frozen.
+
+## V3 (English) and V4 (Turkish)
+
+Their sources, pins, licences, and reproduction commands live in `datasets/word/en/PROVENANCE.md` and
+`datasets/word/tr/PROVENANCE.md`; their manual lists are in `lexicon/word/v3/` and `lexicon/word/v4/`.

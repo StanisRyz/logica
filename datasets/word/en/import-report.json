@@ -1,0 +1,649 @@
+{
+  "language": "en",
+  "generator_version": 3,
+  "sources": {
+    "enable": {
+      "file": "enable1.txt",
+      "sha256": "3f16130220645692ed49c7134e24a18504c2ca55b3c012f7290e3e77c63b1a89",
+      "license": "Public domain (ENABLE2K)"
+    },
+    "open_english_wordnet": {
+      "file": "english-wordnet-2023.xml.gz",
+      "sha256": "d516489cdeb72b1a332eefd9f63a9941aa2c8dcd5b5c7e4f41c5f48bea9d75cd",
+      "edition": "2023",
+      "license": "CC BY 4.0"
+    },
+    "wordfreq": {
+      "version": "3.1.1",
+      "code_license": "Apache-2.0",
+      "data_license": "CC BY-SA 4.0"
+    }
+  },
+  "rules": {
+    "target_answers_per_length": 500,
+    "minimum_answer_zipf": 3.0,
+    "answer_filter": "lower-case WordNet lemma, noun senses >= other senses, not a regular plural of another noun, not a one-sense verb form, not a name or place with at most two common noun senses"
+  },
+  "counts": {
+    "4": {
+      "guesses": 3903,
+      "answers": 500,
+      "answer_candidates": 864
+    },
+    "5": {
+      "guesses": 8636,
+      "answers": 500,
+      "answer_candidates": 1040
+    },
+    "6": {
+      "guesses": 15232,
+      "answers": 500,
+      "answer_candidates": 1186
+    },
+    "7": {
+      "guesses": 23109,
+      "answers": 500,
+      "answer_candidates": 1236
+    }
+  },
+  "manual": {
+    "guess_blocklist": 0,
+    "answer_blocklist": 240,
+    "answer_allowlist": 0
+  },
+  "rejection_reasons": {
+    "NAME_OR_PLACE": 438,
+    "NOT_A_WORDNET_NOUN": 36222,
+    "NOT_NOUN_DOMINANT": 1387,
+    "PLURAL_FORM": 291,
+    "PROPER_ONLY": 521,
+    "RARE": 7400,
+    "VERB_FORM": 295
+  },
+  "samples": {
+    "4": {
+      "answers": [
+        "aide",
+        "beam",
+        "bite",
+        "buck",
+        "bush",
+        "card",
+        "coup",
+        "crab",
+        "crew",
+        "dawn",
+        "dose",
+        "east",
+        "edge",
+        "expo",
+        "flaw",
+        "foam",
+        "folk",
+        "gaze",
+        "gear",
+        "goal",
+        "gown",
+        "grip",
+        "herb",
+        "hill",
+        "isle",
+        "joke",
+        "logo",
+        "mine",
+        "noun",
+        "park",
+        "plea",
+        "pony",
+        "root",
+        "scam",
+        "self",
+        "size",
+        "slam",
+        "sofa",
+        "stop",
+        "wing"
+      ],
+      "dropped": [
+        {
+          "word": "have",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 6.71
+        },
+        {
+          "word": "like",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 6.41
+        },
+        {
+          "word": "more",
+          "reason": "PROPER_ONLY",
+          "zipf": 6.36
+        },
+        {
+          "word": "good",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 6.12
+        },
+        {
+          "word": "know",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 6.1
+        },
+        {
+          "word": "make",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 6.08
+        },
+        {
+          "word": "over",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 6.08
+        },
+        {
+          "word": "then",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 6.07
+        },
+        {
+          "word": "back",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 6.04
+        },
+        {
+          "word": "want",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 6.04
+        },
+        {
+          "word": "well",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 6.03
+        },
+        {
+          "word": "much",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 6.0
+        },
+        {
+          "word": "even",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.99
+        },
+        {
+          "word": "here",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.97
+        },
+        {
+          "word": "work",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.96
+        },
+        {
+          "word": "take",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.92
+        },
+        {
+          "word": "down",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.88
+        },
+        {
+          "word": "last",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.86
+        },
+        {
+          "word": "best",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.84
+        },
+        {
+          "word": "look",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.81
+        }
+      ]
+    },
+    "5": {
+      "answers": [
+        "actor",
+        "album",
+        "amino",
+        "arena",
+        "armor",
+        "badge",
+        "cabin",
+        "charm",
+        "color",
+        "curse",
+        "death",
+        "derby",
+        "elbow",
+        "fruit",
+        "giant",
+        "glass",
+        "grade",
+        "grief",
+        "lobby",
+        "mayor",
+        "metal",
+        "month",
+        "mouse",
+        "orbit",
+        "print",
+        "promo",
+        "river",
+        "rugby",
+        "scent",
+        "shade",
+        "share",
+        "spear",
+        "stone",
+        "thing",
+        "toast",
+        "trial",
+        "truck",
+        "usage",
+        "water",
+        "yacht"
+      ],
+      "dropped": [
+        {
+          "word": "there",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 6.31
+        },
+        {
+          "word": "first",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 6.11
+        },
+        {
+          "word": "think",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 6.08
+        },
+        {
+          "word": "right",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.96
+        },
+        {
+          "word": "years",
+          "reason": "PLURAL_FORM",
+          "zipf": 5.96
+        },
+        {
+          "word": "being",
+          "reason": "MANUAL_BLOCK",
+          "zipf": 5.95
+        },
+        {
+          "word": "going",
+          "reason": "MANUAL_BLOCK",
+          "zipf": 5.94
+        },
+        {
+          "word": "still",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.92
+        },
+        {
+          "word": "great",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.88
+        },
+        {
+          "word": "while",
+          "reason": "MANUAL_BLOCK",
+          "zipf": 5.86
+        },
+        {
+          "word": "three",
+          "reason": "MANUAL_BLOCK",
+          "zipf": 5.78
+        },
+        {
+          "word": "found",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.68
+        },
+        {
+          "word": "might",
+          "reason": "MANUAL_BLOCK",
+          "zipf": 5.66
+        },
+        {
+          "word": "start",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.56
+        },
+        {
+          "word": "times",
+          "reason": "PLURAL_FORM",
+          "zipf": 5.56
+        },
+        {
+          "word": "today",
+          "reason": "MANUAL_BLOCK",
+          "zipf": 5.55
+        },
+        {
+          "word": "small",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.51
+        },
+        {
+          "word": "white",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.51
+        },
+        {
+          "word": "using",
+          "reason": "VERB_FORM",
+          "zipf": 5.47
+        },
+        {
+          "word": "black",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.46
+        }
+      ]
+    },
+    "6": {
+      "answers": [
+        "accent",
+        "advice",
+        "author",
+        "backup",
+        "beacon",
+        "belief",
+        "border",
+        "bureau",
+        "candle",
+        "cinema",
+        "cousin",
+        "critic",
+        "damage",
+        "editor",
+        "family",
+        "fossil",
+        "height",
+        "hunter",
+        "jungle",
+        "minute",
+        "monkey",
+        "mother",
+        "nation",
+        "needle",
+        "nephew",
+        "palace",
+        "parole",
+        "portal",
+        "prince",
+        "roller",
+        "school",
+        "shield",
+        "spirit",
+        "subway",
+        "tenant",
+        "tenure",
+        "threat",
+        "tongue",
+        "virtue",
+        "worker"
+      ],
+      "dropped": [
+        {
+          "word": "better",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.76
+        },
+        {
+          "word": "little",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.75
+        },
+        {
+          "word": "things",
+          "reason": "PLURAL_FORM",
+          "zipf": 5.74
+        },
+        {
+          "word": "enough",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.54
+        },
+        {
+          "word": "thanks",
+          "reason": "MANUAL_BLOCK",
+          "zipf": 5.43
+        },
+        {
+          "word": "social",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.42
+        },
+        {
+          "word": "single",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.41
+        },
+        {
+          "word": "coming",
+          "reason": "MANUAL_BLOCK",
+          "zipf": 5.4
+        },
+        {
+          "word": "taking",
+          "reason": "VERB_FORM",
+          "zipf": 5.39
+        },
+        {
+          "word": "saying",
+          "reason": "VERB_FORM",
+          "zipf": 5.37
+        },
+        {
+          "word": "future",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.33
+        },
+        {
+          "word": "living",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.3
+        },
+        {
+          "word": "behind",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.29
+        },
+        {
+          "word": "former",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.28
+        },
+        {
+          "word": "common",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.2
+        },
+        {
+          "word": "inside",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.19
+        },
+        {
+          "word": "return",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.19
+        },
+        {
+          "word": "middle",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.18
+        },
+        {
+          "word": "answer",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.17
+        },
+        {
+          "word": "longer",
+          "reason": "MANUAL_BLOCK",
+          "zipf": 5.16
+        }
+      ]
+    },
+    "7": {
+      "answers": [
+        "airport",
+        "athlete",
+        "barrier",
+        "borough",
+        "brigade",
+        "captive",
+        "chapter",
+        "concern",
+        "contact",
+        "country",
+        "current",
+        "defence",
+        "example",
+        "grocery",
+        "hunting",
+        "illness",
+        "interim",
+        "lawsuit",
+        "mistake",
+        "network",
+        "nominee",
+        "opening",
+        "outlook",
+        "package",
+        "partner",
+        "pathway",
+        "patriot",
+        "reading",
+        "receipt",
+        "release",
+        "removal",
+        "reserve",
+        "storage",
+        "student",
+        "surgery",
+        "tractor",
+        "traffic",
+        "utility",
+        "warrant",
+        "warrior"
+      ],
+      "dropped": [
+        {
+          "word": "someone",
+          "reason": "MANUAL_BLOCK",
+          "zipf": 5.63
+        },
+        {
+          "word": "getting",
+          "reason": "VERB_FORM",
+          "zipf": 5.57
+        },
+        {
+          "word": "looking",
+          "reason": "MANUAL_BLOCK",
+          "zipf": 5.57
+        },
+        {
+          "word": "nothing",
+          "reason": "MANUAL_BLOCK",
+          "zipf": 5.55
+        },
+        {
+          "word": "general",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.47
+        },
+        {
+          "word": "working",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.45
+        },
+        {
+          "word": "special",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.34
+        },
+        {
+          "word": "fucking",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.33
+        },
+        {
+          "word": "million",
+          "reason": "MANUAL_BLOCK",
+          "zipf": 5.33
+        },
+        {
+          "word": "minutes",
+          "reason": "PLURAL_FORM",
+          "zipf": 5.31
+        },
+        {
+          "word": "talking",
+          "reason": "VERB_FORM",
+          "zipf": 5.29
+        },
+        {
+          "word": "process",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.26
+        },
+        {
+          "word": "outside",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.25
+        },
+        {
+          "word": "running",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.23
+        },
+        {
+          "word": "project",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.22
+        },
+        {
+          "word": "perfect",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.2
+        },
+        {
+          "word": "english",
+          "reason": "PROPER_ONLY",
+          "zipf": 5.19
+        },
+        {
+          "word": "private",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.19
+        },
+        {
+          "word": "present",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.18
+        },
+        {
+          "word": "average",
+          "reason": "NOT_NOUN_DOMINANT",
+          "zipf": 5.16
+        }
+      ]
+    }
+  }
+}

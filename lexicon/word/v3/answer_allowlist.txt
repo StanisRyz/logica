@@ -1,0 +1,1 @@
+# answer_allowlist for Word v3; one word per line, '#' starts a comment.
